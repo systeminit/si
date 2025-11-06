@@ -1,6 +1,7 @@
 <!-- eslint-disable vue/component-tags-order,import/first -->
 <script lang="ts">
 export enum OnboardingStep {
+  PICK_PROVIDER,
   INITIALIZE,
   SETUP_AI,
 }
@@ -12,7 +13,8 @@ export enum OnboardingStep {
 // MAKE SURE YOU TEST THE FUNCTIONALITY OF THE FLOW WITH DEBUG MODE TURNED OFF!
 export const DEBUG_MODE = false;
 export const DEBUG_ONBOARDING_SHOW_DISABLED = false;
-export const DEBUG_ONBOARDING_START = OnboardingStep.INITIALIZE;
+export const DEBUG_ONBOARDING_START = OnboardingStep.PICK_PROVIDER;
+export const DEBUG_PROVIDER_CHOICE = undefined;
 </script>
 
 <!-- eslint-disable vue/component-tags-order,import/first -->
@@ -81,110 +83,80 @@ export const DEBUG_ONBOARDING_START = OnboardingStep.INITIALIZE;
         <div
           class="flex flex-row items-center grow w-full max-w-[1600px] px-lg gap-lg z-10"
         >
-          <div class="flex-1 flex flex-col basis-1/2 min-w-0">
-            <!-- Step 1: User Input -->
-            <OnboardingStepBlock
-              v-if="currentStep === OnboardingStep.INITIALIZE"
+          <div
+            v-if="currentStep === OnboardingStep.PICK_PROVIDER"
+            class="flex-1 flex flex-col items-center min-w-0 gap-8"
+          >
+            <div
+              :class="
+                clsx(
+                  'text-lg',
+                  themeClasses('text-neutral-800', 'text-neutral-200'),
+                )
+              "
             >
-              <template #header>
-                <div class="flex flex-row items-center justify-between">
-                  <span
-                    :class="
-                      initializeRequestSentAndSuccessful && 'text-success-200'
-                    "
-                  >
-                    Enter an AWS Credential
-                  </span>
-                  <div>1/2</div>
-                </div>
-              </template>
-              <template #body>
-                <!-- Credential -->
-                <div
-                  :class="
-                    clsx(
-                      'flex flex-col border p-sm gap-sm text-sm',
-                      themeClasses('border-neutral-400', 'border-neutral-600'),
-                    )
-                  "
-                >
-                  <div class="flex flex-row justify-between items-center">
-                    <label for="aws-credential-name" class="basis-0 grow">
-                      Name your credential*
-                    </label>
-                    <input
-                      id="aws-credential-name"
-                      v-model="credentialName"
-                      data-lpignore="true"
-                      data-1p-ignore
-                      data-bwignore
-                      data-form-type="other"
+              Select a provider to start
+            </div>
+            <div class="flex flex-row items-center gap-lg">
+              <OnboardingProviderTile provider="AWS" @select="pickProvider" />
+              <OnboardingProviderTile
+                provider="Azure"
+                beta
+                @select="pickProvider"
+              />
+            </div>
+          </div>
+          <template v-else>
+            <div class="flex-1 flex flex-col basis-1/2 min-w-0">
+              <!-- Step 2: Provider setup -->
+              <template v-if="currentStep === OnboardingStep.INITIALIZE">
+                <!-- AWS -->
+                <OnboardingStepBlock v-if="providerChoice === 'AWS'">
+                  <template #header>
+                    <div class="flex flex-row items-center gap-sm">
+                      <Icon name="logo-aws" />
+                      <div
+                        :class="
+                          clsx(
+                            'flex-grow',
+                            initializeRequestSentAndSuccessful &&
+                              'text-success-200',
+                          )
+                        "
+                      >
+                        Enter an AWS Credential
+                      </div>
+                      <div>1/2</div>
+                    </div>
+                  </template>
+                  <template #body>
+                    <!-- Credential -->
+                    <div
                       :class="
                         clsx(
-                          'h-lg p-xs text-sm border font-mono cursor-text basis-0 grow',
-                          'focus:outline-none focus:ring-0 focus:z-20',
+                          'flex flex-col border p-sm gap-sm text-sm',
                           themeClasses(
-                            'text-black bg-white border-neutral-400 focus:border-action-500',
-                            'text-white bg-black border-neutral-600 focus:border-action-300',
+                            'border-neutral-400',
+                            'border-neutral-600',
                           ),
                         )
                       "
-                      @focus="
-                        onboardingTracking('focused_credential_name_input')
-                      "
-                    />
-                  </div>
-                  <!-- Secret Values -->
-                  <ErrorMessage
-                    :class="
-                      clsx(
-                        'rounded-sm p-xs',
-                        themeClasses('bg-action-200', 'bg-action-900'),
-                      )
-                    "
-                    tone="action"
-                    variant="block"
-                    noIcon
-                  >
-                    <div
-                      class="flex flex-row items-center justify-between text-sm"
                     >
-                      <div>
-                        Paste the full Bash environment block into the first
-                        field — we'll auto-fill the rest.
-                      </div>
-                      <Icon
-                        v-tooltip="
-                          someFieldsVisible
-                            ? 'Hide All Values'
-                            : 'Show All Values'
-                        "
-                        :name="someFieldsVisible ? 'hide' : 'eye'"
-                        size="xs"
-                        class="cursor-pointer z-20"
-                        @click="toggleAll"
-                      />
-                    </div>
-                  </ErrorMessage>
-
-                  <div class="flex flex-col">
-                    <div
-                      v-for="(field, title) in secretFormFields"
-                      :key="title"
-                      :class="'flex flex-row justify-between items-center text-sm mb-[-1px]'"
-                    >
-                      <label
-                        class="basis-0 grow flex flex-row items-center gap-2xs"
-                      >
-                        {{ title }}<span v-if="field.required">*</span>
-                      </label>
-                      <div class="flex flex-row basis-0 grow relative">
+                      <div class="flex flex-row justify-between items-center">
+                        <label for="aws-credential-name" class="basis-0 grow">
+                          Name your credential
+                          <RequiredAsterisk />
+                        </label>
                         <input
-                          v-model="field.ref"
-                          :type="field.type"
+                          id="aws-credential-name"
+                          v-model="credentialName"
+                          data-lpignore="true"
+                          data-1p-ignore
+                          data-bwignore
+                          data-form-type="other"
                           :class="
                             clsx(
-                              'h-lg p-xs pr-7 text-sm border font-mono cursor-text grow',
+                              'h-lg p-xs text-sm border font-mono cursor-text basis-0 grow',
                               'focus:outline-none focus:ring-0 focus:z-20',
                               themeClasses(
                                 'text-black bg-white border-neutral-400 focus:border-action-500',
@@ -192,165 +164,619 @@ export const DEBUG_ONBOARDING_START = OnboardingStep.INITIALIZE;
                               ),
                             )
                           "
-                          :placeholder="
-                            field.type === 'password'
-                              ? '*****'
-                              : 'Value will be visible'
-                          "
-                          data-lpignore="true"
-                          data-1p-ignore
-                          data-bwignore
-                          data-form-type="other"
-                          @paste="(ev: ClipboardEvent) => tryMatchOnPaste(ev)"
                           @focus="
-                            onboardingTracking(
-                              `focused_secret_field_${title
-                                .toLowerCase()
-                                .replace(/ /g, '_')}`,
-                            )
+                            onboardingTracking('focused_credential_name_input')
                           "
-                        />
-                        <Icon
-                          v-tooltip="
-                            field.type === 'password'
-                              ? 'Show Value'
-                              : 'Hide Value'
-                          "
-                          :name="field.type === 'password' ? 'eye' : 'hide'"
-                          size="xs"
-                          class="absolute right-xs top-[10px] cursor-pointer z-20"
-                          @click="toggleVisibility(field)"
                         />
                       </div>
+                      <!-- Secret Values -->
+                      <ErrorMessage
+                        :class="
+                          clsx(
+                            'rounded-sm p-xs',
+                            themeClasses('bg-action-200', 'bg-action-900'),
+                          )
+                        "
+                        tone="action"
+                        variant="block"
+                        noIcon
+                      >
+                        <div
+                          class="flex flex-row items-center justify-between text-sm"
+                        >
+                          <div>
+                            Paste the full Bash environment block into the first
+                            field — we'll auto-fill the rest.
+                          </div>
+                          <Icon
+                            v-tooltip="
+                              someFieldsVisible
+                                ? 'Hide All Values'
+                                : 'Show All Values'
+                            "
+                            :name="someFieldsVisible ? 'hide' : 'eye'"
+                            size="xs"
+                            class="cursor-pointer z-20"
+                            @click="toggleAll"
+                          />
+                        </div>
+                      </ErrorMessage>
+
+                      <div class="flex flex-col">
+                        <div
+                          v-for="(field, title) in secretFormFieldsAWS"
+                          :key="title"
+                          :class="'flex flex-row justify-between items-center text-sm mb-[-1px]'"
+                        >
+                          <label
+                            class="basis-0 grow flex flex-row items-center gap-2xs"
+                          >
+                            {{ title }}
+                            <RequiredAsterisk v-if="field.required" />
+                          </label>
+                          <div class="flex flex-row basis-0 grow relative">
+                            <input
+                              v-model="field.ref"
+                              :type="field.type"
+                              :class="
+                                clsx(
+                                  'h-lg p-xs pr-7 text-sm border font-mono cursor-text grow',
+                                  'focus:outline-none focus:ring-0 focus:z-20',
+                                  themeClasses(
+                                    'text-black bg-white border-neutral-400 focus:border-action-500',
+                                    'text-white bg-black border-neutral-600 focus:border-action-300',
+                                  ),
+                                )
+                              "
+                              :placeholder="
+                                field.type === 'password'
+                                  ? '*****'
+                                  : 'Value will be visible'
+                              "
+                              data-lpignore="true"
+                              data-1p-ignore
+                              data-bwignore
+                              data-form-type="other"
+                              @paste="(ev: ClipboardEvent) => tryMatchOnPaste(ev)"
+                              @focus="
+                                onboardingTracking(
+                                  `focused_secret_field_${title
+                                    .toLowerCase()
+                                    .replace(/ /g, '_')}`,
+                                )
+                              "
+                            />
+                            <Icon
+                              v-tooltip="
+                                field.type === 'password'
+                                  ? 'Show Value'
+                                  : 'Hide Value'
+                              "
+                              :name="field.type === 'password' ? 'eye' : 'hide'"
+                              size="xs"
+                              class="absolute right-xs top-[10px] cursor-pointer z-20"
+                              @click="toggleVisibility(field)"
+                            />
+                          </div>
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                </div>
-                <!-- Region -->
-                <div
-                  :class="
-                    clsx(
-                      'border flex flex-col p-sm gap-sm text-sm',
-                      themeClasses('border-neutral-400', 'border-neutral-600'),
-                    )
-                  "
-                >
-                  <div>Pick a region*</div>
-                  <div
-                    class="flex desktop:flex-row flex-col desktop:items-center items-stretch gap-xs"
-                  >
+                    <!-- Region -->
                     <div
-                      v-for="region in pickerRegions"
-                      :key="region.value"
                       :class="
                         clsx(
-                          'flex flex-row grow items-center gap-xs',
-                          'border rounded-sm cursor-pointer',
-                          'desktop:p-xs p-2xs',
+                          'border flex flex-col p-sm gap-sm text-sm',
                           themeClasses(
-                            'hover:border-neutral-700',
-                            'hover:border-neutral-300',
+                            'border-neutral-400',
+                            'border-neutral-600',
                           ),
-                          region.value === awsRegion
-                            ? themeClasses(
-                                'border-neutral-700',
-                                'border-neutral-300',
-                              )
-                            : themeClasses(
-                                'border-neutral-300',
-                                'border-neutral-600',
-                              ),
                         )
                       "
-                      @click="selectRegion(region.value)"
                     >
-                      <Icon
-                        :name="
-                          region.value === awsRegion
-                            ? 'check-circle'
-                            : 'circle-empty'
-                        "
-                      />
-                      <div class="flex flex-col justify-center align-middle">
-                        <span class="text-sm">{{ region.title }}</span>
-                        <span
+                      <div>
+                        Pick a region
+                        <RequiredAsterisk />
+                      </div>
+                      <div
+                        class="flex desktop:flex-row flex-col desktop:items-center items-stretch gap-xs"
+                      >
+                        <div
+                          v-for="region in pickerRegions"
+                          :key="region.value"
                           :class="
                             clsx(
-                              'text-sm',
+                              'flex flex-row grow items-center gap-xs',
+                              'border rounded-sm cursor-pointer',
+                              'desktop:p-xs p-2xs',
                               themeClasses(
-                                'text-neutral-600',
-                                'text-neutral-400',
+                                'hover:border-neutral-700',
+                                'hover:border-neutral-300',
+                              ),
+                              region.value === awsRegion
+                                ? themeClasses(
+                                    'border-neutral-700',
+                                    'border-neutral-300',
+                                  )
+                                : themeClasses(
+                                    'border-neutral-300',
+                                    'border-neutral-600',
+                                  ),
+                            )
+                          "
+                          @click="selectRegion(region.value)"
+                        >
+                          <Icon
+                            :name="
+                              region.value === awsRegion
+                                ? 'check-circle'
+                                : 'circle-empty'
+                            "
+                          />
+                          <div
+                            class="flex flex-col justify-center align-middle"
+                          >
+                            <span class="text-sm">{{ region.title }}</span>
+                            <span
+                              :class="
+                                clsx(
+                                  'text-sm',
+                                  themeClasses(
+                                    'text-neutral-600',
+                                    'text-neutral-400',
+                                  ),
+                                )
+                              "
+                            >
+                              {{ region.value }}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                      <div class="flex flex-row items-center">
+                        <label for="aws-region" class="basis-0 grow">
+                          Or select any region
+                        </label>
+                        <select
+                          id="aws-region"
+                          v-model="awsRegion"
+                          :class="
+                            clsx(
+                              'h-lg basis-0 grow p-xs text-sm border font-mono cursor-pointer',
+                              'focus:outline-none focus:ring-0 focus:z-20',
+                              themeClasses(
+                                'text-black bg-white border-neutral-400 focus:border-action-500',
+                                'text-white bg-black border-neutral-600 focus:border-action-300',
                               ),
                             )
                           "
                         >
-                          {{ region.value }}
+                          <option
+                            v-for="region in awsRegions"
+                            :key="region.value"
+                            :label="`${region.title} - ${region.value}`"
+                          >
+                            {{ region.value }}
+                          </option>
+                        </select>
+                      </div>
+                    </div>
+                  </template>
+                  <template #footerRight>
+                    <NewButton
+                      label="Previous"
+                      tone="neutral"
+                      @click="decrementOnboardingStep"
+                    />
+                    <NewButton
+                      :label="initializeApiError ? 'Retry' : 'Next'"
+                      :tooltip="
+                        !formHasRequiredValues || DEBUG_MODE
+                          ? 'You must enter your credential to continue'
+                          : undefined
+                      "
+                      tone="action"
+                      :disabled="
+                        !formHasRequiredValues || DEBUG_ONBOARDING_SHOW_DISABLED
+                      "
+                      :loading="submitOnboardingInProgress"
+                      loadingText="Saving"
+                      @click="submitOnboardRequest"
+                    />
+                  </template>
+                </OnboardingStepBlock>
+                <!-- Azure -->
+                <OnboardingStepBlock v-else-if="providerChoice === 'Azure'">
+                  <template #header>
+                    <div class="flex flex-row items-center gap-sm">
+                      <Icon name="logo-azure" />
+                      <div
+                        :class="
+                          clsx(
+                            'flex-grow',
+                            initializeRequestSentAndSuccessful &&
+                              'text-success-200',
+                          )
+                        "
+                      >
+                        Enter an Azure Credential
+                      </div>
+                      <div>1/2</div>
+                    </div>
+                  </template>
+                  <template #body>
+                    <!-- Credential -->
+                    <div
+                      :class="
+                        clsx(
+                          'flex flex-col border p-sm gap-sm text-sm',
+                          themeClasses(
+                            'border-neutral-400',
+                            'border-neutral-600',
+                          ),
+                        )
+                      "
+                    >
+                      <div class="flex flex-row justify-between items-center">
+                        <label for="azure-credential-name" class="basis-0 grow">
+                          Name your credential
+                          <RequiredAsterisk />
+                        </label>
+                        <input
+                          id="azure-credential-name"
+                          v-model="credentialName"
+                          data-lpignore="true"
+                          data-1p-ignore
+                          data-bwignore
+                          data-form-type="other"
+                          :class="
+                            clsx(
+                              'h-lg p-xs text-sm border font-mono cursor-text basis-0 grow',
+                              'focus:outline-none focus:ring-0 focus:z-20',
+                              themeClasses(
+                                'text-black bg-white border-neutral-400 focus:border-action-500',
+                                'text-white bg-black border-neutral-600 focus:border-action-300',
+                              ),
+                            )
+                          "
+                          @focus="
+                            onboardingTracking('focused_credential_name_input')
+                          "
+                        />
+                      </div>
+                      <!-- Secret Values -->
+                      <ErrorMessage
+                        :class="
+                          clsx(
+                            'rounded-sm p-xs',
+                            themeClasses('bg-action-200', 'bg-action-900'),
+                          )
+                        "
+                        tone="action"
+                        variant="block"
+                        noIcon
+                      >
+                        <div
+                          class="flex flex-row items-center justify-between text-sm"
+                        >
+                          <div>
+                            Please enter your Azure credential information
+                            below.
+                          </div>
+                          <Icon
+                            v-tooltip="
+                              someFieldsVisible
+                                ? 'Hide All Values'
+                                : 'Show All Values'
+                            "
+                            :name="someFieldsVisible ? 'hide' : 'eye'"
+                            size="xs"
+                            class="cursor-pointer z-20"
+                            @click="toggleAll"
+                          />
+                        </div>
+                      </ErrorMessage>
+
+                      <div class="flex flex-col">
+                        <div
+                          v-for="(field, title) in secretFormFieldsAzure"
+                          :key="title"
+                          :class="'flex flex-row justify-between items-center text-sm mb-[-1px]'"
+                        >
+                          <label
+                            class="basis-0 grow flex flex-row items-center gap-2xs"
+                          >
+                            {{ title }}
+                            <RequiredAsterisk v-if="field.required" />
+                          </label>
+                          <div class="flex flex-row basis-0 grow relative">
+                            <input
+                              v-model="field.ref"
+                              :type="field.type"
+                              :class="
+                                clsx(
+                                  'h-lg p-xs pr-7 text-sm border font-mono cursor-text grow',
+                                  'focus:outline-none focus:ring-0 focus:z-20',
+                                  themeClasses(
+                                    'text-black bg-white border-neutral-400 focus:border-action-500',
+                                    'text-white bg-black border-neutral-600 focus:border-action-300',
+                                  ),
+                                )
+                              "
+                              :placeholder="
+                                field.type === 'password'
+                                  ? '*****'
+                                  : 'Value will be visible'
+                              "
+                              data-lpignore="true"
+                              data-1p-ignore
+                              data-bwignore
+                              data-form-type="other"
+                              @paste="(ev: ClipboardEvent) => tryMatchOnPaste(ev)"
+                              @focus="
+                                onboardingTracking(
+                                  `focused_secret_field_${title
+                                    .toLowerCase()
+                                    .replace(/ /g, '_')}`,
+                                )
+                              "
+                            />
+                            <Icon
+                              v-tooltip="
+                                field.type === 'password'
+                                  ? 'Show Value'
+                                  : 'Hide Value'
+                              "
+                              :name="field.type === 'password' ? 'eye' : 'hide'"
+                              size="xs"
+                              class="absolute right-xs top-[10px] cursor-pointer z-20"
+                              @click="toggleVisibility(field)"
+                            />
+                          </div>
+                        </div>
+                        <div
+                          class="flex flex-row justify-between items-center text-sm mb-[-1px]"
+                        >
+                          <label
+                            for="azure-subscription-id"
+                            class="basis-0 grow flex flex-row items-center gap-2xs"
+                          >
+                            Subscription ID
+                            <RequiredAsterisk />
+                          </label>
+                          <div class="flex flex-row basis-0 grow relative">
+                            <input
+                              id="azure-subscription-id"
+                              v-model="azureSubscriptionId"
+                              :type="azureSubscriptionIdFieldType"
+                              :class="
+                                clsx(
+                                  'h-lg p-xs pr-7 text-sm border font-mono cursor-text grow',
+                                  'focus:outline-none focus:ring-0 focus:z-20',
+                                  themeClasses(
+                                    'text-black bg-white border-neutral-400 focus:border-action-500',
+                                    'text-white bg-black border-neutral-600 focus:border-action-300',
+                                  ),
+                                )
+                              "
+                              :placeholder="
+                                azureSubscriptionIdFieldType === 'password'
+                                  ? '*****'
+                                  : 'Value will be visible'
+                              "
+                              data-lpignore="true"
+                              data-1p-ignore
+                              data-bwignore
+                              data-form-type="other"
+                              @focus="
+                                onboardingTracking(
+                                  'focused_subscription_id_input',
+                                )
+                              "
+                            />
+                            <Icon
+                              v-tooltip="
+                                azureSubscriptionIdFieldType === 'password'
+                                  ? 'Show Value'
+                                  : 'Hide Value'
+                              "
+                              :name="
+                                azureSubscriptionIdFieldType === 'password'
+                                  ? 'eye'
+                                  : 'hide'
+                              "
+                              size="xs"
+                              class="absolute right-xs top-[10px] cursor-pointer z-20"
+                              @click="toggleSubscriptionIdVisibility"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <!-- Location -->
+                    <div
+                      :class="
+                        clsx(
+                          'border flex flex-col p-sm gap-sm text-sm',
+                          themeClasses(
+                            'border-neutral-400',
+                            'border-neutral-600',
+                          ),
+                        )
+                      "
+                    >
+                      <div>
+                        Pick a location
+                        <RequiredAsterisk />
+                      </div>
+                      <div
+                        class="flex desktop:flex-row flex-col desktop:items-center items-stretch gap-xs"
+                      >
+                        <div
+                          v-for="location in pickerLocations"
+                          :key="location.value"
+                          :class="
+                            clsx(
+                              'flex flex-row grow items-center gap-xs',
+                              'border rounded-sm cursor-pointer',
+                              'desktop:p-xs p-2xs',
+                              themeClasses(
+                                'hover:border-neutral-700',
+                                'hover:border-neutral-300',
+                              ),
+                              location.value === azureLocation
+                                ? themeClasses(
+                                    'border-neutral-700',
+                                    'border-neutral-300',
+                                  )
+                                : themeClasses(
+                                    'border-neutral-300',
+                                    'border-neutral-600',
+                                  ),
+                            )
+                          "
+                          @click="selectLocation(location.value)"
+                        >
+                          <Icon
+                            :name="
+                              location.value === azureLocation
+                                ? 'check-circle'
+                                : 'circle-empty'
+                            "
+                          />
+                          <div
+                            class="flex flex-col justify-center align-middle"
+                          >
+                            <span class="text-sm">{{ location.title }}</span>
+                            <span
+                              :class="
+                                clsx(
+                                  'text-sm',
+                                  themeClasses(
+                                    'text-neutral-600',
+                                    'text-neutral-400',
+                                  ),
+                                )
+                              "
+                            >
+                              {{ location.value }}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                      <div class="flex flex-row items-center">
+                        <label for="azure-location" class="basis-0 grow">
+                          Or select any location
+                        </label>
+                        <select
+                          id="azure-location"
+                          v-model="azureLocation"
+                          :class="
+                            clsx(
+                              'h-lg basis-0 grow p-xs text-sm border font-mono cursor-pointer',
+                              'focus:outline-none focus:ring-0 focus:z-20',
+                              themeClasses(
+                                'text-black bg-white border-neutral-400 focus:border-action-500',
+                                'text-white bg-black border-neutral-600 focus:border-action-300',
+                              ),
+                            )
+                          "
+                        >
+                          <option
+                            v-for="location in azureLocations"
+                            :key="location.value"
+                            :label="`${location.title} - ${location.value}`"
+                          >
+                            {{ location.value }}
+                          </option>
+                        </select>
+                      </div>
+                    </div>
+                  </template>
+                  <template #footerRight>
+                    <NewButton
+                      label="Previous"
+                      tone="neutral"
+                      @click="decrementOnboardingStep"
+                    />
+                    <NewButton
+                      :label="initializeApiError ? 'Retry' : 'Next'"
+                      :tooltip="
+                        !formHasRequiredValues || DEBUG_MODE
+                          ? 'You must enter your credential to continue'
+                          : undefined
+                      "
+                      tone="action"
+                      :disabled="
+                        !formHasRequiredValues || DEBUG_ONBOARDING_SHOW_DISABLED
+                      "
+                      :loading="submitOnboardingInProgress"
+                      loadingText="Saving"
+                      @click="submitOnboardRequest"
+                    />
+                  </template>
+                </OnboardingStepBlock>
+              </template>
+              <!-- Step 3: Agent Tutorial + token -->
+              <OnboardingStepBlock
+                v-else-if="currentStep === OnboardingStep.SETUP_AI"
+              >
+                <template #header>
+                  <div class="flex flex-row items-center justify-between">
+                    <span>Connect the AI Agent</span>
+                    <div>2/2</div>
+                  </div>
+                </template>
+                <template #body>
+                  <div
+                    class="flex flex-col gap-md [&>div]:flex [&>div]:flex-col [&>div]:gap-xs"
+                  >
+                    <div>
+                      <div class="flex flex-col">
+                        <span
+                          >Install
+                          <NewButton
+                            aria-label="claude-code-link"
+                            :class="
+                              clsx(
+                                'underline',
+                                themeClasses(
+                                  'hover:text-action-500',
+                                  'hover:text-action-300',
+                                ),
+                              )
+                            "
+                            tone="nostyle"
+                            href="https://claude.com/product/claude-code"
+                            target="_blank"
+                            label="Claude Code"
+                            @mousedown="
+                              onboardingTracking('external_link_claude_code')
+                            "
+                        /></span>
+                        <span
+                          :class="
+                            clsx(
+                              themeClasses(
+                                'text-neutral-800',
+                                'text-neutral-300',
+                              ),
+                            )
+                          "
+                        >
+                          The System Initiative AI Agent is a customized
+                          installation of Claude Code.
                         </span>
                       </div>
+                      <CopyableTextBlock
+                        text="npm install -g @anthropic-ai/claude-code"
+                        @copied="onboardingTracking('copied_install_claude')"
+                      />
                     </div>
-                  </div>
-                  <div class="flex flex-row items-center">
-                    <label for="aws-region" class="basis-0 grow">
-                      Or select any region
-                    </label>
-                    <select
-                      id="aws-region"
-                      v-model="awsRegion"
-                      :class="
-                        clsx(
-                          'h-lg basis-0 grow p-xs text-sm border font-mono cursor-pointer',
-                          'focus:outline-none focus:ring-0 focus:z-20',
-                          themeClasses(
-                            'text-black bg-white border-neutral-400 focus:border-action-500',
-                            'text-white bg-black border-neutral-600 focus:border-action-300',
-                          ),
-                        )
-                      "
-                    >
-                      <option v-for="region in awsRegions" :key="region.value">
-                        {{ region.value }}
-                      </option>
-                    </select>
-                  </div>
-                </div>
-              </template>
-              <template #footerRight>
-                <NewButton
-                  :label="initializeApiError ? 'Retry' : 'Next'"
-                  :tooltip="
-                    !formHasRequiredValues || DEBUG_MODE
-                      ? 'You must enter your credential to continue'
-                      : undefined
-                  "
-                  tone="action"
-                  :disabled="
-                    !formHasRequiredValues || DEBUG_ONBOARDING_SHOW_DISABLED
-                  "
-                  :loading="submitOnboardingInProgress"
-                  loadingText="Saving"
-                  @click="submitOnboardRequest"
-                />
-              </template>
-            </OnboardingStepBlock>
-            <!-- Step 2: Agent Tutorial + token -->
-            <OnboardingStepBlock
-              v-else-if="currentStep === OnboardingStep.SETUP_AI"
-            >
-              <template #header>
-                <div class="flex flex-row items-center justify-between">
-                  <span>Connect the AI Agent</span>
-                  <div>2/2</div>
-                </div>
-              </template>
-              <template #body>
-                <div
-                  class="flex flex-col gap-md [&>div]:flex [&>div]:flex-col [&>div]:gap-xs"
-                >
-                  <div>
-                    <div class="flex flex-col">
-                      <span
-                        >Install
+                    <div>
+                      <span>
+                        Clone the
                         <NewButton
-                          aria-label="claude-code-link"
+                          aria-label="ai-agent-repo-main"
                           :class="
                             clsx(
                               'underline',
@@ -361,476 +787,504 @@ export const DEBUG_ONBOARDING_START = OnboardingStep.INITIALIZE;
                             )
                           "
                           tone="nostyle"
-                          href="https://claude.com/product/claude-code"
+                          href="https://github.com/systeminit/si-ai-agent"
                           target="_blank"
-                          label="Claude Code"
+                          label="AI Agent repository"
                           @mousedown="
-                            onboardingTracking('external_link_claude_code')
+                            onboardingTracking('external_link_ai_agent_repo')
                           "
-                      /></span>
-                      <span
-                        :class="
-                          clsx(
-                            themeClasses(
-                              'text-neutral-800',
-                              'text-neutral-300',
-                            ),
-                          )
-                        "
-                      >
-                        The System Initiative AI Agent is a customized
-                        installation of Claude Code.
+                        />
+                        locally
                       </span>
+                      <CopyableTextBlock
+                        text="git clone https://github.com/systeminit/si-ai-agent.git"
+                        @copied="onboardingTracking('copied_git_clone_ai_repo')"
+                      />
                     </div>
-                    <CopyableTextBlock
-                      text="npm install -g @anthropic-ai/claude-code"
-                      @copied="onboardingTracking('copied_install_claude')"
-                    />
-                  </div>
-                  <div>
-                    <span>
-                      Clone the
-                      <NewButton
-                        aria-label="ai-agent-repo-main"
-                        :class="
-                          clsx(
-                            'underline',
-                            themeClasses(
-                              'hover:text-action-500',
-                              'hover:text-action-300',
-                            ),
+                    <div>
+                      <div class="flex flex-col">
+                        <span>
+                          Run the AI Agent
+                          <NewButton
+                            aria-label="setup-script-link"
+                            :class="
+                              clsx(
+                                'underline',
+                                themeClasses(
+                                  'hover:text-action-500',
+                                  'hover:text-action-300',
+                                ),
+                              )
+                            "
+                            tone="nostyle"
+                            href="https://github.com/systeminit/si-ai-agent/blob/main/setup.sh"
+                            target="_blank"
+                            label="setup script"
+                            @mousedown="
+                              onboardingTracking('external_link_setup_script')
+                            "
+                          />
+                        </span>
+                        <span
+                          :class="
+                            clsx(
+                              themeClasses(
+                                'text-neutral-800',
+                                'text-neutral-300',
+                              ),
+                            )
+                          "
+                        >
+                          Open your terminal in the root of the repository to
+                          run the script, which will connect the Agent to your
+                          workspace.
+                        </span>
+                      </div>
+                      <CopyableTextBlock
+                        text="./setup.sh"
+                        @copied="
+                          onboardingTracking(
+                            'copied_ai_setup_script_run_command',
                           )
-                        "
-                        tone="nostyle"
-                        href="https://github.com/systeminit/si-ai-agent"
-                        target="_blank"
-                        label="AI Agent repository"
-                        @mousedown="
-                          onboardingTracking('external_link_ai_agent_repo')
                         "
                       />
-                      locally
-                    </span>
-                    <CopyableTextBlock
-                      text="git clone https://github.com/systeminit/si-ai-agent.git"
-                      @copied="onboardingTracking('copied_git_clone_ai_repo')"
-                    />
-                  </div>
-                  <div>
-                    <div class="flex flex-col">
-                      <span>
-                        Run the AI Agent
-                        <NewButton
-                          aria-label="setup-script-link"
+                    </div>
+                    <div>
+                      <div class="flex flex-col">
+                        <span>Enter your API token</span>
+                        <span
                           :class="
                             clsx(
-                              'underline',
                               themeClasses(
-                                'hover:text-action-500',
-                                'hover:text-action-300',
+                                'text-neutral-800',
+                                'text-neutral-300',
                               ),
                             )
                           "
-                          tone="nostyle"
-                          href="https://github.com/systeminit/si-ai-agent/blob/main/setup.sh"
-                          target="_blank"
-                          label="setup script"
-                          @mousedown="
-                            onboardingTracking('external_link_setup_script')
-                          "
-                        />
-                      </span>
-                      <span
+                        >
+                          In your terminal, the setup script will ask for the
+                          System Initiative API token. Paste it there. The input
+                          is hidden for security. Press Enter to save and
+                          proceed.
+                        </span>
+                      </div>
+                      <ErrorMessage
                         :class="
                           clsx(
+                            'rounded-sm p-xs my-xs border',
                             themeClasses(
-                              'text-neutral-800',
-                              'text-neutral-300',
+                              'bg-warning-100 border-warning-600',
+                              'bg-newhotness-warningdark border-warning-500',
                             ),
                           )
                         "
+                        icon="exclamation-circle-carbon"
+                        iconSize="sm"
+                        tone="action"
+                        variant="block"
                       >
-                        Open your terminal in the root of the repository to run
-                        the script, which will connect the Agent to your
-                        workspace.
-                      </span>
+                        <div class="text-sm">
+                          We're only showing you the value of this token once.
+                        </div>
+                      </ErrorMessage>
+                      <CopyableTextBlock
+                        :text="apiToken"
+                        expandable
+                        @copied="onCopyAgentToken"
+                      />
                     </div>
-                    <CopyableTextBlock
-                      text="./setup.sh"
-                      @copied="
-                        onboardingTracking('copied_ai_setup_script_run_command')
-                      "
-                    />
+                    <div>
+                      <span> Run Claude Code </span>
+                      <CopyableTextBlock
+                        text="claude"
+                        @copied="
+                          onboardingTracking('copied_run_claude_command')
+                        "
+                      />
+                    </div>
+                    <div>
+                      <ErrorMessage
+                        v-if="stepTwoNextDisabled"
+                        tone="neutral"
+                        icon="loader"
+                      >
+                        <div>
+                          Waiting for the AI agent to start. You'll be able to
+                          proceed as soon as setup is finished and Claude is
+                          running.
+                        </div>
+                        <div>
+                          If you are having trouble,
+                          <NewButton
+                            aria-label="schedule-meeting-stuck-agent"
+                            :class="
+                              clsx(
+                                'underline',
+                                themeClasses(
+                                  'hover:text-action-500',
+                                  'hover:text-action-300',
+                                ),
+                              )
+                            "
+                            tone="nostyle"
+                            :href="scheduleWithUsLink"
+                            target="_blank"
+                            label="schedule a meeting"
+                            @mousedown="
+                              onboardingTracking('schedule_meeting_stuck_agent')
+                            "
+                          />
+                          with us and we will help you out.
+                        </div>
+                      </ErrorMessage>
+                      <ErrorMessage v-else tone="neutral" icon="check">
+                        Congratulations! Your Agent is connected and you are
+                        ready to start.
+                      </ErrorMessage>
+                    </div>
                   </div>
-                  <div>
-                    <div class="flex flex-col">
-                      <span>Enter your API token</span>
-                      <span
-                        :class="
-                          clsx(
-                            themeClasses(
-                              'text-neutral-800',
-                              'text-neutral-300',
-                            ),
-                          )
-                        "
-                      >
-                        In your terminal, the setup script will ask for the
-                        System Initiative API token. Paste it there. The input
-                        is hidden for security. Press Enter to save and proceed.
-                      </span>
-                    </div>
-                    <ErrorMessage
+                </template>
+                <template #footerLeft>
+                  <div
+                    :class="
+                      clsx(
+                        'text-sm leading-none',
+                        themeClasses('text-neutral-800', 'text-neutral-300'),
+                      )
+                    "
+                  >
+                    Checkout our
+                    <NewButton
+                      aria-label="our-repo"
                       :class="
                         clsx(
-                          'rounded-sm p-xs my-xs border',
+                          'underline',
                           themeClasses(
-                            'bg-warning-100 border-warning-600',
-                            'bg-newhotness-warningdark border-warning-500',
+                            'text-black hover:text-action-500',
+                            'text-white hover:text-action-300',
                           ),
                         )
                       "
-                      icon="exclamation-circle-carbon"
-                      iconSize="sm"
-                      tone="action"
-                      variant="block"
-                    >
-                      <div class="text-sm">
-                        We're only showing you the value of this token once.
-                      </div>
-                    </ErrorMessage>
-                    <CopyableTextBlock
-                      :text="apiToken"
-                      expandable
-                      @copied="onCopyAgentToken"
+                      tone="nostyle"
+                      href="https://github.com/systeminit/si-ai-agent"
+                      target="_blank"
+                      label="GitHub repo"
+                      @mousedown="
+                        onboardingTracking('checkout_our_github_repo')
+                      "
                     />
+                    for more guidance
                   </div>
-                  <div>
-                    <span> Run Claude Code </span>
-                    <CopyableTextBlock
-                      text="claude"
-                      @copied="onboardingTracking('copied_run_claude_command')"
-                    />
-                  </div>
-                  <div>
-                    <ErrorMessage
-                      v-if="stepTwoNextDisabled"
-                      tone="neutral"
-                      icon="loader"
-                    >
-                      <div>
-                        Waiting for the AI agent to start. You'll be able to
-                        proceed as soon as setup is finished and Claude is
-                        running.
-                      </div>
-                      <div>
-                        If you are having trouble,
-                        <NewButton
-                          aria-label="schedule-meeting-stuck-agent"
-                          :class="
-                            clsx(
-                              'underline',
-                              themeClasses(
-                                'hover:text-action-500',
-                                'hover:text-action-300',
-                              ),
-                            )
-                          "
-                          tone="nostyle"
-                          :href="scheduleWithUsLink"
-                          target="_blank"
-                          label="schedule a meeting"
-                          @mousedown="
-                            onboardingTracking('schedule_meeting_stuck_agent')
-                          "
-                        />
-                        with us and we will help you out.
-                      </div>
-                    </ErrorMessage>
-                    <ErrorMessage v-else tone="neutral" icon="check">
-                      Congratulations! Your Agent is connected and you are ready
-                      to start.
-                    </ErrorMessage>
-                  </div>
-                </div>
-              </template>
-              <template #footerLeft>
-                <div
-                  :class="
-                    clsx(
-                      'text-sm leading-none',
-                      themeClasses('text-neutral-800', 'text-neutral-300'),
-                    )
-                  "
-                >
-                  Checkout our
+                </template>
+                <template #footerRight>
                   <NewButton
-                    aria-label="our-repo"
-                    :class="
-                      clsx(
-                        'underline',
-                        themeClasses(
-                          'text-black hover:text-action-500',
-                          'text-white hover:text-action-300',
-                        ),
-                      )
+                    label="Get Started"
+                    tone="action"
+                    :disabled="
+                      (stepTwoNextDisabled && !DEBUG_MODE) ||
+                      DEBUG_ONBOARDING_SHOW_DISABLED
                     "
-                    tone="nostyle"
-                    href="https://github.com/systeminit/si-ai-agent"
-                    target="_blank"
-                    label="GitHub repo"
-                    @mousedown="onboardingTracking('checkout_our_github_repo')"
+                    :tooltip="
+                      stepTwoNextDisabled || DEBUG_MODE
+                        ? 'You must set up your AI agent to continue'
+                        : undefined
+                    "
+                    @click="onNextPageTwo"
                   />
-                  for more guidance
-                </div>
-              </template>
-              <template #footerRight>
-                <NewButton
-                  label="Get Started"
-                  tone="action"
-                  :disabled="
-                    (stepTwoNextDisabled && !DEBUG_MODE) ||
-                    DEBUG_ONBOARDING_SHOW_DISABLED
-                  "
-                  :tooltip="
-                    stepTwoNextDisabled || DEBUG_MODE
-                      ? 'You must set up your AI agent to continue'
-                      : undefined
-                  "
-                  @click="onNextPageTwo"
-                />
-              </template>
-            </OnboardingStepBlock>
-          </div>
-          <div
-            class="flex-1 basis-1/4 min-w-0 flex flex-col gap-lg ml-xl font-medium"
-          >
-            <div class="text-xl">
-              <template v-if="currentStep === OnboardingStep.INITIALIZE">
-                Connect your AWS account to discover, manage, and automate your
-                infrastructure.
-              </template>
-              <template v-else-if="currentStep === OnboardingStep.SETUP_AI">
-                Install the System Initiative AI Agent
-              </template>
-              <span
-                :class="
-                  clsx(themeClasses('text-neutral-600', 'text-neutral-400'))
-                "
-              >
-                <!-- <template v-if="currentStep === OnboardingStep.INITIALIZE">
-                  Explore safely, see the impact of your changes, and apply only
-                  when you decide.
-                </template> 
+                </template>
+              </OnboardingStepBlock>
+            </div>
+            <div
+              class="flex-1 basis-1/4 min-w-0 flex flex-col gap-lg ml-xl font-medium"
+            >
+              <div class="text-xl">
+                <template v-if="currentStep === OnboardingStep.INITIALIZE">
+                  Connect your {{ providerChoice }} account to discover, manage,
+                  and automate your infrastructure.
+                </template>
                 <template v-else-if="currentStep === OnboardingStep.SETUP_AI">
-                  See and interact with your infrastructure as never before.
-                </template> -->
-              </span>
-            </div>
-            <div
-              v-if="currentStep === OnboardingStep.INITIALIZE"
-              class="flex flex-col gap-xs"
-            >
-              <CollapsingFlexItem
-                variant="onboarding"
-                open
-                @toggle="
-                  onboardingTracking('toggled_why_is_aws_cred_necessary')
-                "
+                  Install the System Initiative AI Agent
+                </template>
+              </div>
+              <div
+                v-if="currentStep === OnboardingStep.INITIALIZE"
+                class="flex flex-col gap-xs"
               >
-                <template #header>Why is an AWS credential necessary?</template>
-                <div>
-                  <span
-                    :class="
-                      clsx(themeClasses('text-neutral-800', 'text-neutral-300'))
-                    "
-                    >System Initiative needs access to your AWS account to
-                    securely discover, manage, and automate your infrastructure.
-                  </span>
-                  <span>You make and approve all changes.</span>
-                </div>
-                <div>
-                  Have questions?
-                  <NewButton
-                    aria-label="schedule-meeting-not-ready"
-                    :class="
-                      clsx(
-                        'underline',
-                        themeClasses(
-                          'hover:text-action-500',
-                          'hover:text-action-300',
-                        ),
-                      )
-                    "
-                    tone="nostyle"
-                    :href="scheduleWithUsLink"
-                    target="_blank"
-                    label="Schedule a meeting"
-                    @mousedown="
-                      onboardingTracking('schedule_meeting_not_ready')
-                    "
-                  />
-                  with us.
-                </div>
-              </CollapsingFlexItem>
-              <CollapsingFlexItem
-                variant="onboarding"
-                @toggle="
-                  onboardingTracking('toggled_how_are_my_secrets_stored')
-                "
-              >
-                <template #header>How are my secrets stored?</template>
-                <div
-                  :class="
-                    clsx(themeClasses('text-neutral-800', 'text-neutral-300'))
+                <CollapsingFlexItem
+                  variant="onboarding"
+                  open
+                  @toggle="
+                    onboardingTracking('toggled_why_is_a_cred_necessary')
                   "
                 >
-                  System Initiative secrets are secure by default. They are
-                  encrypted in the browser before being transmitted over the
-                  wire and encrypted at rest. All generated logs will
-                  automatically redact each secret so that there are no leaks.
-                  <!-- TODO - add link here when we have a good blog post to link to -->
-                  <!-- <NewButton
-                    aria-label="read-more-secrets"
-                    :class="
-                      clsx(
-                        'underline',
-                        themeClasses(
-                          'text-black hover:text-action-500',
-                          'text-white hover:text-action-300',
-                        ),
-                      )
-                    "
-                    tone="nostyle"
-                    href="https://www.systeminit.com/blog/its-a-secret"
-                    target="_blank"
-                    label="Read more"
-                    @mousedown="onboardingTracking('read-more-secrets')"
-                  /> -->
-                </div>
-              </CollapsingFlexItem>
-              <CollapsingFlexItem
-                variant="onboarding"
-                @toggle="onboardingTracking('toggled_i_dont_use_aws')"
-              >
-                <template #header>I don't use AWS, what should I do?</template>
-                <div
-                  :class="
-                    clsx(themeClasses('text-neutral-800', 'text-neutral-300'))
+                  <template #header>
+                    Why is {{ aOrAn }} {{ providerChoice }} credential
+                    necessary?
+                  </template>
+                  <div>
+                    <span
+                      :class="
+                        clsx(
+                          themeClasses('text-neutral-800', 'text-neutral-300'),
+                        )
+                      "
+                      >System Initiative needs access to your
+                      {{ providerChoice }} account to securely discover, manage,
+                      and automate your infrastructure.
+                    </span>
+                    <span>You make and approve all changes.</span>
+                  </div>
+                  <div>
+                    Have questions?
+                    <NewButton
+                      aria-label="schedule-meeting-not-ready"
+                      :class="
+                        clsx(
+                          'underline',
+                          themeClasses(
+                            'hover:text-action-500',
+                            'hover:text-action-300',
+                          ),
+                        )
+                      "
+                      tone="nostyle"
+                      :href="scheduleWithUsLink"
+                      target="_blank"
+                      label="Schedule a meeting"
+                      @mousedown="
+                        onboardingTracking('schedule_meeting_not_ready')
+                      "
+                    />
+                    with us.
+                  </div>
+                </CollapsingFlexItem>
+                <CollapsingFlexItem
+                  variant="onboarding"
+                  @toggle="
+                    onboardingTracking('toggled_how_are_my_secrets_stored')
                   "
                 >
-                  We are currently adding support for additional providers.
-                </div>
-                <div>
-                  <NewButton
-                    aria-label="schedule-meeting-no-aws"
-                    :class="
-                      clsx(
-                        'underline',
-                        themeClasses(
-                          'hover:text-action-500',
-                          'hover:text-action-300',
-                        ),
-                      )
-                    "
-                    tone="nostyle"
-                    :href="scheduleWithUsLink"
-                    target="_blank"
-                    label="Schedule a meeting"
-                    @mousedown="onboardingTracking('schedule_meeting_no_aws')"
-                  />
-                  <span
+                  <template #header>How are my secrets stored?</template>
+                  <div
                     :class="
                       clsx(themeClasses('text-neutral-800', 'text-neutral-300'))
                     "
                   >
-                    with us and tell us what you need.</span
-                  >
-                </div>
-              </CollapsingFlexItem>
-            </div>
-            <div
-              v-else-if="currentStep === OnboardingStep.SETUP_AI"
-              class="flex flex-col gap-xs"
-            >
-              <CollapsingFlexItem
-                variant="onboarding"
-                open
-                @toggle="onboardingTracking('toggled_how_does_ai_agent_work')"
-              >
-                <template #header
-                  >What does the System Initiative AI Agent do?</template
-                >
-                <div
-                  :class="
-                    clsx(themeClasses('text-neutral-800', 'text-neutral-300'))
+                    System Initiative secrets are secure by default. They are
+                    encrypted in the browser before being transmitted over the
+                    wire and encrypted at rest. All generated logs will
+                    automatically redact each secret so that there are no leaks.
+                    <!-- TODO - add link here when we have a good blog post to link to -->
+                    <!-- <NewButton
+                      aria-label="read-more-secrets"
+                      :class="
+                        clsx(
+                          'underline',
+                          themeClasses(
+                            'text-black hover:text-action-500',
+                            'text-white hover:text-action-300',
+                          ),
+                        )
+                      "
+                      tone="nostyle"
+                      href="https://www.systeminit.com/blog/its-a-secret"
+                      target="_blank"
+                      label="Read more"
+                      @mousedown="onboardingTracking('read-more-secrets')"
+                    /> -->
+                  </div>
+                </CollapsingFlexItem>
+                <CollapsingFlexItem
+                  variant="onboarding"
+                  @toggle="
+                    onboardingTracking('toggled_i_dont_use_aws_or_azure')
                   "
                 >
-                  The AI Agent allows you to discover resources, propose
-                  changes, and understand your infrastructure using natural
-                  language. Think of it like having an AWS expert around to help
-                  out.
-                </div>
-              </CollapsingFlexItem>
-              <CollapsingFlexItem
-                variant="onboarding"
-                @toggle="onboardingTracking('toggled_what_am_i_installing')"
-              >
-                <template #header>What am I installing?</template>
-                <div
-                  :class="
-                    clsx(themeClasses('text-neutral-800', 'text-neutral-300'))
-                  "
-                >
-                  The
-                  <NewButton
-                    aria-label="ai-agent-repo-right"
+                  <template #header>
+                    I don't use AWS or Azure, what should I do?
+                  </template>
+                  <div
                     :class="
-                      clsx(
-                        'underline',
-                        themeClasses(
-                          'hover:text-action-500',
-                          'hover:text-action-300',
-                        ),
-                      )
+                      clsx(themeClasses('text-neutral-800', 'text-neutral-300'))
                     "
-                    tone="nostyle"
-                    href="https://github.com/systeminit/si-ai-agent"
-                    target="_blank"
-                    label="si-ai-agent repository"
-                    @mousedown="
-                      onboardingTracking('external_link_ai_agent_repo')
-                    "
-                  />
-                  is an instance of Claude Code preconfigured to work with the
-                  System Initiative MCP server. It includes both the tools
-                  neccessary to work with System Inititaive and helpful context
-                  for the agent.
-                </div>
-              </CollapsingFlexItem>
-              <CollapsingFlexItem
-                variant="onboarding"
-                @toggle="onboardingTracking('toggled_can_i_not_use_claude')"
+                  >
+                    We are currently adding support for additional providers.
+                  </div>
+                  <div>
+                    <NewButton
+                      aria-label="schedule-meeting-no-aws-or-azure"
+                      :class="
+                        clsx(
+                          'underline',
+                          themeClasses(
+                            'hover:text-action-500',
+                            'hover:text-action-300',
+                          ),
+                        )
+                      "
+                      tone="nostyle"
+                      :href="scheduleWithUsLink"
+                      target="_blank"
+                      label="Schedule a meeting"
+                      @mousedown="
+                        onboardingTracking('schedule_meeting_no_aws_or_azure')
+                      "
+                    />
+                    <span
+                      :class="
+                        clsx(
+                          themeClasses('text-neutral-800', 'text-neutral-300'),
+                        )
+                      "
+                    >
+                      with us and tell us what you need.</span
+                    >
+                  </div>
+                </CollapsingFlexItem>
+              </div>
+              <div
+                v-else-if="currentStep === OnboardingStep.SETUP_AI"
+                class="flex flex-col gap-xs"
               >
-                <template #header
-                  >Can I use an Agent other than Claude?</template
+                <CollapsingFlexItem
+                  variant="onboarding"
+                  open
+                  @toggle="onboardingTracking('toggled_how_does_ai_agent_work')"
                 >
-                <div
-                  :class="
-                    clsx(themeClasses('text-neutral-800', 'text-neutral-300'))
-                  "
+                  <template #header
+                    >What does the System Initiative AI Agent do?</template
+                  >
+                  <div
+                    :class="
+                      clsx(themeClasses('text-neutral-800', 'text-neutral-300'))
+                    "
+                  >
+                    The AI Agent allows you to discover resources, propose
+                    changes, and understand your infrastructure using natural
+                    language. Think of it like having an infrastructure expert
+                    around to help out.
+                  </div>
+                </CollapsingFlexItem>
+                <CollapsingFlexItem
+                  variant="onboarding"
+                  @toggle="onboardingTracking('toggled_what_am_i_installing')"
                 >
-                  Not to get started. We have found that Claude Code is the best
-                  agent for System Initiative, and we have pre-configured it for
-                  a great experience. Once you have experienced it, you can
-                  configure the MCP server to work with any Agent you want.
-                </div>
-              </CollapsingFlexItem>
+                  <template #header>What am I installing?</template>
+                  <div
+                    :class="
+                      clsx(themeClasses('text-neutral-800', 'text-neutral-300'))
+                    "
+                  >
+                    The
+                    <NewButton
+                      aria-label="ai-agent-repo-right"
+                      :class="
+                        clsx(
+                          'underline',
+                          themeClasses(
+                            'hover:text-action-500',
+                            'hover:text-action-300',
+                          ),
+                        )
+                      "
+                      tone="nostyle"
+                      href="https://github.com/systeminit/si-ai-agent"
+                      target="_blank"
+                      label="si-ai-agent repository"
+                      @mousedown="
+                        onboardingTracking('external_link_ai_agent_repo')
+                      "
+                    />
+                    is an instance of Claude Code preconfigured to work with the
+                    System Initiative MCP server. It includes both the tools
+                    neccessary to work with System Inititaive and helpful
+                    context for the agent.
+                  </div>
+                </CollapsingFlexItem>
+                <CollapsingFlexItem
+                  variant="onboarding"
+                  @toggle="onboardingTracking('toggled_can_i_not_use_claude')"
+                >
+                  <template #header
+                    >Can I use an Agent other than Claude?</template
+                  >
+                  <div
+                    :class="
+                      clsx(themeClasses('text-neutral-800', 'text-neutral-300'))
+                    "
+                  >
+                    Not to get started. We have found that Claude Code is the
+                    best agent for System Initiative, and we have pre-configured
+                    it for a great experience. Once you have experienced it, you
+                    can configure the MCP server to work with any Agent you
+                    want.
+                  </div>
+                </CollapsingFlexItem>
+              </div>
             </div>
+          </template>
+        </div>
+
+        <!--  Bottom Links  -->
+        <div
+          class="flex flex-row flex-none w-full items-center justify-between p-sm gap-sm z-10"
+        >
+          <!-- Left side -->
+          <div>
+            <NewButton
+              v-if="currentStep === OnboardingStep.PICK_PROVIDER"
+              aria-label="different-provider-footer"
+              :class="
+                clsx(
+                  'hover:underline',
+                  themeClasses(
+                    'text-neutral-700 hover:text-black',
+                    'text-neutral-300 hover:text-white',
+                  ),
+                )
+              "
+              label="I don't use either of these providers"
+              tone="nostyle"
+              @click="differentProviderModal?.open()"
+            />
+          </div>
+
+          <!-- Right side -->
+          <div>
+            <NewButton
+              v-if="DEBUG_MODE"
+              :icon="theme === 'dark' ? 'moon' : 'sun'"
+              @click="toggleTheme"
+            />
           </div>
         </div>
       </div>
     </div>
+    <Modal
+      ref="differentProviderModal"
+      title="I don't use either of these providers"
+      onboardingModal
+      size="xl"
+      buttonConfiguration="done"
+    >
+      We're working to support more providers. We can help with your special
+      needs setup. Let us know what you need,
+      <NewButton
+        aria-label="schedule-meeting-no-aws-or-azure"
+        :class="
+          clsx(
+            'underline',
+            themeClasses('hover:text-action-500', 'hover:text-action-300'),
+          )
+        "
+        tone="nostyle"
+        :href="scheduleWithUsLink"
+        target="_blank"
+        label="schedule a meeting"
+        @mousedown="onboardingTracking('schedule_meeting_no_aws_or_azure')"
+      />
+      with us.
+    </Modal>
   </div>
 </template>
 
@@ -841,8 +1295,11 @@ import clsx from "clsx";
 import {
   ErrorMessage,
   Icon,
+  Modal,
   NewButton,
   themeClasses,
+  userOverrideTheme,
+  useTheme,
 } from "@si/vue-lib/design-system";
 import SiLogo from "@si/vue-lib/brand-assets/si-logo-symbol.svg?component";
 import * as _ from "lodash-es";
@@ -854,6 +1311,16 @@ import OnboardingStepBlock from "@/newhotness/OnboardingStepBlock.vue";
 import { useAuthStore } from "@/store/auth.store";
 import CopyableTextBlock from "./CopyableTextBlock.vue";
 import CollapsingFlexItem from "./layout_components/CollapsingFlexItem.vue";
+import OnboardingProviderTile, { Provider } from "./OnboardingProviderTile.vue";
+import RequiredAsterisk from "./RequiredAsterisk.vue";
+
+const { theme } = useTheme();
+
+function toggleTheme() {
+  userOverrideTheme.value = theme.value === "dark" ? "light" : "dark";
+}
+
+const differentProviderModal = ref<InstanceType<typeof Modal>>();
 
 const scheduleWithUsLink =
   "https://calendly.com/d/cw8r-6rq-b3n/share-your-use-case-with-system-initiative";
@@ -870,13 +1337,22 @@ const hasUsedAiAgent = computed(
 
 /// STARTUP LOGIC
 const currentStep = ref<OnboardingStep>(
-  DEBUG_MODE ? DEBUG_ONBOARDING_START : OnboardingStep.INITIALIZE,
+  DEBUG_MODE ? DEBUG_ONBOARDING_START : OnboardingStep.PICK_PROVIDER,
 );
 const incrementOnboardingStep = () => {
   currentStep.value = Math.min(
     OnboardingStep.SETUP_AI,
     currentStep.value + 1,
   ) as OnboardingStep;
+};
+const decrementOnboardingStep = () => {
+  currentStep.value = Math.max(
+    OnboardingStep.INITIALIZE,
+    currentStep.value - 1,
+  ) as OnboardingStep;
+  if (currentStep.value === OnboardingStep.PICK_PROVIDER) {
+    providerChoice.value = undefined;
+  }
 };
 
 const onNextPageTwo = () => {
@@ -885,9 +1361,9 @@ const onNextPageTwo = () => {
 };
 
 // CREDENTIAL
-const credentialName = ref("My AWS Credential");
+const credentialName = ref(`My ${DEBUG_PROVIDER_CHOICE} Credential`);
 
-const secretFormFields = reactive({
+const secretFormFieldsAWS = reactive({
   "AWS access key ID": {
     ref: "",
     type: "password",
@@ -905,21 +1381,65 @@ const secretFormFields = reactive({
   },
 });
 
-const formHasRequiredValues = computed(
-  () =>
-    (!Object.values(secretFormFields).some((f) => f.required && f.ref === "") &&
-      credentialName.value !== "") ||
-    DEBUG_MODE,
-);
+const secretFormFieldsAzure = reactive({
+  "Client ID": {
+    ref: "",
+    type: "password",
+    required: true,
+  },
+  "Client Secret": {
+    ref: "",
+    type: "password",
+    required: true,
+  },
+  "Tenant ID": {
+    ref: "",
+    type: "password",
+    required: true,
+  },
+});
 
-type SecretFormFields = typeof secretFormFields;
-type SecretFormField = SecretFormFields[keyof SecretFormFields];
+const formFieldsForProvider = computed(() => {
+  if (providerChoice.value === "AWS") {
+    return secretFormFieldsAWS;
+  } else if (providerChoice.value === "Azure") {
+    return secretFormFieldsAzure;
+  } else {
+    return undefined;
+  }
+});
+
+const formHasRequiredValues = computed(() => {
+  const formFields = formFieldsForProvider.value;
+  if (!formFields) return false;
+
+  const credentialFieldsFilled =
+    !Object.values(formFields).some((f) => f.required && f.ref === "") &&
+    credentialName.value !== "";
+
+  // For Azure, also check subscription ID
+  if (providerChoice.value === "Azure") {
+    return (
+      (credentialFieldsFilled && azureSubscriptionId.value !== "") || DEBUG_MODE
+    );
+  }
+
+  return credentialFieldsFilled || DEBUG_MODE;
+});
+
+type SecretFormField = {
+  ref: string;
+  type: string;
+  required: boolean;
+};
 
 /// Match env var block to form fields
 const tryMatchOnPaste = (ev: ClipboardEvent) => {
   const text = ev.clipboardData?.getData("text/plain");
-
   if (!text) return;
+
+  const formFields = formFieldsForProvider.value;
+  if (!formFields) return;
 
   const valuesFromInput = text.split("\n").reduce((acc, e) => {
     const [_, key, value] = e.match(/export\s+(.*)="(.*)"/) ?? [];
@@ -930,7 +1450,9 @@ const tryMatchOnPaste = (ev: ClipboardEvent) => {
 
   let matchedAValue = false;
   // Loop through form fields and try to match the value keys to the titles
-  for (const [formKey, formValue] of Object.entries(secretFormFields)) {
+  for (const [formKey, formValue] of Object.entries(
+    formFields as Record<string, SecretFormField>,
+  )) {
     const formattedKey = formKey.replaceAll(" ", "_").toUpperCase();
     const matchedField = valuesFromInput[formattedKey];
 
@@ -949,20 +1471,40 @@ const tryMatchOnPaste = (ev: ClipboardEvent) => {
 const toggleVisibility = (field: SecretFormField) => {
   field.type = field.type === "password" ? "text" : "password";
 };
-const someFieldsVisible = computed(() =>
-  Object.values(secretFormFields).some((field) => field.type !== "password"),
-);
+const someFieldsVisible = computed(() => {
+  const formFields = formFieldsForProvider.value;
+  if (!formFields) return false;
+
+  return Object.values(formFields).some((field) => field.type !== "password");
+});
 const toggleAll = () => {
+  const formFields = formFieldsForProvider.value;
+  if (!formFields) return;
+
   if (someFieldsVisible.value) {
-    Object.values(secretFormFields).forEach((field) => {
+    Object.values(formFields).forEach((field) => {
       field.type = "password";
     });
   } else {
-    Object.values(secretFormFields).forEach((field) => {
+    Object.values(formFields).forEach((field) => {
       field.type = "text";
     });
   }
 };
+
+// PROVIDER
+const providerChoice = ref<Provider | undefined>(
+  DEBUG_MODE ? DEBUG_PROVIDER_CHOICE : undefined,
+);
+const pickProvider = (provider: Provider) => {
+  providerChoice.value = provider;
+  credentialName.value = `My ${provider} Credential`;
+  onboardingTracking(`picked_provider_${provider.toLowerCase()}`);
+  incrementOnboardingStep();
+};
+const aOrAn = computed(() =>
+  providerChoice.value?.match("^[aieouAIEOU].*") ? "an" : "a",
+);
 
 // REGION
 const awsRegion = ref("us-east-1");
@@ -1011,6 +1553,53 @@ watch(awsRegion, (regionValue) => {
   onboardingTracking(`selected_region_${regionValue.replace(/-/g, "_")}`);
 });
 
+// LOCATION
+const azureLocation = ref("eastus");
+const azureSubscriptionId = ref("");
+const azureSubscriptionIdFieldType = ref("password");
+const azureLocations = [
+  { title: "East US", value: "eastus", onPicker: true },
+  { title: "South Central US", value: "southcentralus" },
+  { title: "West US 2", value: "westus2", onPicker: true },
+  { title: "West US 3", value: "westus3" },
+  { title: "Australia East", value: "australiaeast" },
+  { title: "Southeast Asia", value: "southeastasia" },
+  { title: "North Europe", value: "northeurope" },
+  { title: "Sweden Central", value: "swedencentral" },
+  { title: "UK South", value: "uksouth", onPicker: true },
+  { title: "West Europe", value: "westeurope" },
+  { title: "Central US", value: "centralus" },
+  { title: "South Africa North", value: "southafricanorth" },
+  { title: "Central India", value: "centralindia" },
+  { title: "East Asia", value: "eastasia" },
+  { title: "Japan East", value: "japaneast" },
+  { title: "Korea Central", value: "koreacentral" },
+  { title: "Canada Central", value: "canadacentral" },
+  { title: "France Central", value: "francecentral" },
+  { title: "Germany West Central", value: "germanywestcentral" },
+  { title: "Italy North", value: "italynorth" },
+  { title: "Norway East", value: "norwayeast" },
+  { title: "Poland Central", value: "polandcentral" },
+  { title: "Spain Central", value: "spaincentral" },
+  { title: "Switzerland North", value: "switzerlandnorth" },
+  { title: "Mexico Central", value: "mexicocentral" },
+  { title: "UAE North", value: "uaenorth" },
+  { title: "Brazil South", value: "brazilsouth" },
+  { title: "Israel Central", value: "israelcentral" },
+  { title: "Qatar Central", value: "qatarcentral" },
+];
+const pickerLocations = azureLocations.filter((l) => l.onPicker);
+const selectLocation = (locationValue: string) => {
+  azureLocation.value = locationValue;
+};
+watch(azureLocation, (locationValue) => {
+  onboardingTracking(`selected_location_${locationValue.replace(/-/g, "_")}`);
+});
+const toggleSubscriptionIdVisibility = () => {
+  azureSubscriptionIdFieldType.value =
+    azureSubscriptionIdFieldType.value === "password" ? "text" : "password";
+};
+
 const initializeApi = useApi();
 // TODO Figure out where to put this
 const initializeApiError = ref<string | null>(null);
@@ -1028,8 +1617,13 @@ const initializeRequestSentAndSuccessful = computed(() => {
 const submitOnboardingInProgress = ref(false);
 
 const submitOnboardRequest = async () => {
+  // Can't submit an onboard request without a selected provider!
+  if (!providerChoice.value) return;
+
   // Tracking
-  onboardingTracking("finish_step_1_submit_aws_info");
+  onboardingTracking(
+    `finish_step_1_submit_${providerChoice.value.toLowerCase()}_info`,
+  );
 
   // Disable button
   submitOnboardingInProgress.value = true;
@@ -1048,26 +1642,61 @@ const submitOnboardRequest = async () => {
   const resp = await callApi.get();
   const publicKey = resp.data;
 
+  let credValue;
+
   // Format cred values for encryption
-  const credValue = (
-    [
-      ["SessionToken", secretFormFields["AWS session token"].ref],
-      ["AccessKeyId", secretFormFields["AWS access key ID"].ref],
-      ["SecretAccessKey", secretFormFields["AWS secret access key"].ref],
-    ].filter(([_, value]) => value !== "") as [string, string][]
-  ) // Remove empty values
-    .reduce<{ [key: string]: string }>((acc, [key, value]) => {
-      // make the pairs array into an object
-      acc[key] = value;
-      return acc;
-    }, {});
+  if (providerChoice.value === "AWS") {
+    credValue = (
+      [
+        ["SessionToken", secretFormFieldsAWS["AWS session token"].ref],
+        ["AccessKeyId", secretFormFieldsAWS["AWS access key ID"].ref],
+        ["SecretAccessKey", secretFormFieldsAWS["AWS secret access key"].ref],
+      ].filter(([_, value]) => value !== "") as [string, string][]
+    ) // Remove empty values
+      .reduce<{ [key: string]: string }>((acc, [key, value]) => {
+        // make the pairs array into an object
+        acc[key] = value;
+        return acc;
+      }, {});
+  } else if (providerChoice.value === "Azure") {
+    credValue = (
+      [
+        ["ClientId", secretFormFieldsAzure["Client ID"].ref],
+        ["ClientSecret", secretFormFieldsAzure["Client Secret"].ref],
+        ["TenantId", secretFormFieldsAzure["Tenant ID"].ref],
+      ].filter(([_, value]) => value !== "") as [string, string][]
+    ) // Remove empty values
+      .reduce<{ [key: string]: string }>((acc, [key, value]) => {
+        // make the pairs array into an object
+        acc[key] = value;
+        return acc;
+      }, {});
+  } else {
+    // No valid provider! This case should be impossible.
+    return;
+  }
 
   const crypted = await encryptMessage(credValue, publicKey);
 
   submittedOnboardRequest.value = true;
   const call = initializeApi.endpoint(routes.ChangeSetInitializeAndApply);
+
+  // Build provider object based on selected provider
+  let provider;
+  if (providerChoice.value === "AWS") {
+    provider = {
+      type: "Aws",
+      region: awsRegion.value,
+    };
+  } else if (providerChoice.value === "Azure") {
+    provider = {
+      type: "Azure",
+      location: azureLocation.value,
+      subscriptionId: azureSubscriptionId.value,
+    };
+  }
+
   const { errorMessage } = await call.post({
-    awsRegion: awsRegion.value,
     credential: {
       name: credentialName.value,
       crypted,
@@ -1075,6 +1704,7 @@ const submitOnboardRequest = async () => {
       version: componentTypes.SecretVersion.V1,
       algorithm: componentTypes.SecretAlgorithm.Sealedbox,
     },
+    provider,
   });
 
   submitOnboardingInProgress.value = false;
