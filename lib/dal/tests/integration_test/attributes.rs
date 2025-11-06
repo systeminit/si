@@ -1,6 +1,9 @@
 use dal::{
+    AttributePrototype,
+    AttributeValue,
     Component,
     DalContext,
+    Func,
     action::{
         Action,
         prototype::ActionPrototype,
@@ -636,6 +639,172 @@ async fn update_attribute_child_of_subscription(ctx: &mut DalContext) -> Result<
             AttributeValueError::CannotSetChildOfDynamicValue(..)
         )),
     ));
+
+    Ok(())
+}
+
+/// Test that when a user manually overrides a value that has a default,
+/// then deletes that override with { $source: null }, the value reverts to its default.
+///
+/// This tests the fix for a bug where use_default_prototype was calling update(None)
+/// which created a si:Unset component prototype BEFORE removing the manual override,
+/// causing the component prototype to remain instead of reverting to the schema variant prototype.
+#[test]
+async fn unset_manual_override_reverts_to_default(ctx: &mut DalContext) -> Result<()> {
+    // Create a schema with a default value
+    variant::create(
+        ctx,
+        "test",
+        r#"
+            function main() {
+                return {
+                    props: [
+                        { name: "Value", kind: "string", defaultValue: "default-value" },
+                    ]
+                };
+            }
+        "#,
+    )
+    .await?;
+
+    // Create a component - it should have the default value
+    let component_id = component::create(ctx, "test", "test").await?;
+    change_set::commit(ctx).await?;
+
+    // Verify the default value is present
+    assert_eq!(
+        json!({
+            "Value": "default-value",
+        }),
+        component::domain(ctx, "test").await?
+    );
+
+    // Manually override the value
+    value::set(ctx, ("test", "/domain/Value"), "manual-override").await?;
+    change_set::commit(ctx).await?;
+
+    // Verify the manual override took effect
+    assert_eq!(
+        json!({
+            "Value": "manual-override",
+        }),
+        component::domain(ctx, "test").await?
+    );
+
+    // Verify the value is marked as overridden (has a component prototype)
+    let av_id = value::id(ctx, ("test", "/domain/Value")).await?;
+    let component_prototype = AttributeValue::component_prototype_id(ctx, av_id).await?;
+    assert!(
+        component_prototype.is_some(),
+        "Value should have a component prototype after manual override"
+    );
+
+    // Delete the manual override with { $source: null }
+    attributes::update_attributes(
+        ctx,
+        component_id,
+        serde_json::from_value(json!({
+            "/domain/Value": { "$source": null },
+        }))?,
+    )
+    .await?;
+
+    change_set::commit(ctx).await?;
+
+    // Verify the value reverted to the default
+    assert_eq!(
+        json!({
+            "Value": "default-value",
+        }),
+        component::domain(ctx, "test").await?,
+        "After unsetting manual override, value should revert to default"
+    );
+
+    // Verify the component prototype is gone (reverted to schema variant prototype)
+    let component_prototype_after = AttributeValue::component_prototype_id(ctx, av_id).await?;
+    assert!(
+        component_prototype_after.is_none(),
+        "Value should no longer have a component prototype after unsetting"
+    );
+
+    Ok(())
+}
+
+/// Test that unsetting a value that was never manually overridden creates a si:Unset component prototype.
+/// This tests the else branch of use_default_prototype where no component prototype exists.
+#[test]
+async fn unset_value_without_existing_override_creates_unset_prototype(
+    ctx: &mut DalContext,
+) -> Result<()> {
+    // Create a schema with a default value
+    variant::create(
+        ctx,
+        "test",
+        r#"
+            function main() {
+                return {
+                    props: [
+                        { name: "WithDefault", kind: "string", defaultValue: "default-value" },
+                    ]
+                };
+            }
+        "#,
+    )
+    .await?;
+
+    // Create a component - it should have the default value
+    let component_id = component::create(ctx, "test", "test").await?;
+    change_set::commit(ctx).await?;
+
+    // Verify the default value is present
+    assert_eq!(
+        json!({
+            "WithDefault": "default-value",
+        }),
+        component::domain(ctx, "test").await?
+    );
+
+    // Verify there's NO component prototype (using schema variant prototype)
+    let av_id = value::id(ctx, ("test", "/domain/WithDefault")).await?;
+    let component_prototype_before = AttributeValue::component_prototype_id(ctx, av_id).await?;
+    assert!(
+        component_prototype_before.is_none(),
+        "Value should not have a component prototype initially (using default)"
+    );
+
+    // Send { $source: null } even though there's no override to remove
+    // This should trigger the else branch and create a si:Unset component prototype
+    attributes::update_attributes(
+        ctx,
+        component_id,
+        serde_json::from_value(json!({
+            "/domain/WithDefault": { "$source": null },
+        }))?,
+    )
+    .await?;
+
+    change_set::commit(ctx).await?;
+
+    // Verify a component prototype was created (si:Unset)
+    let component_prototype_after = AttributeValue::component_prototype_id(ctx, av_id).await?;
+    assert!(
+        component_prototype_after.is_some(),
+        "Value should now have a component prototype (si:Unset) after explicit unsetting"
+    );
+
+    // Verify it's actually a si:Unset intrinsic function
+    let prototype_id = component_prototype_after.expect("component prototype exists");
+    let func_id = AttributePrototype::func_id(ctx, prototype_id).await?;
+    let func = Func::get_by_id(ctx, func_id).await?;
+    assert!(
+        func.is_intrinsic(),
+        "Component prototype should use an intrinsic function (si:Unset)"
+    );
+    assert_eq!(
+        "si:unset",
+        func.name.as_str(),
+        "Component prototype should specifically use si:unset"
+    );
 
     Ok(())
 }

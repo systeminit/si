@@ -1717,26 +1717,35 @@ impl AttributeValue {
         ctx: &DalContext,
         attribute_value_id: AttributeValueId,
     ) -> AttributeValueResult<()> {
-        Self::update(ctx, attribute_value_id, None).await?;
-        let prototype_id = Self::component_prototype_id(ctx, attribute_value_id)
-            .await?
-            .ok_or(AttributeValueError::NoComponentPrototype(
-                attribute_value_id,
-            ))?;
+        // Check if there's a component prototype to remove
+        if let Some(_prototype_id) = Self::component_prototype_id(ctx, attribute_value_id).await? {
+            // There was an existing component prototype (e.g., from a manual override)
+            // Clear the value by calling update(None) - this creates a si:Unset component prototype
+            Self::update(ctx, attribute_value_id, None).await?;
 
-        ctx.workspace_snapshot()?
-            .remove_edge(
-                attribute_value_id,
-                prototype_id,
-                EdgeWeightKindDiscriminants::Prototype,
-            )
-            .await?;
+            // Remove the si:Unset prototype so the attribute value falls back to the schema variant prototype
+            let current_prototype_id = Self::component_prototype_id(ctx, attribute_value_id)
+                .await?
+                .ok_or(AttributeValueError::NoComponentPrototype(
+                    attribute_value_id,
+                ))?;
 
-        if !Self::is_set_by_dependent_function(ctx, attribute_value_id).await? {
-            Self::update_from_prototype_function(ctx, attribute_value_id).await?;
+            ctx.workspace_snapshot()?
+                .remove_edge(
+                    attribute_value_id,
+                    current_prototype_id,
+                    EdgeWeightKindDiscriminants::Prototype,
+                )
+                .await?;
+
+            // Enqueue to DVU to update the value based on the schema variant prototype
+            ctx.add_dependent_values_and_enqueue(vec![attribute_value_id])
+                .await?;
+        } else {
+            // No existing component prototype - the value is using its schema variant prototype
+            // Create a si:Unset component prototype to explicitly unset the value
+            Self::update(ctx, attribute_value_id, None).await?;
         }
-        ctx.add_dependent_values_and_enqueue(vec![attribute_value_id])
-            .await?;
 
         Ok(())
     }

@@ -410,6 +410,115 @@ async fn override_value_then_reset(ctx: &mut DalContext) {
 }
 
 #[test]
+async fn override_value_then_reset_multiple_times(ctx: &mut DalContext) {
+    let original_pirate_name = "Thomas Cavendish";
+    let pirate_component = create_component_for_default_schema_name_in_default_view(
+        ctx,
+        "pirate",
+        original_pirate_name,
+    )
+    .await
+    .expect("could not create component");
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit and update snapshot to visibility");
+
+    let name_path = &["root", "domain", "name"];
+    let av_id = pirate_component
+        .attribute_values_for_prop(ctx, name_path)
+        .await
+        .expect("find value ids for the prop")
+        .pop()
+        .expect("there should only be one value id");
+
+    // Override with a manual value
+    let new_pirate_name = "Rock Brasiliano";
+    AttributeValue::update(ctx, av_id, Some(serde_json::json!(new_pirate_name)))
+        .await
+        .expect("override domain/name attribute value");
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("could not commit and update snapshot to visibility");
+
+    // First call: should revert to default
+    AttributeValue::use_default_prototype(ctx, av_id)
+        .await
+        .expect("first call to use_default_prototype");
+    let current_value = AttributeValue::view(ctx, av_id).await.expect("view");
+    assert_eq!(current_value, None, "Value should be None before commit");
+
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("commit after first reset");
+
+    let prop_view = PropEditorTestView::for_component_id(ctx, pirate_component.id())
+        .await
+        .expect("get prop view")
+        .get_value(name_path)
+        .expect("get value");
+    assert_eq!(
+        prop_view["value"],
+        json!(original_pirate_name),
+        "After first reset, should be back to default"
+    );
+    assert_eq!(
+        prop_view["overridden"],
+        json!(false),
+        "Should not be overridden"
+    );
+
+    // Second call: should explicitly unset (create si:Unset prototype)
+    AttributeValue::use_default_prototype(ctx, av_id)
+        .await
+        .expect("second call to use_default_prototype");
+
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("commit after second reset");
+
+    let prop_view = PropEditorTestView::for_component_id(ctx, pirate_component.id())
+        .await
+        .expect("get prop view")
+        .get_value(name_path)
+        .expect("get value");
+    assert_eq!(
+        prop_view["value"],
+        json!(null),
+        "After second reset, should be explicitly unset"
+    );
+    assert_eq!(
+        prop_view["overridden"],
+        json!(true),
+        "Should be overridden with si:Unset"
+    );
+
+    // Third call: should revert to default again
+    AttributeValue::use_default_prototype(ctx, av_id)
+        .await
+        .expect("third call to use_default_prototype");
+
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("commit after third reset");
+
+    let prop_view = PropEditorTestView::for_component_id(ctx, pirate_component.id())
+        .await
+        .expect("get prop view")
+        .get_value(name_path)
+        .expect("get value");
+    assert_eq!(
+        prop_view["value"],
+        json!(original_pirate_name),
+        "After third reset, should be back to default again"
+    );
+    assert_eq!(
+        prop_view["overridden"],
+        json!(false),
+        "Should not be overridden"
+    );
+}
+
+#[test]
 async fn override_array_then_reset(ctx: &mut DalContext) {
     let original_pirate_name = "Thomas Cavendish";
     let pirate_component = create_component_for_default_schema_name_in_default_view(
