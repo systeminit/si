@@ -1,0 +1,271 @@
+#!/bin/bash
+# SI Function Tester
+# Automatically discovers and runs all function/test pairs in a directory
+#
+# Usage: si-test [options] <directory>
+
+set -e
+
+# Default server
+SERVER_URL="${SI_TEST_SERVER:-http://localhost:8081}"
+
+# Parse arguments
+SHOW_HELP=false
+JSON_OUTPUT=false
+TARGET_DIR=""
+
+while [ $# -gt 0 ]; do
+    case "$1" in
+    -h | --help)
+        SHOW_HELP=true
+        shift
+        ;;
+    -s | --server)
+        SERVER_URL="$2"
+        shift 2
+        ;;
+    -j | --json)
+        JSON_OUTPUT=true
+        shift
+        ;;
+    *)
+        if [ -z "$TARGET_DIR" ]; then
+            TARGET_DIR="$1"
+        fi
+        shift
+        ;;
+    esac
+done
+
+if [ "$SHOW_HELP" = true ] || [ -z "$TARGET_DIR" ]; then
+    cat <<EOF
+SI Function Tester
+
+Automatically discovers and runs all function/test pairs in a directory (recursively).
+
+Usage:
+  si-test [options] <directory>
+
+Options:
+  -s, --server URL    Server URL (default: http://localhost:8081 or \$SI_TEST_SERVER)
+  -j, --json          Output results as JSON
+  -h, --help          Show this help
+
+Examples:
+  si-test -s http://localhost:8081 ./tests
+
+Convention:
+  Recursively searches for all *.test.ts files and pairs them with
+  corresponding function files in the same directory:
+    create.test.ts  → create.ts
+    update.test.ts  → update.ts
+    delete.test.ts  → delete.ts
+EOF
+    exit 0
+fi
+
+# Validate directory exists
+if [ ! -d "$TARGET_DIR" ]; then
+    echo "Error: Directory not found: $TARGET_DIR" >&2
+    exit 1
+fi
+
+# Find all test files (recursively)
+echo "Scanning directory: $TARGET_DIR"
+echo
+
+TEST_FILES=$(find "$TARGET_DIR" -name "*.test.ts" -type f | sort)
+
+if [ -z "$TEST_FILES" ]; then
+    echo "No test files found (*.test.ts)" >&2
+    exit 1
+fi
+
+# Count files
+TOTAL_PAIRS=0
+PASSED_PAIRS=0
+FAILED_PAIRS=0
+SKIPPED_PAIRS=0
+
+declare -a FAILED_PAIR_NAMES
+
+# Helper function to run a single test
+run_single_test() {
+    local function_file="$1"
+    local test_file="$2"
+
+    # Read files
+    FUNCTION_CODE=$(cat "$function_file")
+    TEST_CODE=$(cat "$test_file")
+
+    # Create JSON payload
+    PAYLOAD=$(jq -n \
+        --arg func "$FUNCTION_CODE" \
+        --arg test "$TEST_CODE" \
+        '{functionCode: $func, testCode: $test}')
+
+    # Submit to server
+    if [ "$JSON_OUTPUT" = true ]; then
+        curl -s -X POST "$SERVER_URL/test" \
+            -H "Content-Type: application/json" \
+            -d "$PAYLOAD"
+    else
+        # Detect color support
+        if [ -t 1 ] && command -v tput >/dev/null 2>&1 && [ "$(tput colors 2>/dev/null || echo 0)" -ge 8 ]; then
+            USE_COLORS=true
+        else
+            USE_COLORS=false
+        fi
+
+        # Define color codes
+        if [ "$USE_COLORS" = true ]; then
+            C_RESET="\033[0m"
+            C_BOLD="\033[1m"
+            C_RED="\033[31m"
+            C_GREEN="\033[32m"
+            C_YELLOW="\033[33m"
+            C_GRAY="\033[90m"
+        else
+            C_RESET=""
+            C_BOLD=""
+            C_RED=""
+            C_GREEN=""
+            C_YELLOW=""
+            C_GRAY=""
+        fi
+
+        # Pretty output
+        echo "Submitting tests to $SERVER_URL..."
+        echo
+
+        RESPONSE=$(curl -s -X POST "$SERVER_URL/test" \
+            -H "Content-Type: application/json" \
+            -d "$PAYLOAD")
+
+        # Check if request failed
+        if [ $? -ne 0 ]; then
+            echo "Error: Failed to connect to server" >&2
+            return 1
+        fi
+
+        # Parse and display results
+        SUCCESS=$(echo "$RESPONSE" | jq -r '.success')
+        ERROR=$(echo "$RESPONSE" | jq -r '.error // empty')
+
+        if [ -n "$ERROR" ]; then
+            echo "Error: $ERROR" >&2
+            return 1
+        fi
+
+        # Display test results
+        echo "$RESPONSE" | jq -r '.results[] |
+      if .skipped then
+        "SKIPPED|\(.name)"
+      elif .passed then
+        "PASSED|\(.name)|(\(.duration)ms)"
+      else
+        "FAILED|\(.name)|\(.error)"
+      end' | while IFS='|' read -r status name extra; do
+            if [ "$status" = "SKIPPED" ]; then
+                printf "  ${C_YELLOW}○${C_RESET} ${C_GRAY}%s (skipped)${C_RESET}\n" "$name"
+            elif [ "$status" = "PASSED" ]; then
+                printf "  ${C_GREEN}✓${C_RESET} %s ${C_GRAY}%s${C_RESET}\n" "$name" "$extra"
+            else
+                printf "  ${C_RED}✗${C_RESET} %s\n    ${C_RED}%s${C_RESET}\n" "$name" "$extra"
+            fi
+        done
+
+        echo
+
+        # Summary
+        PASSED=$(echo "$RESPONSE" | jq '[.results[] | select(.passed and (.skipped | not))] | length')
+        FAILED=$(echo "$RESPONSE" | jq '[.results[] | select(.passed | not) | select(.skipped | not)] | length')
+        SKIPPED=$(echo "$RESPONSE" | jq '[.results[] | select(.skipped)] | length')
+        DURATION=$(echo "$RESPONSE" | jq -r '.duration')
+
+        printf "${C_BOLD}Test Results:${C_RESET} ${C_GREEN}%d passed${C_RESET}, ${C_RED}%d failed${C_RESET}" "$PASSED" "$FAILED"
+        if [ "$SKIPPED" -gt 0 ]; then
+            printf ", ${C_YELLOW}%d skipped${C_RESET}" "$SKIPPED"
+        fi
+        echo
+        printf "${C_GRAY}Total duration: %sms${C_RESET}\n" "$DURATION"
+        echo
+
+        if [ "$SUCCESS" = "true" ]; then
+            printf "${C_GREEN}${C_BOLD}All tests passed!${C_RESET}\n"
+            return 0
+        else
+            printf "${C_RED}${C_BOLD}Tests failed!${C_RESET}\n"
+            return 1
+        fi
+    fi
+}
+
+# Process each test file
+while IFS= read -r test_file; do
+    # Get base name without .test.ts
+    base_name=$(basename "$test_file" .test.ts)
+
+    # Look for corresponding function file in same directory as test file
+    test_dir=$(dirname "$test_file")
+    function_file="$test_dir/${base_name}.ts"
+
+    if [ ! -f "$function_file" ]; then
+        echo "⚠ Skipping $(basename "$test_file") - no matching function file (expected: ${base_name}.ts in $test_dir)"
+        echo
+        SKIPPED_PAIRS=$((SKIPPED_PAIRS + 1))
+        continue
+    fi
+
+    TOTAL_PAIRS=$((TOTAL_PAIRS + 1))
+
+    # Get relative paths for display
+    rel_path="${test_file#$TARGET_DIR/}"
+    rel_dir=$(dirname "$rel_path")
+
+    # Only show location if not in root of target directory
+    if [ "$rel_dir" = "." ]; then
+        display_location=""
+    else
+        display_location="[$rel_dir]"
+    fi
+
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "Testing: $base_name $display_location"
+    echo "  Function: $(basename "$function_file")"
+    echo "  Tests:    $(basename "$test_file")"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo
+
+    # Run tests
+    if run_single_test "$function_file" "$test_file"; then
+        PASSED_PAIRS=$((PASSED_PAIRS + 1))
+    else
+        FAILED_PAIRS=$((FAILED_PAIRS + 1))
+        FAILED_PAIR_NAMES+=("$base_name")
+    fi
+
+    echo
+done <<<"$TEST_FILES"
+
+# Summary
+echo "════════════════════════════════════════════════════════"
+echo "SUMMARY"
+echo "════════════════════════════════════════════════════════"
+echo "Total test pairs: $TOTAL_PAIRS"
+echo "Passed: $PASSED_PAIRS"
+echo "Failed: $FAILED_PAIRS"
+echo "Skipped: $SKIPPED_PAIRS (no matching function file)"
+echo
+
+if [ $FAILED_PAIRS -gt 0 ]; then
+    echo "Failed test pairs:"
+    for name in "${FAILED_PAIR_NAMES[@]}"; do
+        echo "  ✗ $name"
+    done
+    echo
+    exit 1
+else
+    echo "✓ All test pairs passed!"
+    exit 0
+fi

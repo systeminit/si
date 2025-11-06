@@ -1,0 +1,78 @@
+load(
+    "@prelude-si//:deno.bzl",
+    "deno_compile",
+    "deno_format",
+    "deno_test",
+)
+load(
+    "@prelude-si//:macros.bzl",
+    "alias",
+    "docker_image",
+    "export_file",
+)
+
+deno_compile(
+    name = "si-function-tester-server",
+    main = "server.ts",
+    out = "si-function-tester-server",
+    srcs = glob([
+        "*.ts",
+    ]),
+    permissions = [
+        "allow-all",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+deno_compile(
+    name = "si-function-tester-client",
+    main = "client.ts",
+    out = "si-function-tester-client",
+    srcs = glob([
+        "*.ts",
+    ]),
+    permissions = [
+        "allow-read",
+        "allow-net",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+deno_format(
+    name = "fix-format",
+    srcs = glob(
+        ["**/*.ts"],
+        exclude = ["examples/**"],
+    ),
+)
+
+deno_format(
+    name = "check-format",
+    srcs = glob(
+        ["**/*.ts"],
+        exclude = ["examples/**"],
+    ),
+    check = True,
+)
+
+# There are no unit tests for this. This tricks the build
+# system into building the binary as its unit test suite which will force a lint and basic compile
+# correctness check.
+alias(
+    name = "test-unit",
+    actual = ":si-function-tester-server",
+)
+
+docker_image(
+    name = "image",
+    image_name = "si-function-tester",
+    flake_lock = "//:flake.lock",
+    srcs = {
+        "types.ts": "types.ts",
+        "mocks.ts": "mocks.ts",
+        "runner.ts": "runner.ts",
+        "index.ts": "index.ts",
+        "server.ts": "server.ts",
+        "deno.json": "deno.json",
+    },
+)
