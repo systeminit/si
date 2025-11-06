@@ -24,8 +24,6 @@ const USER_FLAG_MAPPING = {
   ENABLE_NEW_EXPERIENCE: "enable-new-experience",
   REVIEW_PAGE: "review-page",
   DEFAULT_SUBS: "default-subs",
-  INITIALIZER_ONBOARD: "initializer-onboard",
-  INITIALIZER_ONBOARD_FORCE_AGENT: "initializer-onboard-force-agent",
   COMPONENT_HISTORY_FUNCS: "component-history-funcs",
   REVERSE_TRUNCATION: "reverse-truncation",
   AZURE_SCHEMAS: "ms-azure-schemas",
