@@ -173,9 +173,7 @@ const start = async (sqlite3: Sqlite3Static, testing: boolean) => {
     } else if (poolUtil.isPaused()) {
       await poolUtil.unpauseVfs();
     }
-    if (testing) {
-      poolUtil.unlink(`/${dbname}`);
-    }
+
     sqlite = new poolUtil.OpfsSAHPoolDb(`/${dbname}`);
     debug(
       `OPFS is available, created persisted database in SAH Pool VFS at ${sqlite.filename}`,
@@ -185,6 +183,22 @@ const start = async (sqlite3: Sqlite3Static, testing: boolean) => {
     debug(
       `OPFS is not available, created transient database ${sqlite.filename}`,
     );
+  }
+
+  // Adding an integrity check for a corrupted SQLite
+  // db file. In the case it fails, delete the file
+  // and re-start this process
+  const integrity = sqlite.exec({
+    sql: "PRAGMA quick_check",
+    returnValue: "resultRows",
+  });
+  const ok = oneInOne(integrity);
+  if (ok !== "ok") {
+    log(`Integrity: failed`);
+    sqlite.close();
+    poolUtil?.unlink(`/${dbname}`);
+    await start(sqlite3, testing);
+    return;
   }
 
   sqlite.exec({ sql: "PRAGMA foreign_keys = ON;" });
