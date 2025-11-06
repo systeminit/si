@@ -455,7 +455,25 @@ const pan = (dx: number, dy: number) => {
   }
 };
 
-const smoothPan = (totalDx: number, totalDy: number, duration = 400) => {
+let currentPanAnimationId: number | null = null;
+let lastUserPanTime = 0;
+
+const smoothPan = (
+  totalDx: number,
+  totalDy: number,
+  duration = 400,
+  isUserInitiated = false,
+) => {
+  // Cancel any ongoing animation
+  if (currentPanAnimationId !== null) {
+    cancelAnimationFrame(currentPanAnimationId);
+    currentPanAnimationId = null;
+  }
+
+  if (isUserInitiated) {
+    lastUserPanTime = performance.now();
+  }
+
   const startTime = performance.now();
   const startTranslateX = transformMatrix[4] ?? 0;
   const startTranslateY = transformMatrix[5] ?? 0;
@@ -476,11 +494,13 @@ const smoothPan = (totalDx: number, totalDy: number, duration = 400) => {
     transformMatrix.splice(5, 1, currentY);
 
     if (progress < 1) {
-      requestAnimationFrame(animate);
+      currentPanAnimationId = requestAnimationFrame(animate);
+    } else {
+      currentPanAnimationId = null;
     }
   };
 
-  requestAnimationFrame(animate);
+  currentPanAnimationId = requestAnimationFrame(animate);
 };
 
 // Viewport preservation functions
@@ -613,6 +633,41 @@ const addNodeElements = (group: any, d: layoutNode) => {
 };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
+const getEdgeStyling = (edgeId: string) => {
+  const [targetId, sourceId] = edgeId.split("-");
+  const isConnectedToSelected = Array.from(selectedComponents.value).some(
+    (component) => targetId === component.id || sourceId === component.id,
+  );
+
+  const isDark = document.body.classList.contains("dark");
+  const connectedColor = isDark ? "#93c5fd" : "#3b82f6";
+  const greyedColor = isDark ? "#4b5563" : "#d1d5db";
+  const defaultColor = isDark ? "#9ca3af" : "#6b7280";
+
+  const hasSelection = selectedComponents.value.size > 0;
+
+  let stroke = defaultColor;
+  let opacity = "1";
+  let markerEnd = "url(#arrowhead)";
+
+  if (hasSelection) {
+    stroke = isConnectedToSelected ? connectedColor : greyedColor;
+    opacity = isConnectedToSelected ? "1" : "0.3";
+    markerEnd = isConnectedToSelected
+      ? "url(#arrowhead-highlighted)"
+      : "url(#arrowhead-greyed)";
+  }
+
+  return {
+    isConnectedToSelected,
+    stroke,
+    strokeWidth: isConnectedToSelected ? "2" : "1",
+    opacity,
+    markerEnd,
+  };
+};
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const renderEdges = (svg: any, edges: layoutLine[]) => {
   svg
     .selectAll(".edge")
@@ -620,11 +675,8 @@ const renderEdges = (svg: any, edges: layoutLine[]) => {
     .enter()
     .append("path")
     .attr("class", (d: layoutLine) => {
-      const [targetId, sourceId] = d.id.split("-");
-      const isConnectedToSelected = Array.from(selectedComponents.value).some(
-        (component) => targetId === component.id || sourceId === component.id,
-      );
-      return `edge ${isConnectedToSelected ? "connected" : ""}`;
+      const styling = getEdgeStyling(d.id);
+      return `edge ${styling.isConnectedToSelected ? "connected" : ""}`;
     })
     .attr("data-edge-id", (d: layoutLine) => d.id)
     .attr("d", (d: layoutLine) => {
@@ -639,57 +691,32 @@ const renderEdges = (svg: any, edges: layoutLine[]) => {
       const pairs: Array<[number, number]> = points.map((p) => [p.x, p.y]);
       return lineGenerator(pairs);
     })
-    .attr("marker-end", (d: layoutLine) => {
-      const [targetId, sourceId] = d.id.split("-");
-      const isConnectedToSelected = Array.from(selectedComponents.value).some(
-        (component) => targetId === component.id || sourceId === component.id,
-      );
-
-      if (selectedComponents.value.size > 0) {
-        return isConnectedToSelected
-          ? "url(#arrowhead-highlighted)"
-          : "url(#arrowhead-greyed)";
-      } else {
-        return "url(#arrowhead)";
-      }
-    })
+    .attr("marker-end", (d: layoutLine) => getEdgeStyling(d.id).markerEnd)
     .style("fill", "none")
-    .style("stroke", (d: layoutLine) => {
-      const [targetId, sourceId] = d.id.split("-");
-      const isConnectedToSelected = Array.from(selectedComponents.value).some(
-        (component) => targetId === component.id || sourceId === component.id,
-      );
+    .style("stroke", (d: layoutLine) => getEdgeStyling(d.id).stroke)
+    .style("stroke-width", (d: layoutLine) => getEdgeStyling(d.id).strokeWidth)
+    .style("opacity", (d: layoutLine) => getEdgeStyling(d.id).opacity);
+};
 
-      const isDark = document.body.classList.contains("dark");
-      const connectedColor = isDark ? "#93c5fd" : "#3b82f6";
-      const greyedColor = isDark ? "#4b5563" : "#d1d5db";
-      const defaultColor = isDark ? "#9ca3af" : "#6b7280";
-
-      if (selectedComponents.value.size > 0) {
-        return isConnectedToSelected ? connectedColor : greyedColor;
-      } else {
-        return defaultColor;
-      }
-    })
-    .style("stroke-width", (d: layoutLine) => {
-      const [targetId, sourceId] = d.id.split("-");
-      const isConnectedToSelected = Array.from(selectedComponents.value).some(
-        (component) => targetId === component.id || sourceId === component.id,
-      );
-      return isConnectedToSelected ? "2" : "1";
-    })
-    .style("opacity", (d: layoutLine) => {
-      const [targetId, sourceId] = d.id.split("-");
-      const isConnectedToSelected = Array.from(selectedComponents.value).some(
-        (component) => targetId === component.id || sourceId === component.id,
-      );
-
-      if (selectedComponents.value.size > 0) {
-        return isConnectedToSelected ? "1" : "0.3";
-      } else {
-        return "1";
-      }
-    });
+// Update edge styling without redrawing
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const updateEdgeStyling = (svg: any) => {
+  // eslint-disable-next-line func-names
+  svg.selectAll(".edge").each(function (this: SVGPathElement) {
+    const edgeId = d3.select(this).attr("data-edge-id");
+    if (edgeId) {
+      const styling = getEdgeStyling(edgeId);
+      d3.select(this)
+        .attr(
+          "class",
+          `edge ${styling.isConnectedToSelected ? "connected" : ""}`,
+        )
+        .attr("marker-end", styling.markerEnd)
+        .style("stroke", styling.stroke)
+        .style("stroke-width", styling.strokeWidth)
+        .style("opacity", styling.opacity);
+    }
+  });
 };
 
 // Function to ensure selection state is properly applied to DOM elements
@@ -728,10 +755,10 @@ const applySelectionState = () => {
   });
 };
 
-const panToComponent = (componentId: string) => {
+const panToComponent = (componentId: string, isUserInitiated = false) => {
   if (!dataAsGraph.value?.children) {
     // Layout not ready yet, retry after a short delay
-    setTimeout(() => panToComponent(componentId), 100);
+    setTimeout(() => panToComponent(componentId, isUserInitiated), 100);
     return;
   }
 
@@ -741,7 +768,7 @@ const panToComponent = (componentId: string) => {
   );
   if (!node) {
     // Node not found in layout, retry after a short delay
-    setTimeout(() => panToComponent(componentId), 100);
+    setTimeout(() => panToComponent(componentId, isUserInitiated), 100);
     return;
   }
 
@@ -767,7 +794,7 @@ const panToComponent = (componentId: string) => {
   const panDy = viewportCenterY - currentScreenY;
 
   // Use smooth animated pan
-  smoothPan(panDx, panDy);
+  smoothPan(panDx, panDy, 400, isUserInitiated);
 };
 
 const mouseDown = ref(false);
@@ -1275,8 +1302,13 @@ const clickedNode = (e: MouseEvent, n: layoutNode) => {
       // Clear multi-select and set single selection
       selectedComponents.value = new Set([n.component]);
 
-      // Pan to center the selected component
-      panToComponent(n.component.id);
+      // Update edge styling immediately without redrawing
+      // This prevents jitter from edges being removed/redrawn during pan
+      const svg = d3.select("#map > svg g");
+      updateEdgeStyling(svg);
+
+      // Pan to center the selected component (mark as user-initiated)
+      panToComponent(n.component.id, true);
     }
   }
   emit("selectedComponents", selectedComponents.value);
@@ -1588,8 +1620,13 @@ watch(
 
           renderEdges(svg, edges);
 
+          // Pan to selected component, but skip if user just initiated a pan
+          // (prevents interrupting user-initiated pan animations)
           if (selectedComponent.value) {
-            panToComponent(selectedComponent.value.id);
+            const timeSinceUserPan = performance.now() - lastUserPanTime;
+            if (timeSinceUserPan >= 500) {
+              panToComponent(selectedComponent.value.id);
+            }
           }
 
           // Selection state is already handled during animation above
