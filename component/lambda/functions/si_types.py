@@ -1,4 +1,4 @@
-from typing import NewType, Optional, overload
+from typing import NewType, Optional, cast, overload
 from datetime import datetime
 
 Ulid = NewType("Ulid", str)
@@ -13,10 +13,12 @@ SqlTimestamp = NewType("SqlTimestamp", str)
 # ISO 8601 timestamp, i.e. 2024-04-03T12:00:00[.000000]Z
 IsoTimestamp = NewType("IsoTimestamp", str)
 
-SQL_TIMESTAMP_FORMAT = "%Y-%m-%d %H:%M:%S.%f"
-ISO_TIMESTAMP_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
+def timestamp_to_sql_timestamp(ts: datetime) -> SqlTimestamp:
+    return cast(SqlTimestamp, ts.strftime("%Y-%m-%d %H:%M:%S"))
 
-# Convert ISO 8601 timestamp to the required format
+def timestamp_to_iso_timestamp(ts: datetime) -> IsoTimestamp:
+    return cast(IsoTimestamp, ts.strftime("%Y-%m-%dT%H:%M:%SZ"))
+
 @overload
 def sql_to_iso_timestamp(sql_str: SqlTimestamp) -> IsoTimestamp: ...
 @overload

@@ -4,12 +4,13 @@ from abc import abstractmethod
 import boto3
 import json
 import os
-from typing import Any, NotRequired, Optional, TypedDict, cast, overload
+from datetime import datetime, timezone
+from typing import NotRequired, Optional, TypedDict, cast, overload
 from si_redshift import Redshift
 from si_lago_api import LagoApi
 from si_auth_api import SiAuthApi
 from si_posthog_api import PosthogApi
-from si_types import WorkspaceId
+from si_types import WorkspaceId, timestamp_to_sql_timestamp
 import logging
 
 class SiLambdaEnv(TypedDict):
@@ -55,6 +56,8 @@ class SiLambda:
         lambda_instance.run()
 
     def __init__(self, event: SiLambdaEnv, session = boto3.Session()):
+        self.start_timestamp = datetime.now(timezone.utc)
+        self.start_timestamp_sql = timestamp_to_sql_timestamp(self.start_timestamp)
         self.session = session
         self.event = event
 
@@ -67,6 +70,9 @@ class SiLambda:
         self._auth_api = None
         self._posthog_api = None
         logging.getLogger().setLevel(self.getenv("SI_LOG_LEVEL", self.getenv("LOG_LEVEL", "INFO")))
+        if self.dry_run:
+            logging.info("Running in dry-run mode")
+        logging.info(self.start_timestamp_sql)
 
     @property
     def lago(self) -> LagoApi:
