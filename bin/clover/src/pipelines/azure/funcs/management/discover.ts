@@ -186,7 +186,7 @@ async function main({
         resourceId,
       },
       domain: {
-        ...cleanedDomainProperties,
+        ...domainProperties,
         extra: component.properties?.domain?.extra || {
           AzureResourceType: resourceType,
           apiVersion: apiVersion,
@@ -291,7 +291,7 @@ function transformAzureToSI(azureResource, propUsageMap) {
     // Get the properties that belong to this subtype
     const subtypeProps =
       propUsageMap.discriminatorSubtypeProps?.[discriminatorProp]
-        ?.[subtypeName] || [];
+      ?.[subtypeName] || [];
 
     // Create nested structure
     const subtypeObject = {};
