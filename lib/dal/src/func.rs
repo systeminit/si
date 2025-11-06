@@ -370,6 +370,42 @@ impl Func {
         .await
     }
 
+    /// Create a debug function with the given code. Debug functions are
+    /// emphemeral, are not stored on the graph, but will be recorded in the
+    /// func run logs when they are executed.
+    pub fn new_debug(
+        name: impl Into<String>,
+        code: impl Into<String>,
+        handler: impl Into<String>,
+    ) -> Self {
+        let id: FuncId = Ulid::new().into();
+        let name = name.into();
+        let code = code.into();
+        let handler = Some(handler.into());
+
+        let base64_code = general_purpose::STANDARD_NO_PAD.encode(&code);
+        let code_blake3 = ContentHash::new(code.as_bytes());
+
+        Self {
+            id,
+            name,
+            kind: FuncKind::Debug,
+            timestamp: Timestamp::now(),
+            display_name: None,
+            description: None,
+            link: None,
+            hidden: false,
+            builtin: false,
+            backend_kind: FuncBackendKind::Debug,
+            backend_response_type: FuncBackendResponseType::Debug,
+            handler,
+            code_base64: Some(base64_code),
+            code_blake3,
+            is_locked: false,
+            is_transformation: false,
+        }
+    }
+
     pub async fn lock(self, ctx: &DalContext) -> FuncResult<Func> {
         self.modify(ctx, |func| {
             func.is_locked = true;

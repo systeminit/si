@@ -82,6 +82,7 @@ impl FuncArgumentSpec {
 pub enum FuncSpecBackendKind {
     Array,
     Boolean,
+    Debug,
     Diff,
     Float,
     Identity,
@@ -113,6 +114,7 @@ pub enum FuncSpecBackendResponseType {
     Array,
     Boolean,
     CodeGeneration,
+    Debug,
     Float,
     Identity,
     Integer,

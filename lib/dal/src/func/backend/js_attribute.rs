@@ -80,6 +80,7 @@ impl FuncDispatch for FuncBackendJsAttribute {
                 | ResolverFunctionResponseType::Unset
                 | ResolverFunctionResponseType::Void
                 | ResolverFunctionResponseType::Management
+                | ResolverFunctionResponseType::Debug
                 | ResolverFunctionResponseType::Json => FunctionResult::Failure(failure),
                 ResolverFunctionResponseType::Qualification => {
                     FunctionResult::Success(Self::Output {

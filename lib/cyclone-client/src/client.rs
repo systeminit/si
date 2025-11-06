@@ -504,6 +504,7 @@ mod tests {
         ComponentKind,
         ComponentView,
         ComponentViewWithGeometry,
+        DebugRequest,
         FunctionResult,
         ManagementRequest,
         ProgressMessage,
@@ -1615,6 +1616,164 @@ mod tests {
         match result {
             FunctionResult::Success(success) => {
                 assert_eq!(Some("repeat the theme"), success.message.as_deref());
+            }
+            FunctionResult::Failure(failure) => {
+                panic!("result should be success; failure={failure:?}")
+            }
+        }
+    }
+
+    #[allow(clippy::disallowed_methods)] // `$RUST_LOG` is checked for in macro
+    #[test(tokio::test)]
+    async fn http_execute_debug_func() {
+        let mut builder = Config::builder();
+        let mut client = http_client_for_running_server(builder.enable_debug(true)).await;
+
+        let req = DebugRequest {
+            execution_id: "debug-1234".to_string(),
+            handler: "debug".to_string(),
+            component: ComponentView {
+                kind: ComponentKind::Standard,
+                properties: serde_json::json!({
+                    "value": 42,
+                }),
+            },
+            debug_input: Some(serde_json::json!({
+                "some": true,
+                "other": false,
+                "data": ["hello", "goodbye"]
+            })),
+            code_base64: base64_encode(
+                r#"function debug({ component, debugInput }) {
+                    console.log('Debugging');
+
+                    return { a: component.properties.value, b: debugInput };
+                }"#,
+            ),
+            before: vec![],
+        };
+
+        let mut progress = client
+            .prepare_execution(CycloneRequest::from_parts(req.clone(), Default::default()))
+            .await
+            .expect("failed to establish websocket stream")
+            .start()
+            .await
+            .expect("failed to start protocol");
+
+        loop {
+            match progress.next().await {
+                Some(Ok(ProgressMessage::OutputStream(output))) => {
+                    assert_eq!(output.message, "Debugging");
+                    break;
+                }
+                Some(Ok(ProgressMessage::Heartbeat)) => continue,
+                Some(Err(err)) => {
+                    panic!("failed to receive 'Starting debug analysis' output: err={err:?}")
+                }
+                None => {
+                    dbg!(req);
+                    panic!("output stream ended early")
+                }
+            };
+        }
+        loop {
+            match progress.next().await {
+                None => {
+                    assert!(true);
+                    break;
+                }
+                Some(Ok(ProgressMessage::Heartbeat)) => continue,
+                Some(unexpected) => panic!("output stream should be done: {unexpected:?}"),
+            };
+        }
+
+        let result = progress.finish().await.expect("failed to return result");
+        match result {
+            FunctionResult::Success(success) => {
+                let output = &success.output;
+                assert_eq!(output["a"], 42);
+                assert_eq!(output["b"]["data"], serde_json::json!(["hello", "goodbye"]))
+            }
+            FunctionResult::Failure(failure) => {
+                panic!("result should be success; failure={failure:?}")
+            }
+        }
+    }
+
+    #[allow(clippy::disallowed_methods)] // `$RUST_LOG` is checked for in macro
+    #[test(tokio::test)]
+    async fn uds_execute_debug_func() {
+        let tmp_socket = rand_uds();
+        let mut builder = Config::builder();
+        let mut client =
+            uds_client_for_running_server(builder.enable_debug(true), &tmp_socket).await;
+
+        let req = DebugRequest {
+            execution_id: "debug-1234".to_string(),
+            handler: "debug".to_string(),
+            component: ComponentView {
+                kind: ComponentKind::Standard,
+                properties: serde_json::json!({
+                    "value": 42,
+                }),
+            },
+            debug_input: Some(serde_json::json!({
+                "some": true,
+                "other": false,
+                "data": ["hello", "goodbye"]
+            })),
+            code_base64: base64_encode(
+                r#"function debug({ component, debugInput }) {
+                    console.log('Debugging');
+
+                    return { a: component.properties.value, b: debugInput };
+                }"#,
+            ),
+            before: vec![],
+        };
+
+        let mut progress = client
+            .prepare_execution(CycloneRequest::from_parts(req.clone(), Default::default()))
+            .await
+            .expect("failed to establish websocket stream")
+            .start()
+            .await
+            .expect("failed to start protocol");
+
+        loop {
+            match progress.next().await {
+                Some(Ok(ProgressMessage::OutputStream(output))) => {
+                    assert_eq!(output.message, "Debugging");
+                    break;
+                }
+                Some(Ok(ProgressMessage::Heartbeat)) => continue,
+                Some(Err(err)) => {
+                    panic!("failed to receive 'Starting debug analysis' output: err={err:?}")
+                }
+                None => {
+                    dbg!(req);
+                    panic!("output stream ended early")
+                }
+            };
+        }
+        loop {
+            match progress.next().await {
+                None => {
+                    assert!(true);
+                    break;
+                }
+                Some(Ok(ProgressMessage::Heartbeat)) => continue,
+                Some(unexpected) => panic!("output stream should be done: {unexpected:?}"),
+            };
+        }
+
+        let result = progress.finish().await.expect("failed to return result");
+        match result {
+            FunctionResult::Success(success) => {
+                let output = &success.output;
+                assert_eq!(output["a"], 42);
+                assert_eq!(output["b"]["data"], serde_json::json!(["hello", "goodbye"]))
             }
             FunctionResult::Failure(failure) => {
                 panic!("result should be success; failure={failure:?}")

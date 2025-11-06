@@ -533,6 +533,7 @@ impl FuncBinding {
             FuncKind::Management => {
                 ManagementBinding::assemble_management_bindings(ctx, func_id).await?
             }
+            FuncKind::Debug => vec![],
         };
         Ok(bindings)
     }
@@ -728,6 +729,7 @@ impl FuncBinding {
             FuncKind::Authentication
             | FuncKind::Intrinsic
             | FuncKind::SchemaVariantDefinition
+            | FuncKind::Debug
             | FuncKind::Unknown => String::new(),
         };
         Ok(types)

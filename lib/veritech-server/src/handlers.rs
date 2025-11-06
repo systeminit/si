@@ -36,6 +36,7 @@ use si_pool_noodle::{
     CycloneClient,
     CycloneRequest,
     CycloneRequestable,
+    DebugResultSuccess,
     ExecutionError,
     FunctionResultFailure,
     FunctionResultFailureError,
@@ -91,6 +92,8 @@ pub enum HandlerError {
     PoolNoodleClient(#[from] si_pool_noodle::ClientError),
     #[error("pool noodle execution action run: {0}")]
     PoolNoodleExecutionActionRun(#[from] si_pool_noodle::ExecutionError<ActionRunResultSuccess>),
+    #[error("pool noodle execution debug run: {0}")]
+    PoolNoodleExecutionDebugRun(#[from] si_pool_noodle::ExecutionError<DebugResultSuccess>),
     #[error("pool noodle execution management: {0}")]
     PoolNoodleExecutionManagement(#[from] si_pool_noodle::ExecutionError<ManagementResultSuccess>),
     #[error("pool noodle execution resovler function: {0}")]
@@ -206,6 +209,7 @@ pub async fn process_request_inner(
         VeritechRequest::Validation(request) => {
             dispatch_request(state, request, reply_subject).await?
         }
+        VeritechRequest::Debug(request) => dispatch_request(state, request, reply_subject).await?,
         // Kill requests do not get handled here
         VeritechRequest::KillExecution(_) => {
             return Err(HandlerError::InvalidIncomingSubject(subject));

@@ -143,6 +143,7 @@ pub async fn delete_binding(
             FuncKind::Attribute
             | FuncKind::Intrinsic
             | FuncKind::SchemaVariantDefinition
+            | FuncKind::Debug
             | FuncKind::Unknown => return Err(FuncAPIError::CannotDeleteBindingForFunc),
         };
         match eventual_parent {

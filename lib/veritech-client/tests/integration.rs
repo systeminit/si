@@ -12,6 +12,7 @@ use cyclone_core::{
     ComponentKind,
     ComponentView,
     ComponentViewWithGeometry,
+    DebugRequest,
     FunctionResult,
     FunctionResultFailureErrorKind,
     ManagementRequest,
@@ -494,6 +495,67 @@ async fn executes_simple_schema_variant_definition() {
         FunctionResult::Failure(failure) => {
             dbg!("Request details: {:?}", request);
             panic!("function did not succeed and should have: {failure:?}")
+        }
+    }
+}
+
+#[allow(clippy::disallowed_methods)] // `$RUST_LOG` is checked for in macro
+#[test(tokio::test)]
+async fn executes_simple_debug_function() {
+    let prefix = nats_prefix();
+    run_veritech_server_for_uds_cyclone(prefix.clone()).await;
+    let client = client(prefix).await;
+
+    let (tx, mut rx) = mpsc::channel(64);
+    tokio::spawn(async move {
+        while let Some(output) = rx.recv().await {
+            info!("output: {:?}", output)
+        }
+    });
+
+    let request = DebugRequest {
+        execution_id: "debug-5678".to_string(),
+        handler: "debug".to_string(),
+        code_base64: base64_encode(
+            "function debug({ component, debugInput }) {
+                const properties = component.properties;
+                const input = debugInput || {};
+                return {
+                    properties,
+                    input,
+                };
+            }",
+        ),
+        component: ComponentView {
+            kind: ComponentKind::Standard,
+            properties: serde_json::json!({
+                "foo": "bar",
+                "baz": "quux",
+            }),
+        },
+        debug_input: Some(serde_json::json!({
+            "message": "debug test message",
+            "value": 42
+        })),
+        before: vec![],
+    };
+
+    let result = client
+        .execute_debug(tx, &request, WORKSPACE_ID, CHANGE_SET_ID)
+        .await
+        .expect("failed to execute debug function");
+
+    match result {
+        FunctionResult::Success(success) => {
+            let output = &success.output;
+            assert_eq!(output["properties"]["foo"], "bar");
+            assert_eq!(output["properties"]["baz"], "quux");
+            assert_eq!(output["input"]["message"], "debug test message");
+            assert_eq!(output["input"]["value"], 42);
+        }
+        FunctionResult::Failure(failure) => {
+            dbg!("Request details: {:?}", request);
+            panic!("debug function did not succeed and should have: {failure:?}")
         }
     }
 }

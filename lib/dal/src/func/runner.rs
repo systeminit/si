@@ -52,6 +52,7 @@ use super::{
         InvalidResolverFunctionTypeError,
         array::FuncBackendArray,
         boolean::FuncBackendBoolean,
+        debug::FuncBackendDebug,
         diff::FuncBackendDiff,
         float::FuncBackendFloat,
         identity::FuncBackendIdentity,
@@ -1078,13 +1079,39 @@ impl FuncRunner {
         Ok((func_run_id, result_channel))
     }
 
-    pub async fn build_management(
+    #[instrument(
+        name = "func_runner.run_debug",
+        level = "debug",
+        skip_all,
+        fields(
+            job.id = Empty,
+            // job.invoked_args = Empty,
+            // job.instance = metadata.job_instance,
+            job.invoked_name = Empty,
+            // job.invoked_provider = metadata.job_invoked_provider,
+            otel.kind = SpanKind::Producer.as_str(),
+            otel.status_code = Empty,
+            otel.status_message = Empty,
+            si.action.id = Empty,
+            si.action.kind = Empty,
+            si.change_set.id = Empty,
+            si.component.id = Empty,
+            // si.func_run.func.args = Empty,
+            si.func_run.func.backend_kind = Empty,
+            si.func_run.func.backend_response_type = Empty,
+            si.func_run.func.id = Empty,
+            si.func_run.func.kind = Empty,
+            si.func_run.func.name = Empty,
+            si.func_run.id = Empty,
+            si.workspace.id = Empty,
+        )
+    )]
+    pub async fn run_debug(
         ctx: &DalContext,
-        prototype_id: ManagementPrototypeId,
-        manager_component_id: ComponentId,
-        management_func_id: FuncId,
+        debug_func: Func,
+        debug_component_id: ComponentId,
         args: serde_json::Value,
-    ) -> FuncRunnerResult<FuncRunner> {
+    ) -> FuncRunnerResult<(FuncRunId, FuncRunnerValueChannel)> {
         let span = current_span_for_instrument_at!("debug");
 
         // Prepares the function for execution.
@@ -1100,14 +1127,11 @@ impl FuncRunner {
         #[inline]
         async fn prepare(
             ctx: &DalContext,
-            prototype_id: ManagementPrototypeId,
-            manager_component_id: ComponentId,
-            management_func_id: FuncId,
+            func: Func,
+            debug_component_id: ComponentId,
             args: serde_json::Value,
             span: &Span,
         ) -> FuncRunnerResult<FuncRunner> {
-            let func = Func::get_by_id(ctx, management_func_id).await?;
-
             let function_args: CasValue = args.clone().into();
             let (function_args_cas_address, _) = ctx.layer_db().cas().write(
                 Arc::new(function_args.into()),
@@ -1131,10 +1155,10 @@ impl FuncRunner {
                 ContentHash::new("".as_bytes())
             };
 
-            let before = FuncRunner::before_funcs(ctx, manager_component_id, &func).await?;
-            let manager_component = Component::get_by_id(ctx, manager_component_id).await?;
-            let component_name = manager_component.name(ctx).await?;
-            let schema_name = manager_component.schema(ctx).await?.name;
+            let before = FuncRunner::before_funcs(ctx, debug_component_id, &func).await?;
+            let debug_component = Component::get_by_id(ctx, debug_component_id).await?;
+            let component_name = debug_component.name(ctx).await?;
+            let schema_name = debug_component.schema(ctx).await?.name;
 
             let change_set = ctx.change_set()?;
 
@@ -1146,7 +1170,7 @@ impl FuncRunner {
                 .backend_response_type(func.backend_response_type.into())
                 .function_name(func.name.clone())
                 .function_kind(func.kind.into())
-                .prototype_id(Some(prototype_id.into()))
+                .prototype_id(None)
                 .function_display_name(func.display_name.clone())
                 .function_description(func.description.clone())
                 .function_link(func.link.clone())
@@ -1156,7 +1180,7 @@ impl FuncRunner {
                 .action_originating_change_set_name(Some(change_set.name.to_owned()))
                 .action_or_func_id(Some(func.id.into()))
                 .attribute_value_id(None)
-                .component_id(Some(manager_component_id))
+                .component_id(Some(debug_component_id))
                 .component_name(Some(component_name))
                 .schema_name(Some(schema_name))
                 .created_at(func_run_create_time)
@@ -1187,7 +1211,7 @@ impl FuncRunner {
                 );
                 span.record(
                     "si.component.id",
-                    manager_component_id.array_to_str(&mut id_buf),
+                    debug_component_id.array_to_str(&mut id_buf),
                 );
                 span.record(
                     "si.workspace.id",
@@ -1215,18 +1239,14 @@ impl FuncRunner {
             })
         }
 
-        let runner = prepare(
-            ctx,
-            prototype_id,
-            manager_component_id,
-            management_func_id,
-            args,
-            &span,
-        )
-        .await
-        .map_err(|err| span.record_err(err))?;
+        let runner = prepare(ctx, debug_func, debug_component_id, args, &span)
+            .await
+            .map_err(|err| span.record_err(err))?;
 
-        Ok(runner)
+        let func_run_id = runner.func_run.id();
+        let result_channel = runner.execute(ctx.clone(), span).await;
+
+        Ok((func_run_id, result_channel))
     }
 
     #[instrument(
@@ -1594,7 +1614,7 @@ impl FuncRunner {
 
         let mut before_functions = Vec::new();
 
-        for (key, funcs) in ordered_before_funcs_with_secret_keys {
+        for (key, before_funcs) in ordered_before_funcs_with_secret_keys {
             let encrypted_secret = EncryptedSecret::get_by_key(ctx, key)
                 .await?
                 .ok_or(SecretError::EncryptedSecretNotFound(key))?;
@@ -1617,14 +1637,14 @@ impl FuncRunner {
             // Re-encrypt raw Value for transmission to Veritech
             encrypt_value_tree(&mut arg, ctx.encryption_key())?;
 
-            for func in funcs {
+            for before_func in before_funcs {
                 before_functions.push(BeforeFunction {
-                    handler: func
+                    handler: before_func
                         .handler
-                        .ok_or_else(|| FuncRunnerError::BeforeFuncMissingHandler(func.id))?,
-                    code_base64: func
+                        .ok_or_else(|| FuncRunnerError::BeforeFuncMissingHandler(before_func.id))?,
+                    code_base64: before_func
                         .code_base64
-                        .ok_or_else(|| FuncRunnerError::BeforeFuncMissingCode(func.id))?,
+                        .ok_or_else(|| FuncRunnerError::BeforeFuncMissingCode(before_func.id))?,
                     arg: arg.clone(),
                 })
             }
@@ -2064,6 +2084,15 @@ impl FuncRunnerExecutionTask {
             }
             FuncBackendKind::NormalizeToArray => {
                 FuncBackendNormalizeToArray::create_and_execute(&self.args).await
+            }
+            FuncBackendKind::Debug => {
+                FuncBackendDebug::create_and_execute(
+                    self.func_dispatch_context,
+                    &self.func,
+                    &self.args,
+                    self.before,
+                )
+                .await
             }
         };
 

@@ -397,7 +397,10 @@ pub async fn create_func(
                 return Err(FuncAPIError::WrongFunctionKindForBinding);
             }
         },
-        FuncKind::Unknown | FuncKind::SchemaVariantDefinition | FuncKind::Intrinsic => {
+        FuncKind::Unknown
+        | FuncKind::SchemaVariantDefinition
+        | FuncKind::Intrinsic
+        | FuncKind::Debug => {
             return Err(FuncAPIError::WrongFunctionKindForBinding);
         }
     };

@@ -55,6 +55,9 @@ pub struct Config {
     #[builder(default = "true")]
     enable_management: bool,
 
+    #[builder(default = "true")]
+    enable_debug: bool,
+
     #[builder(default = "IncomingStream::default()")]
     incoming_stream: IncomingStream,
 
@@ -124,6 +127,12 @@ impl Config {
     #[must_use]
     pub fn enable_management(&self) -> bool {
         self.enable_management
+    }
+
+    /// Gets the config's enable debug
+    #[must_use]
+    pub fn enable_debug(&self) -> bool {
+        self.enable_debug
     }
 
     /// Gets a reference to the config's incoming stream.

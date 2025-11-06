@@ -11,6 +11,7 @@ import schema_variant_definition, {
   SchemaVariantDefinitionFunc,
 } from "./function_kinds/schema_variant_definition.ts";
 import management_run, { ManagementFunc } from "./function_kinds/management.ts";
+import debug_run, { DebugFunc } from "./function_kinds/debug.ts";
 import action_run, { ActionRunFunc } from "./function_kinds/action_run.ts";
 import before from "./function_kinds/before.ts";
 import { Debugger } from "./debug.ts";
@@ -22,6 +23,7 @@ const debug = Debug("langJs:function");
 export enum FunctionKind {
   ActionRun = "actionRun",
   Before = "before",
+  Debug = "debug",
   Management = "management",
   ResolverFunction = "resolverfunction",
   Validation = "validation",
@@ -54,9 +56,11 @@ export interface ResultFailure extends Result {
   status: "failure";
   executionId: string;
   error: {
-    kind: string | {
-      "UserCodeException": string;
-    };
+    kind:
+      | string
+      | {
+          UserCodeException: string;
+        };
     message: string;
   };
 }
@@ -91,10 +95,7 @@ export interface OutputLine {
   message: string;
 }
 
-export async function executeFunction(
-  request: Request,
-  timeout: number,
-) {
+export async function executeFunction(request: Request, timeout: number) {
   // Run Before Functions
   const ctx = ctxFromRequest(request);
 
@@ -166,6 +167,9 @@ export async function executeFunction(
         timeout,
         management_run,
       );
+      break;
+    case FunctionKind.Debug:
+      result = await executor(ctx, request as DebugFunc, timeout, debug_run);
       break;
     default:
       throw Error(`Unknown Kind variant: ${request.kind}`);

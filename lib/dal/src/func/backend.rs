@@ -37,6 +37,7 @@ use crate::{
 
 pub mod array;
 pub mod boolean;
+pub mod debug;
 pub mod diff;
 pub mod float;
 pub mod identity;
@@ -130,6 +131,7 @@ pub enum FuncBackendKind {
     ResourcePayloadToValue,
     NormalizeToArray,
     Float,
+    Debug,
 }
 
 impl From<FuncBackendKind> for si_events::FuncBackendKind {
@@ -160,6 +162,7 @@ impl From<FuncBackendKind> for si_events::FuncBackendKind {
                 si_events::FuncBackendKind::ResourcePayloadToValue
             }
             FuncBackendKind::NormalizeToArray => si_events::FuncBackendKind::NormalizeToArray,
+            FuncBackendKind::Debug => si_events::FuncBackendKind::Debug,
         }
     }
 }
@@ -192,6 +195,7 @@ impl From<si_events::FuncBackendKind> for FuncBackendKind {
                 FuncBackendKind::ResourcePayloadToValue
             }
             si_events::FuncBackendKind::NormalizeToArray => FuncBackendKind::NormalizeToArray,
+            si_events::FuncBackendKind::Debug => FuncBackendKind::Debug,
         }
     }
 }
@@ -232,6 +236,7 @@ pub enum FuncBackendResponseType {
     Void,
     Management,
     Float,
+    Debug,
 }
 
 impl From<FuncBackendResponseType> for si_events::FuncBackendResponseType {
@@ -263,6 +268,7 @@ impl From<FuncBackendResponseType> for si_events::FuncBackendResponseType {
             FuncBackendResponseType::Validation => si_events::FuncBackendResponseType::Validation,
             FuncBackendResponseType::Void => si_events::FuncBackendResponseType::Void,
             FuncBackendResponseType::Management => si_events::FuncBackendResponseType::Management,
+            FuncBackendResponseType::Debug => si_events::FuncBackendResponseType::Debug,
         }
     }
 }
@@ -296,6 +302,7 @@ impl From<si_events::FuncBackendResponseType> for FuncBackendResponseType {
             si_events::FuncBackendResponseType::Validation => FuncBackendResponseType::Validation,
             si_events::FuncBackendResponseType::Void => FuncBackendResponseType::Void,
             si_events::FuncBackendResponseType::Management => FuncBackendResponseType::Management,
+            si_events::FuncBackendResponseType::Debug => FuncBackendResponseType::Debug,
         }
     }
 }
@@ -318,6 +325,7 @@ impl From<ResolverFunctionResponseType> for FuncBackendResponseType {
             ResolverFunctionResponseType::Json => FuncBackendResponseType::Json,
             ResolverFunctionResponseType::Void => FuncBackendResponseType::Void,
             ResolverFunctionResponseType::Management => FuncBackendResponseType::Management,
+            ResolverFunctionResponseType::Debug => FuncBackendResponseType::Debug,
         }
     }
 }
@@ -355,6 +363,7 @@ impl TryFrom<FuncBackendResponseType> for ResolverFunctionResponseType {
             }
             FuncBackendResponseType::Void => ResolverFunctionResponseType::Void,
             FuncBackendResponseType::Management => ResolverFunctionResponseType::Management,
+            FuncBackendResponseType::Debug => ResolverFunctionResponseType::Debug,
         };
         Ok(value)
     }

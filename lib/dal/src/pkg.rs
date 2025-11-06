@@ -318,6 +318,7 @@ impl From<FuncBackendKind> for FuncSpecBackendKind {
             FuncBackendKind::Management => Self::Management,
             FuncBackendKind::ResourcePayloadToValue => Self::ResourcePayloadToValue,
             FuncBackendKind::NormalizeToArray => Self::NormalizeToArray,
+            FuncBackendKind::Debug => Self::Debug,
         }
     }
 }
@@ -346,6 +347,7 @@ impl From<FuncSpecBackendKind> for FuncBackendKind {
             FuncSpecBackendKind::Management => Self::Management,
             FuncSpecBackendKind::ResourcePayloadToValue => Self::ResourcePayloadToValue,
             FuncSpecBackendKind::NormalizeToArray => Self::NormalizeToArray,
+            FuncSpecBackendKind::Debug => Self::Debug,
         }
     }
 }
@@ -371,6 +373,7 @@ impl From<FuncBackendResponseType> for FuncSpecBackendResponseType {
             FuncBackendResponseType::Validation => Self::Validation,
             FuncBackendResponseType::Void => Self::Void,
             FuncBackendResponseType::Management => Self::Management,
+            FuncBackendResponseType::Debug => Self::Debug,
         }
     }
 }
@@ -396,6 +399,7 @@ impl From<FuncSpecBackendResponseType> for FuncBackendResponseType {
             FuncSpecBackendResponseType::Validation => Self::Validation,
             FuncSpecBackendResponseType::Void => Self::Void,
             FuncSpecBackendResponseType::Management => Self::Management,
+            FuncSpecBackendResponseType::Debug => Self::Debug,
         }
     }
 }

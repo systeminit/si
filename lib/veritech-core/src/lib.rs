@@ -13,6 +13,7 @@
 
 use cyclone_core::{
     ActionRunRequest,
+    DebugRequest,
     KillExecutionRequest,
     ManagementRequest,
     ResolverFunctionRequest,
@@ -42,6 +43,7 @@ const NATS_RESOLVER_FUNCTION_DEFAULT_SUBJECT_SUFFIX: &str = "resolverfunction";
 const NATS_SCHEMA_VARIANT_DEFINITION_DEFAULT_SUBJECT_SUFFIX: &str = "schemavariantdefinition";
 const NATS_VALIDATION_DEFAULT_SUBJECT_SUFFIX: &str = "validation";
 const NATS_MANAGEMENT_DEFAULT_SUBJECT_SUFFIX: &str = "management";
+const NATS_DEBUG_DEFAULT_SUBJECT_SUFFIX: &str = "debug";
 
 const NATS_KILL_EXECUTION_DEFAULT_SUBJECT: &str = "veritech.meta.killexecution";
 
@@ -150,6 +152,12 @@ impl GetNatsSubjectFor for ValidationRequest {
     }
 }
 
+impl GetNatsSubjectFor for DebugRequest {
+    fn subject_suffix(&self) -> &str {
+        NATS_DEBUG_DEFAULT_SUBJECT_SUFFIX
+    }
+}
+
 #[derive(Debug, Clone)]
 pub enum VeritechRequest {
     ActionRun(ActionRunRequest),
@@ -158,6 +166,7 @@ pub enum VeritechRequest {
     Resolver(ResolverFunctionRequest), // Resolvers are JsAttribute functions
     SchemaVariantDefinition(SchemaVariantDefinitionRequest),
     Validation(ValidationRequest),
+    Debug(DebugRequest),
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -192,6 +201,7 @@ impl VeritechRequest {
             NATS_VALIDATION_DEFAULT_SUBJECT_SUFFIX => {
                 Self::Validation(serde_json::from_slice(payload)?)
             }
+            NATS_DEBUG_DEFAULT_SUBJECT_SUFFIX => Self::Debug(serde_json::from_slice(payload)?),
             _ => {
                 return Err(VeritechRequestError::UnknownSubjectSuffix(
                     subject.to_string(),
@@ -214,6 +224,7 @@ impl VeritechRequest {
                 schema_variant_definition_request.subject_suffix()
             }
             VeritechRequest::Validation(validation_request) => validation_request.subject_suffix(),
+            VeritechRequest::Debug(debug_request) => debug_request.subject_suffix(),
         }
     }
 
@@ -231,6 +242,7 @@ impl VeritechRequest {
                 &schema_variant_definition_request.execution_id
             }
             VeritechRequest::Validation(validation_request) => &validation_request.execution_id,
+            VeritechRequest::Debug(debug_request) => &debug_request.execution_id,
         }
     }
 }
