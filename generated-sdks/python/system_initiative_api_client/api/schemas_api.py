@@ -5579,7 +5579,7 @@ class SchemasApi:
         _headers: Optional[Dict[StrictStr, Any]] = None,
         _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
     ) -> SearchSchemasV1Response:
-        """Complex search for shemas
+        """Complex search for schemas
 
 
         :param workspace_id: Workspace identifier (required)
@@ -5656,7 +5656,7 @@ class SchemasApi:
         _headers: Optional[Dict[StrictStr, Any]] = None,
         _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
     ) -> ApiResponse[SearchSchemasV1Response]:
-        """Complex search for shemas
+        """Complex search for schemas
 
 
         :param workspace_id: Workspace identifier (required)
@@ -5733,7 +5733,7 @@ class SchemasApi:
         _headers: Optional[Dict[StrictStr, Any]] = None,
         _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
     ) -> RESTResponseType:
-        """Complex search for shemas
+        """Complex search for schemas
 
 
         :param workspace_id: Workspace identifier (required)

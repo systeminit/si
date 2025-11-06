@@ -109,8 +109,8 @@ pub async fn create_workspace(
         })?;
 
     let auth_token_request = CreateAuthTokenRequest {
-        name: "initial-workspace-token".to_string(),
-        expiration: "1y".to_string(),
+        name: "initial-workspace-seeder-token".to_string(),
+        expiration: "1h".to_string(),
     };
 
     let auth_token_response = client

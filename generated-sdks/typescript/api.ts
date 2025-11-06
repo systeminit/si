@@ -8199,7 +8199,7 @@ export const SchemasApiAxiosParamCreator = function (configuration?: Configurati
         },
         /**
          * 
-         * @summary Complex search for shemas
+         * @summary Complex search for schemas
          * @param {string} workspaceId Workspace identifier
          * @param {string} changeSetId Change Set identifier
          * @param {SearchSchemasV1Request} searchSchemasV1Request 
@@ -8625,7 +8625,7 @@ export const SchemasApiFp = function(configuration?: Configuration) {
         },
         /**
          * 
-         * @summary Complex search for shemas
+         * @summary Complex search for schemas
          * @param {string} workspaceId Workspace identifier
          * @param {string} changeSetId Change Set identifier
          * @param {SearchSchemasV1Request} searchSchemasV1Request 
@@ -8852,7 +8852,7 @@ export const SchemasApiFactory = function (configuration?: Configuration, basePa
         },
         /**
          * 
-         * @summary Complex search for shemas
+         * @summary Complex search for schemas
          * @param {SchemasApiSearchSchemasRequest} requestParameters Request parameters.
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
@@ -9061,7 +9061,7 @@ export interface SchemasApiInterface {
 
     /**
      * 
-     * @summary Complex search for shemas
+     * @summary Complex search for schemas
      * @param {SchemasApiSearchSchemasRequest} requestParameters Request parameters.
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
@@ -10039,7 +10039,7 @@ export class SchemasApi extends BaseAPI implements SchemasApiInterface {
 
     /**
      * 
-     * @summary Complex search for shemas
+     * @summary Complex search for schemas
      * @param {SchemasApiSearchSchemasRequest} requestParameters Request parameters.
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
