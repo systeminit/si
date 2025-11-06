@@ -1,0 +1,9 @@
+environment: production
+credential:
+  kind: "search"
+  query: 'name: "demo credential"'
+  path: "/secrets/AWS Credential"
+region:
+  kind: "$source"
+  component: "demo virginia"
+  path: "/domain/region"

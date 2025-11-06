@@ -1,0 +1,583 @@
+components:
+  - id: 01K2YVY5C87SQJPHPH30VCB3GC
+    schemaId: 01JK0RQN1ATZRE54Z8242TMNYH
+    name: demo-igw-attachment
+    resourceId: IGW|vpc-01ea49d66f883b310
+    attributes:
+      /si/name: demo-igw-attachment
+      /si/type: component
+      /si/resourceId: IGW|vpc-01ea49d66f883b310
+      /domain/VpcId:
+        $source:
+          component: 01K2YVY4WE8KBM01H05R74RKX8
+          path: /resource_value/VpcId
+      /domain/InternetGatewayId:
+        $source:
+          component: 01K2YVY7H0RK6X79WPJ4GG5FT9
+          path: /resource_value/InternetGatewayId
+      /domain/extra/Region:
+        $source:
+          component: 01K1X86ZSE24M974VN4QP4SR5S
+          path: /domain/region
+      /secrets/AWS Credential:
+        $source:
+          component: 01K1X844B8K8SH27TK5PT439E6
+          path: /secrets/AWS Credential
+  - id: 01K1X844B8K8SH27TK5PT439E6
+    schemaId: 01J1QZ621A10A8VP1CTPPKKSCP
+    name: demo credential
+    resourceId: ""
+    attributes:
+      /si/name: demo credential
+      /si/type: configurationFrameDown
+  - id: 01K2FH93B428D50EXMQC0HGH9P
+    schemaId: 01K1EBKAX5ZXWXG5W0TT2EN0KX
+    name: Demo Generator
+    resourceId: ""
+    attributes:
+      /si/name: Demo Generator
+      /si/type: component
+      /domain/Name Prefix: monk-
+      /domain/extra/Region:
+        $source:
+          component: 01K1X86ZSE24M974VN4QP4SR5S
+          path: /domain/region
+      /secrets/AWS Credential:
+        $source:
+          component: 01K1X844B8K8SH27TK5PT439E6
+          path: /secrets/AWS Credential
+  - id: 01K2YVY5S8VCNJPHDHDR795H28
+    schemaId: 01JK0QZHFDAPTZ62VGAAQA6DKA
+    name: demo-load-balancer
+    resourceId: >-
+      arn:aws:elasticloadbalancing:us-east-1:439803112369:loadbalancer/app/monk-demo-load-balancer/a1987716e75e3460
+    attributes:
+      /si/name: demo-load-balancer
+      /si/type: component
+      /si/resourceId: >-
+        arn:aws:elasticloadbalancing:us-east-1:439803112369:loadbalancer/app/monk-demo-load-balancer/a1987716e75e3460
+      /domain/Name: monk-demo-load-balancer
+      /domain/Scheme: internet-facing
+      /domain/Type: application
+      /domain/SecurityGroups/0:
+        $source:
+          component: 01K2YVY7802FQR0B9T420G2CZY
+          path: /resource_value/GroupId
+      /domain/Subnets/0:
+        $source:
+          component: 01K2YVY401KZ165GM2PWA53EQB
+          path: /resource_value/SubnetId
+      /domain/Subnets/1:
+        $source:
+          component: 01K2YVY6RWK15PJMNSB7MC4ZSY
+          path: /resource_value/SubnetId
+      /domain/Tags/0/Key: Name
+      /domain/Tags/0/Value: demo-load-balancer
+      /domain/extra/Region:
+        $source:
+          component: 01K1X86ZSE24M974VN4QP4SR5S
+          path: /domain/region
+      /secrets/AWS Credential:
+        $source:
+          component: 01K1X844B8K8SH27TK5PT439E6
+          path: /secrets/AWS Credential
+  - id: 01K2YVY2QWD4KA7E1SGD4HBHRM
+    schemaId: 01JK0RQN1KPHVNZE0KPCHHHF6A
+    name: demo-subnet-1-route-association
+    resourceId: rtbassoc-050f0d8b254ff921c
+    attributes:
+      /si/name: demo-subnet-1-route-association
+      /si/type: component
+      /si/resourceId: rtbassoc-050f0d8b254ff921c
+      /domain/RouteTableId:
+        $source:
+          component: 01K2YVY2EZH9K5A3FKZGMDYP2Y
+          path: /resource_value/RouteTableId
+      /domain/SubnetId:
+        $source:
+          component: 01K2YVY401KZ165GM2PWA53EQB
+          path: /resource_value/SubnetId
+      /domain/extra/Region:
+        $source:
+          component: 01K1X86ZSE24M974VN4QP4SR5S
+          path: /domain/region
+      /secrets/AWS Credential:
+        $source:
+          component: 01K1X844B8K8SH27TK5PT439E6
+          path: /secrets/AWS Credential
+  - id: 01K2YVY4E4RGXBBC33S92R1HMY
+    schemaId: 01JK0QZHF2S6BQX68J66MEP7K0
+    name: demo-target-group-ip
+    resourceId: >-
+      arn:aws:elasticloadbalancing:us-east-1:439803112369:targetgroup/QlibDOvsXkRA-BCDDWAB49Q60/178eab28c44ccadd
+    attributes:
+      /si/name: demo-target-group-ip
+      /si/type: component
+      /si/resourceId: >-
+        arn:aws:elasticloadbalancing:us-east-1:439803112369:targetgroup/QlibDOvsXkRA-BCDDWAB49Q60/178eab28c44ccadd
+      /domain/HealthCheckIntervalSeconds: 30
+      /domain/HealthCheckPath: /
+      /domain/HealthCheckProtocol: HTTP
+      /domain/HealthyThresholdCount: 2
+      /domain/Port: 80
+      /domain/Protocol: HTTP
+      /domain/TargetType: ip
+      /domain/UnhealthyThresholdCount: 2
+      /domain/VpcId:
+        $source:
+          component: 01K2YVY4WE8KBM01H05R74RKX8
+          path: /resource_value/VpcId
+      /domain/Tags/0/Key: Name
+      /domain/Tags/0/Value: demo-target-group-ip
+      /domain/Targets/0/Id:
+        $source:
+          component: 01K2YVY30RDDS6W4S2G7EZEQJG
+          path: /resource_value/PrivateIp
+      /domain/Targets/0/Port: 80
+      /domain/Targets/1/Id:
+        $source:
+          component: 01K2YVY6TA2PVWZ9HGBKTW8B2V
+          path: /resource_value/PrivateIp
+      /domain/Targets/1/Port: 80
+      /domain/extra/Region:
+        $source:
+          component: 01K1X86ZSE24M974VN4QP4SR5S
+          path: /domain/region
+      /secrets/AWS Credential:
+        $source:
+          component: 01K1X844B8K8SH27TK5PT439E6
+          path: /secrets/AWS Credential
+  - id: 01K2YVY5R0QT0JDQ8RHX1JJQMP
+    schemaId: 01JK0RQN1KPHVNZE0KPCHHHF6A
+    name: demo-subnet-2-route-association
+    resourceId: rtbassoc-0a2286c4348426697
+    attributes:
+      /si/name: demo-subnet-2-route-association
+      /si/type: component
+      /si/resourceId: rtbassoc-0a2286c4348426697
+      /domain/RouteTableId:
+        $source:
+          component: 01K2YVY2EZH9K5A3FKZGMDYP2Y
+          path: /resource_value/RouteTableId
+      /domain/SubnetId:
+        $source:
+          component: 01K2YVY6RWK15PJMNSB7MC4ZSY
+          path: /resource_value/SubnetId
+      /domain/extra/Region:
+        $source:
+          component: 01K1X86ZSE24M974VN4QP4SR5S
+          path: /domain/region
+      /secrets/AWS Credential:
+        $source:
+          component: 01K1X844B8K8SH27TK5PT439E6
+          path: /secrets/AWS Credential
+  - id: 01K1X86ZSE24M974VN4QP4SR5S
+    schemaId: 01J1QZDXCGJV29YF0FTW61A7R0
+    name: demo virginia
+    resourceId: ""
+    attributes:
+      /si/name: demo virginia
+      /si/type: configurationFrameDown
+      /domain/region: us-east-1
+      /secrets/credential:
+        $source:
+          component: 01K1X844B8K8SH27TK5PT439E6
+          path: /secrets/AWS Credential
+  - id: 01K2YVY7802FQR0B9T420G2CZY
+    schemaId: 01JK0QZHF25PKXSBAYRJ7EF3TA
+    name: demo-web-sg
+    resourceId: sg-0f4f4bfe94445fe83
+    attributes:
+      /si/name: demo-web-sg
+      /si/type: component
+      /si/resourceId: sg-0f4f4bfe94445fe83
+      /domain/GroupDescription: Security group for demo web servers
+      /domain/VpcId:
+        $source:
+          component: 01K2YVY4WE8KBM01H05R74RKX8
+          path: /resource_value/VpcId
+      /domain/SecurityGroupIngress/0/IpProtocol: tcp
+      /domain/SecurityGroupIngress/0/CidrIp: 0.0.0.0/0
+      /domain/SecurityGroupIngress/0/FromPort: 80
+      /domain/SecurityGroupIngress/0/ToPort: 80
+      /domain/SecurityGroupIngress/1/IpProtocol: tcp
+      /domain/SecurityGroupIngress/1/CidrIp: 0.0.0.0/0
+      /domain/SecurityGroupIngress/1/FromPort: 22
+      /domain/SecurityGroupIngress/1/ToPort: 22
+      /domain/Tags/0/Key: Name
+      /domain/Tags/0/Value: demo-web-sg
+      /domain/extra/Region:
+        $source:
+          component: 01K1X86ZSE24M974VN4QP4SR5S
+          path: /domain/region
+      /secrets/AWS Credential:
+        $source:
+          component: 01K1X844B8K8SH27TK5PT439E6
+          path: /secrets/AWS Credential
+  - id: 01K2YVY6TA2PVWZ9HGBKTW8B2V
+    schemaId: 01JK0QZHF0TXMJFVE1VK2175EC
+    name: demo-web-server-2
+    resourceId: i-01e43eee1b95da83e
+    attributes:
+      /si/name: demo-web-server-2
+      /si/type: component
+      /si/resourceId: i-01e43eee1b95da83e
+      /domain/ImageId: ami-0fa96a91a85e7d4a2
+      /domain/InstanceType: t3.micro
+      /domain/KeyName:
+        $source:
+          component: 01K2YVY3Q4ZCWB0Z2WPSRPSKFN
+          path: /domain/KeyName
+      /domain/SubnetId:
+        $source:
+          component: 01K2YVY6RWK15PJMNSB7MC4ZSY
+          path: /resource_value/SubnetId
+      /domain/UserData: >-
+        I2Nsb3VkLWNvbmZpZwpwYWNrYWdlczoKICAtIGRvY2tlcgoKcnVuY21kOgogIC0gc3lzdGVtY3RsIHN0YXJ0IGRvY2tlcgogIC0gc3lzdGVtY3RsIGVuYWJsZSBkb2NrZXIKICAtIHVzZXJtb2QgLWEgLUcgZG9ja2VyIGVjMi11c2VyCiAgLSBzeXN0ZW1jdGwgZGFlbW9uLXJlbG9hZAogIC0gc3lzdGVtY3RsIGVuYWJsZSBzaS1sb2dvLnNlcnZpY2UKICAtIHN5c3RlbWN0bCBzdGFydCBzaS1sb2dvLnNlcnZpY2UKCndyaXRlX2ZpbGVzOgogIC0gcGF0aDogL2V0Yy9zeXN0ZW1kL3N5c3RlbS9zaS1sb2dvLnNlcnZpY2UKICAgIGNvbnRlbnQ6IHwKICAgICAgW1VuaXRdCiAgICAgIERlc2NyaXB0aW9uPVNJIExvZ28gQ29udGFpbmVyCiAgICAgIFJlcXVpcmVzPWRvY2tlci5zZXJ2aWNlCiAgICAgIEFmdGVyPWRvY2tlci5zZXJ2aWNlCiAgICAgIFdhbnRzPW5ldHdvcmstb25saW5lLnRhcmdldAogICAgICBBZnRlcj1uZXR3b3JrLW9ubGluZS50YXJnZXQKICAgICAgCiAgICAgIFtTZXJ2aWNlXQogICAgICBUeXBlPW9uZXNob3QKICAgICAgUmVtYWluQWZ0ZXJFeGl0PXllcwogICAgICBFeGVjU3RhcnRQcmU9LS91c3IvYmluL2RvY2tlciBzdG9wIHNpLWxvZ28KICAgICAgRXhlY1N0YXJ0UHJlPS0vdXNyL2Jpbi9kb2NrZXIgcm0gc2ktbG9nbwogICAgICBFeGVjU3RhcnQ9L3Vzci9iaW4vZG9ja2VyIHJ1biAtZCAtLW5hbWUgc2ktbG9nbyAtcCA4MDo4MCAtLXJlc3RhcnQ9YWx3YXlzIGtlZWIvc2ktbG9nbwogICAgICBFeGVjU3RvcD0vdXNyL2Jpbi9kb2NrZXIgc3RvcCBzaS1sb2dvCiAgICAgIAogICAgICBbSW5zdGFsbF0KICAgICAgV2FudGVkQnk9bXVsdGktdXNlci50YXJnZXQKICAgIHBlcm1pc3Npb25zOiAnMDY0NCc=
+      /domain/SecurityGroupIds/0:
+        $source:
+          component: 01K2YVY7802FQR0B9T420G2CZY
+          path: /resource_value/GroupId
+      /domain/Tags/0/Key: Name
+      /domain/Tags/0/Value: demo-web-server-2
+      /domain/extra/Region:
+        $source:
+          component: 01K1X86ZSE24M974VN4QP4SR5S
+          path: /domain/region
+      /secrets/AWS Credential:
+        $source:
+          component: 01K1X844B8K8SH27TK5PT439E6
+          path: /secrets/AWS Credential
+  - id: 01K2YVY4WE8KBM01H05R74RKX8
+    schemaId: 01JK0RQN1HW97HSBZPKTY8DJK0
+    name: demo-vpc
+    resourceId: vpc-01ea49d66f883b310
+    attributes:
+      /si/name: demo-vpc
+      /si/type: component
+      /si/resourceId: vpc-01ea49d66f883b310
+      /domain/CidrBlock: 10.0.0.0/16
+      /domain/EnableDnsHostnames: true
+      /domain/EnableDnsSupport: true
+      /domain/Tags/0/Key: Name
+      /domain/Tags/0/Value: demo-vpc
+      /domain/extra/Region:
+        $source:
+          component: 01K1X86ZSE24M974VN4QP4SR5S
+          path: /domain/region
+      /secrets/AWS Credential:
+        $source:
+          component: 01K1X844B8K8SH27TK5PT439E6
+          path: /secrets/AWS Credential
+  - id: 01K2YVY3Q4ZCWB0Z2WPSRPSKFN
+    schemaId: 01JK0QZHF6WTBHZ754KBTPBR7A
+    name: demo-keypair
+    resourceId: monk-demo-keypair
+    attributes:
+      /si/name: demo-keypair
+      /si/type: component
+      /si/resourceId: monk-demo-keypair
+      /domain/KeyName: monk-demo-keypair
+      /domain/KeyType: rsa
+      /domain/PublicKeyMaterial: >-
+        ssh-rsa
+        AAAAB3NzaC1yc2EAAAADAQABAAACAQDaUs/b5Wmmgk0cWmqbclZ9V5aK06mz3hZoYv6Q+H9eTDuy1dYLbyG1iKOL87wtnJzohuUuYoWKTe+qd+FrT0Kqy8jilKl3AFx9BE3fUaj2Y/Np/nL7iLNljapNBCgqhHTX1JA/QLdiOzzPNMwKjsulTKnPB4sN4rlRE+cEnaChBtPXKV/UxhSSSoNNs93kIwlCdPxFyAFz+F9OYWJcMeqIVjP/q2zEBAif98lrY6sj8g5RG9YRH1HMFsH5gJQqFSEO7azhMTkOMnV2py0G/lUW9v1YnEP1OTSVCDHY7UoJTwjkGDrbCJZ2WO6Uxk4GJxnWPYMOQsqTHhMEUlbYmSjvhcvFwQWjDL2tcOiHgF8hP/dW/jaHYbEZdrSTdmcZae8KPfM9iCqiKUluqa/+hE18qWzO/f4cm4L3OTGMrFB4ro+Z4OjO8h+NaeEGpgwKc//buD+SwRH9iRKAUOZGmfOR2LceltT5wFBWu/Ps0jK2aZguipGSutKF1zXdiZULRrh+7/BLo5yV5YtHC1k2IYV/U4ixZUHhj6jU3KMPHBByfoB9D0rfPSq+PIwRh0MOBhnl9K3B+rvfsEo4Y549caHbzhJwOTTxpkwgtZPvoZtfZWxtTYoooZ9T7BWgxHCQm12jHFWxdd0muODBQGubjXHiatVUu+mumm2bm9vkVV2K/Q==
+        adam@stalecoffee.org
+      /domain/Tags/0/Key: Name
+      /domain/Tags/0/Value: demo-keypair
+      /domain/extra/Region:
+        $source:
+          component: 01K1X86ZSE24M974VN4QP4SR5S
+          path: /domain/region
+      /secrets/AWS Credential:
+        $source:
+          component: 01K1X844B8K8SH27TK5PT439E6
+          path: /secrets/AWS Credential
+  - id: 01K2YVY401KZ165GM2PWA53EQB
+    schemaId: 01JK0QZHF6ZSY6JFM39MBCRJ4C
+    name: demo-subnet-1
+    resourceId: subnet-0a7ea797cae0260ca
+    attributes:
+      /si/name: demo-subnet-1
+      /si/type: component
+      /si/resourceId: subnet-0a7ea797cae0260ca
+      /domain/VpcId:
+        $source:
+          component: 01K2YVY4WE8KBM01H05R74RKX8
+          path: /resource_value/VpcId
+      /domain/AvailabilityZone: us-east-1a
+      /domain/CidrBlock: 10.0.1.0/24
+      /domain/MapPublicIpOnLaunch: true
+      /domain/Tags/0/Key: Name
+      /domain/Tags/0/Value: demo-subnet-1
+      /domain/extra/Region:
+        $source:
+          component: 01K1X86ZSE24M974VN4QP4SR5S
+          path: /domain/region
+      /secrets/AWS Credential:
+        $source:
+          component: 01K1X844B8K8SH27TK5PT439E6
+          path: /secrets/AWS Credential
+  - id: 01K2YVY6CK4N0B1VWT9RK9SM11
+    schemaId: 01JK6WJ0ZYSZA072NEDDF5BGDD
+    name: demo-alb-listener
+    resourceId: >-
+      arn:aws:elasticloadbalancing:us-east-1:439803112369:listener/app/monk-demo-load-balancer/a1987716e75e3460/9c24d74088ed9c5c
+    attributes:
+      /si/name: demo-alb-listener
+      /si/type: component
+      /si/resourceId: >-
+        arn:aws:elasticloadbalancing:us-east-1:439803112369:listener/app/monk-demo-load-balancer/a1987716e75e3460/9c24d74088ed9c5c
+      /domain/LoadBalancerArn:
+        $source:
+          component: 01K2YVY5S8VCNJPHDHDR795H28
+          path: /resource_value/LoadBalancerArn
+      /domain/Port: 81
+      /domain/Protocol: HTTP
+      /domain/DefaultActions/0/Type: forward
+      /domain/DefaultActions/0/TargetGroupArn:
+        $source:
+          component: 01K2YVY4E4RGXBBC33S92R1HMY
+          path: /resource_value/TargetGroupArn
+      /domain/extra/Region:
+        $source:
+          component: 01K1X86ZSE24M974VN4QP4SR5S
+          path: /domain/region
+      /secrets/AWS Credential:
+        $source:
+          component: 01K1X844B8K8SH27TK5PT439E6
+          path: /secrets/AWS Credential
+  - id: 01K2YVY7H0RK6X79WPJ4GG5FT9
+    schemaId: 01JK0RQN156NY7QDMBZ4P18PES
+    name: demo-igw
+    resourceId: igw-0bf0c0ae1125956ad
+    attributes:
+      /si/name: demo-igw
+      /si/type: component
+      /si/resourceId: igw-0bf0c0ae1125956ad
+      /domain/Tags/0/Key: Name
+      /domain/Tags/0/Value: demo-igw
+      /domain/extra/Region:
+        $source:
+          component: 01K1X86ZSE24M974VN4QP4SR5S
+          path: /domain/region
+      /secrets/AWS Credential:
+        $source:
+          component: 01K1X844B8K8SH27TK5PT439E6
+          path: /secrets/AWS Credential
+  - id: 01K2YVY30RDDS6W4S2G7EZEQJG
+    schemaId: 01JK0QZHF0TXMJFVE1VK2175EC
+    name: demo-web-server-1
+    resourceId: i-02ce2e222aa86530b
+    attributes:
+      /si/name: demo-web-server-1
+      /si/type: component
+      /si/resourceId: i-02ce2e222aa86530b
+      /domain/ImageId: ami-0fa96a91a85e7d4a2
+      /domain/InstanceType: t3.micro
+      /domain/KeyName:
+        $source:
+          component: 01K2YVY3Q4ZCWB0Z2WPSRPSKFN
+          path: /domain/KeyName
+      /domain/SubnetId:
+        $source:
+          component: 01K2YVY401KZ165GM2PWA53EQB
+          path: /resource_value/SubnetId
+      /domain/UserData: >-
+        I2Nsb3VkLWNvbmZpZwpwYWNrYWdlczoKICAtIGRvY2tlcgoKcnVuY21kOgogIC0gc3lzdGVtY3RsIHN0YXJ0IGRvY2tlcgogIC0gc3lzdGVtY3RsIGVuYWJsZSBkb2NrZXIKICAtIHVzZXJtb2QgLWEgLUcgZG9ja2VyIGVjMi11c2VyCiAgLSBzeXN0ZW1jdGwgZGFlbW9uLXJlbG9hZAogIC0gc3lzdGVtY3RsIGVuYWJsZSBzaS1sb2dvLnNlcnZpY2UKICAtIHN5c3RlbWN0bCBzdGFydCBzaS1sb2dvLnNlcnZpY2UKCndyaXRlX2ZpbGVzOgogIC0gcGF0aDogL2V0Yy9zeXN0ZW1kL3N5c3RlbS9zaS1sb2dvLnNlcnZpY2UKICAgIGNvbnRlbnQ6IHwKICAgICAgW1VuaXRdCiAgICAgIERlc2NyaXB0aW9uPVNJIExvZ28gQ29udGFpbmVyCiAgICAgIFJlcXVpcmVzPWRvY2tlci5zZXJ2aWNlCiAgICAgIEFmdGVyPWRvY2tlci5zZXJ2aWNlCiAgICAgIFdhbnRzPW5ldHdvcmstb25saW5lLnRhcmdldAogICAgICBBZnRlcj1uZXR3b3JrLW9ubGluZS50YXJnZXQKICAgICAgCiAgICAgIFtTZXJ2aWNlXQogICAgICBUeXBlPW9uZXNob3QKICAgICAgUmVtYWluQWZ0ZXJFeGl0PXllcwogICAgICBFeGVjU3RhcnRQcmU9LS91c3IvYmluL2RvY2tlciBzdG9wIHNpLWxvZ28KICAgICAgRXhlY1N0YXJ0UHJlPS0vdXNyL2Jpbi9kb2NrZXIgcm0gc2ktbG9nbwogICAgICBFeGVjU3RhcnQ9L3Vzci9iaW4vZG9ja2VyIHJ1biAtZCAtLW5hbWUgc2ktbG9nbyAtcCA4MDo4MCAtLXJlc3RhcnQ9YWx3YXlzIGtlZWIvc2ktbG9nbwogICAgICBFeGVjU3RvcD0vdXNyL2Jpbi9kb2NrZXIgc3RvcCBzaS1sb2dvCiAgICAgIAogICAgICBbSW5zdGFsbF0KICAgICAgV2FudGVkQnk9bXVsdGktdXNlci50YXJnZXQKICAgIHBlcm1pc3Npb25zOiAnMDY0NCc=
+      /domain/SecurityGroupIds/0:
+        $source:
+          component: 01K2YVY7802FQR0B9T420G2CZY
+          path: /resource_value/GroupId
+      /domain/Tags/0/Key: Name
+      /domain/Tags/0/Value: demo-web-server-1
+      /domain/extra/Region:
+        $source:
+          component: 01K1X86ZSE24M974VN4QP4SR5S
+          path: /domain/region
+      /secrets/AWS Credential:
+        $source:
+          component: 01K1X844B8K8SH27TK5PT439E6
+          path: /secrets/AWS Credential
+  - id: 01K2YVY2EZH9K5A3FKZGMDYP2Y
+    schemaId: 01JK0RQN1A2WMW5QRD0SNJS40A
+    name: demo-route-table
+    resourceId: rtb-038186a1d0598e000
+    attributes:
+      /si/name: demo-route-table
+      /si/type: component
+      /si/resourceId: rtb-038186a1d0598e000
+      /domain/VpcId:
+        $source:
+          component: 01K2YVY4WE8KBM01H05R74RKX8
+          path: /resource_value/VpcId
+      /domain/Tags/0/Key: Name
+      /domain/Tags/0/Value: demo-route-table
+      /domain/extra/Region:
+        $source:
+          component: 01K1X86ZSE24M974VN4QP4SR5S
+          path: /domain/region
+      /secrets/AWS Credential:
+        $source:
+          component: 01K1X844B8K8SH27TK5PT439E6
+          path: /secrets/AWS Credential
+  - id: 01K2YVY6RWK15PJMNSB7MC4ZSY
+    schemaId: 01JK0QZHF6ZSY6JFM39MBCRJ4C
+    name: demo-subnet-2
+    resourceId: subnet-07463ae6705dcd83a
+    attributes:
+      /si/name: demo-subnet-2
+      /si/type: component
+      /si/resourceId: subnet-07463ae6705dcd83a
+      /domain/VpcId:
+        $source:
+          component: 01K2YVY4WE8KBM01H05R74RKX8
+          path: /resource_value/VpcId
+      /domain/AvailabilityZone: us-east-1b
+      /domain/CidrBlock: 10.0.2.0/24
+      /domain/MapPublicIpOnLaunch: true
+      /domain/Tags/0/Key: Name
+      /domain/Tags/0/Value: demo-subnet-2
+      /domain/extra/Region:
+        $source:
+          component: 01K1X86ZSE24M974VN4QP4SR5S
+          path: /domain/region
+      /secrets/AWS Credential:
+        $source:
+          component: 01K1X844B8K8SH27TK5PT439E6
+          path: /secrets/AWS Credential
+  - id: 01K2YVY6W9K5C4V1RZ0DC4X5X5
+    schemaId: 01JK0RQN1KE1WE69HPDAJDHNV8
+    name: demo-internet-route
+    resourceId: rtb-038186a1d0598e000|0.0.0.0/0
+    attributes:
+      /si/name: demo-internet-route
+      /si/type: component
+      /si/resourceId: rtb-038186a1d0598e000|0.0.0.0/0
+      /domain/RouteTableId:
+        $source:
+          component: 01K2YVY2EZH9K5A3FKZGMDYP2Y
+          path: /resource_value/RouteTableId
+      /domain/DestinationCidrBlock: 0.0.0.0/0
+      /domain/GatewayId:
+        $source:
+          component: 01K2YVY7H0RK6X79WPJ4GG5FT9
+          path: /resource_value/InternetGatewayId
+      /domain/extra/Region:
+        $source:
+          component: 01K1X86ZSE24M974VN4QP4SR5S
+          path: /domain/region
+      /secrets/AWS Credential:
+        $source:
+          component: 01K1X844B8K8SH27TK5PT439E6
+          path: /secrets/AWS Credential
+schemas:
+  01JK0RQN1ATZRE54Z8242TMNYH:
+    schemaId: 01JK0RQN1ATZRE54Z8242TMNYH
+    name: "AWS::EC2::VPCGatewayAttachment"
+    defaultVariantId: 01K5YJ36BEYPBC8WT75557FDDD
+    variantIds:
+      - 01K1X89JM0QCF1QV2ZFAMZWVFT
+      - 01K5YJ36BEYPBC8WT75557FDDD
+  01J1QZ621A10A8VP1CTPPKKSCP:
+    schemaId: 01J1QZ621A10A8VP1CTPPKKSCP
+    name: AWS Credential
+    defaultVariantId: 01K1X8449ESM6SHJFHG20KN7ZA
+    variantIds:
+      - 01K1X8449ESM6SHJFHG20KN7ZA
+  01K1EBKAX5ZXWXG5W0TT2EN0KX:
+    schemaId: 01K1EBKAX5ZXWXG5W0TT2EN0KX
+    name: SI Demo 07-30-2025
+    defaultVariantId: 01K1X87YQRS0QRY0V89631FR80
+    variantIds:
+      - 01K1X87YQRS0QRY0V89631FR80
+  01JK0QZHFDAPTZ62VGAAQA6DKA:
+    schemaId: 01JK0QZHFDAPTZ62VGAAQA6DKA
+    name: "AWS::ElasticLoadBalancingV2::LoadBalancer"
+    defaultVariantId: 01K5YJ39V1GM83P4HH42RR18N5
+    variantIds:
+      - 01K5YJ39V1GM83P4HH42RR18N5
+      - 01K1X89K9XB7NGR68V8B7Q24TA
+  01JK0RQN1KPHVNZE0KPCHHHF6A:
+    schemaId: 01JK0RQN1KPHVNZE0KPCHHHF6A
+    name: "AWS::EC2::SubnetRouteTableAssociation"
+    defaultVariantId: 01K5YJ2XHHF66M5247GX5YXPR2
+    variantIds:
+      - 01K5YJ2XHHF66M5247GX5YXPR2
+      - 01K1X89JSWSDV90C61PZJ0BWRC
+  01JK0QZHF2S6BQX68J66MEP7K0:
+    schemaId: 01JK0QZHF2S6BQX68J66MEP7K0
+    name: "AWS::ElasticLoadBalancingV2::TargetGroup"
+    defaultVariantId: 01K5YJ305MMK122TYCF5Q9RAK1
+    variantIds:
+      - 01K5YJ305MMK122TYCF5Q9RAK1
+      - 01K1X89KMF6WQC365V96R8SKD8
+  01J1QZDXCGJV29YF0FTW61A7R0:
+    schemaId: 01J1QZDXCGJV29YF0FTW61A7R0
+    name: Region
+    defaultVariantId: 01K1X86ZQNTN2YH5JK7YTJVB92
+    variantIds:
+      - 01K1X86ZQNTN2YH5JK7YTJVB92
+  01JK0QZHF25PKXSBAYRJ7EF3TA:
+    schemaId: 01JK0QZHF25PKXSBAYRJ7EF3TA
+    name: "AWS::EC2::SecurityGroup"
+    defaultVariantId: 01K5YJ313792R57Y96KPRR70RE
+    variantIds:
+      - 01K1X89K1AADDFKFBS1QWS719X
+      - 01K5YJ313792R57Y96KPRR70RE
+  01JK0QZHF0TXMJFVE1VK2175EC:
+    schemaId: 01JK0QZHF0TXMJFVE1VK2175EC
+    name: "AWS::EC2::Instance"
+    defaultVariantId: 01K5YJ32ZWWGVJGZBWW7C5146R
+    variantIds:
+      - 01K1X89HFSB5T5X9K86T94CD5P
+      - 01K5YJ32ZWWGVJGZBWW7C5146R
+  01JK0RQN1HW97HSBZPKTY8DJK0:
+    schemaId: 01JK0RQN1HW97HSBZPKTY8DJK0
+    name: "AWS::EC2::VPC"
+    defaultVariantId: 01K5YJ2YCG5TXG23ZEAQG8A0VY
+    variantIds:
+      - 01K1X89J2Q9EJ4VE8PXJFBVSFV
+      - 01K5YJ2YCG5TXG23ZEAQG8A0VY
+  01JK0QZHF6WTBHZ754KBTPBR7A:
+    schemaId: 01JK0QZHF6WTBHZ754KBTPBR7A
+    name: "AWS::EC2::KeyPair"
+    defaultVariantId: 01K5YJ358XW8QYMWJBEQAKXS9B
+    variantIds:
+      - 01K5YJ358XW8QYMWJBEQAKXS9B
+      - 01K1X89HB7310RCZ7DJ84B1NAJ
+  01JK0QZHF6ZSY6JFM39MBCRJ4C:
+    schemaId: 01JK0QZHF6ZSY6JFM39MBCRJ4C
+    name: "AWS::EC2::Subnet"
+    defaultVariantId: 01K5YJ37EXHXJDN0PMTG85AQCM
+    variantIds:
+      - 01K1X89J8AM3K2576CBFMXKYME
+      - 01K5YJ37EXHXJDN0PMTG85AQCM
+  01JK6WJ0ZYSZA072NEDDF5BGDD:
+    schemaId: 01JK6WJ0ZYSZA072NEDDF5BGDD
+    name: "AWS::ElasticLoadBalancingV2::Listener"
+    defaultVariantId: 01K5YJ344RM9E5ED12QN6KHMHK
+    variantIds:
+      - 01K1X89HRHCXFQ2MFMF538VQDQ
+      - 01K5YJ344RM9E5ED12QN6KHMHK
+  01JK0RQN156NY7QDMBZ4P18PES:
+    schemaId: 01JK0RQN156NY7QDMBZ4P18PES
+    name: "AWS::EC2::InternetGateway"
+    defaultVariantId: 01K5YJ38NNY132QDT79JQ4F4RP
+    variantIds:
+      - 01K1X89HY6BZFG35W9AC16T3QJ
+      - 01K5YJ38NNY132QDT79JQ4F4RP
+  01JK0RQN1A2WMW5QRD0SNJS40A:
+    schemaId: 01JK0RQN1A2WMW5QRD0SNJS40A
+    name: "AWS::EC2::RouteTable"
+    defaultVariantId: 01K5YJ2ZA5EP4V1FYR3359EK8M
+    variantIds:
+      - 01K5YJ2ZA5EP4V1FYR3359EK8M
+      - 01K1X89JEK8T8MFGY4GS894D23
+  01JK0RQN1KE1WE69HPDAJDHNV8:
+    schemaId: 01JK0RQN1KE1WE69HPDAJDHNV8
+    name: "AWS::EC2::Route"
+    defaultVariantId: 01K5YJ32153TXSKKMS17E64G9T
+    variantIds:
+      - 01K1X89H6V04TDS77CQSWFJ0JQ
+      - 01K5YJ32153TXSKKMS17E64G9T
