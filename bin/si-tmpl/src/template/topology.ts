@@ -7,8 +7,22 @@ import type {
 } from "./converge_types.ts";
 
 /**
- * Orders changes based on dependencies using topological sort.
- * Ensures creates happen before subscriptions that depend on them.
+ * Orders changes based on dependencies using topological sort (Kahn's algorithm).
+ *
+ * This function ensures that components are created and updated in the correct order
+ * to satisfy subscription dependencies. For example, if component A subscribes to
+ * component B's attributes, B must be created before A.
+ *
+ * The algorithm:
+ * 1. Builds a dependency graph from create/update dependencies
+ * 2. Sorts creates by dependency order (components with no dependencies first)
+ * 3. Sorts updates by dependency order (less critical but maintains consistency)
+ * 4. Appends deletes last (nothing depends on deleted components)
+ *
+ * @param ctx - Template context for logging
+ * @param pending - Pending changes with dependency information
+ * @returns Ordered array of changes ready for execution
+ * @throws Error if circular dependencies are detected
  */
 export function topologicalSort(
   ctx: TemplateContext,

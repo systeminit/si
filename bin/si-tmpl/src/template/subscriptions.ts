@@ -7,9 +7,20 @@ import type {
 } from "./converge_types.ts";
 
 /**
- * Rewrites subscriptions in pending changes from workingSet IDs to SI component IDs.
- * This ensures that subscriptions reference the correct components after they are
- * created or updated in System Initiative.
+ * Rewrites subscriptions in pending changes from working set IDs to System Initiative component IDs.
+ *
+ * This function ensures that component subscriptions reference the correct target components
+ * after they are created or updated in System Initiative. It handles three cases:
+ * 1. **Existing components**: Translates working set IDs to SI IDs for components that already exist
+ * 2. **Pending creates**: Keeps working set IDs as dependencies for components that will be created
+ * 3. **External references**: Preserves subscriptions that reference components by name or existing SI ID
+ *
+ * The rewritten subscriptions and dependency lists enable proper topological sorting
+ * to ensure components are created in the correct order.
+ *
+ * @param ctx - Template context for logging
+ * @param pending - Pending changes with subscriptions to rewrite
+ * @returns Updated PendingChanges with rewritten subscriptions and populated dependency lists
  */
 export function rewriteSubscriptions(
   ctx: TemplateContext,
