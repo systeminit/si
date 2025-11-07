@@ -75,8 +75,20 @@ CREATE OR REPLACE VIEW workspace_operations.owner_si_hours AS
      CROSS JOIN workspace_operations.owners
      WHERE first_hour <= hour_start;
 
--- workspace_update_events, with data cleanup
-CREATE OR REPLACE VIEW workspace_operations.workspace_update_events_clean AS
+-- workspace_update_events, materialized, with data cleanup.
+--
+-- NOTE: this does not auto refresh (and cannot, since it's pulling from an external schema).
+-- We have a scheduled "REFRESH MATERIALIZED VIEW" query set up in Redshift. If you recreate
+-- this view or move to a new Redshift, you will 
+--
+-- NOTE: this also does not *incrementally* refresh, also because it's an external schema; each
+-- refresh rebuilds the whole view. This is not intended as a permanent situation; the pipeline
+-- is due for a rebuild, but we want to wait a bit as our requirements are likely to change as
+-- well in the near future.
+CREATE MATERIALIZED VIEW workspace_operations.workspace_update_events_clean
+  DISTKEY (workspace_id)
+  SORTKEY (workspace_id, event_timestamp)
+  AS
     SELECT workspace_id,
            change_set_id,
            workspace_operations.parse_timestamp(event_timestamp) AS event_timestamp,
@@ -95,8 +107,9 @@ CREATE OR REPLACE VIEW workspace_operations.workspace_update_events_clean AS
            partition_1,
            partition_2,
            partition_3
-      FROM workspace_update_events.workspace_update_events
-WITH NO SCHEMA BINDING;
+      -- This is the ONLY QUERY that should read from this external schema. Use
+      -- this materialized view instead.
+      FROM workspace_update_events.workspace_update_events;
 
 -- Status of workspace_update_events ingestion, including when we consider events to be complete
 CREATE OR REPLACE VIEW workspace_operations.workspace_update_events_summary AS
