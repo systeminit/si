@@ -1005,6 +1005,7 @@ const onEscape = () => {
     delete query.map;
     delete query.c;
     delete query.hideSubscriptions; // Also clear hideSubscriptions when closing map
+    delete query.showDiff;
     query.grid = "1";
     router.push({ query });
   }
@@ -1128,6 +1129,8 @@ const mapData = computed(() => {
   const shouldHideUnconnected =
     router.currentRoute.value.query.hideSubscriptions === "1";
 
+  const showOnlyDiff = router.currentRoute.value.query.showDiff === "1";
+
   const hasSelectedComponents = selectedComponents.value.size > 0;
 
   // First pass: collect all components and their connections
@@ -1137,6 +1140,7 @@ const mapData = computed(() => {
   connections.data.value.forEach((c) => {
     const component = componentsById.value[c.id];
     if (!component) return;
+    if (showOnlyDiff && component.diffStatus === "None") return;
     allComponents.set(c.id, component);
 
     c.connections.forEach((e) => {
@@ -1163,6 +1167,8 @@ const mapData = computed(() => {
 
     // Add directly connected components
     selectedComponents.value.forEach((selectedComp) => {
+      if (showOnlyDiff && selectedComp.diffStatus === "None") return;
+
       const selectedId = selectedComp.id;
 
       connections.data.value?.forEach((component) => {
@@ -1201,8 +1207,10 @@ const mapData = computed(() => {
   } else {
     // Normal mode: include all components
     allComponents.forEach((component, componentId) => {
-      nodes.add(componentId);
-      components[componentId] = component;
+      if (!showOnlyDiff || (showOnlyDiff && component.diffStatus !== "None")) {
+        nodes.add(componentId);
+        components[componentId] = component;
+      }
     });
 
     allConnections.forEach((edge) => {

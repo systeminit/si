@@ -74,7 +74,6 @@
           />
         </ul>
         <div
-          v-if="featureFlagsStore.DEFAULT_SUBS"
           :class="
             clsx(
               'border w-full',
@@ -137,7 +136,6 @@ import {
 } from "@/workers/types/entity_kind_types";
 import { encryptMessage } from "@/utils/messageEncryption";
 import { AttributePath, ComponentId } from "@/api/sdf/dal/component";
-import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import AttributeChildLayout from "./AttributeChildLayout.vue";
 import AttributeInput from "./AttributeInput.vue";
 import AttributeInputRequiredProperty from "./AttributeInputRequiredProperty.vue";
@@ -146,8 +144,6 @@ import { useApi, routes, componentTypes } from "../api_composables";
 import { useWatchedForm } from "../logic_composables/watched_form";
 import SecretInput from "./SecretInput.vue";
 import { MouseDetails, mouseEmitter } from "../logic_composables/emitters";
-
-const featureFlagsStore = useFeatureFlagsStore();
 
 const props = defineProps<{
   component: BifrostComponent | ComponentInList;

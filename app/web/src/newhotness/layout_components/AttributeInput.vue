@@ -733,7 +733,6 @@
             />
           </div>
           <label
-            v-if="featureFlagsStore.DEFAULT_SUBS"
             tabindex="0"
             data-default-sub-checkbox="label"
             :for="`checkbox-${prop?.id}`"
@@ -828,7 +827,6 @@ import CodeViewer from "@/components/CodeViewer.vue";
 import { PropKind } from "@/api/sdf/dal/prop";
 import { CategorizedPossibleConnections } from "@/workers/types/dbinterface";
 import { AttributePath, ComponentId } from "@/api/sdf/dal/component";
-import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import {
   attributeEmitter,
   MouseDetails,
@@ -851,8 +849,6 @@ type UIConnectionRow = {
 export type UIPotentialConnection = PossibleConnection & {
   pathArray: string[];
 };
-
-const featureFlagsStore = useFeatureFlagsStore();
 
 const props = defineProps<{
   path: AttributePath;
