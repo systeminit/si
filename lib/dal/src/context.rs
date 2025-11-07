@@ -68,6 +68,7 @@ use si_events::{
 use si_id::{
     ActionId,
     ComponentId,
+    DebugFuncJobStateId,
     ManagementPrototypeId,
     ViewId,
 };
@@ -1159,6 +1160,19 @@ impl DalContext {
                 // TODO(nick): make this required.
                 Some(request_ulid),
             )
+            .await;
+
+        Ok(())
+    }
+
+    pub async fn enqueue_debug_func(
+        &self,
+        job_state_id: DebugFuncJobStateId,
+    ) -> TransactionsResult<()> {
+        self.txns()
+            .await?
+            .job_queue
+            .enqueue_debug_func_job(self.workspace_pk()?, self.change_set_id(), job_state_id)
             .await;
 
         Ok(())

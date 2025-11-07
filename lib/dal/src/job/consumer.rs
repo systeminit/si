@@ -34,7 +34,10 @@ use crate::{
     attribute::value::AttributeValueError,
     billing_publish::BillingPublishError,
     diagram::DiagramError,
-    func::runner::FuncRunnerError,
+    func::{
+        debug::DebugFuncError,
+        runner::FuncRunnerError,
+    },
     job::{
         definition::{
             ManagementFuncJobError,
@@ -68,6 +71,8 @@ pub enum JobConsumerError {
     Component(#[from] Box<ComponentError>),
     #[error("component {0} is destroyed")]
     ComponentIsDestroyed(ComponentId),
+    #[error("debug func error: {0}")]
+    DebugFunc(#[from] Box<DebugFuncError>),
     #[error("dependent value update error: {0}")]
     DependentValueUpdate(#[from] Box<DependentValueUpdateError>),
     #[error("diagram error: {0}")]
@@ -221,8 +226,11 @@ pub enum RetryBackoff {
 /// with the requested backoff and limit
 pub enum JobCompletionState {
     Retry {
+        /// Maximum number of retries
         limit: u32,
+        /// Retry backoff strategy
         backoff: RetryBackoff,
+        /// Minimum sleep ms for retry
         minimum: u32,
     },
     Done,

@@ -7,6 +7,7 @@ mod actions;
 mod change_sets;
 pub mod common;
 mod components;
+mod debug_funcs;
 mod funcs;
 mod management_funcs;
 mod schemas;
@@ -100,6 +101,11 @@ pub use components::{
         UpdateComponentV1Response,
     },
     upgrade_component::UpgradeComponentV1Response,
+};
+pub use debug_funcs::{
+    ExecDebugFuncV1Request,
+    ExecDebugFuncV1Response,
+    GetDebugFuncJobStateV1Response,
 };
 pub use funcs::{
     FuncRunV1RequestPath,
@@ -213,6 +219,8 @@ pub use crate::api_types::func_run::v1::{
         components::erase_component::erase_component,
         components::restore_component::restore_component,
         components::get_component_resource::get_component_resource,
+        debug_funcs::exec_debug_func::exec_debug_func,
+        debug_funcs::get_debug_func_state::get_debug_func_state,
         schemas::list_schemas::list_schemas,
         schemas::find_schema::find_schema,
         schemas::get_schema::get_schema,
@@ -338,6 +346,9 @@ pub use crate::api_types::func_run::v1::{
             UpdateSchemaVariantV1Request,
             SearchV1Request,
             SearchV1Response,
+            ExecDebugFuncV1Request,
+            ExecDebugFuncV1Response,
+            GetDebugFuncJobStateV1Response,
         )
     ),
     tags(
@@ -348,6 +359,7 @@ pub use crate::api_types::func_run::v1::{
         (name = "actions", description = "Action management endpoints"),
         (name = "secrets", description = "Secret management endpoints"),
         (name = "funcs", description = "Functions management endpoints"),
+        (name = "debug_funcs", description = "Debug function endpoints"),
         (name = "management_funcs", description = "Management functions endpoints")
     )
 )]

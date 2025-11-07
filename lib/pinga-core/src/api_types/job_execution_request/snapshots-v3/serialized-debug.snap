@@ -1,0 +1,15 @@
+---
+source: lib/pinga-core/src/api_types/job_execution_request.rs
+description: "\n\n!!!\n!!! System Initiative Developers:\n!!!\n!!! IMPORTANT:\n!!!\n!!!     The contents of this snapshot should *never* be modified as it\n!!!     represents the serialization of a versioned Rust type. If a tests fails\n!!!     with this warning, then something about a Rust type has changed\n!!!     the wire serialization of this type and would represent a potential\n!!!     production outage or data corruption.\n!!!\n!!!     Consider this an erroneous behavioral change of the Rust code and *not*\n!!!     an out-of-date snapshot or fixture!\n!!!\n\n\n"
+---
+{
+  "id": "01JQCVVDHXYX6S9YCV773R13MG",
+  "workspaceId": "01JVRJNMKGRDDSVQ5Y72R0R9F8",
+  "changeSetId": "01JVRJSRHT964D53MWMTXYBXVK",
+  "args": {
+    "debugFunc": {
+      "debugFuncJobStateId": "01JVX336AZEFB82369PQGMCTM4"
+    }
+  },
+  "isJobBlocking": true
+}

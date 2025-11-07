@@ -100,6 +100,7 @@ async fn app_state_middeware<B>(
         (name = "secrets", description = "Secrets management endpoints"),
         (name = "funcs", description = "Functions management endpoints"),
         (name = "management_funcs", description = "Management functions endpoints"),
+        (name = "debug_funcs", description = "Debug function endpoints"),
         (name = "workspace_management", description = "Workspace management endpoints"),
     ),
     info(

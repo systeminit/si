@@ -82,6 +82,7 @@ pub mod argument;
 pub mod authoring;
 pub mod backend;
 pub mod binding;
+pub mod debug;
 pub mod intrinsics;
 mod kind;
 pub mod leaf;
