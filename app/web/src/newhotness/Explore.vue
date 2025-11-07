@@ -183,18 +183,56 @@
               />
             </template>
           </TabGroupToggle>
-          <label v-if="!showGrid" class="text-sm">
-            <input
-              type="checkbox"
-              :checked="queryHideSubscriptions"
-              class="focus:outline-none"
+          <template v-if="!showGrid">
+            <button
+              v-if="!ctx.onHead.value"
+              :class="
+                clsx(
+                  'flex flex-row gap-xs items-center border rounded-sm',
+                  'p-2xs mb-[-1px] h-7',
+                  'font-mono text-[13px] text-left truncate relative',
+                  themeClasses(
+                    'border-neutral-400 hover:border-action-500',
+                    'border-neutral-600 hover:border-action-300',
+                  ),
+                  queryOnlyDiff
+                    ? themeClasses('bg-action-200', 'bg-action-900')
+                    : themeClasses('bg-neutral-100', 'bg-neutral-900'),
+                )
+              "
+              @click="toggleOnlyDiff"
+            >
+              <Icon
+                name="tilde-circle"
+                :class="themeClasses('text-warning-500', 'text-warning-300')"
+                size="xs"
+              />
+              <span>See only diffs</span>
+            </button>
+            <button
+              v-if="mapRef?.selectedComponents.size || 0 > 0"
+              :class="
+                clsx(
+                  'flex flex-row gap-xs items-center border rounded-sm',
+                  'p-2xs mb-[-1px] h-7',
+                  'font-mono text-[13px] text-left truncate relative',
+                  themeClasses(
+                    'border-neutral-400 hover:border-action-500',
+                    'border-neutral-600 hover:border-action-300',
+                  ),
+                  queryHideSubscriptions
+                    ? themeClasses('bg-action-200', 'bg-action-900')
+                    : themeClasses('bg-neutral-100', 'bg-neutral-900'),
+                )
+              "
               @click="toggleHide"
-            />
-            Hide unconnected components
-          </label>
+            >
+              <Icon name="hide" size="xs" />
+              <span>Hide unconnected components</span>
+            </button>
+          </template>
           <div v-if="showGrid" class="ml-auto flex flex-row flex-wrap gap-xs">
             <DefaultSubscriptionsButton
-              v-if="featureFlagsStore.DEFAULT_SUBS"
               :selected="gridMode.mode === 'defaultSubscriptions'"
               @click="clickDefaultSubscriptionsButton"
             />
@@ -705,6 +743,24 @@ const collapsingStyles = computed(() =>
   ]),
 );
 
+const queryOnlyDiff = computed(() => {
+  const query: SelectionsInQueryString = {
+    ...router.currentRoute.value?.query,
+  };
+  return query.showDiff === "1";
+});
+
+const toggleOnlyDiff = () => {
+  const query: SelectionsInQueryString = {
+    ...router.currentRoute.value?.query,
+  };
+  if (queryOnlyDiff.value) {
+    delete query.showDiff;
+  } else {
+    query.showDiff = "1";
+  }
+  router.replace({ query });
+};
 const queryHideSubscriptions = computed(() => {
   const query: SelectionsInQueryString = {
     ...router.currentRoute.value?.query,

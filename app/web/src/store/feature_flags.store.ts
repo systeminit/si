@@ -23,7 +23,6 @@ const USER_FLAG_MAPPING = {
   PROPS_TO_PROPS_CONNECTIONS: "props-to-props-connections",
   ENABLE_NEW_EXPERIENCE: "enable-new-experience",
   REVIEW_PAGE: "review-page",
-  DEFAULT_SUBS: "default-subs",
   COMPONENT_HISTORY_FUNCS: "component-history-funcs",
   REVERSE_TRUNCATION: "reverse-truncation",
   AZURE_SCHEMAS: "ms-azure-schemas",
