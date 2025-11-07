@@ -12,13 +12,15 @@
   "exports": {
     ".": "./src/template.ts"
   },
-  "exclude": [
-    "**/*_test.ts",
-    "**/*.test.ts",
-    "**/test_*.ts",
-    "main.ts",
-    "tmpl/"
-  ],
+  "publish": {
+    "exclude": [
+      "**/*_test.ts",
+      "**/*.test.ts",
+      "**/test_*.ts",
+      "main.ts",
+      "tmpl/"
+    ]
+  },
   "tasks": {
     "dev": "deno run --allow-net --allow-env --allow-read --allow-write --watch main.ts",
     "build": "deno compile --allow-net --allow-env --allow-read --allow-write main.ts",
