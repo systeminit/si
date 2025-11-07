@@ -4,6 +4,7 @@ import { makeModule, normalizeOnlyProperties } from "../generic/index.ts";
 import { CfProperty } from "../types.ts";
 import { AWS_PROVIDER_CONFIG } from "./provider.ts";
 import type { CfDb, CfSchema } from "./schema.ts";
+import { htmlToMarkdown } from "../../util.ts";
 
 function pruneProperties(
   properties: Record<string, CfProperty>,
@@ -110,7 +111,7 @@ export function pkgSpecFromCf(cfSchema: CfSchema): ExpandedPkgSpec {
 
   return makeModule(
     cfSchema,
-    cfSchema.description,
+    htmlToMarkdown(cfSchema.description) ?? cfSchema.description,
     onlyProperties,
     AWS_PROVIDER_CONFIG,
     domainProperties,
@@ -159,7 +160,7 @@ export function parseSchema(cfDb: CfDb): ExpandedPkgSpec[] {
     try {
       const spec = makeModule(
         cfSchema,
-        cfSchema.description,
+        htmlToMarkdown(cfSchema.description) ?? cfSchema.description,
         onlyProperties,
         AWS_PROVIDER_CONFIG,
         domainProperties,

@@ -4,6 +4,7 @@ import { makeModule } from "../generic/index.ts";
 import { CfProperty, SuperSchema } from "../types.ts";
 import { DUMMY_PROVIDER_CONFIG } from "./provider.ts";
 import { databaseSchema, DummySchema, serverSchema } from "./schema.ts";
+import { htmlToMarkdown } from "../../util.ts";
 
 function splitDummyProperties(
   schema: SuperSchema | DummySchema,
@@ -47,7 +48,7 @@ export function pkgSpecFromDummy(): ExpandedPkgSpec[] {
 
     const module = makeModule(
       schema,
-      schema.description,
+      htmlToMarkdown(schema.description) ?? schema.description,
       onlyProperties,
       DUMMY_PROVIDER_CONFIG,
       domainProperties,

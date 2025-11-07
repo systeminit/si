@@ -18,6 +18,7 @@ import {
 } from "../pipelines/types.ts";
 import { JSONSchema } from "../pipelines/draft_07.ts";
 import logger from "../logger.ts";
+import { htmlToMarkdown } from "../util.ts";
 
 export const CREATE_ONLY_PROP_LABEL = "si_create_only_prop";
 
@@ -201,7 +202,7 @@ export function createDefaultPropFromJsonSchema(
         docLink: parentProp?.kind === "object"
           ? docFn(schema, schemaProp.defName, name)
           : null,
-        documentation: cfProp.description ?? null,
+        documentation: htmlToMarkdown(cfProp.description),
         uiOptionals: null,
       };
       const partialProp: Partial<ExpandedPropSpec> = {
