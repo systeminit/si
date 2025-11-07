@@ -1,19 +1,31 @@
 # si-conduit
 
-A command-line tool for authoring System Initiative schemas locally and pushing them to your workspaces.
+A command-line tool for authoring System Initiative schemas locally and pushing
+them to your workspaces.
 
 ## Architecture
 
-SI Conduit is a Deno-based CLI application that provides a structured workflow for managing System Initiative schemas. The architecture consists of several key components:
+SI Conduit is a Deno-based CLI application that provides a structured workflow
+for managing System Initiative schemas. The architecture consists of several key
+components:
 
 ### Core Components
 
-- **CLI Module** (`src/cli.ts`): Command-line interface built with Cliffy, providing a hierarchical command structure with global options and environment variable support.
-- **Context Module** (`src/context.ts`): Singleton context managing global application state, including logging (LogTape) and analytics (PostHog) services.
-- **Project Module** (`src/project.ts`): Project structure management and path utilities for working with schemas and their functions.
-- **Authentication** (`src/auth-api-client.ts`, `src/jwt.ts`): API authentication and JWT token handling for secure communication with System Initiative services.
-- **Generators** (`src/generators.ts`): Code generation utilities for scaffolding schemas and functions.
-- **Materialize Module** (`src/materialize.ts`): File system operations for creating and writing schema files, metadata, and function code to disk.
+- **CLI Module** (`src/cli.ts`): Command-line interface built with Cliffy,
+  providing a hierarchical command structure with global options and environment
+  variable support.
+- **Context Module** (`src/context.ts`): Singleton context managing global
+  application state, including logging (LogTape) and analytics (PostHog)
+  services.
+- **Project Module** (`src/project.ts`): Project structure management and path
+  utilities for working with schemas and their functions.
+- **Authentication** (`src/auth-api-client.ts`, `src/jwt.ts`): API
+  authentication and JWT token handling for secure communication with System
+  Initiative services.
+- **Generators** (`src/generators.ts`): Code generation utilities for
+  scaffolding schemas and functions.
+- **Materialize Module** (`src/materialize.ts`): File system operations for
+  creating and writing schema files, metadata, and function code to disk.
 
 ### Command Structure
 
@@ -70,17 +82,22 @@ project-root/
 
 The project enforces code quality through:
 
-- **Custom Lint Rules**: Prohibits direct usage of `Deno.env.get()` to ensure proper configuration management through the Context singleton.
-- **TypeScript Strict Mode**: Type-safe path handling with specialized path classes (AbsolutePath, RelativePath).
-- **Structured Logging**: LogTape integration with configurable verbosity levels.
+- **Custom Lint Rules**: Prohibits direct usage of `Deno.env.get()` to ensure
+  proper configuration management through the Context singleton.
+- **TypeScript Strict Mode**: Type-safe path handling with specialized path
+  classes (AbsolutePath, RelativePath).
+- **Structured Logging**: LogTape integration with configurable verbosity
+  levels.
 
 ## Configuration
 
 ### Environment Variables
 
-- `SI_API_TOKEN`: Your System Initiative API token (required for authenticated commands)
+- `SI_API_TOKEN`: Your System Initiative API token (required for authenticated
+  commands)
 - `SI_API_BASE_URL`: API endpoint URL (defaults to `https://api.systeminit.com`)
-- `SI_CONDUIT_ROOT`: Project root directory (searches for `.conduitroot` if not specified)
+- `SI_CONDUIT_ROOT`: Project root directory (searches for `.conduitroot` if not
+  specified)
 
 ### Global Options
 
@@ -89,7 +106,8 @@ All commands support these options:
 - `--api-token <TOKEN>`: API authentication token
 - `--api-base-url <URL>`: Override the API endpoint
 - `--root <PATH>`: Specify project root directory
-- `-v, --verbose [level]`: Enable verbose logging (0=errors only, 1=+warnings, 2=+info, 3=+debug, 4=+trace)
+- `-v, --verbose [level]`: Enable verbose logging (0=errors only, 1=+warnings,
+  2=+info, 3=+debug, 4=+trace)
 - `--no-color`: Disable colored output
 
 ## Development
@@ -164,7 +182,9 @@ deno task test
 deno task lint
 ```
 
-This project uses custom lint rules to enforce code quality. Notably, direct usage of `Deno.env.get()` is prohibited to ensure proper configuration management.
+This project uses custom lint rules to enforce code quality. Notably, direct
+usage of `Deno.env.get()` is prohibited to ensure proper configuration
+management.
 
 ### Formatting
 
@@ -195,7 +215,8 @@ deno compile \
   https://raw.githubusercontent.com/systeminit/si/main/bin/si-conduit/main.ts
 ```
 
-This downloads the source, compiles it, and creates the `si-conduit` executable in the current directory.
+This downloads the source, compiles it, and creates the `si-conduit` executable
+in the current directory.
 
 For a specific version or branch, replace `main` with the desired Git reference:
 
@@ -210,7 +231,8 @@ deno compile \
 
 ### Local Installation
 
-After building locally (see [Building](#building)), move the executable to a directory in your PATH:
+After building locally (see [Building](#building)), move the executable to a
+directory in your PATH:
 
 ```bash
 # Build locally
@@ -240,7 +262,8 @@ si-conduit project init /path/to/project
 si-conduit --root /path/to/project project init
 ```
 
-This creates a `.conduitroot` marker file in the project root directory. The CLI searches for this file when determining the project root.
+This creates a `.conduitroot` marker file in the project root directory. The CLI
+searches for this file when determining the project root.
 
 You can also manually create the marker file:
 
@@ -256,7 +279,8 @@ Generate a complete schema scaffold:
 si-conduit schema scaffold generate MySchema
 ```
 
-This creates the schema directory structure with template files for the schema definition and metadata.
+This creates the schema directory structure with template files for the schema
+definition and metadata.
 
 ### Generating Functions
 
@@ -289,12 +313,15 @@ si-conduit remote schema pull Schema1 Schema2 Schema3
 ```
 
 This command will:
+
 - Fetch the schema definition and metadata from your workspace
-- Download all associated functions (actions, code generators, management, qualifications)
+- Download all associated functions (actions, code generators, management,
+  qualifications)
 - Create the complete schema structure in your local project
 - Preserve the exact code and configuration from the remote workspace
 
-This command requires authentication via the `SI_API_TOKEN` environment variable.
+This command requires authentication via the `SI_API_TOKEN` environment
+variable.
 
 ### Pushing to Remote
 
@@ -304,7 +331,8 @@ Push your schemas to your System Initiative workspace:
 si-conduit remote schema push
 ```
 
-This command requires authentication via the `SI_API_TOKEN` environment variable.
+This command requires authentication via the `SI_API_TOKEN` environment
+variable.
 
 ### Checking Authentication
 
@@ -380,4 +408,3 @@ si-conduit --verbose 4 schema scaffold generate MySchema
 ## License
 
 See the root of the System Initiative repository for license information.
-

@@ -20,18 +20,14 @@ import { initializeCliContextWithAuth } from "./cli/helpers.ts";
 import { callWhoami } from "./command/whoami.ts";
 import { callProjectInit } from "./command/project/init.ts";
 import { callRemoteSchemaPull } from "./command/remote/schema/pull.ts";
-import { callSchemaActionGenerate } from "./command/schema/action/generate.ts";
-import { callSchemaAuthGenerate } from "./command/schema/authentication/generate.ts";
-import { callSchemaCodegenGenerate } from "./command/schema/codegen/generate.ts";
-import { callSchemaManagementGenerate } from "./command/schema/management/generate.ts";
-import { callSchemaQualificationGenerate } from "./command/schema/qualification/generate.ts";
 import { callSchemaScaffoldGenerate } from "./command/schema/scaffold/generate.ts";
 import { ApiContext, apiContext } from "./api.ts";
 import { unknownValueToErrorMessage } from "./helpers.ts";
 import { Context } from "./context.ts";
 import * as jwt from "./jwt.ts";
-import { Project } from "./project.ts";
+import { FunctionKind, Project } from "./project.ts";
 import { callRemoteSchemaPush } from "./command/remote/schema/push.ts";
+import { callSchemaFuncGenerate } from "./command/schema/func/generate.ts";
 
 /** Current version of the SI Conduit CLI */
 const VERSION = "0.1.0";
@@ -192,7 +188,27 @@ function buildSchemaCommand() {
     .command("codegen", buildSchemaCodegenCommand())
     .command("management", buildSchemaManagementCommand())
     .command("qualification", buildSchemaQualificationCommand())
-    .command("scaffold", buildSchemaScaffoldCommand());
+    .command("scaffold", buildSchemaScaffoldCommand())
+    .command("overlay", buildOverlayCommand());
+}
+
+function buildOverlayCommand() {
+  return createSubCommand()
+    .description("Generates overlay functions")
+    .action(function () {
+      this.showHelp();
+    })
+    .command("action", buildSchemaActionCommand({ isOverlay: true }))
+    .command(
+      "authentication",
+      buildSchemaAuthenticationCommand({ isOverlay: true }),
+    )
+    .command("codegen", buildSchemaCodegenCommand({ isOverlay: true }))
+    .command("management", buildSchemaManagementCommand({ isOverlay: true }))
+    .command(
+      "qualification",
+      buildSchemaQualificationCommand({ isOverlay: true }),
+    );
 }
 
 /**
@@ -341,9 +357,12 @@ function buildProjectInitCommand() {
  * @returns A SubCommand configured for action operations
  * @internal
  */
-function buildSchemaActionCommand() {
+function buildSchemaActionCommand(options?: { isOverlay?: boolean }) {
+  const isOverlay = options?.isOverlay ?? false;
+  const overlayMsg = isOverlay ? " overlay" : "";
+
   return createSubCommand()
-    .description("Generates action functions for schemas")
+    .description(`Generates action${overlayMsg} functions for schemas`)
     .action(function () {
       this.showHelp();
     })
@@ -362,11 +381,13 @@ function buildSchemaActionCommand() {
           );
           const finalActionName = await prompt.actionName(actionName, project);
 
-          await callSchemaActionGenerate(
+          await callSchemaFuncGenerate(
             Context.instance(),
             project,
             finalSchemaName,
+            FunctionKind.Action,
             finalActionName,
+            isOverlay,
           );
         }),
     );
@@ -378,9 +399,12 @@ function buildSchemaActionCommand() {
  * @returns A SubCommand configured for authentication operations
  * @internal
  */
-function buildSchemaAuthenticationCommand() {
+function buildSchemaAuthenticationCommand(options?: { isOverlay?: boolean }) {
+  const isOverlay = options?.isOverlay ?? false;
+  const overlayMsg = isOverlay ? " overlay" : "";
+
   return createSubCommand()
-    .description("Generates authentication functions for schemas")
+    .description(`Generates authentication${overlayMsg} functions for schemas`)
     .action(function () {
       this.showHelp();
     })
@@ -399,11 +423,13 @@ function buildSchemaAuthenticationCommand() {
           );
           const finalAuthName = await prompt.authName(authName, project);
 
-          await callSchemaAuthGenerate(
+          await callSchemaFuncGenerate(
             Context.instance(),
             project,
             finalSchemaName,
+            FunctionKind.Auth,
             finalAuthName,
+            isOverlay,
           );
         }),
     );
@@ -415,9 +441,12 @@ function buildSchemaAuthenticationCommand() {
  * @returns A SubCommand configured for codegen operations
  * @internal
  */
-function buildSchemaCodegenCommand() {
+function buildSchemaCodegenCommand(options?: { isOverlay?: boolean }) {
+  const isOverlay = options?.isOverlay ?? false;
+  const overlayMsg = isOverlay ? " overlay" : "";
+
   return createSubCommand()
-    .description("Generates code generator functions for schemas")
+    .description(`Generates code generator${overlayMsg} functions for schemas`)
     .action(function () {
       this.showHelp();
     })
@@ -439,11 +468,13 @@ function buildSchemaCodegenCommand() {
             project,
           );
 
-          await callSchemaCodegenGenerate(
+          await callSchemaFuncGenerate(
             Context.instance(),
             project,
             finalSchemaName,
+            FunctionKind.Codegen,
             finalCodegenName,
+            isOverlay,
           );
         }),
     );
@@ -455,9 +486,12 @@ function buildSchemaCodegenCommand() {
  * @returns A SubCommand configured for management operations
  * @internal
  */
-function buildSchemaManagementCommand() {
+function buildSchemaManagementCommand(options?: { isOverlay?: boolean }) {
+  const isOverlay = options?.isOverlay ?? false;
+  const overlayMsg = isOverlay ? " overlay" : "";
+
   return createSubCommand()
-    .description("Generates management functions for schemas")
+    .description(`Generates management${overlayMsg} functions for schemas`)
     .action(function () {
       this.showHelp();
     })
@@ -479,11 +513,13 @@ function buildSchemaManagementCommand() {
             project,
           );
 
-          await callSchemaManagementGenerate(
+          await callSchemaFuncGenerate(
             Context.instance(),
             project,
             finalSchemaName,
+            FunctionKind.Management,
             finalManagementName,
+            isOverlay,
           );
         }),
     );
@@ -495,9 +531,12 @@ function buildSchemaManagementCommand() {
  * @returns A SubCommand configured for qualification operations
  * @internal
  */
-function buildSchemaQualificationCommand() {
+function buildSchemaQualificationCommand(options?: { isOverlay?: boolean }) {
+  const isOverlay = options?.isOverlay ?? false;
+  const overlayMsg = isOverlay ? " overlay" : "";
+
   return createSubCommand()
-    .description("Generates qualification functions for schemas")
+    .description(`Generates qualification${overlayMsg} functions for schemas`)
     .action(function () {
       this.showHelp();
     })
@@ -519,11 +558,13 @@ function buildSchemaQualificationCommand() {
             project,
           );
 
-          await callSchemaQualificationGenerate(
+          await callSchemaFuncGenerate(
             Context.instance(),
             project,
             finalSchemaName,
+            FunctionKind.Qualification,
             finalQualificationName,
+            isOverlay,
           );
         }),
     );

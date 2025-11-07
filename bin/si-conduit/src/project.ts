@@ -97,6 +97,8 @@ const ROOT_MARKER_FILE = ".conduitroot" as const;
 /** Directory name for schemas within a project. */
 const SCHEMA_DIR = "schemas" as const;
 
+const OVERLAY_DIR = "overlays" as const;
+
 /** Directory name for actions within a schema. */
 const ACTIONS_DIR = "actions" as const;
 
@@ -128,6 +130,228 @@ const DEFAULT_MANAGEMENT_FUNCTION_NAMES = ["sample"] as const;
 
 /** Default qualification function names available for schemas. */
 const DEFAULT_QUALIFICATION_FUNCTION_NAMES = ["sample"] as const;
+
+export enum FunctionKind {
+  Action = "action",
+  Auth = "auth",
+  Codegen = "codegen",
+  Management = "management",
+  Qualification = "qualification",
+}
+
+class ProjectModuleWithFunctions {
+  constructor(public readonly moduleRootPath: string) {}
+
+  moduleBaseRelativePath() {
+    return join();
+  }
+
+  moduleBasePath() {
+    return new AbsoluteDirectoryPath(
+      join(this.moduleRootPath, this.moduleBaseRelativePath()),
+    );
+  }
+
+  schemaBaseRelativePath(schemaName: string) {
+    return new RelativeDirectoryPath(
+      join(this.moduleBaseRelativePath(), normalizeFsName(schemaName)),
+    );
+  }
+
+  schemaBasePath(schemaName: string): AbsoluteDirectoryPath {
+    return new AbsoluteDirectoryPath(
+      join(this.moduleRootPath, this.schemaBaseRelativePath(schemaName)),
+    );
+  }
+
+  /**
+   * Returns the names of all schema directories currently in the project.
+   *
+   * Scans the schemas directory and returns an array of directory names.
+   * Returns an empty array if the schemas directory doesn't exist.
+   *
+   * @returns A promise resolving to an array of schema directory names
+   */
+  async currentSchemaDirNames(): Promise<string[]> {
+    const schemasPath = this.moduleBasePath();
+
+    if (!(await dirExists(schemasPath))) {
+      return [];
+    }
+
+    const entries = [];
+    for await (const dirEntry of Deno.readDir(schemasPath.path)) {
+      if (dirEntry.isDirectory) {
+        entries.push(dirEntry.name);
+      }
+    }
+
+    return entries;
+  }
+
+  // Function Methods
+  funcBaseRelativePath(schemaName: string, funcKind: FunctionKind) {
+    let dir: string;
+    switch (funcKind) {
+      case FunctionKind.Action:
+        dir = ACTIONS_DIR;
+        break;
+      case FunctionKind.Auth:
+        dir = AUTH_DIR;
+        break;
+      case FunctionKind.Codegen:
+        dir = CODEGENS_DIR;
+        break;
+      case FunctionKind.Management:
+        dir = MANAGEMENTS_DIR;
+        break;
+      case FunctionKind.Qualification:
+        dir = QUALIFICATIONS_DIR;
+        break;
+      default:
+        throw new Error(
+          `Invalid function kind: ${funcKind} on ${this.moduleRootPath}`,
+        );
+    }
+
+    return new RelativeDirectoryPath(
+      join(this.schemaBaseRelativePath(schemaName), dir),
+    );
+  }
+
+  funcBasePath(
+    schemaName: string,
+    funcKind: FunctionKind,
+  ): AbsoluteDirectoryPath {
+    return new AbsoluteDirectoryPath(
+      join(
+        this.moduleRootPath,
+        this.funcBaseRelativePath(schemaName, funcKind),
+      ),
+    );
+  }
+
+  funcCodeRelativePath(
+    schemaName: string,
+    funcName: string,
+    funcKind: FunctionKind,
+  ) {
+    return new RelativeFilePath(
+      join(
+        this.funcBaseRelativePath(schemaName, funcKind),
+        `${normalizeFsName(funcName)}.ts`,
+      ),
+    );
+  }
+
+  funcCodePath(schemaName: string, funcName: string, funcKind: FunctionKind) {
+    return new AbsoluteFilePath(
+      join(
+        this.moduleRootPath,
+        this.funcCodeRelativePath(schemaName, funcName, funcKind),
+      ),
+    );
+  }
+
+  funcMetadataRelativePath(
+    schemaName: string,
+    funcName: string,
+    funcKind: FunctionKind,
+  ): RelativeFilePath {
+    return new RelativeFilePath(
+      join(
+        this.funcBaseRelativePath(schemaName, funcKind),
+        `${normalizeFsName(funcName)}.metadata.json`,
+      ),
+    );
+  }
+
+  funcMetadataPath(
+    schemaName: string,
+    funcName: string,
+    funcKind: FunctionKind,
+  ) {
+    return new AbsoluteFilePath(
+      join(
+        this.moduleRootPath,
+        this.funcMetadataRelativePath(schemaName, funcName, funcKind),
+      ),
+    );
+  }
+}
+
+class SchemasProjectModule extends ProjectModuleWithFunctions {
+  constructor(public override readonly moduleRootPath: string) {
+    super(moduleRootPath);
+  }
+
+  formatVersionRelativePath(schemaName: string) {
+    return new RelativeFilePath(
+      join(this.schemaBaseRelativePath(schemaName), ".format-version"),
+    );
+  }
+
+  /**
+   * Returns the absolute path to a schema's format version file.
+   *
+   * The format version file (`.format-version`) tracks the schema structure
+   * version.
+   *
+   * @param schemaName - The name of the schema
+   * @returns An AbsoluteFilePath to the format version file
+   */
+  formatVersionPath(schemaName: string) {
+    return new AbsoluteFilePath(
+      join(this.moduleRootPath, this.formatVersionRelativePath(schemaName)),
+    );
+  }
+
+  schemaFuncCodeRelativePath(schemaName: string): RelativeFilePath {
+    return new RelativeFilePath(
+      join(this.schemaBaseRelativePath(schemaName), "schema.ts"),
+    );
+  }
+
+  /**
+   * Returns the absolute path to a schema's function code file.
+   *
+   * @param schemaName - The name of the schema
+   * @returns An AbsoluteFilePath to the schema's TypeScript file (schema.ts)
+   */
+  schemaFuncCodePath(schemaName: string): AbsoluteFilePath {
+    return new AbsoluteFilePath(
+      join(this.moduleRootPath, this.schemaFuncCodeRelativePath(schemaName)),
+    );
+  }
+
+  /**
+   * Returns the relative path to a schema's metadata file.
+   *
+   * The metadata file contains schema configuration and properties.
+   *
+   * @param schemaName - The name of the schema
+   * @returns A RelativeFilePath to the schema's metadata JSON file
+   */
+  schemaMetadataRelativePath(schemaName: string): RelativeFilePath {
+    return new RelativeFilePath(
+      join(this.schemaBaseRelativePath(schemaName), "schema.metadata.json"),
+    );
+  }
+
+  /**
+   * Returns the absolute path to a schema's metadata file.
+   *
+   * The metadata file contains schema configuration and properties.
+   *
+   * @param schemaName - The name of the schema
+   * @returns An AbsoluteFilePath to the schema's metadata JSON file
+   */
+  schemaMetadataPath(schemaName: string): AbsoluteFilePath {
+    return new AbsoluteFilePath(
+      join(this.moduleRootPath, this.schemaMetadataRelativePath(schemaName)),
+    );
+  }
+}
 
 /**
  * Represents a SI Conduit project and provides path utilities for working with
@@ -167,12 +391,22 @@ export class Project {
   static readonly DEFAULT_QUALIFICATION_NAMES =
     DEFAULT_QUALIFICATION_FUNCTION_NAMES;
 
+  schemas: SchemasProjectModule;
+  overlays: ProjectModuleWithFunctions;
+
   /**
    * Creates a new Project instance.
    *
    * @param rootPath - The absolute path to the project root directory
    */
-  constructor(public readonly rootPath: string) {}
+  constructor(public readonly rootPath: string) {
+    this.schemas = new SchemasProjectModule(
+      join(rootPath, SCHEMA_DIR),
+    );
+    this.overlays = new ProjectModuleWithFunctions(
+      join(rootPath, OVERLAY_DIR),
+    );
+  }
 
   /**
    * Converts any path (relative or absolute) to an absolute directory path.
@@ -208,652 +442,6 @@ export class Project {
    */
   static projectMarkerPath(rootPath: AbsoluteDirectoryPath): AbsoluteFilePath {
     return new AbsoluteFilePath(join(rootPath, ROOT_MARKER_FILE));
-  }
-
-  /**
-   * Returns the relative path to the base schemas directory.
-   *
-   * @returns A RelativeDirectoryPath to the schemas directory
-   */
-  schemasBaseRelativePath(): RelativeDirectoryPath {
-    return new RelativeDirectoryPath(join(SCHEMA_DIR));
-  }
-
-  /**
-   * Returns the absolute path to the base schemas directory.
-   *
-   * @returns An AbsoluteDirectoryPath to the schemas directory
-   */
-  schemasBasePath(): AbsoluteDirectoryPath {
-    return new AbsoluteDirectoryPath(
-      join(this.rootPath, this.schemasBaseRelativePath()),
-    );
-  }
-
-  /**
-   * Returns the relative path to a specific schema's directory.
-   *
-   * Schema names are normalized for filesystem compatibility.
-   *
-   * @param schemaName - The name of the schema
-   * @returns A RelativeDirectoryPath to the schema directory
-   */
-  schemaBaseRelativePath(schemaName: string): RelativeDirectoryPath {
-    return new RelativeDirectoryPath(
-      join(this.schemasBaseRelativePath(), normalizeFsName(schemaName)),
-    );
-  }
-
-  /**
-   * Returns the absolute path to a specific schema's directory.
-   *
-   * Schema names are normalized for filesystem compatibility.
-   *
-   * @param schemaName - The name of the schema
-   * @returns An AbsoluteDirectoryPath to the schema directory
-   */
-  schemaBasePath(schemaName: string): AbsoluteDirectoryPath {
-    return new AbsoluteDirectoryPath(
-      join(this.rootPath, this.schemaBaseRelativePath(schemaName)),
-    );
-  }
-
-  /**
-   * Returns the relative path to a schema's format version file.
-   *
-   * The format version file (`.format-version`) tracks the schema structure
-   * version.
-   *
-   * @param schemaName - The name of the schema
-   * @returns A RelativeFilePath to the format version file
-   */
-  schemaFormatVersionRelativePath(schemaName: string): RelativeFilePath {
-    return new RelativeFilePath(
-      join(this.schemaBaseRelativePath(schemaName), ".format-version"),
-    );
-  }
-
-  /**
-   * Returns the absolute path to a schema's format version file.
-   *
-   * The format version file (`.format-version`) tracks the schema structure
-   * version.
-   *
-   * @param schemaName - The name of the schema
-   * @returns An AbsoluteFilePath to the format version file
-   */
-  schemaFormatVersionPath(schemaName: string): AbsoluteFilePath {
-    return new AbsoluteFilePath(
-      join(this.rootPath, this.schemaFormatVersionRelativePath(schemaName)),
-    );
-  }
-
-  /**
-   * Returns the relative path to a schema's function code file.
-   *
-   * @param schemaName - The name of the schema
-   * @returns A RelativeFilePath to the schema's TypeScript file (schema.ts)
-   */
-  schemaFuncCodeRelativePath(schemaName: string): RelativeFilePath {
-    return new RelativeFilePath(
-      join(this.schemaBaseRelativePath(schemaName), "schema.ts"),
-    );
-  }
-
-  /**
-   * Returns the absolute path to a schema's function code file.
-   *
-   * @param schemaName - The name of the schema
-   * @returns An AbsoluteFilePath to the schema's TypeScript file (schema.ts)
-   */
-  schemaFuncCodePath(schemaName: string): AbsoluteFilePath {
-    return new AbsoluteFilePath(
-      join(this.rootPath, this.schemaFuncCodeRelativePath(schemaName)),
-    );
-  }
-
-  /**
-   * Returns the relative path to a schema's metadata file.
-   *
-   * The metadata file contains schema configuration and properties.
-   *
-   * @param schemaName - The name of the schema
-   * @returns A RelativeFilePath to the schema's metadata JSON file
-   */
-  schemaMetadataRelativePath(schemaName: string): RelativeFilePath {
-    return new RelativeFilePath(
-      join(this.schemaBaseRelativePath(schemaName), "schema.metadata.json"),
-    );
-  }
-
-  /**
-   * Returns the absolute path to a schema's metadata file.
-   *
-   * The metadata file contains schema configuration and properties.
-   *
-   * @param schemaName - The name of the schema
-   * @returns An AbsoluteFilePath to the schema's metadata JSON file
-   */
-  schemaMetadataPath(schemaName: string): AbsoluteFilePath {
-    return new AbsoluteFilePath(
-      join(this.rootPath, this.schemaMetadataRelativePath(schemaName)),
-    );
-  }
-
-  /**
-   * Returns the relative path to a schema's actions directory.
-   *
-   * @param schemaName - The name of the schema
-   * @returns A RelativeDirectoryPath to the actions directory
-   */
-  actionBaseRelativePath(schemaName: string): RelativeDirectoryPath {
-    return new RelativeDirectoryPath(
-      join(this.schemaBaseRelativePath(schemaName), ACTIONS_DIR),
-    );
-  }
-
-  /**
-   * Returns the absolute path to a schema's actions directory.
-   *
-   * @param schemaName - The name of the schema
-   * @returns An AbsoluteDirectoryPath to the actions directory
-   */
-  actionBasePath(schemaName: string): AbsoluteDirectoryPath {
-    return new AbsoluteDirectoryPath(
-      join(this.rootPath, this.actionBaseRelativePath(schemaName)),
-    );
-  }
-
-  /**
-   * Returns the relative path to an action function's code file.
-   *
-   * @param schemaName - The name of the schema
-   * @param actionName - The name of the action function
-   * @returns A RelativePath to the action function's TypeScript file
-   */
-  actionFuncCodeRelativePath(
-    schemaName: string,
-    actionName: string,
-  ): RelativeFilePath {
-    return new RelativeFilePath(
-      join(
-        this.actionBaseRelativePath(schemaName),
-        `${normalizeFsName(actionName)}.ts`,
-      ),
-    );
-  }
-
-  /**
-   * Returns the absolute path to an action function's code file.
-   *
-   * @param schemaName - The name of the schema
-   * @param actionName - The name of the action function
-   * @returns An AbsolutePath to the action function's TypeScript file
-   */
-  actionFuncCodePath(schemaName: string, actionName: string): AbsoluteFilePath {
-    return new AbsoluteFilePath(
-      join(
-        this.rootPath,
-        this.actionFuncCodeRelativePath(schemaName, actionName),
-      ),
-    );
-  }
-
-  /**
-   * Returns the relative path to an action function's metadata file.
-   *
-   * @param schemaName - The name of the schema
-   * @param actionName - The name of the action function
-   * @returns A RelativePath to the action function's metadata JSON file
-   */
-  actionFuncMetadataRelativePath(
-    schemaName: string,
-    actionName: string,
-  ): RelativeFilePath {
-    return new RelativeFilePath(
-      join(
-        this.actionBaseRelativePath(schemaName),
-        `${normalizeFsName(actionName)}.metadata.json`,
-      ),
-    );
-  }
-
-  /**
-   * Returns the absolute path to an action function's metadata file.
-   *
-   * @param schemaName - The name of the schema
-   * @param actionName - The name of the action function
-   * @returns An AbsolutePath to the action function's metadata JSON file
-   */
-  actionFuncMetadataPath(
-    schemaName: string,
-    actionName: string,
-  ): AbsoluteFilePath {
-    return new AbsoluteFilePath(
-      join(
-        this.rootPath,
-        this.actionFuncMetadataRelativePath(schemaName, actionName),
-      ),
-    );
-  }
-
-  /**
-   * Returns the relative path to an auth function's code file.
-   *
-   * @param schemaName - The name of the schema
-   * @param authName - The name of the auth function
-   * @returns A RelativePath to the auth function's TypeScript file
-   */
-  authFuncCodeRelativePath(
-    schemaName: string,
-    authName: string,
-  ): RelativeFilePath {
-    return new RelativeFilePath(
-      join(
-        this.authBaseRelativePath(schemaName),
-        `${normalizeFsName(authName)}.ts`,
-      ),
-    );
-  }
-
-  /**
-   * Returns the absolute path to an auth function's code file.
-   *
-   * @param schemaName - The name of the schema
-   * @param authName - The name of the auth function
-   * @returns An AbsolutePath to the auth function's TypeScript file
-   */
-  authFuncCodePath(schemaName: string, authName: string): AbsoluteFilePath {
-    return new AbsoluteFilePath(
-      join(this.rootPath, this.authFuncCodeRelativePath(schemaName, authName)),
-    );
-  }
-
-  /**
-   * Returns the relative path to an auth function's metadata file.
-   *
-   * @param schemaName - The name of the schema
-   * @param authName - The name of the auth function
-   * @returns A RelativePath to the auth function's metadata JSON file
-   */
-  authFuncMetadataRelativePath(
-    schemaName: string,
-    authName: string,
-  ): RelativeFilePath {
-    return new RelativeFilePath(
-      join(
-        this.authBaseRelativePath(schemaName),
-        `${normalizeFsName(authName)}.metadata.json`,
-      ),
-    );
-  }
-
-  /**
-   * Returns the absolute path to an auth function's metadata file.
-   *
-   * @param schemaName - The name of the schema
-   * @param authName - The name of the auth function
-   * @returns An AbsolutePath to the auth function's metadata JSON file
-   */
-  authFuncMetadataPath(schemaName: string, authName: string): AbsoluteFilePath {
-    return new AbsoluteFilePath(
-      join(
-        this.rootPath,
-        this.authFuncMetadataRelativePath(schemaName, authName),
-      ),
-    );
-  }
-
-  /**
-   * Returns the relative path to a schema's code generators directory.
-   *
-   * @param schemaName - The name of the schema
-   * @returns A RelativeDirectoryPath to the codeGenerators directory
-   */
-  codegenBaseRelativePath(schemaName: string): RelativeDirectoryPath {
-    return new RelativeDirectoryPath(
-      join(this.schemaBaseRelativePath(schemaName), CODEGENS_DIR),
-    );
-  }
-
-  /**
-   * Returns the absolute path to a schema's code generators directory.
-   *
-   * @param schemaName - The name of the schema
-   * @returns An AbsoluteDirectoryPath to the codeGenerators directory
-   */
-  codegenBasePath(schemaName: string): AbsoluteDirectoryPath {
-    return new AbsoluteDirectoryPath(
-      join(this.rootPath, this.codegenBaseRelativePath(schemaName)),
-    );
-  }
-
-  /**
-   * Returns the relative path to a code generator function's code file.
-   *
-   * @param schemaName - The name of the schema
-   * @param codegenName - The name of the code generator function
-   * @returns A RelativeFilePath to the code generator's TypeScript file
-   */
-  codegenFuncCodeRelativePath(
-    schemaName: string,
-    codegenName: string,
-  ): RelativeFilePath {
-    return new RelativeFilePath(
-      join(
-        this.codegenBaseRelativePath(schemaName),
-        `${normalizeFsName(codegenName)}.ts`,
-      ),
-    );
-  }
-
-  /**
-   * Returns the absolute path to a code generator function's code file.
-   *
-   * @param schemaName - The name of the schema
-   * @param codegenName - The name of the code generator function
-   * @returns An AbsoluteFilePath to the code generator's TypeScript file
-   */
-  codegenFuncCodePath(
-    schemaName: string,
-    codegenName: string,
-  ): AbsoluteFilePath {
-    return new AbsoluteFilePath(
-      join(
-        this.rootPath,
-        this.codegenFuncCodeRelativePath(schemaName, codegenName),
-      ),
-    );
-  }
-
-  /**
-   * Returns the relative path to a code generator function's metadata file.
-   *
-   * @param schemaName - The name of the schema
-   * @param codegenName - The name of the code generator function
-   * @returns A RelativeFilePath to the code generator's metadata JSON file
-   */
-  codegenFuncMetadataRelativePath(
-    schemaName: string,
-    codegenName: string,
-  ): RelativeFilePath {
-    return new RelativeFilePath(
-      join(
-        this.codegenBaseRelativePath(schemaName),
-        `${normalizeFsName(codegenName)}.metadata.json`,
-      ),
-    );
-  }
-
-  /**
-   * Returns the absolute path to a code generator function's metadata file.
-   *
-   * @param schemaName - The name of the schema
-   * @param codegenName - The name of the code generator function
-   * @returns An AbsoluteFilePath to the code generator's metadata JSON file
-   */
-  codegenFuncMetadataPath(
-    schemaName: string,
-    codegenName: string,
-  ): AbsoluteFilePath {
-    return new AbsoluteFilePath(
-      join(
-        this.rootPath,
-        this.codegenFuncMetadataRelativePath(schemaName, codegenName),
-      ),
-    );
-  }
-
-  /**
-   * Returns the relative path to a schema's management functions directory.
-   *
-   * @param schemaName - The name of the schema
-   * @returns A RelativeDirectoryPath to the management directory
-   */
-  managementBaseRelativePath(schemaName: string): RelativeDirectoryPath {
-    return new RelativeDirectoryPath(
-      join(this.schemaBaseRelativePath(schemaName), MANAGEMENTS_DIR),
-    );
-  }
-
-  /**
-   * Returns the relative path to a schema's management functions directory.
-   *
-   * @param schemaName - The name of the schema
-   * @returns A RelativeDirectoryPath to the authentication directory
-   */
-  authBaseRelativePath(schemaName: string): RelativeDirectoryPath {
-    return new RelativeDirectoryPath(
-      join(this.schemaBaseRelativePath(schemaName), AUTH_DIR),
-    );
-  }
-
-  /**
-   * Returns the absolute path to a schema's management functions directory.
-   *
-   * @param schemaName - The name of the schema
-   * @returns An AbsoluteDirectoryPath to the management directory
-   */
-  managementBasePath(schemaName: string): AbsoluteDirectoryPath {
-    return new AbsoluteDirectoryPath(
-      join(this.rootPath, this.managementBaseRelativePath(schemaName)),
-    );
-  }
-
-  /**
-   * Returns the absolute path to a schema's auth functions directory.
-   *
-   * @param schemaName - The name of the schema
-   * @returns An AbsoluteDirectoryPath to the authentication directory
-   */
-  authBasePath(schemaName: string): AbsoluteDirectoryPath {
-    return new AbsoluteDirectoryPath(
-      join(this.rootPath, this.authBaseRelativePath(schemaName)),
-    );
-  }
-
-  /**
-   * Returns the relative path to a management function's code file.
-   *
-   * @param schemaName - The name of the schema
-   * @param managementName - The name of the management function
-   * @returns A RelativeFilePath to the management function's TypeScript file
-   */
-  managementFuncCodeRelativePath(
-    schemaName: string,
-    managementName: string,
-  ): RelativeFilePath {
-    return new RelativeFilePath(
-      join(
-        this.managementBaseRelativePath(schemaName),
-        `${normalizeFsName(managementName)}.ts`,
-      ),
-    );
-  }
-
-  /**
-   * Returns the absolute path to a management function's code file.
-   *
-   * @param schemaName - The name of the schema
-   * @param managementName - The name of the management function
-   * @returns An AbsoluteFilePath to the management function's TypeScript file
-   */
-  managementFuncCodePath(
-    schemaName: string,
-    managementName: string,
-  ): AbsoluteFilePath {
-    return new AbsoluteFilePath(
-      join(
-        this.rootPath,
-        this.managementFuncCodeRelativePath(schemaName, managementName),
-      ),
-    );
-  }
-
-  /**
-   * Returns the relative path to a management function's metadata file.
-   *
-   * @param schemaName - The name of the schema
-   * @param managementName - The name of the management function
-   * @returns A RelativeFilePath to the management function's metadata JSON file
-   */
-  managementFuncMetadataRelativePath(
-    schemaName: string,
-    managementName: string,
-  ): RelativeFilePath {
-    return new RelativeFilePath(
-      join(
-        this.managementBaseRelativePath(schemaName),
-        `${normalizeFsName(managementName)}.metadata.json`,
-      ),
-    );
-  }
-
-  /**
-   * Returns the absolute path to a management function's metadata file.
-   *
-   * @param schemaName - The name of the schema
-   * @param managementName - The name of the management function
-   * @returns An AbsoluteFilePath to the management function's metadata JSON file
-   */
-  managementFuncMetadataPath(
-    schemaName: string,
-    managementName: string,
-  ): AbsoluteFilePath {
-    return new AbsoluteFilePath(
-      join(
-        this.rootPath,
-        this.managementFuncMetadataRelativePath(schemaName, managementName),
-      ),
-    );
-  }
-
-  /**
-   * Returns the relative path to a schema's qualification functions directory.
-   *
-   * @param schemaName - The name of the schema
-   * @returns A RelativeDirectoryPath to the qualifications directory
-   */
-  qualificationBaseRelativePath(schemaName: string): RelativeDirectoryPath {
-    return new RelativeDirectoryPath(
-      join(this.schemaBaseRelativePath(schemaName), QUALIFICATIONS_DIR),
-    );
-  }
-
-  /**
-   * Returns the absolute path to a schema's qualification functions directory.
-   *
-   * @param schemaName - The name of the schema
-   * @returns An AbsoluteDirectoryPath to the qualifications directory
-   */
-  qualificationBasePath(schemaName: string): AbsoluteDirectoryPath {
-    return new AbsoluteDirectoryPath(
-      join(this.rootPath, this.qualificationBaseRelativePath(schemaName)),
-    );
-  }
-
-  /**
-   * Returns the relative path to a qualification function's code file.
-   *
-   * @param schemaName - The name of the schema
-   * @param qualificationName - The name of the qualification function
-   * @returns A RelativeFilePath to the qualification function's TypeScript file
-   */
-  qualificationFuncCodeRelativePath(
-    schemaName: string,
-    qualificationName: string,
-  ): RelativeFilePath {
-    return new RelativeFilePath(
-      join(
-        this.qualificationBaseRelativePath(schemaName),
-        `${normalizeFsName(qualificationName)}.ts`,
-      ),
-    );
-  }
-
-  /**
-   * Returns the absolute path to a qualification function's code file.
-   *
-   * @param schemaName - The name of the schema
-   * @param qualificationName - The name of the qualification function
-   * @returns An AbsoluteFilePath to the qualification function's TypeScript file
-   */
-  qualificationFuncCodePath(
-    schemaName: string,
-    qualificationName: string,
-  ): AbsoluteFilePath {
-    return new AbsoluteFilePath(
-      join(
-        this.rootPath,
-        this.qualificationFuncCodeRelativePath(schemaName, qualificationName),
-      ),
-    );
-  }
-
-  /**
-   * Returns the relative path to a qualification function's metadata file.
-   *
-   * @param schemaName - The name of the schema
-   * @param qualificationName - The name of the qualification function
-   * @returns A RelativeFilePath to the qualification function's metadata JSON file
-   */
-  qualificationFuncMetadataRelativePath(
-    schemaName: string,
-    qualificationName: string,
-  ): RelativeFilePath {
-    return new RelativeFilePath(
-      join(
-        this.qualificationBaseRelativePath(schemaName),
-        `${normalizeFsName(qualificationName)}.metadata.json`,
-      ),
-    );
-  }
-
-  /**
-   * Returns the absolute path to a qualification function's metadata file.
-   *
-   * @param schemaName - The name of the schema
-   * @param qualificationName - The name of the qualification function
-   * @returns An AbsoluteFilePath to the qualification function's metadata JSON file
-   */
-  qualificationFuncMetadataPath(
-    schemaName: string,
-    qualificationName: string,
-  ): AbsoluteFilePath {
-    return new AbsoluteFilePath(
-      join(
-        this.rootPath,
-        this.qualificationFuncMetadataRelativePath(
-          schemaName,
-          qualificationName,
-        ),
-      ),
-    );
-  }
-
-  /**
-   * Returns the names of all schema directories currently in the project.
-   *
-   * Scans the schemas directory and returns an array of directory names.
-   * Returns an empty array if the schemas directory doesn't exist.
-   *
-   * @returns A promise resolving to an array of schema directory names
-   */
-  async currentSchemaDirNames(): Promise<string[]> {
-    const schemasPath = new AbsolutePath(join(this.rootPath, SCHEMA_DIR));
-
-    if (!(await dirExists(schemasPath))) {
-      return [];
-    }
-
-    const entries = [];
-    for await (const dirEntry of Deno.readDir(schemasPath.path)) {
-      if (dirEntry.isDirectory) {
-        entries.push(dirEntry.name);
-      }
-    }
-
-    return entries;
   }
 }
 
