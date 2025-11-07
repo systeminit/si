@@ -1200,13 +1200,13 @@ const handleDeploymentPatchMessage = async (
 
     if (modifications.length > 0) writeDeploymentAtoms(db, modifications);
 
-    const kinds: GlobalEntity[] = [];
+    const kinds: Set<GlobalEntity> = new Set();
     [...modifications, ...inserts, ...removals]
       .filter((atom): atom is GlobalAtom =>
         GLOBAL_ENTITIES.includes(atom.kind as GlobalEntity),
       )
       .forEach((atom) => {
-        kinds.push(atom.kind);
+        kinds.add(atom.kind);
         bustDeployment(atom.kind, atom.id);
       });
     kinds.forEach((k) => {
