@@ -15,6 +15,7 @@ import {
   HETZNER_SCHEMA_OVERRIDES,
 } from "./overrides.ts";
 import { makeModule } from "../generic/index.ts";
+import { htmlToMarkdown } from "../../util.ts";
 import {
   ACTION_FUNC_SPECS,
   CODE_GENERATION_FUNC_SPECS,
@@ -116,7 +117,7 @@ export function hetznerParseRawSchema(rawSchema: unknown): ExpandedPkgSpec[] {
     if (result) {
       const spec = makeModule(
         result.schema,
-        result.schema.description,
+        htmlToMarkdown(result.schema.description) ?? result.schema.description,
         result.onlyProperties,
         hetznerProviderConfig,
         result.domainProperties,

@@ -16,6 +16,7 @@ import { ExpandedPkgSpec } from "../../spec/pkgs.ts";
 import { makeModule } from "../generic/index.ts";
 import { AZURE_PROVIDER_CONFIG } from "./provider.ts";
 import { OnlyProperties } from "../../spec/props.ts";
+import { htmlToMarkdown } from "../../util.ts";
 
 /// Maximum depth of full resource property expansion (below this, resources will are assumed
 /// to be references and will just have "id")
@@ -796,9 +797,11 @@ function buildDomainAndResourceValue(
       ? normalizer.discriminatorCollector
       : undefined;
 
-  const description = get.operation.description ||
-    (get.operation.summary as string) ||
-    `Azure ${resourceType} resource`;
+  const description = htmlToMarkdown(
+    get.operation.description ||
+      (get.operation.summary as string) ||
+      `Azure ${resourceType} resource`,
+  ) || `Azure ${resourceType} resource`;
 
   const primaryIdentifier = ["id"];
   const schema: AzureSchema = {
