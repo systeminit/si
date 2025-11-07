@@ -71,6 +71,7 @@ pub mod execute_management_function;
 pub mod find_component;
 pub mod generate_template;
 pub mod get_component;
+pub mod get_component_resource;
 pub mod list_components;
 pub mod manage_component;
 pub mod restore_component;
@@ -99,6 +100,8 @@ pub enum ComponentsError {
     CachedModule(#[from] dal::cached_module::CachedModuleError),
     #[error("component error: {0}")]
     Component(#[from] dal::ComponentError),
+    #[error("component has no resource: {0}")]
+    ComponentHasNoResource(ComponentId),
     #[error("component not found: {0}")]
     ComponentNotFound(String),
     #[error("component not marked for deletion: {0}")]
@@ -248,6 +251,9 @@ impl crate::service::v1::common::ErrorIntoResponse for ComponentsError {
                 (StatusCode::PRECONDITION_FAILED, self.to_string())
             }
             ComponentsError::DuplicateManagementFunctionName(_) => {
+                (StatusCode::PRECONDITION_FAILED, self.to_string())
+            }
+            ComponentsError::ComponentHasNoResource(_) => {
                 (StatusCode::PRECONDITION_FAILED, self.to_string())
             }
             ComponentsError::DuplicateActionFunctionName(_) => {
@@ -647,6 +653,10 @@ pub fn routes() -> Router<AppState> {
                     post(execute_management_function::execute_management_function),
                 )
                 .route("/action", post(add_action::add_action))
+                .route(
+                    "/resource",
+                    get(get_component_resource::get_component_resource),
+                )
                 .route("/manage", post(manage_component::manage_component))
                 .route("/upgrade", post(upgrade_component::upgrade_component))
                 .route("/erase", post(erase_component::erase_component))

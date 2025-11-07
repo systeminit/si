@@ -79,6 +79,7 @@ pub use components::{
         GetComponentV1Response,
         GetComponentV1ResponseManagementFunction,
     },
+    get_component_resource::GetComponentResourceDataV1Response,
     list_components::{
         ComponentDetailsV1,
         ListComponentsV1Response,
@@ -211,6 +212,7 @@ pub use crate::api_types::func_run::v1::{
         components::generate_template::generate_template,
         components::erase_component::erase_component,
         components::restore_component::restore_component,
+        components::get_component_resource::get_component_resource,
         schemas::list_schemas::list_schemas,
         schemas::find_schema::find_schema,
         schemas::get_schema::get_schema,
@@ -261,6 +263,7 @@ pub use crate::api_types::func_run::v1::{
             MergeStatusV1ResponseActionComponent,
             ComponentV1RequestPath,
             GetComponentV1Response,
+            GetComponentResourceDataV1Response,
             GetComponentV1ResponseManagementFunction,
             CreateComponentV1Request,
             CreateComponentV1Response,

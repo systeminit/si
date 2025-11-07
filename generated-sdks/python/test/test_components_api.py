@@ -96,6 +96,13 @@ class TestComponentsApi(unittest.TestCase):
         """
         pass
 
+    def test_get_component_resource(self) -> None:
+        """Test case for get_component_resource
+
+        Get a component resource by component Id
+        """
+        pass
+
     def test_list_components(self) -> None:
         """Test case for list_components
 

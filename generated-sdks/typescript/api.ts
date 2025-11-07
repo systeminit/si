@@ -1579,6 +1579,31 @@ export interface GetChangeSetV1Response {
 /**
  * 
  * @export
+ * @interface GetComponentResourceDataV1Response
+ */
+export interface GetComponentResourceDataV1Response {
+    /**
+     * 
+     * @type {string}
+     * @memberof GetComponentResourceDataV1Response
+     */
+    'last_synced': string;
+    /**
+     * 
+     * @type {any}
+     * @memberof GetComponentResourceDataV1Response
+     */
+    'payload'?: any;
+    /**
+     * 
+     * @type {string}
+     * @memberof GetComponentResourceDataV1Response
+     */
+    'status': string;
+}
+/**
+ * 
+ * @export
  * @interface GetComponentV1Response
  */
 export interface GetComponentV1Response {
@@ -4977,6 +5002,48 @@ export const ComponentsApiAxiosParamCreator = function (configuration?: Configur
         },
         /**
          * 
+         * @summary Get a component resource by component Id
+         * @param {string} workspaceId Workspace identifier
+         * @param {string} changeSetId Change Set identifier
+         * @param {string} componentId Component identifier
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        getComponentResource: async (workspaceId: string, changeSetId: string, componentId: string, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'workspaceId' is not null or undefined
+            assertParamExists('getComponentResource', 'workspaceId', workspaceId)
+            // verify required parameter 'changeSetId' is not null or undefined
+            assertParamExists('getComponentResource', 'changeSetId', changeSetId)
+            // verify required parameter 'componentId' is not null or undefined
+            assertParamExists('getComponentResource', 'componentId', componentId)
+            const localVarPath = `/v1/w/{workspace_id}/change-sets/{change_set_id}/components/{component_id}/resource`
+                .replace(`{${"workspace_id"}}`, encodeURIComponent(String(workspaceId)))
+                .replace(`{${"change_set_id"}}`, encodeURIComponent(String(changeSetId)))
+                .replace(`{${"component_id"}}`, encodeURIComponent(String(componentId)));
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'GET', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+
+    
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         * 
          * @summary List all components
          * @param {string} workspaceId Workspace identifier
          * @param {string} changeSetId Change Set identifier
@@ -5417,6 +5484,21 @@ export const ComponentsApiFp = function(configuration?: Configuration) {
         },
         /**
          * 
+         * @summary Get a component resource by component Id
+         * @param {string} workspaceId Workspace identifier
+         * @param {string} changeSetId Change Set identifier
+         * @param {string} componentId Component identifier
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async getComponentResource(workspaceId: string, changeSetId: string, componentId: string, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<GetComponentResourceDataV1Response>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.getComponentResource(workspaceId, changeSetId, componentId, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['ComponentsApi.getComponentResource']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         * 
          * @summary List all components
          * @param {string} workspaceId Workspace identifier
          * @param {string} changeSetId Change Set identifier
@@ -5621,6 +5703,16 @@ export const ComponentsApiFactory = function (configuration?: Configuration, bas
         },
         /**
          * 
+         * @summary Get a component resource by component Id
+         * @param {ComponentsApiGetComponentResourceRequest} requestParameters Request parameters.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        getComponentResource(requestParameters: ComponentsApiGetComponentResourceRequest, options?: RawAxiosRequestConfig): AxiosPromise<GetComponentResourceDataV1Response> {
+            return localVarFp.getComponentResource(requestParameters.workspaceId, requestParameters.changeSetId, requestParameters.componentId, options).then((request) => request(axios, basePath));
+        },
+        /**
+         * 
          * @summary List all components
          * @param {ComponentsApiListComponentsRequest} requestParameters Request parameters.
          * @param {*} [options] Override http request option.
@@ -5787,6 +5879,16 @@ export interface ComponentsApiInterface {
      * @memberof ComponentsApiInterface
      */
     getComponent(requestParameters: ComponentsApiGetComponentRequest, options?: RawAxiosRequestConfig): AxiosPromise<GetComponentV1Response>;
+
+    /**
+     * 
+     * @summary Get a component resource by component Id
+     * @param {ComponentsApiGetComponentResourceRequest} requestParameters Request parameters.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof ComponentsApiInterface
+     */
+    getComponentResource(requestParameters: ComponentsApiGetComponentResourceRequest, options?: RawAxiosRequestConfig): AxiosPromise<GetComponentResourceDataV1Response>;
 
     /**
      * 
@@ -6152,6 +6254,34 @@ export interface ComponentsApiGetComponentRequest {
 }
 
 /**
+ * Request parameters for getComponentResource operation in ComponentsApi.
+ * @export
+ * @interface ComponentsApiGetComponentResourceRequest
+ */
+export interface ComponentsApiGetComponentResourceRequest {
+    /**
+     * Workspace identifier
+     * @type {string}
+     * @memberof ComponentsApiGetComponentResource
+     */
+    readonly workspaceId: string
+
+    /**
+     * Change Set identifier
+     * @type {string}
+     * @memberof ComponentsApiGetComponentResource
+     */
+    readonly changeSetId: string
+
+    /**
+     * Component identifier
+     * @type {string}
+     * @memberof ComponentsApiGetComponentResource
+     */
+    readonly componentId: string
+}
+
+/**
  * Request parameters for listComponents operation in ComponentsApi.
  * @export
  * @interface ComponentsApiListComponentsRequest
@@ -6472,6 +6602,18 @@ export class ComponentsApi extends BaseAPI implements ComponentsApiInterface {
      */
     public getComponent(requestParameters: ComponentsApiGetComponentRequest, options?: RawAxiosRequestConfig) {
         return ComponentsApiFp(this.configuration).getComponent(requestParameters.workspaceId, requestParameters.changeSetId, requestParameters.componentId, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * 
+     * @summary Get a component resource by component Id
+     * @param {ComponentsApiGetComponentResourceRequest} requestParameters Request parameters.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof ComponentsApi
+     */
+    public getComponentResource(requestParameters: ComponentsApiGetComponentResourceRequest, options?: RawAxiosRequestConfig) {
+        return ComponentsApiFp(this.configuration).getComponentResource(requestParameters.workspaceId, requestParameters.changeSetId, requestParameters.componentId, options).then((request) => request(this.axios, this.basePath));
     }
 
     /**
