@@ -1191,15 +1191,6 @@ const asyncTimeit = async (
   log(`${count} @ ${total} took ${ms.toFixed(3)}ms`);
 };
 
-const _clearSome = async (db: Comlink.Remote<TabDBInterface>) => {
-  // magic that deletes % of the db, bc random() is a 64bit int
-  const perc = 2 ** 63 * 0.6;
-  await db.exec({
-    sql: `DELETE FROM atoms WHERE random() > ?`,
-    bind: [perc],
-  });
-};
-
 const doIO = true;
 const readAtoms = async (
   db: Comlink.Remote<TabDBInterface>,
@@ -1224,6 +1215,7 @@ const readAtoms = async (
               atom.kind as Gettable,
               atom.id,
             );
+            // if (_mv === -1) console.error("~test: NO MV", atom.kind, atom.id);
             // console.log("mv size", new TextEncoder().encode(_mv).byteLength);
           } else {
             // no IO
