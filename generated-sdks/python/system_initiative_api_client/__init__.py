@@ -105,6 +105,7 @@ __all__ = [
     "GenerateTemplateV1Response",
     "GetActionsV1Response",
     "GetChangeSetV1Response",
+    "GetComponentResourceDataV1Response",
     "GetComponentV1Response",
     "GetComponentV1ResponseActionFunction",
     "GetComponentV1ResponseManagementFunction",
@@ -270,6 +271,7 @@ from system_initiative_api_client.models.generate_template_v1_request import Gen
 from system_initiative_api_client.models.generate_template_v1_response import GenerateTemplateV1Response as GenerateTemplateV1Response
 from system_initiative_api_client.models.get_actions_v1_response import GetActionsV1Response as GetActionsV1Response
 from system_initiative_api_client.models.get_change_set_v1_response import GetChangeSetV1Response as GetChangeSetV1Response
+from system_initiative_api_client.models.get_component_resource_data_v1_response import GetComponentResourceDataV1Response as GetComponentResourceDataV1Response
 from system_initiative_api_client.models.get_component_v1_response import GetComponentV1Response as GetComponentV1Response
 from system_initiative_api_client.models.get_component_v1_response_action_function import GetComponentV1ResponseActionFunction as GetComponentV1ResponseActionFunction
 from system_initiative_api_client.models.get_component_v1_response_management_function import GetComponentV1ResponseManagementFunction as GetComponentV1ResponseManagementFunction

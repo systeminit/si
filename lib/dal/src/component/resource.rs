@@ -9,10 +9,8 @@ use serde::{
     Serialize,
 };
 use serde_json::Value;
-use veritech_client::{
-    ActionRunResultSuccess,
-    ResourceStatus,
-};
+use veritech_client::ActionRunResultSuccess;
+pub use veritech_client::ResourceStatus;
 
 use crate::{
     Component,
