@@ -1,6 +1,6 @@
 import { assertEquals, assertExists } from "@std/assert";
 import { Context } from "../context.ts";
-import { TemplateComponent, TemplateContext } from "./context.ts";
+import { type TemplateComponent, TemplateContext } from "./context.ts";
 import { initializeWorkingSet } from "./working_set.ts";
 
 // Initialize Context once - this runs at module load time

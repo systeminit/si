@@ -188,6 +188,11 @@ export async function configureLogger(
       categoryStyle: "italic",
       categoryWidth: CATEGORY_WIDTH,
       colors: useColors,
+      inspectOptions: {
+        depth: Infinity,
+        colors: useColors,
+        compact: false,
+      },
     })
     : createNonInteractiveFormatter;
 

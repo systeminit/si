@@ -12,6 +12,19 @@ import { CompletionsCommand } from "@cliffy/command/completions";
 import { Context } from "./context.ts";
 import { extractErrorDetails, unknownValueToErrorMessage } from "./helpers.ts";
 import { runTemplate, type TemplateContextOptions } from "./template.ts";
+import { type ComponentGetOptions, getComponent } from "./component/get.ts";
+import {
+  componentUpdate,
+  type ComponentUpdateOptions,
+} from "./component/update.ts";
+import {
+  deleteComponent,
+  type ComponentDeleteOptions,
+} from "./component/delete.ts";
+import {
+  componentSearch,
+  type ComponentSearchOptions,
+} from "./component/search.ts";
 import axios from "axios";
 
 /** Current version of the SI Template CLI */
@@ -160,6 +173,206 @@ function buildCommand() {
             options as TemplateContextOptions,
           );
         }),
+    )
+    .command(
+      "component",
+      new Command()
+        .description("Component-related operations")
+        .command(
+          "get",
+          new Command()
+            .description("Get component data by name or ID")
+            .arguments("<component:string>")
+            .env(
+              "SI_API_TOKEN=<value:string>",
+              "A System Initiative API Token",
+              {
+                required: true,
+              },
+            )
+            .env(
+              "SI_BASE_URL=<url:string>",
+              "The System Initiative Base URL for your workspace",
+            )
+            .option(
+              "-c, --change-set <id:string>",
+              "Change set ID or name (defaults to HEAD)",
+            )
+            .option(
+              "-o, --output <format:string>",
+              "Output format: info (default), json, or yaml",
+              { default: "info" },
+            )
+            .option(
+              "--cache <file:string>",
+              "Cache output to file; format (JSON/YAML) determined by file extension (.json, .yaml, .yml)",
+            )
+            .option(
+              "--raw",
+              "Output raw API response as JSON and exit",
+            )
+            .action(async (options, component) => {
+              // Validate SI_API_TOKEN is present before proceeding
+              const apiToken = Deno.env.get("SI_API_TOKEN");
+              if (!apiToken) {
+                const ctx = Context.instance();
+                ctx.logger.error(
+                  "SI_API_TOKEN is not defined; re-run with your authentication token set in the environment",
+                );
+                Deno.exit(10);
+              }
+
+              await getComponent(
+                component as string,
+                options as ComponentGetOptions,
+              );
+            }),
+        )
+        .command(
+          "update",
+          new Command()
+            .description(
+              "Update a component from JSON/YAML file (idempotent)",
+            )
+            .arguments("<input-file:string>")
+            .env(
+              "SI_API_TOKEN=<value:string>",
+              "A System Initiative API Token",
+              {
+                required: true,
+              },
+            )
+            .env(
+              "SI_BASE_URL=<url:string>",
+              "The System Initiative Base URL for your workspace",
+            )
+            .option(
+              "--component <id-or-name:string>",
+              "Component ID or name (overrides componentId from file)",
+            )
+            .option(
+              "-c, --change-set <id-or-name:string>",
+              "Change set ID or name",
+              { required: true },
+            )
+            .option(
+              "--dry-run",
+              "Show diff without applying changes",
+            )
+            .action(async (options, inputFile) => {
+              // Validate SI_API_TOKEN is present before proceeding
+              const apiToken = Deno.env.get("SI_API_TOKEN");
+              if (!apiToken) {
+                const ctx = Context.instance();
+                ctx.logger.error(
+                  "SI_API_TOKEN is not defined; re-run with your authentication token set in the environment",
+                );
+                Deno.exit(10);
+              }
+
+              await componentUpdate(
+                inputFile as string,
+                options as ComponentUpdateOptions,
+              );
+            }),
+        )
+        .command(
+          "delete",
+          new Command()
+            .description(
+              "Delete a component by name or ID",
+            )
+            .arguments("<component:string>")
+            .env(
+              "SI_API_TOKEN=<value:string>",
+              "A System Initiative API Token",
+              {
+                required: true,
+              },
+            )
+            .env(
+              "SI_BASE_URL=<url:string>",
+              "The System Initiative Base URL for your workspace",
+            )
+            .option(
+              "-c, --change-set <id-or-name:string>",
+              "Change set ID or name",
+              { required: true },
+            )
+            .option(
+              "--dry-run",
+              "Preview deletion without applying changes",
+            )
+            .action(async (options, component) => {
+              // Validate SI_API_TOKEN is present before proceeding
+              const apiToken = Deno.env.get("SI_API_TOKEN");
+              if (!apiToken) {
+                const ctx = Context.instance();
+                ctx.logger.error(
+                  "SI_API_TOKEN is not defined; re-run with your authentication token set in the environment",
+                );
+                Deno.exit(10);
+              }
+
+              await deleteComponent(
+                component as string,
+                options as ComponentDeleteOptions,
+              );
+            }),
+        )
+        .command(
+          "search",
+          new Command()
+            .description(
+              "Search for components using a search query",
+            )
+            .arguments("<query:string>")
+            .env(
+              "SI_API_TOKEN=<value:string>",
+              "A System Initiative API Token",
+              {
+                required: true,
+              },
+            )
+            .env(
+              "SI_BASE_URL=<url:string>",
+              "The System Initiative Base URL for your workspace",
+            )
+            .option(
+              "-c, --change-set <id-or-name:string>",
+              "Change set ID or name (defaults to HEAD)",
+            )
+            .option(
+              "-o, --output <format:string>",
+              "Output format: info (default), json, or yaml",
+              { default: "info" },
+            )
+            .option(
+              "-a, --attribute <path:string>",
+              "Attribute paths to include in output (can be specified multiple times)",
+              { collect: true },
+            )
+            .option(
+              "--full-component",
+              "Show full component details for each result",
+            )
+            .action(async (options, query) => {
+              // Validate SI_API_TOKEN is present before proceeding
+              const apiToken = Deno.env.get("SI_API_TOKEN");
+              if (!apiToken) {
+                const ctx = Context.instance();
+                ctx.logger.error(
+                  "SI_API_TOKEN is not defined; re-run with your authentication token set in the environment",
+                );
+                Deno.exit(10);
+              }
+
+              await componentSearch(
+                query as string,
+                options as ComponentSearchOptions,
+              );
+            }),
+        ),
     )
     .command("completion", new CompletionsCommand());
 }

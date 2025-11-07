@@ -2,9 +2,9 @@ import { assertEquals, assertExists } from "@std/assert";
 import { Context } from "../context.ts";
 import {
   componentViewToTemplateComponent,
-  ComponentViewV1,
+  type ComponentViewV1,
   filterComponentAttributes,
-  TemplateComponent,
+  type TemplateComponent,
   TemplateContext,
 } from "./context.ts";
 import { z } from "zod";
