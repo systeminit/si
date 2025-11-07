@@ -31,6 +31,7 @@ export async function callSchemaScaffoldGenerate(
     project,
     MaterializableEntity.Schema,
     schemaName,
+    false,
   );
   const { formatVersionPath } = await generator.generateSchemaFormatVersion(
     project,
@@ -46,6 +47,7 @@ export async function callSchemaScaffoldGenerate(
     project,
     MaterializableEntity.Action,
     schemaName,
+    false,
   );
   const actionPaths = [];
   for (const actionName of Project.DEFAULT_ACTION_NAMES) {
@@ -63,6 +65,7 @@ export async function callSchemaScaffoldGenerate(
     project,
     MaterializableEntity.Codegen,
     schemaName,
+    false,
   );
   const codegenPaths = [];
   for (const codegenName of Project.DEFAULT_CODEGEN_NAMES) {
@@ -80,6 +83,7 @@ export async function callSchemaScaffoldGenerate(
     project,
     MaterializableEntity.Management,
     schemaName,
+    false,
   );
   const managementPaths = [];
   for (const managementName of Project.DEFAULT_MANAGEMENT_NAMES) {
@@ -97,6 +101,7 @@ export async function callSchemaScaffoldGenerate(
     project,
     MaterializableEntity.Qualification,
     schemaName,
+    false,
   );
   const qualificationPaths = [];
   for (const qualificationName of Project.DEFAULT_QUALIFICATION_NAMES) {
