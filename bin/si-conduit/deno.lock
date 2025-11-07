@@ -10,8 +10,10 @@
     "jsr:@cliffy/table@1.0.0-rc.8": "1.0.0-rc.8",
     "jsr:@logtape/logtape@0.12": "0.12.3",
     "jsr:@logtape/logtape@^1.1.1": "1.1.1",
-    "jsr:@logtape/pretty@^1.1.0": "1.1.1",
-    "jsr:@logtape/redaction@^1.1.1": "1.1.1",
+    "jsr:@logtape/logtape@^1.1.2": "1.1.2",
+    "jsr:@logtape/logtape@^1.2.0": "1.2.0",
+    "jsr:@logtape/pretty@^1.1.0": "1.2.0",
+    "jsr:@logtape/redaction@^1.1.1": "1.2.0",
     "jsr:@std/assert@*": "1.0.15",
     "jsr:@std/assert@~1.0.6": "1.0.15",
     "jsr:@std/encoding@~1.0.5": "1.0.10",
@@ -21,7 +23,7 @@
     "jsr:@std/io@~0.224.9": "0.224.9",
     "jsr:@std/path@~1.0.6": "1.0.9",
     "jsr:@std/text@~1.0.7": "1.0.16",
-    "jsr:@systeminit/api-client@^1.5.0": "1.5.0",
+    "jsr:@systeminit/api-client@^1.9.0": "1.9.0",
     "npm:@types/node@24.0.7": "24.0.7",
     "npm:axios@1.11.0": "1.11.0",
     "npm:axios@^1.6.1": "1.11.0",
@@ -84,6 +86,12 @@
     "@logtape/logtape@1.1.1": {
       "integrity": "65ebc4ae58238f7404d96b52112293279b1d256c578621a750e793c36e34c3d2"
     },
+    "@logtape/logtape@1.1.2": {
+      "integrity": "df86a456db8f8a67bea00ce0f8acfc717caf9c3c1ee0c12939d6877796fdd1e6"
+    },
+    "@logtape/logtape@1.2.0": {
+      "integrity": "8e1d3af5c91966cc5689cfb17081a36bccfdff28ff6314769185661f5147e74d"
+    },
     "@logtape/pretty@1.1.1": {
       "integrity": "250029d3d86e7d4a1824b40c21f3f8712823596ca23bf82b6c800db25c7b2e88",
       "dependencies": [
@@ -91,11 +99,29 @@
         "npm:@types/node"
       ]
     },
+    "@logtape/pretty@1.1.2": {
+      "integrity": "a4371de016942b11542e79b6111c7a7ced52c3ed253a8271a4ea33ec56fe2820",
+      "dependencies": [
+        "jsr:@logtape/logtape@^1.1.2"
+      ]
+    },
+    "@logtape/pretty@1.2.0": {
+      "integrity": "10ccb7495a08b397d6363c61eb9bfc7348ebb39a72c7cba34481954ded6cddb8",
+      "dependencies": [
+        "jsr:@logtape/logtape@^1.2.0"
+      ]
+    },
     "@logtape/redaction@1.1.1": {
       "integrity": "85d682fc1122bf7f51d389296b9671357d0bdbe86fdf1fc93bfd39b884c53879",
       "dependencies": [
         "jsr:@logtape/logtape@^1.1.1"
       ]
+    },
+    "@logtape/redaction@1.1.2": {
+      "integrity": "0598a1a97181654400d2b666ab252cef03cac97d0f6d19cb96959736cafb8b22"
+    },
+    "@logtape/redaction@1.2.0": {
+      "integrity": "2b867af2e35aabf708c9b84601cf7f1fdc18880d9a09bb48c4f4f377f8ab74fb"
     },
     "@std/assert@1.0.15": {
       "integrity": "d64018e951dbdfab9777335ecdb000c0b4e3df036984083be219ce5941e4703b",
@@ -124,8 +150,8 @@
     "@std/text@1.0.16": {
       "integrity": "ddb9853b75119a2473857d691cf1ec02ad90793a2e8b4a4ac49d7354281a0cf8"
     },
-    "@systeminit/api-client@1.5.0": {
-      "integrity": "336300a86ec236978c0d18957d25c5d51f7630ac655c9c98ca00b7a9ba715dc0",
+    "@systeminit/api-client@1.9.0": {
+      "integrity": "35a7fcb52522bcdc7f2843d5c041f44e35b67a1ae2f2b336bcf285d3c5f74b08",
       "dependencies": [
         "npm:axios@^1.6.1"
       ]
@@ -365,12 +391,12 @@
   "workspace": {
     "dependencies": [
       "jsr:@cliffy/command@^1.0.0-rc.7",
-      "npm:axios@1.11.0",
       "jsr:@cliffy/prompt@^1.0.0-rc.7",
       "jsr:@logtape/logtape@0.12",
       "jsr:@logtape/pretty@^1.1.0",
       "jsr:@logtape/redaction@^1.1.1",
-      "jsr:@systeminit/api-client@^1.5.0",
+      "jsr:@systeminit/api-client@^1.9.0",
+      "npm:axios@1.11.0",
       "npm:posthog-node@^4.2.1"
     ]
   }

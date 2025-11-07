@@ -92,7 +92,7 @@ export async function materializeEntityBase(
   project: Project,
   entity: MaterializableEntity,
   name: string,
-  isOverlay?: boolean,
+  isOverlay: boolean,
 ) {
   const module = isOverlay ? project.overlays : project.schemas;
 
