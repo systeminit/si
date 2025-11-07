@@ -11,7 +11,7 @@ import { Command } from "@cliffy/command";
 import { CompletionsCommand } from "@cliffy/command/completions";
 import { Context } from "./context.ts";
 import { extractErrorDetails, unknownValueToErrorMessage } from "./helpers.ts";
-import { runTemplate, TemplateContextOptions } from "./template.ts";
+import { runTemplate, type TemplateContextOptions } from "./template.ts";
 import axios from "axios";
 
 /** Current version of the SI Template CLI */

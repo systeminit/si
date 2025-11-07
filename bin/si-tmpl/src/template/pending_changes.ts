@@ -56,6 +56,19 @@ function normalizeSubscriptions(
 /**
  * Compares the working set against the existing set to determine what
  * changes need to be made (creates, updates, deletes).
+ *
+ * This function performs a three-way analysis:
+ * 1. **Creates**: Working set components without matching existing components
+ * 2. **Updates**: Matching components with attribute or name differences
+ * 3. **Deletes**: Existing components not present in working set
+ *
+ * Components are matched using two strategies:
+ * - Primary: `/si/tags/templateWorkingSetId` tag (stable component ID)
+ * - Fallback: `/si/tags/templateDynamicName` tag (for copied components)
+ *
+ * @param ctx - Template context with working set and logging
+ * @param existingSet - Components currently in System Initiative created by this template
+ * @returns PendingChanges object with categorized changes and lookup maps
  */
 export function buildPendingChanges(
   ctx: TemplateContext,

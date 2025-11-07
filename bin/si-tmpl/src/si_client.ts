@@ -10,7 +10,7 @@
 
 import {
   ChangeSetsApi,
-  ChangeSetViewV1,
+  type ChangeSetViewV1,
   Configuration,
 } from "@systeminit/api-client";
 import { jwtDecode } from "jwt-decode";

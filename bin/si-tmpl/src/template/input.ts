@@ -1,6 +1,6 @@
 import { extname } from "@std/path";
 import { parse as parseYaml } from "@std/yaml";
-import { z } from "zod";
+import type { z } from "zod";
 import { Context } from "../context.ts";
 import type { TemplateContext } from "./context.ts";
 

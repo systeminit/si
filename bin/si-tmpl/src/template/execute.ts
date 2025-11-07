@@ -8,10 +8,10 @@ import type {
 import { attributeDiffToUpdatePayload } from "./attribute_diff.ts";
 import {
   ChangeSetsApi,
-  ChangeSetViewV1,
+  type ChangeSetViewV1,
   ComponentsApi,
-  Configuration,
-  UpdateComponentV1Request,
+  type Configuration,
+  type UpdateComponentV1Request,
 } from "@systeminit/api-client";
 import { extractErrorDetails, logComponentWithSchema } from "../helpers.ts";
 

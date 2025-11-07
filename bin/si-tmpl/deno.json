@@ -1,4 +1,24 @@
 {
+  "name": "@systeminit/template",
+  "version": "0.1.1",
+  "description": "TypeScript library for System Initiative template automation",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/systeminit/si",
+    "directory": "bin/si-tmpl"
+  },
+  "homepage": "https://docs.systeminit.com",
+  "exports": {
+    ".": "./src/template.ts"
+  },
+  "exclude": [
+    "**/*_test.ts",
+    "**/*.test.ts",
+    "**/test_*.ts",
+    "main.ts",
+    "tmpl/"
+  ],
   "tasks": {
     "dev": "deno run --allow-net --allow-env --allow-read --allow-write --watch main.ts",
     "build": "deno compile --allow-net --allow-env --allow-read --allow-write main.ts",
@@ -8,6 +28,7 @@
   "imports": {
     "@cliffy/command": "jsr:@cliffy/command@^1.0.0-rc.7",
     "@cliffy/command/completions": "jsr:@cliffy/command@^1.0.0-rc.7/completions",
+    "@deno/loader": "jsr:@deno/loader@^0.3.9",
     "@logtape/logtape": "jsr:@logtape/logtape@^0.12.0",
     "@logtape/pretty": "jsr:@logtape/pretty@^1.1.0",
     "@logtape/redaction": "jsr:@logtape/redaction@^1.1.1",

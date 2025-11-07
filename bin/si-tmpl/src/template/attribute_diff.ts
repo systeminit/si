@@ -71,7 +71,20 @@ export function collapseArrayElementUnsets(
 
 /**
  * Computes the difference between working set attributes and existing attributes.
- * Returns a diff containing set operations, unset operations, and subscriptions.
+ *
+ * This function performs a three-way comparison to identify:
+ * 1. **Set operations**: Attributes that are new or have changed values
+ * 2. **Unset operations**: Attributes present in existing but not in working set (will be removed)
+ * 3. **Subscription operations**: Subscription references that are new or changed
+ *
+ * The function automatically collapses array element unsets - if all properties of an
+ * array element are being removed, it unsets the element itself instead of individual properties.
+ *
+ * Template tags (`/si/tags/template*`) are never unset to preserve template metadata.
+ *
+ * @param workingSetAttrs - Desired attributes from the working set component
+ * @param existingAttrs - Current attributes on the existing component
+ * @returns AttributeDiff containing sets, unsets, and subscription changes
  */
 export function computeAttributeDiff(
   workingSetAttrs: { [key: string]: unknown },
@@ -131,6 +144,20 @@ export function computeAttributeDiff(
 
 /**
  * Checks if a value represents a subscription to another component's attribute.
+ *
+ * Subscriptions in System Initiative use the `$source` structure to reference
+ * another component's attribute path.
+ *
+ * @param value - Value to check
+ * @returns true if the value is a subscription object with `$source.component` and `$source.path`
+ *
+ * @example
+ * ```ts
+ * const sub = { $source: { component: "abc123", path: "/domain/name" } };
+ * isSubscription(sub); // true
+ *
+ * isSubscription("plain string"); // false
+ * ```
  */
 export function isSubscription(value: unknown): boolean {
   return (
@@ -146,6 +173,26 @@ export function isSubscription(value: unknown): boolean {
 
 /**
  * Extracts subscription information from a subscription value.
+ *
+ * Converts a subscription attribute value (with `$source` structure) into
+ * a normalized SubscriptionSource object.
+ *
+ * @param value - Subscription value to extract (must be a valid subscription)
+ * @returns SubscriptionSource with component ID, path, and optional func
+ *
+ * @example
+ * ```ts
+ * const subValue = {
+ *   $source: {
+ *     component: "abc123",
+ *     path: "/domain/connectionString",
+ *     func: "si:normalizeToArray"
+ *   }
+ * };
+ *
+ * const source = extractSubscription(subValue);
+ * // { component: "abc123", path: "/domain/connectionString", func: "si:normalizeToArray" }
+ * ```
  */
 export function extractSubscription(value: unknown): SubscriptionSource {
   const v = value as {
@@ -160,6 +207,22 @@ export function extractSubscription(value: unknown): SubscriptionSource {
 
 /**
  * Performs deep equality comparison between two values.
+ *
+ * Recursively compares primitives, arrays, and objects for structural equality.
+ * Used to determine if attribute values have actually changed between working set
+ * and existing components.
+ *
+ * @param a - First value to compare
+ * @param b - Second value to compare
+ * @returns true if values are deeply equal, false otherwise
+ *
+ * @example
+ * ```ts
+ * deepEqual({ a: 1, b: [2, 3] }, { a: 1, b: [2, 3] }); // true
+ * deepEqual({ a: 1 }, { a: 2 }); // false
+ * deepEqual([1, 2, 3], [1, 2, 3]); // true
+ * deepEqual([1, 2], [1, 2, 3]); // false
+ * ```
  */
 export function deepEqual(a: unknown, b: unknown): boolean {
   // Handle primitives
@@ -187,7 +250,32 @@ export function deepEqual(a: unknown, b: unknown): boolean {
 }
 
 /**
- * Converts an AttributeDiff to a payload suitable for the SI update API.
+ * Converts an AttributeDiff to a payload suitable for the System Initiative update API.
+ *
+ * Transforms the structured AttributeDiff into the flat key-value format expected
+ * by the SI API's component update endpoint:
+ * - Set operations: Include value directly
+ * - Unset operations: Use `{ "$source": null }` to clear the attribute
+ * - Subscription operations: Use `{ "$source": { component, path, func? } }` format
+ *
+ * @param diff - AttributeDiff to convert
+ * @returns Flat attributes object ready for API submission
+ *
+ * @example
+ * ```ts
+ * const diff: AttributeDiff = {
+ *   set: new Map([["/domain/region", "us-west-2"]]),
+ *   unset: ["/domain/oldConfig"],
+ *   subscriptions: new Map([["/domain/db", { component: "abc", path: "/domain/conn" }]])
+ * };
+ *
+ * const payload = attributeDiffToUpdatePayload(diff);
+ * // {
+ * //   "/domain/region": "us-west-2",
+ * //   "/domain/oldConfig": { "$source": null },
+ * //   "/domain/db": { "$source": { component: "abc", path: "/domain/conn" } }
+ * // }
+ * ```
  */
 export function attributeDiffToUpdatePayload(
   diff: AttributeDiff,
@@ -220,6 +308,21 @@ export function attributeDiffToUpdatePayload(
 
 /**
  * Checks if an AttributeDiff contains any changes.
+ *
+ * An empty diff means the working set component is identical to the existing
+ * component and no update is needed.
+ *
+ * @param diff - AttributeDiff to check
+ * @returns true if the diff has no sets, unsets, or subscription changes
+ *
+ * @example
+ * ```ts
+ * const emptyDiff = { set: new Map(), unset: [], subscriptions: new Map() };
+ * isEmptyDiff(emptyDiff); // true
+ *
+ * const nonEmptyDiff = { set: new Map([["/domain/a", "b"]]), unset: [], subscriptions: new Map() };
+ * isEmptyDiff(nonEmptyDiff); // false
+ * ```
  */
 export function isEmptyDiff(diff: AttributeDiff): boolean {
   return (

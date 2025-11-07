@@ -1,16 +1,17 @@
-import { Logger } from "@logtape/logtape";
+import type { Logger } from "@logtape/logtape";
 import { Context } from "../context.ts";
 import { basename } from "@std/path";
 import { z } from "zod";
+import type { SubscriptionInputType } from "../template.ts";
 import {
   ComponentsApi,
-  ComponentViewV1,
-  Configuration,
-  GetComponentV1Response,
-  GetSchemaV1Response,
+  type ComponentViewV1,
+  type Configuration,
+  type GetComponentV1Response,
+  type GetSchemaV1Response,
   SchemasApi,
   SearchApi,
-  SearchV1Response,
+  type SearchV1Response,
 } from "@systeminit/api-client";
 import { getHeadChangeSetId } from "../si_client.ts";
 import {
@@ -20,23 +21,45 @@ import {
 } from "./attribute_diff.ts";
 import { generateULID } from "./ulid.ts";
 
+/**
+ * Configuration options for creating a TemplateContext and running a template.
+ *
+ * These options control template execution behavior, including how the template
+ * identifies itself, where to load/cache data, and whether to perform a dry run.
+ */
 export interface TemplateContextOptions {
-  // Invocation Key for idempotency control
+  /** Invocation key for idempotency control - templates with the same key are treated as the same invocation */
   key: string;
-  // Optional path to input data file (JSON or YAML)
+  /** Optional path to input data file (JSON or YAML) for template inputs */
   input?: string;
-  // Optional path to baseline data file (JSON or YAML)
+  /** Optional path to baseline data file (JSON or YAML) to load cached baseline instead of querying API */
   baseline?: string;
-  // Optional path to cache baseline results (JSON or YAML)
+  /** Optional path to cache baseline results (JSON or YAML) for faster subsequent runs */
   cacheBaseline?: string;
-  // Optional flag to exit after writing baseline cache
+  /** Optional flag to exit after writing baseline cache without executing the template */
   cacheBaselineOnly?: boolean;
-  // Optional flag to show planned changes without executing them
+  /** Optional flag to show planned changes without executing them (dry run mode) */
   dryRun?: boolean;
 }
 
+/**
+ * A name pattern for transforming component names using regular expression matching.
+ *
+ * Patterns are applied sequentially in array order. The replacement string supports
+ * EJS templating with access to `inputs` (validated input data) and `c` (TemplateContext).
+ *
+ * @example
+ * ```ts
+ * c.namePattern([
+ *   { pattern: /^dev-/, replacement: "prod-" },
+ *   { pattern: /-v(\d+)$/, replacement: "-v<%= inputs.version %>" }
+ * ]);
+ * ```
+ */
 export interface NamePattern {
+  /** Regular expression to match against component names */
   pattern: RegExp;
+  /** Replacement string (supports EJS templates with `inputs` and `c` variables) */
   replacement: string;
 }
 
@@ -53,16 +76,78 @@ export interface TemplateComponent {
   attributes: { [key: string]: unknown };
 }
 
+/**
+ * Predicate function for matching component attributes based on path, value, and component properties.
+ *
+ * Used by {@link TemplateContext.setAttribute}, {@link TemplateContext.deleteAttribute},
+ * and {@link TemplateContext.setSiblingAttribute} to selectively operate on attributes.
+ *
+ * @param path - The attribute path (e.g., "/domain/instanceType")
+ * @param value - The current value at that path
+ * @param component - The component being evaluated
+ * @returns true if the attribute matches the criteria, false otherwise
+ *
+ * @example
+ * ```ts
+ * // Match all tags with "temp-" prefix
+ * const predicate: AttributePredicate = (path, value) =>
+ *   path.startsWith("/si/tags/temp-");
+ * ```
+ */
 export type AttributePredicate = (
   path: string,
   value: unknown,
   component: TemplateComponent,
 ) => boolean;
 
+/**
+ * Predicate function for matching attribute values.
+ *
+ * Used by {@link TemplateContext.setSiblingAttribute} to filter based on attribute values.
+ *
+ * @param value - The attribute value to evaluate
+ * @returns true if the value matches the criteria, false otherwise
+ *
+ * @example
+ * ```ts
+ * // Match values that are arrays with more than 3 elements
+ * const predicate: ValuePredicate = (value) =>
+ *   Array.isArray(value) && value.length > 3;
+ * ```
+ */
 export type ValuePredicate = (
   value: unknown,
 ) => boolean;
 
+/**
+ * Transform function that modifies the working set of components.
+ *
+ * This is the core user-defined function in a template where custom logic is implemented.
+ * It receives the working set (post-name-transformation) and optional validated input data,
+ * and must return the modified working set.
+ *
+ * @template TInput - The type of validated input data (inferred from Zod schema)
+ * @param workingSet - Array of components to transform (can be modified in place or replaced)
+ * @param inputData - Optional validated input data from the input file
+ * @returns The transformed working set (can be the same array or a new one)
+ *
+ * @example
+ * ```ts
+ * c.transform(async (workingSet, inputs) => {
+ *   // Filter to only EC2 instances
+ *   const ec2Only = workingSet.filter(comp =>
+ *     comp.name.includes("ec2")
+ *   );
+ *
+ *   // Modify attributes
+ *   for (const comp of ec2Only) {
+ *     c.setAttribute(comp, "/domain/region", inputs.region);
+ *   }
+ *
+ *   return ec2Only;
+ * });
+ * ```
+ */
 export type TransformFunction<TInput = unknown> = (
   workingSet: TemplateComponent[],
   inputData?: TInput,
@@ -114,6 +199,34 @@ export function componentViewToTemplateComponent(
   };
 }
 
+/**
+ * The main context object provided to templates for configuring and executing template logic.
+ *
+ * TemplateContext provides methods for:
+ * - Configuring template behavior (name, search, inputs, transforms)
+ * - Accessing and modifying component data (baseline, working set)
+ * - Interacting with the System Initiative API (schemas, components, subscriptions)
+ * - Manipulating component attributes and creating new components
+ *
+ * This class is instantiated by the template runtime and passed to user template files.
+ * Users interact with it through the exported `c` variable in their templates.
+ *
+ * @template TInputSchema - The Zod schema type for validating template inputs
+ *
+ * @example
+ * ```ts
+ * // In a template file
+ * export default async function(c: TemplateContext) {
+ *   c.search(["name:myapp-*"]);
+ *   c.namePattern([{ pattern: /^myapp-/, replacement: "yourapp-" }]);
+ *
+ *   c.transform(async (workingSet) => {
+ *     // Custom logic here
+ *     return workingSet;
+ *   });
+ * }
+ * ```
+ */
 export class TemplateContext<TInputSchema extends z.ZodTypeAny = z.ZodTypeAny> {
   public readonly logger: Logger;
   private readonly ctx: Context;
@@ -701,7 +814,7 @@ export class TemplateContext<TInputSchema extends z.ZodTypeAny = z.ZodTypeAny> {
   async setSubscription(
     component: TemplateComponent,
     attributePath: string,
-    subscription: z.infer<typeof import("../template.ts").SubscriptionInput>,
+    subscription: SubscriptionInputType,
   ): Promise<void> {
     if (subscription.kind === "$source") {
       // Direct $source subscription - resolve component name to ID if needed

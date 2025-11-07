@@ -1,10 +1,44 @@
 import { extname } from "@std/path";
 import { stringify as stringifyYaml } from "@std/yaml";
-import { GetSchemaV1Response } from "@systeminit/api-client";
+import type { GetSchemaV1Response } from "@systeminit/api-client";
 import type { TemplateComponent, TemplateContext } from "./context.ts";
 
+/**
+ * Container for cached baseline data and schema metadata.
+ *
+ * Used to persist baseline components and their schemas to disk, enabling:
+ * - Faster subsequent template runs (skip API queries for baseline)
+ * - Offline development and testing with cached data
+ * - Debugging and inspection of baseline state
+ *
+ * The cache can be written in JSON or YAML format based on file extension.
+ *
+ * @example
+ * ```ts
+ * // Cache structure when written to file
+ * {
+ *   "components": [
+ *     {
+ *       "id": "01HQXYZ...",
+ *       "schemaId": "01HQABC...",
+ *       "name": "my-component",
+ *       "resourceId": "res-123",
+ *       "attributes": { "/si/name": "my-component", ... }
+ *     }
+ *   ],
+ *   "schemas": {
+ *     "01HQABC...": {
+ *       "name": "AWS EC2 Instance",
+ *       ...
+ *     }
+ *   }
+ * }
+ * ```
+ */
 export interface BaselineCache {
+  /** Array of template components that make up the baseline */
   components: TemplateComponent[];
+  /** Map of schema ID to schema metadata for all schemas used by baseline components */
   schemas: Record<string, GetSchemaV1Response>;
 }
 
