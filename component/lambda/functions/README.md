@@ -12,5 +12,5 @@ To run a lambda locally:
 3. Run the lambda handler you want, with any arguments you want:
 
    ```sh
-   python -c 'from billing_fire_posthog_events import lambda_handler; lambda_handler({ "SI_DRY_RUN": True })'
+   python -c 'import importlib; importlib.import_module("billing-data-check-errors").lambda_handler({ "SI_DRY_RUN": True })'
    ```

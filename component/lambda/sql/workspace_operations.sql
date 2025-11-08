@@ -78,8 +78,8 @@ CREATE OR REPLACE VIEW workspace_operations.owner_si_hours AS
 -- workspace_update_events, materialized, with data cleanup.
 --
 -- NOTE: this does not auto refresh (and cannot, since it's pulling from an external schema).
--- We have a scheduled "REFRESH MATERIALIZED VIEW" query set up in Redshift. If you recreate
--- this view or move to a new Redshift, you will 
+-- The billing-refresh-workspace-update-events lambda runs a "REFRESH MATERIALIZED VIEW" on a
+-- schedule.
 --
 -- NOTE: this also does not *incrementally* refresh, also because it's an external schema; each
 -- refresh rebuilds the whole view. This is not intended as a permanent situation; the pipeline
@@ -110,6 +110,9 @@ CREATE MATERIALIZED VIEW workspace_operations.workspace_update_events_clean
       -- This is the ONLY QUERY that should read from this external schema. Use
       -- this materialized view instead.
       FROM workspace_update_events.workspace_update_events;
+
+-- lambda_user needs ownership to be able to refresh the materialized view
+ALTER TABLE workspace_operations.workspace_update_events_clean OWNER TO lambda_user;
 
 -- Status of workspace_update_events ingestion, including when we consider events to be complete
 CREATE OR REPLACE VIEW workspace_operations.workspace_update_events_summary AS
