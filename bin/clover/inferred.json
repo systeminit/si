@@ -1787,6 +1787,12 @@
       "rack"
     ]
   },
+  "The process namespace to use for the containers in the task. The valid values are ``host`` or ``task``. On Fargate for Linux containers, the only valid value is ``task``. For example, monitoring sidecars might need ``pidMode`` to access information about other containers running in the same task.\n If ``host`` is specified, all containers within the tasks that specified the ``host`` PID mode on the same container instance share the same process namespace with the host Amazon EC2 instance.\n If ``task`` is specified, all containers within the specified task share the same process namespace.\n If no value is specified, the The default is a private namespace for each container.\n If the ``host`` PID mode is used, there's a heightened risk of undesired process namespace exposure.\n  This parameter is not supported for Windows containers.\n   This parameter is only supported for tasks that are hosted on FARGATElong if the tasks are using platform version ``1.4.0`` or later (Linux). This isn't supported for Windows containers on Fargate.": {
+    "enum": [
+      "host",
+      "task"
+    ]
+  },
   "The process namespace to use for the containers in the task. The valid values are ``host`` or ``task``. On Fargate for Linux containers, the only valid value is ``task``. For example, monitoring sidecars might need ``pidMode`` to access information about other containers running in the same task.\n If ``host`` is specified, all containers within the tasks that specified the ``host`` PID mode on the same container instance share the same process namespace with the host Amazon EC2 instance.\n If ``task`` is specified, all containers within the specified task share the same process namespace.\n If no value is specified, the default is a private namespace for each container.\n If the ``host`` PID mode is used, there's a heightened risk of undesired process namespace exposure.\n  This parameter is not supported for Windows containers.\n   This parameter is only supported for tasks that are hosted on FARGATElong if the tasks are using platform version ``1.4.0`` or later (Linux). This isn't supported for Windows containers on Fargate.": {
     "enum": [
       "host",
@@ -2905,6 +2911,11 @@
   "Represents the desired status of AutodefinedReverse. The only supported value on creation is DISABLE. Deletion of this resource will return AutodefinedReverse to its default value (ENABLED).": {
     "enum": [
       "DISABLE"
+    ]
+  },
+  "The only supported SourceConnection type is Codestar.": {
+    "enum": [
+      "Codestar"
     ]
   },
   "The type of the CFN Resource for now it's enum CFN_STACK.": {
@@ -6399,6 +6410,9 @@
   "Maximum resolution for multitrack input. Required if enabled is true.": {
     "enum": null
   },
+  "Maximum size of a data record in KiB allowed to be put into Kinesis stream.": {
+    "enum": null
+  },
   "Maximum size of the Amazon EBS volume in Gb. Must be greater than or equal to the DefaultEbsVolumeSizeInGb.": {
     "enum": null
   },
@@ -8121,6 +8135,9 @@
   "The ARN of an AWS storage resource's location.": {
     "enum": null
   },
+  "The ARN of an Eventbridge event bus to receive the integration status notification.": {
+    "enum": null
+  },
   "The ARN of an IAM role that grants CWL permissions to deliver ingested log events to the destination stream. You don't need to provide the ARN when you are working with a logical destination for cross-account delivery.": {
     "enum": null
   },
@@ -8266,6 +8283,9 @@
     "enum": null
   },
   "The ARN of the KMS key to use for encryption.": {
+    "enum": null
+  },
+  "The ARN of the KMS key used for encryption.": {
     "enum": null
   },
   "The ARN of the KMS key. Required if SseAlgorithm is aws:kms.": {
@@ -9483,6 +9503,9 @@
   "The CPU architecture.\n You can run your Linux tasks on an ARM-based platform by setting the value to ``ARM64``. This option is available for tasks that run on Linux Amazon EC2 instance or Linux containers on Fargate.": {
     "enum": null
   },
+  "The CPU architecture.\n You can run your Linux tasks on an ARM-based platform by setting the value to ``ARM64``. This option is available for tasks that run on Linux Amazon EC2 instance, Amazon ECS Managed Instances, or Linux containers on Fargate.": {
+    "enum": null
+  },
   "The Catalog Id of the Table on which to create a Data Cells Filter.": {
     "enum": null
   },
@@ -9493,6 +9516,9 @@
     "enum": null
   },
   "The CloudformationProduct or Portfolio identifier.": {
+    "enum": null
+  },
+  "The CodeStar ARN, which is the connection between AWS Service Catalog and the external repository.\n\n": {
     "enum": null
   },
   "The Conflict Detection strategy to use.": {
@@ -9588,6 +9614,9 @@
   "The GUID for the customer-managed AWS KMS key to use for encryption. This value can be a globally unique identifier, a fully specified Amazon Resource Name (ARN) to either an alias or a key, or an alias name prefixed by \"alias/\".You can also use a master key owned by Kinesis Data Streams by specifying the alias aws/kinesis.": {
     "enum": null
   },
+  "The Glue network connection to configure the Glue job running in the customer VPC.": {
+    "enum": null
+  },
   "The GraphQL field on a type that invokes the resolver.": {
     "enum": null
   },
@@ -9649,6 +9678,12 @@
     "enum": null
   },
   "The IAM role that will be assumed by the Amazon EMR Studio. The service role provides a way for Amazon EMR Studio to interoperate with other AWS services.": {
+    "enum": null
+  },
+  "The IAM role to access the Glue connection.": {
+    "enum": null
+  },
+  "The IAM role to access the Glue database.": {
     "enum": null
   },
   "The IAM role to assume to run the target action.": {
@@ -10527,6 +10562,9 @@
   "The KMS key to use for encrypting data. By default an AWS owned key is used": {
     "enum": null
   },
+  "The KMS key with which the Policy's assets will be encrypted at rest.": {
+    "enum": null
+  },
   "The KMS key with which the guardrail was encrypted at rest": {
     "enum": null
   },
@@ -10864,6 +10902,9 @@
     "enum": null
   },
   "The ``resolver`` code that contains the request and response functions. When code is used, the ``runtime`` is required. The runtime value must be ``APPSYNC_JS``.": {
+    "enum": null
+  },
+  "The absolute path where the artifact resides within the repo and branch, formatted as \"folder/file.json\".": {
     "enum": null
   },
   "The account ID for the owner of the S3 bucket.": {
@@ -11301,7 +11342,16 @@
   "The configuration version to deploy. If deploying an AWS AppConfig hosted configuration version, you can specify either the version number or version label. For all other configurations, you must specify the version number.": {
     "enum": null
   },
+  "The connection ARN of the source, or the database ARN of the target.": {
+    "enum": null
+  },
   "The connection mode to filter distributions by.": {
+    "enum": null
+  },
+  "The contact URL for product support.": {
+    "enum": null
+  },
+  "The contact email for product support.": {
     "enum": null
   },
   "The contact info of the package group.": {
@@ -11877,6 +11927,9 @@
   "The description of the prepared statement.": {
     "enum": null
   },
+  "The description of the product.": {
+    "enum": null
+  },
   "The description of the project.": {
     "enum": null
   },
@@ -12118,6 +12171,9 @@
     "enum": null
   },
   "The distance metric to be used for similarity search.": {
+    "enum": null
+  },
+  "The distributor of the product.": {
     "enum": null
   },
   "The dollar value that triggers a notification if the threshold is exceeded. ": {
@@ -14565,6 +14621,9 @@
   "The name of the monitoring schedule.": {
     "enum": null
   },
+  "The name of the multi-region endpoint (global-endpoint).": {
+    "enum": null
+  },
   "The name of the multiplex program.": {
     "enum": null
   },
@@ -14671,6 +14730,9 @@
     "enum": null
   },
   "The name of the processing job. The name must be unique within an AWS Region in the AWS account.": {
+    "enum": null
+  },
+  "The name of the product.": {
     "enum": null
   },
   "The name of the production variant, which takes all the inference requests.": {
@@ -14958,6 +15020,9 @@
   "The name of the workgroup.": {
     "enum": null
   },
+  "The name of the workload identity. The name must be unique within your account.": {
+    "enum": null
+  },
   "The name of the zip file that contains the build files or script files.": {
     "enum": null
   },
@@ -15241,6 +15306,9 @@
     "enum": null
   },
   "The number of I/O operations per second (IOPS) that the database provisions. The value must be equal to or greater than 1000. \n If you specify this property, you must follow the range of allowed ratios of your requested IOPS rate to the amount of storage that you allocate (IOPS to allocated storage). For example, you can provision an Oracle database instance with 1000 IOPS and 200 GiB of storage (a ratio of 5:1), or specify 2000 IOPS with 200 GiB of storage (a ratio of 10:1). For more information, see [Amazon RDS Provisioned IOPS Storage to Improve Performance](https://docs.aws.amazon.com/AmazonRDS/latest/DeveloperGuide/CHAP_Storage.html#USER_PIOPS) in the *Amazon RDS User Guide*.\n  If you specify ``io1`` for the ``StorageType`` property, then you must also specify the ``Iops`` property.\n  Constraints:\n  +  For RDS for Db2, MariaDB, MySQL, Oracle, and PostgreSQL - Must be a multiple between .5 and 50 of the storage amount for the DB instance.\n  +  For RDS for SQL Server - Must be a multiple between 1 and 50 of the storage amount for the DB instance.": {
+    "enum": null
+  },
+  "The number of I/O operations per second (IOPS) to provision for the volume. Required for ``io1`` and ``io2`` volumes. Optional for ``gp3`` volumes. Omit for all other volume types. \n Valid ranges:\n  +  gp3: ``3,000``(*default*)``- 80,000`` IOPS\n  +  io1: ``100 - 64,000`` IOPS\n  +  io2: ``100 - 256,000`` IOPS\n  \n  [Instances built on the Nitro System](https://docs.aws.amazon.com/ec2/latest/instancetypes/ec2-nitro-instances.html) can support up to 256,000 IOPS. Other instances can support up to 32,000 IOPS.": {
     "enum": null
   },
   "The number of I/O operations per second (IOPS). For ``gp3``, ``io1``, and ``io2`` volumes, this represents the number of IOPS that are provisioned for the volume. For ``gp2`` volumes, this represents the baseline performance of the volume and the rate at which the volume accumulates I/O credits for bursting.\n The following are the supported values for each volume type:\n  +   ``gp3``: 3,000 - 16,000 IOPS\n  +   ``io1``: 100 - 64,000 IOPS\n  +   ``io2``: 100 - 256,000 IOPS\n  \n For ``io2`` volumes, you can achieve up to 256,000 IOPS on [instances built on the Nitro System](https://docs.aws.amazon.com/ec2/latest/instancetypes/ec2-nitro-instances.html). On other instances, you can achieve performance up to 32,000 IOPS.\n This parameter is required for ``io1`` and ``io2`` volumes. The default for ``gp3`` volumes is 3,000 IOPS. This parameter is not supported for ``gp2``, ``st1``, ``sc1``, or ``standard`` volumes.": {
@@ -15571,6 +15639,9 @@
     "enum": null
   },
   "The owner contact information for an API resource.": {
+    "enum": null
+  },
+  "The owner of the product.": {
     "enum": null
   },
   "The owner of the repository. For a Bitbucket repository, this is the username for the account that owns the repository.": {
@@ -16326,6 +16397,9 @@
   "The scheduling expression. For example, \"cron(0 20 * * ? *)\", \"rate(5 minutes)\". For more information, see Creating an Amazon EventBridge rule that runs on a schedule.": {
     "enum": null
   },
+  "The scope of the connection.": {
+    "enum": null
+  },
   "The scope of the container group": {
     "enum": null
   },
@@ -16452,6 +16526,9 @@
   "The size of the volume, in GiBs": {
     "enum": null
   },
+  "The size of the volume, in GiBs. You must specify either a snapshot ID or a volume size. If you specify a snapshot, the default is the snapshot size, and you can specify a volume size that is equal to or larger than the snapshot size.\n Valid sizes:\n  +  gp2: ``1 - 16,384`` GiB\n  +  gp3: ``1 - 65,536`` GiB\n  +  io1: ``4 - 16,384`` GiB\n  +  io2: ``4 - 65,536`` GiB\n  +  st1 and sc1: ``125 - 16,384`` GiB\n  +  standard: ``1 - 1024`` GiB": {
+    "enum": null
+  },
   "The size of the volume, in GiBs. You must specify either a snapshot ID or a volume size. If you specify a snapshot, the default is the snapshot size. You can specify a volume size that is equal to or larger than the snapshot size.\n The following are the supported volumes sizes for each volume type:\n  +   ``gp2`` and ``gp3``: 1 - 16,384 GiB\n  +   ``io1``: 4 - 16,384 GiB\n  +   ``io2``: 4 - 65,536 GiB\n  +   ``st1`` and ``sc1``: 125 - 16,384 GiB\n  +   ``standard``: 1 - 1024 GiB": {
     "enum": null
   },
@@ -16528,6 +16605,12 @@
     "enum": null
   },
   "The specific authentication type that you want DataSync to use to access your Azure Blob Container.": {
+    "enum": null
+  },
+  "The specific branch where the artifact resides.": {
+    "enum": null
+  },
+  "The specific repository where the product's artifact-to-be-synced resides, formatted as \"Account/Repo.\"": {
     "enum": null
   },
   "The specified access age in days for which to generate findings for unused access. For example, if you specify 90 days, the analyzer will generate findings for IAM entities within the accounts of the selected organization for any access that hasn't been used in 90 or more days since the analyzer's last scan. You can choose a value between 1 and 365 days.": {
@@ -16765,6 +16848,9 @@
     "enum": null
   },
   "The summary string.": {
+    "enum": null
+  },
+  "The support information about the product.": {
     "enum": null
   },
   "The supported IP address types.": {
@@ -17164,6 +17250,9 @@
     "enum": null
   },
   "The type of private link authentication": {
+    "enum": null
+  },
+  "The type of product.": {
     "enum": null
   },
   "The type of property group.": {
