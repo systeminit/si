@@ -13,6 +13,7 @@ groups = {
         "otelcol",
         "postgres",
         "spicedb",
+        "versitygw",
     ],
     "backend": [
         "auth-api",
@@ -183,6 +184,7 @@ compose_services = {
     "prometheus": {},
     "promtail": {},
     "spicedb": {},
+    "versitygw": {},
 }
 for service, kwargs in compose_services.items():
     dc_resource(service, labels = resource_labels(service), **kwargs)

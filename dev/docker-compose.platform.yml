@@ -175,3 +175,24 @@ services:
       - "ZED_KEYRING_PASSWORD=orc"
     ports:
       - "50051:50051"
+
+  versitygw:
+    #<<: *loki-logged-service
+    image: systeminit/versitygw:stable
+    entrypoint: ["/bin/sh"]
+    command:
+      - "-c"
+      - |
+        /usr/local/bin/init-buckets.sh &&
+        exec /app/versitygw --port :9000 --access siadmin --secret bugbear posix /data
+    environment:
+      - "VGW_DATA_DIR=/data"
+    ports:
+      - "9000:9000" # S3 API
+    healthcheck:
+      test:
+        - "CMD-SHELL"
+        - "[ -f /tmp/ready ]"
+      interval: 5s
+      timeout: 10s
+      retries: 5
