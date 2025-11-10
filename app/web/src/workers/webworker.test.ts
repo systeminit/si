@@ -836,7 +836,7 @@ const fullDiagnosticTest = async (db: Comlink.Remote<TabDBInterface>) => {
     "fromIndexChecksum": "8601f40a5bc4b73e90dba9d1a4126bfd"
   },
   "kind": "IndexUpdate",
-  "indexChecksum": "8601f40a5bc4b73e90dba9d1a4126bfd",
+  "indexChecksum": "8601f40a5bc4b73e90dba9d1a4126bfd-different",
   "patch": {
     "kind": "ChangeSetMvIndex",
     "id": "cfe344c9242085c961e343a835de646f409e1b0e9f63290c6415dc7c52ef9b9b",
@@ -5480,6 +5480,7 @@ async function go() {
   db.addConnStatusFn(Comlink.proxy(() => {}));
   await db.initDB(true);
   await db.migrate(true);
+  db.createLock();
   db.setBearer(workspaceId, "doesnt matter 123");
   try {
     await fullDiagnosticTest(db);
