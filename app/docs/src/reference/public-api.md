@@ -1327,6 +1327,43 @@ Adds multiple components to a view by name. If the view doesn't exist, it will b
 |404|[Not Found](https://tools.ietf.org/html/rfc7231#section-6.5.4)|Component not found|None|
 |500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
 
+## Get a component resource by component Id
+
+<a id="opIdget_component_resource"></a>
+
+> Request format
+
+`GET /v1/w/{workspace_id}/change-sets/{change_set_id}/components/{component_id}/resource`
+
+<h3 id="get-a-component-resource-by-component-id-parameters">Parameters</h3>
+
+|Name|In|Type|Required|Description|
+|---|---|---|---|---|
+|workspace_id|path|string|true|Workspace identifier|
+|change_set_id|path|string|true|Change Set identifier|
+|component_id|path|string|true|Component identifier|
+
+> Example responses
+
+> 200 Response
+
+```json
+{
+  "last_synced": "2024-01-15T12:30:00Z",
+  "payload": null,
+  "status": "Ok"
+}
+```
+
+<h3 id="get-a-component-resource-by-component-id-responses">Responses</h3>
+
+|Status|Meaning|Description|Schema|
+|---|---|---|---|
+|200|[OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)|Component resource retrieved successfully|[GetComponentResourceDataV1Response](#schemagetcomponentresourcedatav1response)|
+|401|[Unauthorized](https://tools.ietf.org/html/rfc7235#section-3.1)|Unauthorized - Invalid or missing token|None|
+|412|[Precondition Failed](https://tools.ietf.org/html/rfc7232#section-4.2)|Component has no associated resource|None|
+|500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
+
 ## Restore a component that is marked for deletion
 
 <a id="opIdrestore_component"></a>
@@ -1586,7 +1623,7 @@ Schemas management endpoints
 |404|[Not Found](https://tools.ietf.org/html/rfc7231#section-6.5.4)|Schema not found|None|
 |500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
 
-## Complex search for shemas
+## Complex search for schemas
 
 <a id="opIdsearch_schemas"></a>
 
@@ -1602,7 +1639,7 @@ Schemas management endpoints
 }
 ```
 
-<h3 id="complex-search-for-shemas-parameters">Parameters</h3>
+<h3 id="complex-search-for-schemas-parameters">Parameters</h3>
 
 |Name|In|Type|Required|Description|
 |---|---|---|---|---|
@@ -1627,7 +1664,7 @@ Schemas management endpoints
 }
 ```
 
-<h3 id="complex-search-for-shemas-responses">Responses</h3>
+<h3 id="complex-search-for-schemas-responses">Responses</h3>
 
 |Status|Meaning|Description|Schema|
 |---|---|---|---|
@@ -5441,6 +5478,30 @@ continued
 |Name|Type|Required|Restrictions|Description|
 |---|---|---|---|---|
 |changeSet|[ChangeSetViewV1](#schemachangesetviewv1)|true|none|none|
+
+## [GetComponentResourceDataV1Response](#tocS_GetComponentResourceDataV1Response)
+
+<a id="schemagetcomponentresourcedatav1response"></a>
+<a id="schema_GetComponentResourceDataV1Response"></a>
+<a id="tocSgetcomponentresourcedatav1response"></a>
+<a id="tocsgetcomponentresourcedatav1response"></a>
+
+```json
+{
+  "last_synced": "2024-01-15T12:30:00Z",
+  "payload": null,
+  "status": "Ok"
+}
+
+```
+
+### [Properties](#getcomponentresourcedatav1response-properties)
+
+|Name|Type|Required|Restrictions|Description|
+|---|---|---|---|---|
+|last_synced|string(date-time)|true|none|none|
+|payload|any|false|none|none|
+|status|string|true|none|none|
 
 ## [GetComponentV1Response](#tocS_GetComponentV1Response)
 
