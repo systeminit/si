@@ -2,6 +2,60 @@
 
 All notable changes to System Initiative will be documented in this file.
 
+## November 3rd to 9th, 2025
+
+### ✨ Added
+
+- Added support for creating **overlay qualification and codegen functions** in
+  the Public API.
+- Exposed the **workspace ExternalId** in Public API workspace operations.
+- Supported **Codegen and Qualification overlay functions** in `si-mcp-server`.
+- Created an **initial API token** when creating a workspace via the Public API.
+- Allowed creation of **Auth API workspace tokens** via the automation API.
+- Added the ability to **write property and unit tests for function types**.
+- Public API now returns whether a **function is an overlay**.
+- Public API now **creates an initial workspace API token** when creating a
+  workspace.
+- Launched **Azure beta assets and onboarding** in the web app.
+- Added the ability to **create and manipulate templating outside of the web
+  app**.
+
+### 🔄 Changed
+
+- Improved handling of **workspace snapshot evictions** to avoid race
+  conditions.
+- Changed the **Func Run log viewer** to show plain text for very large logs.
+- Applied **UI consistency updates** for colors and borders.
+- Changed the **Add Component modal** in the web app to be virtualized for
+  better performance.
+
+### 🐞 Fixed
+
+- Fixed an issue where **queued actions on HEAD** also appeared on a change set.
+- Fixed an issue where **Conduit unlocked all schemas** even when no changes
+  were pending.
+- Fixed import functions that were **not working correctly for Azure
+  components**.
+- Fixed path handling in the **Attributes API** for map items and keys that
+  contained `/`.
+- Fixed an issue where **deletions or upgrades** could break components with
+  subscriptions.
+- Fixed an issue where **default subscriptions were not preserved** during a
+  component upgrade.
+- Fixed an issue where **variant functions in the Public API** did not indicate
+  overlay status.
+- Fixed an issue where **deployment MVs were not cleaned up** when removed from
+  the index.
+- Fixed an issue where **prop validation failures** showed for subscriptions
+  that were not yet resolved in the web app.
+- Fixed **scroll jitter** on the component review page in the web app.
+- Fixed an issue where **resetting Attribute Panel inputs** prevented default
+  behavior from running.
+- Fixed an issue where **selecting components on the map view** caused a very
+  jittery experience.
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/1PjmaXFXR50?si=gKSwqKYsS51gRIqO" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+
 ## October 27th to November 2nd, 2025
 
 ### ✨ Added
@@ -46,6 +100,8 @@ All notable changes to System Initiative will be documented in this file.
   while loading.
 - Fixed **database connection eviction logic** to close idle and long-lived
   connections correctly.
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/lA8BS7rMJYM?si=WqLznCUgmfWsLkLQ" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
 
 ## October 20th to 26th 2025
 
@@ -92,6 +148,8 @@ All notable changes to System Initiative will be documented in this file.
 - Fixed an issue where **failed functions** didn’t send an update event to
   indicate failure.
 
+<iframe width="560" height="315" src="https://www.youtube.com/embed/bQIthgGT3KY?si=lOg935rZje-eGw15" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+
 ## October 13th to 19th 2025
 
 ### ✨ Added
@@ -128,7 +186,7 @@ All notable changes to System Initiative will be documented in this file.
 - Fixed a vulnerability where **Workspace Integrations** could be accessed by
   another user without permission.
 
-<iframe width="560" height="315" src="https://www.youtube.com/embed/bQIthgGT3KY?si=xaa7UJf6Uv6zQe5s" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+<iframe width="560" height="315" src="https://www.youtube.com/embed/WvfQnJ1NhWk?si=f4lDA2Y4P5NANRgj" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
 
 ## October 6th to 12th 2025
 
