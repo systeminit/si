@@ -46,6 +46,7 @@ use si_events::{
     AttributeValueId,
     ChangeSetId,
     ComponentId,
+    DebugFuncJobStateId,
     ManagementPrototypeId,
     ViewId,
     WorkspacePk,
@@ -180,6 +181,25 @@ impl Client {
         .await
     }
 
+    /// Requests a debug func job execution and returns an awaitable response future
+    pub async fn await_debug_job(
+        &self,
+        workspace_id: WorkspacePk,
+        change_set_id: ChangeSetId,
+        debug_func_job_state_id: DebugFuncJobStateId,
+        is_job_blocking: bool,
+    ) -> Result<(RequestId, BoxFuture<'static, Result<JobExecutionResponse>>)> {
+        self.call_with_reply(
+            workspace_id,
+            change_set_id,
+            JobArgsVCurrent::DebugFunc {
+                debug_func_job_state_id,
+            },
+            is_job_blocking,
+        )
+        .await
+    }
+
     /// Requests an action job execution and doesnt't wait for a response.
     pub async fn dispatch_action_job(
         &self,
@@ -255,6 +275,26 @@ impl Client {
                 prototype_id,
                 view_id,
                 request_ulid,
+            },
+            is_job_blocking,
+            None,
+        )
+        .await
+    }
+
+    /// Requests a debug func job execution and doesn't wait
+    pub async fn dispatch_debug_job(
+        &self,
+        workspace_id: WorkspacePk,
+        change_set_id: ChangeSetId,
+        debug_func_job_state_id: DebugFuncJobStateId,
+        is_job_blocking: bool,
+    ) -> Result<RequestId> {
+        self.call_async(
+            workspace_id,
+            change_set_id,
+            JobArgsVCurrent::DebugFunc {
+                debug_func_job_state_id,
             },
             is_job_blocking,
             None,

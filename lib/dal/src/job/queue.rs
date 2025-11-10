@@ -9,6 +9,7 @@ use si_id::{
     AttributeValueId,
     ChangeSetId,
     ComponentId,
+    DebugFuncJobStateId,
     ManagementPrototypeId,
     ViewId,
     WorkspacePk,
@@ -17,6 +18,7 @@ use tokio::sync::Mutex;
 
 use super::definition::{
     ActionJob,
+    DebugFuncJob,
     ManagementFuncJob,
 };
 use crate::job::{
@@ -42,6 +44,7 @@ type ManagementChangeSets = Arc<
         )>,
     >,
 >;
+type DebugChangeSets = Arc<Mutex<RingSet<(WorkspacePk, ChangeSetId, DebugFuncJobStateId)>>>;
 
 #[derive(Debug, Clone, Default)]
 pub struct JobQueue {
@@ -49,6 +52,7 @@ pub struct JobQueue {
     dependent_value_update_change_sets: DependentValuesUpdateChangeSets,
     validation_change_sets: ValidationChangeSets,
     management_change_sets: ManagementChangeSets,
+    debug_change_sets: DebugChangeSets,
 }
 
 impl JobQueue {
@@ -108,6 +112,19 @@ impl JobQueue {
         ));
     }
 
+    pub async fn enqueue_debug_func_job(
+        &self,
+        workspace_id: WorkspacePk,
+        change_set_id: ChangeSetId,
+        debug_func_job_state_id: DebugFuncJobStateId,
+    ) {
+        self.debug_change_sets.lock().await.insert((
+            workspace_id,
+            change_set_id,
+            debug_func_job_state_id,
+        ));
+    }
+
     /// Pop jobs off queue in a prioritized, FIFO manner.
     pub async fn pop_job(&self) -> Option<Box<dyn DalJob>> {
         if let Some((workspace_id, change_set_id)) = self
@@ -146,6 +163,10 @@ impl JobQueue {
                 view_id,
                 request_ulid,
             ))
+        } else if let Some((workspace_id, change_set_id, job_state_id)) =
+            self.debug_change_sets.lock().await.pop_front()
+        {
+            Some(DebugFuncJob::new(workspace_id, change_set_id, job_state_id))
         } else {
             None
         }

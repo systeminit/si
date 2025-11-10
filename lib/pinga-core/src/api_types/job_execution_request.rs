@@ -9,6 +9,7 @@ use serde::Deserialize;
 
 mod v1;
 mod v2;
+mod v3;
 
 pub use self::{
     v1::{
@@ -19,17 +20,22 @@ pub use self::{
         JobArgsV2,
         JobExecutionRequestV2,
     },
+    v3::{
+        JobArgsV3,
+        JobExecutionRequestV3,
+    },
 };
 
-pub type JobArgsVCurrent = JobArgsV2;
+pub type JobArgsVCurrent = JobArgsV3;
 
 #[remain::sorted]
 #[derive(AllVersions, CurrentContainer, Clone, Debug, Deserialize, Eq, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub enum JobExecutionRequestAllVersions {
     V1(JobExecutionRequestV1),
-    #[acceptable(current)]
     V2(JobExecutionRequestV2),
+    #[acceptable(current)]
+    V3(JobExecutionRequestV3),
 }
 
 impl IntoContainer for JobExecutionRequestAllVersions {
@@ -37,22 +43,48 @@ impl IntoContainer for JobExecutionRequestAllVersions {
 
     fn into_container(self) -> Result<Self::Container, UpgradeError> {
         match self {
-            Self::V1(inner) => Ok(Self::Container::V2(JobExecutionRequestV2 {
+            Self::V1(inner) => Ok(Self::Container::V3(JobExecutionRequestV3 {
                 id: inner.id,
                 workspace_id: inner.workspace_id,
                 change_set_id: inner.change_set_id,
                 args: match inner.args {
-                    JobArgsV1::Action { action_id } => JobArgsV2::Action { action_id },
-                    JobArgsV1::DependentValuesUpdate => JobArgsV2::DependentValuesUpdate,
+                    JobArgsV1::Action { action_id } => JobArgsV3::Action { action_id },
+                    JobArgsV1::DependentValuesUpdate => JobArgsV3::DependentValuesUpdate,
                     JobArgsV1::Validation {
                         attribute_value_ids,
-                    } => JobArgsV2::Validation {
+                    } => JobArgsV3::Validation {
                         attribute_value_ids,
                     },
                 },
                 is_job_blocking: inner.is_job_blocking,
             })),
-            Self::V2(inner) => Ok(Self::Container::new(inner)),
+            Self::V2(inner) => Ok(Self::Container::V3(JobExecutionRequestV3 {
+                id: inner.id,
+                workspace_id: inner.workspace_id,
+                change_set_id: inner.change_set_id,
+                args: match inner.args {
+                    JobArgsV2::Action { action_id } => JobArgsV3::Action { action_id },
+                    JobArgsV2::DependentValuesUpdate => JobArgsV3::DependentValuesUpdate,
+                    JobArgsV2::Validation {
+                        attribute_value_ids,
+                    } => JobArgsV3::Validation {
+                        attribute_value_ids,
+                    },
+                    JobArgsV2::ManagementFunc {
+                        component_id,
+                        prototype_id,
+                        view_id,
+                        request_ulid,
+                    } => JobArgsV3::ManagementFunc {
+                        component_id,
+                        prototype_id,
+                        view_id,
+                        request_ulid,
+                    },
+                },
+                is_job_blocking: inner.is_job_blocking,
+            })),
+            Self::V3(inner) => Ok(Self::Container::new(inner)),
         }
     }
 }

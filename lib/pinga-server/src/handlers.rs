@@ -13,6 +13,7 @@ use dal::{
         },
         definition::{
             ActionJob,
+            DebugFuncJob,
             DependentValuesUpdate,
             ManagementFuncJob,
             compute_validation::ComputeValidation,
@@ -270,6 +271,13 @@ async fn try_execute_job(
             *component_id,
             *view_id,
             *request_ulid,
+        ) as Box<dyn JobConsumer + Send + Sync>,
+        JobArgsVCurrent::DebugFunc {
+            debug_func_job_state_id,
+        } => DebugFuncJob::new(
+            request.workspace_id,
+            request.change_set_id,
+            *debug_func_job_state_id,
         ) as Box<dyn JobConsumer + Send + Sync>,
     };
 

@@ -15,7 +15,10 @@ use serde::{
     Deserialize,
     Serialize,
 };
-pub use si_id::ulid;
+pub use si_id::{
+    DebugFuncJobStateId,
+    ulid,
+};
 use split_snapshot_rebase_batch_address::SplitSnapshotRebaseBatchAddress;
 
 mod action;

@@ -94,6 +94,18 @@ impl NatsProcessor {
                         )
                         .await?;
                 }
+                JobArgsVCurrent::DebugFunc {
+                    debug_func_job_state_id,
+                } => {
+                    self.pinga
+                        .dispatch_debug_job(
+                            job.workspace_id(),
+                            job.change_set_id(),
+                            debug_func_job_state_id,
+                            false,
+                        )
+                        .await?;
+                }
             }
         }
 
@@ -145,6 +157,18 @@ impl JobQueueProcessor for NatsProcessor {
                         prototype_id,
                         view_id,
                         request_ulid,
+                        false,
+                    )
+                    .await?
+            }
+            JobArgsVCurrent::DebugFunc {
+                debug_func_job_state_id,
+            } => {
+                self.pinga
+                    .await_debug_job(
+                        job.workspace_id(),
+                        job.change_set_id(),
+                        debug_func_job_state_id,
                         false,
                     )
                     .await?
