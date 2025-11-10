@@ -15,6 +15,7 @@ use dal::{
             ActionPrototype,
         },
     },
+    component::resource::ResourceData,
     diagram::Diagram,
     func::authoring::FuncAuthoringClient,
     prop::PropPath,
@@ -47,6 +48,7 @@ use pretty_assertions_sorted::{
     assert_ne,
 };
 use serde_json::json;
+use veritech_client::ResourceStatus;
 
 use crate::integration_test::component::connectable_test::ConnectableTest;
 // TODO test that validates that components that exist on locked variants aren't auto upgraded, but can be upgraded manually
@@ -887,6 +889,160 @@ async fn upgrade_component_preserves_default_subscription_source(
     assert!(
         !AttributeValue::is_default_subscription_source(ctx, new_prop_av_id).await?,
         "newProp should not be marked as default subscription source"
+    );
+
+    Ok(())
+}
+
+/// Test that upgrading a component with default values doesn't spuriously enqueue update actions
+/// This test verifies the fix for the issue where update actions were being enqueued even when
+/// no values actually changed during an upgrade.
+#[test]
+async fn upgrade_without_value_changes_does_not_enqueue_update_action(
+    ctx: &mut DalContext,
+) -> Result<()> {
+    // Create a new schema variant with an update action
+    let variant_zero = VariantAuthoringClient::create_schema_and_variant(
+        ctx,
+        "testAssetWithUpdate",
+        None,
+        None,
+        "Integration Tests",
+        "#00b0b0",
+    )
+    .await?;
+
+    let schema = variant_zero.schema(ctx).await?;
+
+    // Add some domain props
+    let code = "function main() {
+        const myProp = new PropBuilder().setName(\"testProp\").setKind(\"string\").setDefaultValue(\"defaultValue\").build();
+        const anotherProp = new PropBuilder().setName(\"anotherProp\").setKind(\"integer\").setDefaultValue(42).build();
+        return new AssetBuilder().addProp(myProp).addProp(anotherProp).build();
+    }";
+
+    // Create a create action for this variant
+    let create_action_code = "async function main() {
+        return { payload: { \"created\": true }, status: \"ok\" };
+    }";
+
+    let create_func = FuncAuthoringClient::create_new_action_func(
+        ctx,
+        Some("create test asset".to_owned()),
+        ActionKind::Create,
+        variant_zero.id(),
+    )
+    .await?;
+
+    FuncAuthoringClient::save_code(ctx, create_func.id, create_action_code.to_owned()).await?;
+
+    // Create an update action for this variant
+    let update_action_code = "async function main() {
+        return { payload: { \"updated\": true }, status: \"ok\" };
+    }";
+
+    let update_func = FuncAuthoringClient::create_new_action_func(
+        ctx,
+        Some("update test asset".to_owned()),
+        ActionKind::Update,
+        variant_zero.id(),
+    )
+    .await?;
+
+    FuncAuthoringClient::save_code(ctx, update_func.id, update_action_code.to_owned()).await?;
+
+    VariantAuthoringClient::save_variant_content(
+        ctx,
+        variant_zero.id(),
+        schema.name.clone(),
+        variant_zero.display_name(),
+        variant_zero.category(),
+        variant_zero.description(),
+        variant_zero.link(),
+        variant_zero.get_color(ctx).await?,
+        variant_zero.component_type(),
+        Some(code.to_string()),
+    )
+    .await?;
+
+    VariantAuthoringClient::regenerate_variant(ctx, variant_zero.id()).await?;
+
+    // Create a component (this will have a create action)
+    let component = create_component_for_default_schema_name_in_default_view(
+        ctx,
+        schema.name.clone(),
+        "test component",
+    )
+    .await?;
+
+    // Verify we have exactly one action (create)
+    let actions = Action::find_for_component_id(ctx, component.id()).await?;
+    assert_eq!(1, actions.len(), "Should have exactly one create action");
+
+    let create_action_id = actions[0];
+    let create_prototype_id = Action::prototype_id(ctx, create_action_id).await?;
+    let create_prototype = ActionPrototype::get_by_id(ctx, create_prototype_id).await?;
+    assert_eq!(ActionKind::Create, create_prototype.kind);
+
+    // Set resource on the component so it becomes eligible for update actions
+    let component = Component::get_by_id(ctx, component.id()).await?;
+    component
+        .set_resource(
+            ctx,
+            ResourceData::new(
+                ResourceStatus::Ok,
+                Some(serde_json::json!({"id": "test-resource-123"})),
+            ),
+        )
+        .await?;
+
+    // Remove the create action so we can test for update action being enqueued or not
+    Action::remove_by_id(ctx, create_action_id).await?;
+
+    // Verify no actions exist
+    let actions = Action::find_for_component_id(ctx, component.id()).await?;
+    assert_eq!(0, actions.len(), "Should have no actions before upgrade");
+
+    // Update the variant with a NEW prop but keep the existing props with same defaults
+    let updated_code = "function main() {
+        const myProp = new PropBuilder().setName(\"testProp\").setKind(\"string\").setDefaultValue(\"defaultValue\").build();
+        const anotherProp = new PropBuilder().setName(\"anotherProp\").setKind(\"integer\").setDefaultValue(42).build();
+        const newProp = new PropBuilder().setName(\"newProp\").setKind(\"string\").setDefaultValue(\"newDefault\").build();
+        return new AssetBuilder().addProp(myProp).addProp(anotherProp).addProp(newProp).build();
+    }";
+
+    VariantAuthoringClient::save_variant_content(
+        ctx,
+        variant_zero.id(),
+        schema.name.clone(),
+        variant_zero.display_name(),
+        variant_zero.category(),
+        variant_zero.description(),
+        variant_zero.link(),
+        variant_zero.get_color(ctx).await?,
+        variant_zero.component_type(),
+        Some(updated_code.to_string()),
+    )
+    .await?;
+
+    // Regenerate the variant (this creates a new variant and auto-upgrades the component)
+    let variant_one = VariantAuthoringClient::regenerate_variant(ctx, variant_zero.id()).await?;
+    assert_ne!(variant_one, variant_zero.id());
+
+    // Verify the component was upgraded
+    let upgraded_component = Component::get_by_id(ctx, component.id()).await?;
+    assert_eq!(
+        upgraded_component.schema_variant(ctx).await?.id(),
+        variant_one
+    );
+
+    // The key assertion: since no values actually changed (the component was using default values
+    // and the defaults didn't change), no update action should be enqueued
+    let actions_after_upgrade = Action::find_for_component_id(ctx, component.id()).await?;
+    assert_eq!(
+        0,
+        actions_after_upgrade.len(),
+        "Should have NO actions after upgrade when no values changed"
     );
 
     Ok(())

@@ -710,7 +710,6 @@ impl Component {
             let new_av_id = match maybe_new_av_id {
                 // The value exists in both old and new (thought it might be defaulted)
                 Some(new_av_id) => {
-                    dvu_roots.push(DependentValueRoot::Unfinished(new_av_id.into()));
                     match maybe_old_component_prototype_id {
                         // The old component has an explicit value set rather than using
                         // the default: set the value in the new component as well.
@@ -736,6 +735,9 @@ impl Component {
                                     key.clone(),
                                 )
                                 .await?;
+
+                                // This AV was modified by copying a dynamic function, so it needs DVU
+                                dvu_roots.push(DependentValueRoot::Unfinished(new_av_id.into()));
 
                                 // We continue here since we don't want to descend below a dynamic func
                                 continue;
@@ -778,6 +780,9 @@ impl Component {
                                 let old_value =
                                     old_av.value_or_default_or_null(ctx, old_prop_id).await?;
                                 AttributeValue::set_value(ctx, new_av_id, Some(old_value)).await?;
+
+                                // This AV was explicitly modified, so it needs DVU
+                                dvu_roots.push(DependentValueRoot::Unfinished(new_av_id.into()));
                             }
 
                             // But we do need to see if this value is set dynamically. If
