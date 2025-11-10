@@ -6332,6 +6332,9 @@
   "MDN Signing algorithm for this AS2 connector configuration.": {
     "enum": null
   },
+  "Managed runtime types": {
+    "enum": null
+  },
   "Manually updates a previously-enabled type to a new major or minor version, if available. You can also use this parameter to update the value of AutoUpdateEnabled": {
     "enum": null
   },
@@ -6375,6 +6378,9 @@
     "enum": null
   },
   "Maximum duration (seconds) of content to retain for startover playback. If not specified, startover playback will be disabled for the OriginEndpoint.": {
+    "enum": null
+  },
+  "Maximum lifetime in seconds for runtime sessions": {
     "enum": null
   },
   "Maximum match distance.": {
@@ -7268,7 +7274,16 @@
   "S3 URL to import domains from.": {
     "enum": null
   },
+  "S3 bucket name": {
+    "enum": null
+  },
+  "S3 object key prefix": {
+    "enum": null
+  },
   "S3 object version": {
+    "enum": null
+  },
+  "S3 object version ID": {
     "enum": null
   },
   "S3 permanently deletes noncurrent objects after the number of days specified by the NoncurrentDays property.": {
@@ -18000,6 +18015,9 @@
     "enum": null
   },
   "Timeout duration for a preview contact in seconds": {
+    "enum": null
+  },
+  "Timeout in seconds for idle runtime sessions": {
     "enum": null
   },
   "TimeoutMinutes": {
