@@ -1,9 +1,12 @@
+import _logger from "../logger.ts";
 import { allCfProps, loadCfDatabase } from "../cfDb.ts";
 import type { CfProperty } from "../pipelines/types.ts";
 import type { CfSchema } from "../pipelines/aws/schema.ts";
 import OpenAI from "npm:openai@^4.104.0";
 import _ from "lodash";
 import { Inferred, loadInferred, saveInferred } from "../spec/inferred.ts";
+
+const logger = _logger.ns("fetchSchema").seal();
 
 const SAVE_INTERVAL = 5;
 const GENERIC_PROMPT = `
@@ -52,7 +55,7 @@ export async function inferAi(options: {
 
       // We don't run inference on read-only properties
       if (cfSchema.readOnlyProperties?.includes(`/properties${cfPropPath}`)) {
-        console.log(
+        logger.debug(
           `Ignoring ${cfSchema.typeName} ${cfPropPath} due to readOnlyProperties`,
         );
         continue;
@@ -60,7 +63,7 @@ export async function inferAi(options: {
 
       // We can't infer without a description
       if (!cfProp.description) {
-        console.log(
+        logger.debug(
           `Ignoring ${cfSchema.typeName} ${cfPropPath} due to lack of description`,
         );
         continue;
@@ -77,7 +80,7 @@ The CloudFormation documentation for the property ${cfPropPath} on ${cfSchema.ty
 
 Respond with the JSON array of strings representing the possible values for this property, or a JSON null value if it is not a limited set.
 `;
-      console.log(specificPrompt);
+      logger.debug(specificPrompt);
       const chatCompletion = await client.chat.completions.create({
         messages: [
           { role: "user", content: GENERIC_PROMPT },
@@ -95,8 +98,7 @@ Respond with the JSON array of strings representing the possible values for this
         const parsed = JSON.parse(chatCompletion.choices[0].message.content!);
         if (
           parsed === null ||
-          (Array.isArray(parsed) &&
-            parsed.every((v) => typeof v === "string"))
+          (Array.isArray(parsed) && parsed.every((v) => typeof v === "string"))
         ) {
           values = parsed;
         } else {
@@ -105,17 +107,17 @@ Respond with the JSON array of strings representing the possible values for this
           );
         }
       } catch (e) {
-        console.log(chatCompletion);
+        logger.error(chatCompletion);
         throw e;
       }
 
-      console.log(chatCompletion.choices[0].message.content);
+      logger.debug(chatCompletion.choices[0].message.content);
 
       inferred[cfProp.description] = { enum: values };
     }
 
     // Save periodically in case there are issues
-    if ((Date.now() - lastSaved) > SAVE_INTERVAL) {
+    if (Date.now() - lastSaved > SAVE_INTERVAL) {
       saveInferred(options.inferred, inferred);
       lastSaved = Date.now();
     }
@@ -133,14 +135,13 @@ type CfScalarProperty = Extract<
 >;
 
 function isScalarProperty(cfProp: CfProperty): cfProp is CfScalarProperty {
-  return typeof cfProp.type === "string" &&
-    ["string", "number", "integer"].includes(cfProp.type);
+  return (
+    typeof cfProp.type === "string" &&
+    ["string", "number", "integer"].includes(cfProp.type)
+  );
 }
 
-function validateEnums(
-  cfSchema: CfSchema,
-  inferred: Record<string, Inferred>,
-) {
+function validateEnums(cfSchema: CfSchema, inferred: Record<string, Inferred>) {
   for (const { cfProp, cfPropPath } of allCfProps(cfSchema)) {
     if (!cfProp.description) continue;
     const cfPropOverrides = inferred[cfProp.description];
@@ -165,10 +166,12 @@ function validateEnums(
     const inferredValues = new Set(cfPropOverrides.enum);
     const missingValues = realValues.difference(inferredValues);
     if (missingValues.size > 0) {
-      console.warn(`
-      ERROR: ${cfSchema.typeName} ${cfPropPath}: Missing inferred enum values ${
-        new Array(...missingValues).toSorted()
-      }:
+      logger.warn(`
+      ${
+        cfSchema.typeName
+      } ${cfPropPath}: Missing inferred enum values ${new Array(
+        ...missingValues,
+      ).toSorted()}:
       - Real enum:     ${cfProp.enum.map(String).toSorted()}
       - Inferred enum: ${cfPropOverrides.enum.toSorted()}
 
@@ -178,10 +181,10 @@ function validateEnums(
     }
     const extraValues = inferredValues.difference(realValues);
     if (extraValues.size > 0) {
-      console.log(
-        `ADD ${cfSchema.typeName} ${cfPropPath}: ${cfProp.enum} +${
-          new Array(...extraValues).toSorted()
-        }`,
+      logger.debug(
+        `ADD ${cfSchema.typeName} ${cfPropPath}: ${cfProp.enum} +${new Array(
+          ...extraValues,
+        ).toSorted()}`,
       );
     }
   }
