@@ -43,6 +43,34 @@ SI_API_TOKEN=<your-token> deno task dev run <template-file> --key <invocation-ke
 SI_API_TOKEN=eyJhbGc... deno run --allow-net --allow-env --allow-read --allow-write main.ts run ./tmpl/test.ts --key my-unique-key
 ```
 
+
+### Generating a baseline cache
+
+To generate a baseline cache of your workspace, create a template file with search strings:
+
+```typescript
+// tmpl/cache.ts
+import { TemplateContext } from "../src/template.ts";
+
+export default async function (ctx: TemplateContext) {
+  ctx.search(["schema:*"]);
+}
+```
+
+Then cache your workspace:
+
+```bash
+deno main.ts run ./tmpl/cache.ts --key cache-gen --cache-baseline ./cache/baseline.yaml --cache-baseline-only
+```
+
+Use the cached baseline in subsequent template runs:
+
+```bash
+deno main.ts run <your-template-file> --key <invocation-key> --baseline ./cache/baseline.yaml
+```
+
+The cache file format (`.json` or `.yaml`) is determined by the file extension.
+
 ### Options
 
 **Global Options:**
