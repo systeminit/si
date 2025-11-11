@@ -60,6 +60,7 @@ use tokio_util::{
 };
 
 use self::app_state::AppState;
+use super::is_bad_change_set_id;
 use crate::{
     ServerMetadata,
     api_types::change_set_request::{
@@ -110,9 +111,24 @@ impl ChangeSetProcessorTask {
         task_token: CancellationToken,
         server_tracker: TaskTracker,
     ) -> Self {
+        let is_on_bad_change_set = is_bad_change_set_id(change_set_id);
+
+        if is_on_bad_change_set {
+            info!(
+                "DBG: create: detected bad change set for change_set_id: {}",
+                change_set_id
+            );
+        }
+
         let connection_metadata = nats.metadata_clone();
+        if is_on_bad_change_set {
+            info!("DBG: create: cloned connection metadata");
+        }
 
         let prefix = nats.metadata().subject_prefix().map(|s| s.to_owned());
+        if is_on_bad_change_set {
+            info!("DBG: create: extracted subject prefix: {:?}", prefix);
+        }
 
         let state = AppState::new(
             workspace_id,
@@ -124,10 +140,22 @@ impl ChangeSetProcessorTask {
             ctx_builder,
             server_tracker,
         );
+        if is_on_bad_change_set {
+            info!(
+                "DBG: create: created AppState for workspace_id: {}, change_set_id: {}",
+                workspace_id, change_set_id
+            );
+        }
 
         // Set up a check interval that ideally fires more often than the quiescent period
         let check_interval =
             time::interval(quiescent_period.checked_div(10).unwrap_or(quiescent_period));
+        if is_on_bad_change_set {
+            info!(
+                "DBG: create: set up check interval with quiescent_period: {:?}",
+                quiescent_period
+            );
+        }
 
         let captured = QuiescedCaptured {
             instance_id_str: metadata.instance_id().to_string().into_boxed_str(),
@@ -136,6 +164,9 @@ impl ChangeSetProcessorTask {
             quiesced_notify: quiesced_notify.clone(),
             last_compressing_heartbeat_rx,
         };
+        if is_on_bad_change_set {
+            info!("DBG: create: created QuiescedCaptured struct");
+        }
         let inactive_aware_incoming = incoming
             // Frequency at which we check for a quiet period
             .timeout_repeating(check_interval)
@@ -161,12 +192,14 @@ impl ChangeSetProcessorTask {
                 );
 
                 if last_heartbeat_elapsed > quiescent_period {
-                    debug!(
-                        service.instance.id = instance_id_str,
-                        si.workspace.id = workspace_id_str,
-                        si.change_set.id = change_set_id_str,
-                        "rate of requests has become inactive, triggering a quiesced shutdown",
-                    );
+                    if is_on_bad_change_set {
+                        info!(
+                            service.instance.id = instance_id_str,
+                            si.workspace.id = workspace_id_str,
+                            si.change_set.id = change_set_id_str,
+                            "DBG: rate of requests has become inactive, triggering a quiesced shutdown",
+                        );
+                    }
                     // Notify the serial dvu task that we want to shutdown due to a quiet period
                     quiesced_notify.notify_one();
                 }
@@ -175,6 +208,9 @@ impl ChangeSetProcessorTask {
             // triggered. This means we turn the stream back from a stream of
             // `Result<Result<Message, _>, Elapsed>` into `Result<Message, _>`
             .filter_map(|maybe_elapsed_item| maybe_elapsed_item.ok());
+        if is_on_bad_change_set {
+            info!("DBG: create: set up inactive-aware incoming stream with quiesced handling");
+        }
 
         let app = ServiceBuilder::new()
             .layer(MatchedSubjectLayer::new().for_subject(
@@ -190,13 +226,28 @@ impl ChangeSetProcessorTask {
             .layer(PostProcessLayer::new())
             .service(handlers::default.with_state(state))
             .map_response(Response::into_response);
+        if is_on_bad_change_set {
+            info!("DBG: create: built service app with tracing and post-processing layers");
+        }
 
         let inner =
             naxum::serve_with_incoming_limit(inactive_aware_incoming, app.into_make_service(), 1)
                 .with_graceful_shutdown(graceful_shutdown_signal(task_token, quiesced_token));
+        if is_on_bad_change_set {
+            info!("DBG: create: set up naxum server with graceful shutdown");
+        }
 
         let inner_fut = inner.into_future();
+        if is_on_bad_change_set {
+            info!("DBG: create: converted inner server to future");
+        }
 
+        if is_on_bad_change_set {
+            info!(
+                "DBG: create: creating ChangeSetProcessorTask for workspace_id: {}, change_set_id: {}",
+                workspace_id, change_set_id
+            );
+        }
         Self {
             _metadata: metadata,
             workspace_id,
@@ -345,6 +396,7 @@ mod handlers {
     use super::app_state::AppState;
     use crate::{
         api_types::change_set_request::CompressedChangeSetRequest,
+        is_bad_change_set_id,
         materialized_view,
         updates::EddaUpdates,
     };
@@ -467,6 +519,15 @@ mod handlers {
     ) -> Result<()> {
         let span = current_span_for_instrument_at!("info");
 
+        let is_on_bad_change_set_id = is_bad_change_set_id(change_set_id);
+
+        if is_on_bad_change_set_id {
+            info!(
+                "DBG: process_request: detected bad change set for change_set_id: {}, workspace_id: {}",
+                change_set_id, workspace_id
+            );
+        }
+
         let otel_name = {
             let mut parts = subject.as_str().split('.');
             match (
@@ -487,6 +548,14 @@ mod handlers {
         span.record("messaging.destination", subject.as_str());
         span.record("otel.name", otel_name.as_str());
 
+        if is_on_bad_change_set_id {
+            info!(
+                "DBG: process_request: recorded spans with subject: {}, otel_name: {}",
+                subject.as_str(),
+                otel_name
+            );
+        }
+
         match request {
             CompressedChangeSetRequest::NewChangeSet {
                 src_requests_count: _,
@@ -495,6 +564,12 @@ mod handlers {
                 to_snapshot_address,
                 change_batch_addresses,
             } => {
+                if is_on_bad_change_set_id {
+                    info!(
+                        "DBG: process_request: handling NewChangeSet request, to_snapshot_address: {:?}, batch_count: {}",
+                        to_snapshot_address, change_batch_addresses.len()
+                    );
+                }
                 let index_was_copied = materialized_view::try_reuse_mv_index_for_new_change_set(
                     ctx,
                     frigg,
@@ -504,7 +579,17 @@ mod handlers {
                 .await
                 .map_err(|err| span.record_err(err))?;
 
+                if is_on_bad_change_set_id {
+                    info!(
+                        "DBG: process_request: try_reuse_mv_index_for_new_change_set result: index_was_copied = {}",
+                        index_was_copied
+                    );
+                }
+
                 if index_was_copied {
+                    if is_on_bad_change_set_id {
+                        info!("DBG: process_request: index was copied, processing incremental updates");
+                    }
                     process_incremental_updates(
                         ctx,
                         frigg,
@@ -519,6 +604,9 @@ mod handlers {
                 }
                 // If we couldn't copy the index successfully, fall back to rebuild
                 else {
+                    if is_on_bad_change_set_id {
+                        info!("DBG: process_request: index was not copied, falling back to full rebuild");
+                    }
                     materialized_view::build_all_mv_for_change_set(
                         ctx,
                         frigg,
@@ -532,6 +620,9 @@ mod handlers {
                 }
             }
             CompressedChangeSetRequest::Rebuild { .. } => {
+                if is_on_bad_change_set_id {
+                    info!("DBG: process_request: handling Rebuild request, performing explicit rebuild");
+                }
                 // Rebuild
                 materialized_view::build_all_mv_for_change_set(
                     ctx,
@@ -545,6 +636,9 @@ mod handlers {
                 .map_err(Into::into)
             }
             CompressedChangeSetRequest::RebuildChangedDefinitions { .. } => {
+                if is_on_bad_change_set_id {
+                    info!("DBG: process_request: handling RebuildChangedDefinitions request");
+                }
                 // Rebuild only change set MVs with outdated definition checksums
                 // Since we're not processing incremental changes, use build_all_mv_for_change_set
                 // which will detect and rebuild only outdated definitions
@@ -565,6 +659,12 @@ mod handlers {
                 to_snapshot_address,
                 change_batch_addresses,
             } => {
+                if is_on_bad_change_set_id {
+                    info!(
+                        "DBG: process_request: handling Update request, from: {:?}, to: {:?}, batch_count: {}",
+                        from_snapshot_address, to_snapshot_address, change_batch_addresses.len()
+                    );
+                }
                 // Index exists
                 if frigg
                     .get_change_set_index(workspace_id, change_set_id)
@@ -572,11 +672,17 @@ mod handlers {
                     .map_err(|err| span.record_err(err))?
                     .is_some()
                 {
+                    if is_on_bad_change_set_id {
+                        info!("DBG: process_request: index exists, processing changes");
+                    }
                     // Always use unified approach that deduplicates work between explicit updates and changed definitions
                     let mut changes = Vec::new();
 
                     // Load all change batches and concatenate all changes from all batches
                     for change_batch_address in change_batch_addresses {
+                        if is_on_bad_change_set_id {
+                            info!("DBG: process_request: loading change batch: {:?}", change_batch_address);
+                        }
                         let change_batch = ctx
                             .layer_db()
                             .change_batch()
@@ -587,11 +693,22 @@ mod handlers {
                         changes.extend_from_slice(change_batch.changes());
                     }
 
+                    if is_on_bad_change_set_id {
+                        info!("DBG: process_request: loaded {} changes from batches", changes.len());
+                    }
+
                     changes = deduplicate_changes(changes);
+
+                    if is_on_bad_change_set_id {
+                        info!("DBG: process_request: after deduplication: {} changes", changes.len());
+                    }
                     post_process_changes(ctx, &mut changes).await?;
 
                     // build_mv_for_changes_in_change_set now automatically combines
                     // explicit changes and outdated definitions
+                    if is_on_bad_change_set_id {
+                        info!("DBG: process_request: building MVs for changes in change set");
+                    }
                     materialized_view::build_mv_for_changes_in_change_set(
                         ctx,
                         frigg,
@@ -607,6 +724,9 @@ mod handlers {
                 }
                 // Index does not exist
                 else {
+                    if is_on_bad_change_set_id {
+                        info!("DBG: process_request: index does not exist, performing initial build");
+                    }
                     // todo: this is where we'd handle reusing an index from another change set if
                     // the snapshots match!
                     let build_reason = "initial build with changed definitions";
@@ -623,8 +743,18 @@ mod handlers {
                 }
             }
         }
-        .inspect(|_| span.record_ok())
-        .map_err(|err| span.record_err(err))
+        .inspect(|_| {
+            if is_on_bad_change_set_id {
+                info!("DBG: process_request: completed successfully");
+            }
+            span.record_ok()
+        })
+        .map_err(|err| {
+            if is_on_bad_change_set_id {
+                info!("DBG: process_request: completed with error: {:?}", err);
+            }
+            span.record_err(err)
+        })
     }
 
     /// In order to have correct materialized views, sometimes a change in one thing
@@ -698,8 +828,26 @@ mod handlers {
     ) -> Result<()> {
         let mut changes = Vec::new();
 
+        let is_on_bad_change_set_id = is_bad_change_set_id(change_set_id);
+
+        if is_on_bad_change_set_id {
+            info!(
+                "DBG: process_incremental_updates: starting for change_set_id: {}, from: {:?}, to: {:?}, batch_count: {}",
+                change_set_id,
+                from_snapshot_address,
+                to_snapshot_address,
+                change_batch_addresses.len()
+            );
+        }
+
         // Load all change batches and concatenate all changes from all batches
         for change_batch_address in change_batch_addresses {
+            if is_on_bad_change_set_id {
+                info!(
+                    "DBG: process_incremental_updates: loading change batch: {:?}",
+                    change_batch_address
+                );
+            }
             let change_batch = ctx
                 .layer_db()
                 .change_batch()
@@ -707,10 +855,44 @@ mod handlers {
                 .await?
                 .ok_or(HandlerError::ChangeBatchNotFound(change_batch_address))?;
             changes.extend_from_slice(change_batch.changes());
+            if is_on_bad_change_set_id {
+                info!(
+                    "DBG: process_incremental_updates: loaded {} changes from batch",
+                    change_batch.changes().len()
+                );
+            }
+        }
+
+        if is_on_bad_change_set_id {
+            info!(
+                "DBG: process_incremental_updates: total changes loaded: {}",
+                changes.len()
+            );
         }
 
         changes = deduplicate_changes(changes);
+
+        if is_on_bad_change_set_id {
+            info!(
+                "DBG: process_incremental_updates: after deduplication: {} changes",
+                changes.len()
+            );
+        }
         post_process_changes(ctx, &mut changes).await?;
+
+        if is_on_bad_change_set_id {
+            info!(
+                "DBG: process_incremental_updates: completed post-processing of {} changes",
+                changes.len()
+            );
+        }
+
+        if is_on_bad_change_set_id {
+            info!(
+                "DBG: process_incremental_updates: building MVs for {} changes in change set",
+                changes.len()
+            );
+        }
 
         materialized_view::build_mv_for_changes_in_change_set(
             ctx,
@@ -723,6 +905,14 @@ mod handlers {
             &changes,
         )
         .await
+        .inspect(|_| {
+            if is_on_bad_change_set_id {
+                info!(
+                    "DBG: process_incremental_updates: completed successfully for change_set_id: {}",
+                    change_set_id
+                );
+            }
+        })
         .map_err(Into::into)
     }
 

@@ -1,5 +1,6 @@
 #![recursion_limit = "256"]
 
+use dal::ChangeSetId;
 use thiserror::Error;
 
 pub mod api_types;
@@ -93,3 +94,9 @@ impl ServerError {
 type Error = ServerError;
 
 type Result<T> = std::result::Result<T, ServerError>;
+
+pub const BAD_CHANGE_SET_ID: &str = "01K9SYPE83DB9QDXQT7GFYJ58D";
+
+pub fn is_bad_change_set_id(change_set_id: ChangeSetId) -> bool {
+    change_set_id.to_string().as_str() == BAD_CHANGE_SET_ID
+}
