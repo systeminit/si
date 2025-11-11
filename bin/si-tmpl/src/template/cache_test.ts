@@ -1,8 +1,8 @@
 import { assertEquals } from "@std/assert";
 import { parse as parseYaml } from "@std/yaml";
 import { Context } from "../context.ts";
-import { TemplateComponent, TemplateContext } from "./context.ts";
-import { BaselineCache, cacheBaseline } from "./cache.ts";
+import { type TemplateComponent, TemplateContext } from "./context.ts";
+import { type BaselineCache, cacheBaseline } from "./cache.ts";
 
 // Initialize Context once - this runs at module load time
 await Context.init({ verbose: 0, noColor: true });

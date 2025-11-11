@@ -1,4 +1,7 @@
-import { SubscriptionInput, TemplateContext } from "jsr:@systeminit/template";
+import {
+  SubscriptionInput,
+  type TemplateContext,
+} from "jsr:@systeminit/template";
 import { z } from "npm:zod";
 
 export default function (c: TemplateContext) {

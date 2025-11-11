@@ -1,4 +1,4 @@
-import { SubscriptionInput, TemplateContext } from "../src/template.ts";
+import { SubscriptionInput, type TemplateContext } from "../src/template.ts";
 import { z } from "npm:zod";
 
 export default function (c: TemplateContext) {

@@ -20,6 +20,16 @@ import {
   isSubscription,
 } from "./attribute_diff.ts";
 import { generateULID } from "./ulid.ts";
+import {
+  cachedGetComponent,
+  cachedGetSchema,
+  cachedGetSchemaIdByName,
+} from "../cache.ts";
+import {
+  resolveComponentReference,
+  resolveSearchQuery,
+  type SearchFunction,
+} from "../subscription_resolver.ts";
 
 /**
  * Configuration options for creating a TemplateContext and running a template.
@@ -529,13 +539,6 @@ export class TemplateContext<TInputSchema extends z.ZodTypeAny = z.ZodTypeAny> {
     changeSetId: string,
     schemaId: string,
   ): Promise<string> {
-    // Check cache first
-    const cached = this._schemaCache.get(schemaId);
-    if (cached) {
-      return cached.name;
-    }
-
-    // Fetch from API
     try {
       const apiConfig = this.apiConfig();
       if (!apiConfig) {
@@ -546,20 +549,16 @@ export class TemplateContext<TInputSchema extends z.ZodTypeAny = z.ZodTypeAny> {
       }
 
       const schemasApi = new SchemasApi(apiConfig);
-      const response = await schemasApi.getSchema({
+      const schema = await cachedGetSchema(
+        this._schemaCache,
+        schemasApi,
+        this.logger,
         workspaceId,
         changeSetId,
         schemaId,
-      });
+      );
 
-      // Cache the full response
-      this._schemaCache.set(schemaId, response.data);
-      this.logger.debug(`Cached schema: {schemaId} -> {name}`, {
-        schemaId,
-        name: response.data.name,
-      });
-
-      return response.data.name;
+      return schema.name;
     } catch (error) {
       this.logger.error(`Failed to fetch schema {schemaId}: {error}`, {
         schemaId,
@@ -613,21 +612,6 @@ export class TemplateContext<TInputSchema extends z.ZodTypeAny = z.ZodTypeAny> {
     changeSetId: string,
     schemaName: string,
   ): Promise<string> {
-    // Check if we already have this schema cached by name
-    for (const [schemaId, schemaData] of this._schemaCache.entries()) {
-      if (schemaData.name === schemaName) {
-        this.logger.debug(
-          `Schema cache hit for name: {schemaName} -> {schemaId}`,
-          {
-            schemaName,
-            schemaId,
-          },
-        );
-        return schemaId;
-      }
-    }
-
-    // Cache miss - fetch from API using findSchema
     try {
       const apiConfig = this.apiConfig();
       if (!apiConfig) {
@@ -635,27 +619,14 @@ export class TemplateContext<TInputSchema extends z.ZodTypeAny = z.ZodTypeAny> {
       }
 
       const schemasApi = new SchemasApi(apiConfig);
-      const response = await schemasApi.findSchema({
+      return await cachedGetSchemaIdByName(
+        this._schemaCache,
+        schemasApi,
+        this.logger,
         workspaceId,
         changeSetId,
-        schema: schemaName,
-      });
-
-      const schemaId = response.data.schemaId;
-
-      // Cache the result (convert FindSchemaV1Response to GetSchemaV1Response format)
-      // We have limited data from findSchema, but cache what we have
-      this._schemaCache.set(schemaId, {
-        name: response.data.schemaName,
-        // FindSchemaV1Response doesn't include all fields, but we can cache the basics
-      } as GetSchemaV1Response);
-
-      this.logger.debug(`Found and cached schema: {schemaName} -> {schemaId}`, {
         schemaName,
-        schemaId,
-      });
-
-      return schemaId;
+      );
     } catch (error) {
       this.logger.error(`Failed to find schema "{schemaName}": {error}`, {
         schemaName,
@@ -730,20 +701,6 @@ export class TemplateContext<TInputSchema extends z.ZodTypeAny = z.ZodTypeAny> {
     changeSetId: string,
     componentId: string,
   ): Promise<GetComponentV1Response> {
-    // Check cache first
-    const cacheKey = `${workspaceId}:${changeSetId}:${componentId}`;
-    const cached = this._componentCache.get(cacheKey);
-    if (cached) {
-      this.logger.debug(`Component cache hit for ID: {componentId}`, {
-        componentId,
-      });
-      return cached;
-    }
-
-    // Cache miss - perform API call
-    this.logger.debug(`Component cache miss for ID: {componentId}`, {
-      componentId,
-    });
     const apiConfig = this.apiConfig();
     if (!apiConfig) {
       throw new Error(
@@ -752,19 +709,14 @@ export class TemplateContext<TInputSchema extends z.ZodTypeAny = z.ZodTypeAny> {
     }
 
     const componentsApi = new ComponentsApi(apiConfig);
-    const componentResult = await componentsApi.getComponent({
+    return await cachedGetComponent(
+      this._componentCache,
+      componentsApi,
+      this.logger,
       workspaceId,
       changeSetId,
       componentId,
-    });
-
-    // Cache the result
-    this._componentCache.set(cacheKey, componentResult.data);
-    this.logger.debug(`Cached component data for ID: {componentId}`, {
-      componentId,
-    });
-
-    return componentResult.data;
+    );
   }
 
   /**
@@ -816,42 +768,16 @@ export class TemplateContext<TInputSchema extends z.ZodTypeAny = z.ZodTypeAny> {
     attributePath: string,
     subscription: SubscriptionInputType,
   ): Promise<void> {
+    let componentId: string;
+
     if (subscription.kind === "$source") {
-      // Direct $source subscription - resolve component name to ID if needed
-      let componentId = subscription.component;
+      // For ULIDs, we can skip API calls entirely
+      const isUlid = /^[0-9A-HJKMNP-TV-Z]{26}$/i.test(subscription.component);
 
-      // Check if component is a ULID (26 chars, alphanumeric) or a name
-      // ULIDs are exactly 26 characters and contain only uppercase letters and digits
-      const isUlid = /^[0-9A-Z]{26}$/i.test(subscription.component);
-
-      // Early check: If subscription is already set with ULID, we can skip all API calls
       if (isUlid) {
-        const existingValue = component.attributes[attributePath];
-        if (isSubscription(existingValue)) {
-          const existingSub = extractSubscription(existingValue);
-          const newSub = {
-            component: subscription.component,
-            path: subscription.path,
-            func: subscription.func,
-          };
-
-          if (deepEqual(existingSub, newSub)) {
-            this.logger.trace(
-              `Subscription already set on {componentName} at {attributePath} -> {targetComponent}:{targetPath}, skipping`,
-              {
-                componentName: component.name,
-                attributePath,
-                targetComponent: subscription.component,
-                targetPath: subscription.path,
-              },
-            );
-            return; // Skip update, subscription is already correct
-          }
-        }
-      }
-
-      if (!isUlid) {
-        // Component is a name, need to search for it
+        componentId = subscription.component;
+      } else {
+        // Component is a name - need API access to resolve it
         const apiConfig = this.apiConfig();
         const workspaceId = this.workspaceId();
 
@@ -861,67 +787,46 @@ export class TemplateContext<TInputSchema extends z.ZodTypeAny = z.ZodTypeAny> {
           );
         }
 
-        // Get the HEAD changeset ID (cached)
         const changeSetId = await this.getHeadChangeSetId();
 
-        // Search for component by name (using cache)
-        const searchQuery = `name: "${subscription.component}"`;
-        this.logger.debug(
-          `Resolving component name to ID with query: {query}`,
-          { query: searchQuery },
-        );
-        const searchResult = await this._cachedSearch(
+        // Create search function wrapper that uses cached search
+        const searchFn: SearchFunction = (
+          workspaceId: string,
+          changeSetId: string,
+          query: string,
+        ) => this._cachedSearch(workspaceId, changeSetId, query);
+
+        // Direct $source subscription - resolve component name to ID
+        componentId = await resolveComponentReference(
+          subscription.component,
           workspaceId,
           changeSetId,
-          searchQuery,
+          searchFn,
+          this.logger,
         );
+      }
 
-        const foundComponents = searchResult.components;
+      // Check if subscription already matches
+      const existingValue = component.attributes[attributePath];
+      if (isSubscription(existingValue)) {
+        const existingSub = extractSubscription(existingValue);
+        const newSub = {
+          component: componentId,
+          path: subscription.path,
+          func: subscription.func,
+        };
 
-        if (foundComponents.length === 0) {
-          throw new Error(
-            `No component found with name: "${subscription.component}"`,
+        if (deepEqual(existingSub, newSub)) {
+          this.logger.trace(
+            `Subscription already set on {componentName} at {attributePath} -> {targetComponent}:{targetPath}, skipping`,
+            {
+              componentName: component.name,
+              attributePath,
+              targetComponent: componentId,
+              targetPath: subscription.path,
+            },
           );
-        }
-
-        if (foundComponents.length > 1) {
-          const componentNames = foundComponents.map((c: { name: string }) =>
-            `  - ${c.name}`
-          ).join("\n");
-          throw new Error(
-            `Multiple components found with name "${subscription.component}". Please use a component ID instead.\n` +
-              `Found:\n${componentNames}`,
-          );
-        }
-
-        componentId = foundComponents[0].id;
-        this.logger.debug(`Resolved component name "{name}" to ID: {id}`, {
-          name: subscription.component,
-          id: componentId,
-        });
-
-        // Check if subscription already matches (after resolving name)
-        const existingValue = component.attributes[attributePath];
-        if (isSubscription(existingValue)) {
-          const existingSub = extractSubscription(existingValue);
-          const newSub = {
-            component: componentId,
-            path: subscription.path,
-            func: subscription.func,
-          };
-
-          if (deepEqual(existingSub, newSub)) {
-            this.logger.trace(
-              `Subscription already set on {componentName} at {attributePath} -> {targetComponent}:{targetPath}, skipping`,
-              {
-                componentName: component.name,
-                attributePath,
-                targetComponent: componentId,
-                targetPath: subscription.path,
-              },
-            );
-            return; // Skip update, subscription is already correct
-          }
+          return; // Skip update, subscription is already correct
         }
       }
 
@@ -943,7 +848,7 @@ export class TemplateContext<TInputSchema extends z.ZodTypeAny = z.ZodTypeAny> {
         },
       );
     } else {
-      // Search subscription - need to find the component first
+      // Search subscription - need API access
       const apiConfig = this.apiConfig();
       const workspaceId = this.workspaceId();
 
@@ -953,65 +858,31 @@ export class TemplateContext<TInputSchema extends z.ZodTypeAny = z.ZodTypeAny> {
         );
       }
 
-      // Get the HEAD changeset ID (cached)
       const changeSetId = await this.getHeadChangeSetId();
 
-      // Perform the search (using cache)
-      this.logger.debug(`Searching for component with query: {query}`, {
-        query: subscription.query,
-      });
-      const searchResult = await this._cachedSearch(
+      // Create search function wrapper that uses cached search
+      const searchFn: SearchFunction = (
+        workspaceId: string,
+        changeSetId: string,
+        query: string,
+      ) => this._cachedSearch(workspaceId, changeSetId, query);
+
+      // Search subscription - resolve query to component ID
+      componentId = await resolveSearchQuery(
+        subscription.query,
         workspaceId,
         changeSetId,
-        subscription.query,
+        searchFn,
+        this.logger,
+        this._cachedGetComponent.bind(this),
+        this.getSchemaName.bind(this),
       );
 
-      const foundComponents = searchResult.components;
-
-      if (foundComponents.length === 0) {
-        throw new Error(
-          `No components found for search query: "${subscription.query}"`,
-        );
-      }
-
-      if (foundComponents.length > 1) {
-        // Fetch full component data to get schema names for better error message
-        const componentDetails: string[] = [];
-        for (const comp of foundComponents) {
-          try {
-            const compResult = await this._cachedGetComponent(
-              workspaceId,
-              changeSetId,
-              comp.id,
-            );
-            const schemaName = await this.getSchemaName(
-              workspaceId,
-              changeSetId,
-              compResult.component.schemaId,
-            );
-            componentDetails.push(`  - ${schemaName}: ${comp.name}`);
-          } catch {
-            componentDetails.push(`  - (unknown schema): ${comp.name}`);
-          }
-        }
-
-        throw new Error(
-          `Search returned ${foundComponents.length} components. Please refine your query to return exactly one.\n` +
-            `Found:\n${componentDetails.join("\n")}`,
-        );
-      }
-
-      // Exactly one component found - fetch full data and verify attribute exists
-      const foundComponent = foundComponents[0];
-      this.logger.debug(`Found component: {name} (ID: {id})`, {
-        name: foundComponent.name,
-        id: foundComponent.id,
-      });
-
+      // Fetch full component data and verify attribute exists
       const componentResult = await this._cachedGetComponent(
         workspaceId,
         changeSetId,
-        foundComponent.id,
+        componentId,
       );
 
       const fullComponent = componentResult.component;
@@ -1036,7 +907,7 @@ export class TemplateContext<TInputSchema extends z.ZodTypeAny = z.ZodTypeAny> {
       if (isSubscription(existingValue)) {
         const existingSub = extractSubscription(existingValue);
         const newSub = {
-          component: foundComponent.id,
+          component: componentId,
           path: subscription.path,
           func: subscription.func,
         };
@@ -1047,7 +918,7 @@ export class TemplateContext<TInputSchema extends z.ZodTypeAny = z.ZodTypeAny> {
             {
               componentName: component.name,
               attributePath,
-              targetName: foundComponent.name,
+              targetName: fullComponent.name,
               targetPath: subscription.path,
             },
           );
@@ -1058,7 +929,7 @@ export class TemplateContext<TInputSchema extends z.ZodTypeAny = z.ZodTypeAny> {
       // Set the subscription using the found component's ID
       component.attributes[attributePath] = {
         $source: {
-          component: foundComponent.id,
+          component: componentId,
           path: subscription.path,
           ...(subscription.func && { func: subscription.func }),
         },
@@ -1069,7 +940,7 @@ export class TemplateContext<TInputSchema extends z.ZodTypeAny = z.ZodTypeAny> {
         {
           componentName: component.name,
           attributePath,
-          targetName: foundComponent.name,
+          targetName: fullComponent.name,
           targetPath: subscription.path,
         },
       );

@@ -1,6 +1,6 @@
 import { assertEquals } from "@std/assert";
 import { Context } from "../context.ts";
-import { TemplateComponent, TemplateContext } from "./context.ts";
+import { type TemplateComponent, TemplateContext } from "./context.ts";
 import { applyTransform } from "./transform.ts";
 
 // Initialize Context once - this runs at module load time
