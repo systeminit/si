@@ -4,6 +4,7 @@
 from system_initiative_api_client.api.actions_api import ActionsApi
 from system_initiative_api_client.api.change_sets_api import ChangeSetsApi
 from system_initiative_api_client.api.components_api import ComponentsApi
+from system_initiative_api_client.api.debug_funcs_api import DebugFuncsApi
 from system_initiative_api_client.api.funcs_api import FuncsApi
 from system_initiative_api_client.api.management_funcs_api import ManagementFuncsApi
 from system_initiative_api_client.api.root_api import RootApi

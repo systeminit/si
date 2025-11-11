@@ -3173,6 +3173,97 @@ Management functions endpoints
 |404|[Not Found](https://tools.ietf.org/html/rfc7231#section-6.5.4)|Management Func Job not found|None|
 |500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
 
+# [debug_funcs](#system-initiative-api-debug_funcs)
+
+Debug function endpoints
+
+## Execute a debug function in the context of a component
+
+<a id="opIdexec_debug_func"></a>
+
+> Request format
+
+`POST /v1/w/{workspace_id}/change-sets/{change_set_id}/debug-funcs`
+
+> Body parameter
+
+```json
+{
+  "code": "async function main() { return 'Hello World'; }",
+  "componentId": "01H9ZQD35JPMBGHH69BT0Q79VZ",
+  "debugInput": null,
+  "handler": "main",
+  "name": "getAmiIdsForRegion"
+}
+```
+
+<h3 id="execute-a-debug-function-in-the-context-of-a-component-parameters">Parameters</h3>
+
+|Name|In|Type|Required|Description|
+|---|---|---|---|---|
+|workspace_id|path|string|true|Workspace identifier|
+|change_set_id|path|string|true|Change Set identifier|
+|body|body|[ExecDebugFuncV1Request](#schemaexecdebugfuncv1request)|true|none|
+
+> Example responses
+
+> 200 Response
+
+```json
+{
+  "debugFuncJobStateId": "01H9ZQD35JPMBGHH69BT0Q79VZ"
+}
+```
+
+<h3 id="execute-a-debug-function-in-the-context-of-a-component-responses">Responses</h3>
+
+|Status|Meaning|Description|Schema|
+|---|---|---|---|
+|200|[OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)|Debug function execution started|[ExecDebugFuncV1Response](#schemaexecdebugfuncv1response)|
+|400|[Bad Request](https://tools.ietf.org/html/rfc7231#section-6.5.1)|Bad request - Invalid input|None|
+|401|[Unauthorized](https://tools.ietf.org/html/rfc7235#section-3.1)|Unauthorized - Invalid or missing token|None|
+|404|[Not Found](https://tools.ietf.org/html/rfc7231#section-6.5.4)|Component not found|None|
+|500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
+
+## Get debug funcs job state details
+
+<a id="opIdget_debug_func_state"></a>
+
+> Request format
+
+`GET /v1/w/{workspace_id}/change-sets/{change_set_id}/debug-funcs/{debug_func_job_state_id}`
+
+<h3 id="get-debug-funcs-job-state-details-parameters">Parameters</h3>
+
+|Name|In|Type|Required|Description|
+|---|---|---|---|---|
+|workspace_id|path|string|true|Workspace identifier|
+|change_set_id|path|string|true|Change Set identifier|
+|debug_func_job_state_id|path|string|true|Debug Func Job identifier|
+
+> Example responses
+
+> 200 Response
+
+```json
+{
+  "failure": "Could not execute function",
+  "funcRunId": "01H9ZQD35JPMBGHH69BT0Q79VY",
+  "id": "01H9ZQD35JPMBGHH69BT0Q79VY",
+  "result": null,
+  "state": "pending"
+}
+```
+
+<h3 id="get-debug-funcs-job-state-details-responses">Responses</h3>
+
+|Status|Meaning|Description|Schema|
+|---|---|---|---|
+|200|[OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)|Debug Function Job retrieved successfully|[GetDebugFuncJobStateV1Response](#schemagetdebugfuncjobstatev1response)|
+|401|[Unauthorized](https://tools.ietf.org/html/rfc7235#section-3.1)|Unauthorized - Invalid or missing token|None|
+|404|[Not Found](https://tools.ietf.org/html/rfc7231#section-6.5.4)|Debug Function Job not found|None|
+|500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
+
 # [workspace_management](#system-initiative-api-workspace_management)
 
 Workspace management endpoints
@@ -5074,6 +5165,54 @@ A prop path, starting from root/domain, with / instead of PROP_PATH_SEPARATOR as
 |---|---|---|---|---|
 |error|[ErrorDetail](#schemaerrordetail)|true|none|none|
 
+## [ExecDebugFuncV1Request](#tocS_ExecDebugFuncV1Request)
+
+<a id="schemaexecdebugfuncv1request"></a>
+<a id="schema_ExecDebugFuncV1Request"></a>
+<a id="tocSexecdebugfuncv1request"></a>
+<a id="tocsexecdebugfuncv1request"></a>
+
+```json
+{
+  "code": "async function main() { return 'Hello World'; }",
+  "componentId": "01H9ZQD35JPMBGHH69BT0Q79VZ",
+  "debugInput": null,
+  "handler": "main",
+  "name": "getAmiIdsForRegion"
+}
+
+```
+
+### [Properties](#execdebugfuncv1request-properties)
+
+|Name|Type|Required|Restrictions|Description|
+|---|---|---|---|---|
+|code|string|true|none|none|
+|componentId|string|true|none|none|
+|debugInput|any|false|none|none|
+|handler|string|true|none|none|
+|name|string|true|none|none|
+
+## [ExecDebugFuncV1Response](#tocS_ExecDebugFuncV1Response)
+
+<a id="schemaexecdebugfuncv1response"></a>
+<a id="schema_ExecDebugFuncV1Response"></a>
+<a id="tocSexecdebugfuncv1response"></a>
+<a id="tocsexecdebugfuncv1response"></a>
+
+```json
+{
+  "debugFuncJobStateId": "01H9ZQD35JPMBGHH69BT0Q79VZ"
+}
+
+```
+
+### [Properties](#execdebugfuncv1response-properties)
+
+|Name|Type|Required|Restrictions|Description|
+|---|---|---|---|---|
+|debugFuncJobStateId|string|true|none|none|
+
 ## [ExecuteManagementFunctionV1Request](#tocS_ExecuteManagementFunctionV1Request)
 
 <a id="schemaexecutemanagementfunctionv1request"></a>
@@ -5628,6 +5767,34 @@ continued
 |---|---|---|---|---|
 |funcName|string|true|none|none|
 |managementPrototypeId|string|true|none|none|
+
+## [GetDebugFuncJobStateV1Response](#tocS_GetDebugFuncJobStateV1Response)
+
+<a id="schemagetdebugfuncjobstatev1response"></a>
+<a id="schema_GetDebugFuncJobStateV1Response"></a>
+<a id="tocSgetdebugfuncjobstatev1response"></a>
+<a id="tocsgetdebugfuncjobstatev1response"></a>
+
+```json
+{
+  "failure": "Could not execute function",
+  "funcRunId": "01H9ZQD35JPMBGHH69BT0Q79VY",
+  "id": "01H9ZQD35JPMBGHH69BT0Q79VY",
+  "result": null,
+  "state": "pending"
+}
+
+```
+
+### [Properties](#getdebugfuncjobstatev1response-properties)
+
+|Name|Type|Required|Restrictions|Description|
+|---|---|---|---|---|
+|failure|string,null|false|none|none|
+|funcRunId|string,null|false|none|none|
+|id|string|true|none|none|
+|result|any|false|none|none|
+|state|string|true|none|none|
 
 ## [GetFuncRunV1Response](#tocS_GetFuncRunV1Response)
 
