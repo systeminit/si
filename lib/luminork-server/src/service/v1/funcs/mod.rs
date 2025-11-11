@@ -22,6 +22,7 @@ use utoipa::ToSchema;
 
 use crate::AppState;
 
+pub mod create_transformation;
 pub mod get_func;
 pub mod get_func_run;
 pub mod unlock_func;
@@ -108,6 +109,10 @@ impl crate::service::v1::common::ErrorIntoResponse for FuncsError {
 
 pub fn routes() -> Router<AppState> {
     Router::new()
+        .route(
+            "/transformation",
+            post(create_transformation::create_transformation),
+        )
         .nest(
             "/:func_id",
             Router::new()

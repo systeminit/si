@@ -97,8 +97,6 @@ pub async fn create_variant_authentication(
     )
     .await?;
 
-    FuncAuthoringClient::publish_func_create_event(ctx, &func).await?;
-
     tracker.track(
         ctx,
         "api_create_authentication_func",
