@@ -285,7 +285,6 @@ export interface SharedDBInterface {
 export interface TabDBInterface {
   initDB: (testing: boolean) => Promise<void>;
   hasDbLock(): Promise<boolean>;
-  createLock(): void;
   migrate: (testing: boolean) => Database;
   setBearer: (workspaceId: string, token: string) => void;
   initSocket(workspaceId: string): Promise<void>;
@@ -298,7 +297,7 @@ export interface TabDBInterface {
     workspaceId: string,
     headChangeSetId: string,
     changeSetId: string,
-  ): Promise<void>;
+  ): void;
   getPossibleConnections(
     workspaceId: string,
     changeSetId: string,
@@ -318,19 +317,16 @@ export interface TabDBInterface {
   getComponentDetails(
     workspaceId: string,
     changeSetId: ChangeSetId,
-  ): Promise<Record<ComponentId, ComponentInfo>>;
+  ): Record<ComponentId, ComponentInfo>;
   getComponentsInViews(
     workspaceId: string,
     changeSetId: ChangeSetId,
-  ): Promise<Record<ViewId, Set<ComponentId>>>;
+  ): Record<ViewId, Set<ComponentId>>;
   getComponentsInOnlyOneView(
     workspaceId: string,
     changeSetId: ChangeSetId,
-  ): Promise<Record<ComponentId, ViewId>>;
-  getSchemaMembers(
-    workspaceId: string,
-    changeSetId: ChangeSetId,
-  ): Promise<string>;
+  ): Record<ComponentId, ViewId>;
+  getSchemaMembers(workspaceId: string, changeSetId: ChangeSetId): string;
   getDefaultSubscriptions(
     workspaceId: string,
     changeSetId: ChangeSetId,
@@ -351,18 +347,18 @@ export interface TabDBInterface {
     changeSetId: ChangeSetId,
     kind: Gettable,
     id: Id,
-  ): Promise<boolean>;
+  ): boolean;
   getKind(
     workspaceId: string,
     changeSetId: ChangeSetId,
     kind: EntityKind,
-  ): Promise<string[]>;
+  ): string[];
   getList(
     workspaceId: string,
     changeSetId: ChangeSetId,
     kind: Listable,
     id: Id,
-  ): Promise<string>;
+  ): string;
   /**
    * Query AttributeTree MVs in a changeset, looking for components that match the given terms.
    *
@@ -375,7 +371,7 @@ export interface TabDBInterface {
     workspaceId: WorkspacePk,
     changeSetId: ChangeSetId,
     terms: QueryAttributesTerm[],
-  ): Promise<ComponentId[]>;
+  ): ComponentId[];
   mjolnirBulk(
     workspaceId: string,
     changeSetId: ChangeSetId,
@@ -397,10 +393,7 @@ export interface TabDBInterface {
   addListenerLobbyExit(fn: LobbyExitFn): void;
   addAtomUpdated(fn: UpdateFn): void;
   addConnStatusFn(fn: ConnStatusFn): void;
-  changeSetExists(
-    workspaceId: string,
-    changeSetId: ChangeSetId,
-  ): Promise<boolean>;
+  changeSetExists(workspaceId: string, changeSetId: ChangeSetId): boolean;
   niflheim(workspaceId: string, changeSetId: ChangeSetId): Promise<-1 | 0 | 1>;
   vanaheim(workspaceId: string): Promise<boolean>;
   pruneAtomsForClosedChangeSet(
