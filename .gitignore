@@ -31,7 +31,6 @@ bin/lang-js/docs/
 
 .turbo
 .netlify
-CLAUDE.md
 
 # vim temp files
 .*.swp
@@ -64,9 +63,18 @@ component/toolbox/results/
 # fuse filesystem
 /mnt/
 
-**/CLAUDE.local.md
-
 # Bedrock Recordings
 **/recordings/
 
 .ci/ip
+
+# Claude configuration
+#
+# Project-specific instructions for Claude Code; ignored to avoid committing
+# local workflows
+CLAUDE.md
+# User-specific Claude overrides; ignored to keep personal preferences private
+**/CLAUDE.local.md
+# Local Claude settings and preferences; ignored to avoid committing
+# user-specific config
+**/.claude/settings.local.json
