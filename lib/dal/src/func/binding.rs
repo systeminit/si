@@ -47,7 +47,9 @@ use crate::{
     WsEventError,
     action::prototype::{
         ActionKind,
+        ActionPrototype,
         ActionPrototypeError,
+        ActionPrototypeParent,
     },
     attribute::{
         prototype::{
@@ -69,7 +71,10 @@ use crate::{
         binding::attribute::AttributeBindingMalformedInput,
         leaf::LeafKind,
     },
-    management::prototype::ManagementPrototypeError,
+    management::prototype::{
+        ManagementPrototype,
+        ManagementPrototypeError,
+    },
     prop::PropError,
     schema::leaf::LeafPrototypeError,
     socket::{
@@ -507,6 +512,28 @@ impl FuncBinding {
         }
     }
 
+    /// Returns true if this binding is an overlay (schema-level) binding
+    pub fn is_overlay(&self) -> bool {
+        match self {
+            FuncBinding::Action(_) | FuncBinding::Authentication(_) => {
+                // For Action and Auth, we need to check the parent type
+                // Actions can be overlays, but this method on the binding alone can't tell
+                // Use has_overlay_bindings() instead
+                false
+            }
+            FuncBinding::Attribute(attribute) => {
+                matches!(attribute.eventual_parent, EventualParent::Schemas(_))
+            }
+            FuncBinding::CodeGeneration(code_gen) => {
+                matches!(code_gen.eventual_parent, EventualParent::Schemas(_))
+            }
+            FuncBinding::Qualification(qualification) => {
+                matches!(qualification.eventual_parent, EventualParent::Schemas(_))
+            }
+            FuncBinding::Management(mgmt) => mgmt.schema_variant_id.is_none(),
+        }
+    }
+
     pub async fn for_func_id(
         ctx: &DalContext,
         func_id: FuncId,
@@ -536,6 +563,88 @@ impl FuncBinding {
             FuncKind::Debug => vec![],
         };
         Ok(bindings)
+    }
+
+    /// Check if a function has any variant-level bindings
+    /// Variant-level bindings take precedence - if they exist, normal lock rules apply
+    /// Only if there are NO variant-level bindings should editing while locked be allowed
+    pub async fn has_variant_bindings(
+        ctx: &DalContext,
+        func_id: FuncId,
+    ) -> FuncBindingResult<bool> {
+        let func = Func::get_by_id(ctx, func_id).await?;
+
+        match func.kind {
+            FuncKind::Action => {
+                // Check if any ActionPrototypes have SchemaVariant parent (variant-level)
+                let prototype_ids = ActionPrototype::list_for_func_id(ctx, func_id)
+                    .await
+                    .map_err(Box::new)?;
+                for proto_id in prototype_ids {
+                    let parent = ActionPrototype::parentage(ctx, proto_id)
+                        .await
+                        .map_err(Box::new)?;
+                    if matches!(parent, ActionPrototypeParent::SchemaVariant(_)) {
+                        return Ok(true);
+                    }
+                }
+                Ok(false)
+            }
+            FuncKind::Management => {
+                // Check if any ManagementPrototypes have schema_variant_id set (variant-level)
+                let prototype_ids = ManagementPrototype::list_ids_for_func_id(ctx, func_id)
+                    .await
+                    .map_err(Box::new)?;
+                for proto_id in prototype_ids {
+                    // Check if it has schema_variant_id (variant-level) instead of schema_ids (overlay)
+                    if ManagementPrototype::schema_variant_id(ctx, proto_id)
+                        .await
+                        .map_err(Box::new)?
+                        .is_some()
+                    {
+                        return Ok(true);
+                    }
+                }
+                Ok(false)
+            }
+            FuncKind::CodeGeneration | FuncKind::Qualification | FuncKind::Attribute => {
+                // For these, check if any bindings have EventualParent::SchemaVariant or Component
+                let bindings = Self::for_func_id(ctx, func_id).await?;
+                for binding in bindings {
+                    match binding {
+                        FuncBinding::Attribute(attr) => {
+                            if matches!(
+                                attr.eventual_parent,
+                                EventualParent::SchemaVariant(_) | EventualParent::Component(_)
+                            ) {
+                                return Ok(true);
+                            }
+                        }
+                        FuncBinding::CodeGeneration(code_gen) => {
+                            if matches!(
+                                code_gen.eventual_parent,
+                                EventualParent::SchemaVariant(_) | EventualParent::Component(_)
+                            ) {
+                                return Ok(true);
+                            }
+                        }
+                        FuncBinding::Qualification(qual) => {
+                            if matches!(
+                                qual.eventual_parent,
+                                EventualParent::SchemaVariant(_) | EventualParent::Component(_)
+                            ) {
+                                return Ok(true);
+                            }
+                        }
+                        _ => {}
+                    }
+                }
+                Ok(false)
+            }
+            // For all other function types (Authentication, Intrinsic, SchemaVariantDefinition, etc.),
+            // return true to enforce normal lock rules. These don't participate in the overlay system.
+            _ => Ok(true),
+        }
     }
 
     /// Returns a pruned set of bindings, where each binding is for the default variant, or if an unlocked variant exists for the schema,

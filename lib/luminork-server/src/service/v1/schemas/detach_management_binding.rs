@@ -5,10 +5,7 @@ use axum::{
 use dal::{
     Func,
     SchemaVariant,
-    func::binding::{
-        FuncBinding,
-        management::ManagementBinding,
-    },
+    func::binding::management::ManagementBinding,
     management::prototype::ManagementPrototype,
 };
 use sdf_extract::{
@@ -64,13 +61,15 @@ pub async fn detach_management_func_binding(
     let schema_variant = SchemaVariant::get_by_id(ctx, schema_variant_id).await?;
     let func = Func::get_by_id(ctx, func_id).await?;
 
-    let bindings =
-        FuncBinding::get_bindings_for_schema_variant_id(ctx, func_id, schema_variant_id).await?;
-    for binding in bindings {
-        if let FuncBinding::Management(mgmt) = binding {
-            let mgmt_prototype =
-                ManagementPrototype::get_by_id(ctx, mgmt.management_prototype_id).await?;
-            ManagementBinding::delete_management_binding(ctx, mgmt.management_prototype_id).await?;
+    // Get both variant-level AND schema-level (overlay) management prototypes
+    let mgmt_prototypes =
+        ManagementPrototype::list_for_schema_and_variant_id(ctx, schema_variant_id).await?;
+
+    // Filter by func_id and delete matching prototypes
+    for prototype in mgmt_prototypes {
+        let prototype_func_id = ManagementPrototype::func_id(ctx, prototype.id()).await?;
+        if prototype_func_id == func_id {
+            ManagementBinding::delete_management_binding(ctx, prototype.id()).await?;
 
             tracker.track(
                 ctx,
@@ -78,7 +77,7 @@ pub async fn detach_management_func_binding(
                 serde_json::json!({
                     "func_id": func.id,
                     "schema_variant_id": schema_variant_id,
-                    "management_prototype_name": mgmt_prototype.name(),
+                    "management_prototype_name": prototype.name(),
                 }),
             );
 

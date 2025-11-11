@@ -755,15 +755,14 @@ impl FuncAuthoringClient {
 
     #[instrument(level = "info", name = "func.authoring.save_code", skip(ctx))]
     /// Save only the code for the given [`FuncId`]
-    /// Returns an error if the [`Func`] is currently locked
+    /// Returns an error if the [`Func`] is currently locked (unless it has overlay bindings)
     pub async fn save_code(
         ctx: &DalContext,
         func_id: FuncId,
         code: impl Into<String> + std::fmt::Debug,
     ) -> FuncAuthoringResult<()> {
-        let func = Func::get_by_id(ctx, func_id).await?;
-        func.error_if_locked()?;
-        Func::modify_by_id(ctx, func.id, |func| {
+        // Lock check happens in Func::modify() which is called by modify_by_id
+        Func::modify_by_id(ctx, func_id, |func| {
             func.code_base64 = Some(general_purpose::STANDARD_NO_PAD.encode(code.into()));
             func.timestamp.updated_at = Utc::now();
 
@@ -780,7 +779,7 @@ impl FuncAuthoringClient {
     }
 
     /// Save metadata about the [`FuncId`]
-    /// Returns an error if the [`Func`] is currently locked
+    /// Returns an error if the [`Func`] is currently locked (unless it has overlay bindings)
     #[instrument(level = "info", name = "func.authoring.update_func", skip(ctx))]
     pub async fn update_func(
         ctx: &DalContext,
@@ -788,9 +787,8 @@ impl FuncAuthoringClient {
         display_name: Option<String>,
         description: Option<String>,
     ) -> FuncAuthoringResult<Func> {
-        let func = Func::get_by_id(ctx, func_id).await?;
-        func.error_if_locked()?;
-        let updated_func = Func::modify_by_id(ctx, func.id, |func| {
+        // Lock check happens in Func::modify() which is called by modify_by_id
+        let updated_func = Func::modify_by_id(ctx, func_id, |func| {
             display_name.clone_into(&mut func.display_name);
             description.clone_into(&mut func.description);
             Ok(())

@@ -58,10 +58,7 @@ pub async fn update_func(
 
     let func = Func::get_by_id(ctx, func_id).await?;
 
-    if func.is_locked {
-        return Err(FuncsError::LockedFunc(func_id));
-    }
-
+    // Lock check happens in FuncAuthoringClient::update_func() -> Func::modify()
     if payload.display_name.clone() != func.display_name || payload.description != func.description
     {
         let updated_func = FuncAuthoringClient::update_func(
