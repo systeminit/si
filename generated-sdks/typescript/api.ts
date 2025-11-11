@@ -1145,6 +1145,56 @@ export interface ErrorResponse {
 /**
  * 
  * @export
+ * @interface ExecDebugFuncV1Request
+ */
+export interface ExecDebugFuncV1Request {
+    /**
+     * 
+     * @type {string}
+     * @memberof ExecDebugFuncV1Request
+     */
+    'code': string;
+    /**
+     * 
+     * @type {string}
+     * @memberof ExecDebugFuncV1Request
+     */
+    'componentId': string;
+    /**
+     * 
+     * @type {any}
+     * @memberof ExecDebugFuncV1Request
+     */
+    'debugInput'?: any;
+    /**
+     * 
+     * @type {string}
+     * @memberof ExecDebugFuncV1Request
+     */
+    'handler': string;
+    /**
+     * 
+     * @type {string}
+     * @memberof ExecDebugFuncV1Request
+     */
+    'name': string;
+}
+/**
+ * 
+ * @export
+ * @interface ExecDebugFuncV1Response
+ */
+export interface ExecDebugFuncV1Response {
+    /**
+     * 
+     * @type {string}
+     * @memberof ExecDebugFuncV1Response
+     */
+    'debugFuncJobStateId': string;
+}
+/**
+ * 
+ * @export
  * @interface ExecuteManagementFunctionV1Request
  */
 export interface ExecuteManagementFunctionV1Request {
@@ -1663,6 +1713,43 @@ export interface GetComponentV1ResponseManagementFunction {
      * @memberof GetComponentV1ResponseManagementFunction
      */
     'managementPrototypeId': string;
+}
+/**
+ * 
+ * @export
+ * @interface GetDebugFuncJobStateV1Response
+ */
+export interface GetDebugFuncJobStateV1Response {
+    /**
+     * 
+     * @type {string}
+     * @memberof GetDebugFuncJobStateV1Response
+     */
+    'failure'?: string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof GetDebugFuncJobStateV1Response
+     */
+    'funcRunId'?: string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof GetDebugFuncJobStateV1Response
+     */
+    'id': string;
+    /**
+     * 
+     * @type {any}
+     * @memberof GetDebugFuncJobStateV1Response
+     */
+    'result'?: any;
+    /**
+     * 
+     * @type {string}
+     * @memberof GetDebugFuncJobStateV1Response
+     */
+    'state': string;
 }
 /**
  * 
@@ -6686,6 +6773,289 @@ export class ComponentsApi extends BaseAPI implements ComponentsApiInterface {
      */
     public upgradeComponent(requestParameters: ComponentsApiUpgradeComponentRequest, options?: RawAxiosRequestConfig) {
         return ComponentsApiFp(this.configuration).upgradeComponent(requestParameters.workspaceId, requestParameters.changeSetId, requestParameters.componentId, options).then((request) => request(this.axios, this.basePath));
+    }
+}
+
+
+
+/**
+ * DebugFuncsApi - axios parameter creator
+ * @export
+ */
+export const DebugFuncsApiAxiosParamCreator = function (configuration?: Configuration) {
+    return {
+        /**
+         * 
+         * @summary Execute a debug function in the context of a component
+         * @param {string} workspaceId Workspace identifier
+         * @param {string} changeSetId Change Set identifier
+         * @param {ExecDebugFuncV1Request} execDebugFuncV1Request 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        execDebugFunc: async (workspaceId: string, changeSetId: string, execDebugFuncV1Request: ExecDebugFuncV1Request, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'workspaceId' is not null or undefined
+            assertParamExists('execDebugFunc', 'workspaceId', workspaceId)
+            // verify required parameter 'changeSetId' is not null or undefined
+            assertParamExists('execDebugFunc', 'changeSetId', changeSetId)
+            // verify required parameter 'execDebugFuncV1Request' is not null or undefined
+            assertParamExists('execDebugFunc', 'execDebugFuncV1Request', execDebugFuncV1Request)
+            const localVarPath = `/v1/w/{workspace_id}/change-sets/{change_set_id}/debug-funcs`
+                .replace(`{${"workspace_id"}}`, encodeURIComponent(String(workspaceId)))
+                .replace(`{${"change_set_id"}}`, encodeURIComponent(String(changeSetId)));
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'POST', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+
+    
+            localVarHeaderParameter['Content-Type'] = 'application/json';
+
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+            localVarRequestOptions.data = serializeDataIfNeeded(execDebugFuncV1Request, localVarRequestOptions, configuration)
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         * 
+         * @summary Get debug funcs job state details
+         * @param {string} workspaceId Workspace identifier
+         * @param {string} changeSetId Change Set identifier
+         * @param {string} debugFuncJobStateId Debug Func Job identifier
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        getDebugFuncState: async (workspaceId: string, changeSetId: string, debugFuncJobStateId: string, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'workspaceId' is not null or undefined
+            assertParamExists('getDebugFuncState', 'workspaceId', workspaceId)
+            // verify required parameter 'changeSetId' is not null or undefined
+            assertParamExists('getDebugFuncState', 'changeSetId', changeSetId)
+            // verify required parameter 'debugFuncJobStateId' is not null or undefined
+            assertParamExists('getDebugFuncState', 'debugFuncJobStateId', debugFuncJobStateId)
+            const localVarPath = `/v1/w/{workspace_id}/change-sets/{change_set_id}/debug-funcs/{debug_func_job_state_id}`
+                .replace(`{${"workspace_id"}}`, encodeURIComponent(String(workspaceId)))
+                .replace(`{${"change_set_id"}}`, encodeURIComponent(String(changeSetId)))
+                .replace(`{${"debug_func_job_state_id"}}`, encodeURIComponent(String(debugFuncJobStateId)));
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'GET', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+
+    
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+    }
+};
+
+/**
+ * DebugFuncsApi - functional programming interface
+ * @export
+ */
+export const DebugFuncsApiFp = function(configuration?: Configuration) {
+    const localVarAxiosParamCreator = DebugFuncsApiAxiosParamCreator(configuration)
+    return {
+        /**
+         * 
+         * @summary Execute a debug function in the context of a component
+         * @param {string} workspaceId Workspace identifier
+         * @param {string} changeSetId Change Set identifier
+         * @param {ExecDebugFuncV1Request} execDebugFuncV1Request 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async execDebugFunc(workspaceId: string, changeSetId: string, execDebugFuncV1Request: ExecDebugFuncV1Request, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<ExecDebugFuncV1Response>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.execDebugFunc(workspaceId, changeSetId, execDebugFuncV1Request, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['DebugFuncsApi.execDebugFunc']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         * 
+         * @summary Get debug funcs job state details
+         * @param {string} workspaceId Workspace identifier
+         * @param {string} changeSetId Change Set identifier
+         * @param {string} debugFuncJobStateId Debug Func Job identifier
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async getDebugFuncState(workspaceId: string, changeSetId: string, debugFuncJobStateId: string, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<GetDebugFuncJobStateV1Response>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.getDebugFuncState(workspaceId, changeSetId, debugFuncJobStateId, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['DebugFuncsApi.getDebugFuncState']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+    }
+};
+
+/**
+ * DebugFuncsApi - factory interface
+ * @export
+ */
+export const DebugFuncsApiFactory = function (configuration?: Configuration, basePath?: string, axios?: AxiosInstance) {
+    const localVarFp = DebugFuncsApiFp(configuration)
+    return {
+        /**
+         * 
+         * @summary Execute a debug function in the context of a component
+         * @param {DebugFuncsApiExecDebugFuncRequest} requestParameters Request parameters.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        execDebugFunc(requestParameters: DebugFuncsApiExecDebugFuncRequest, options?: RawAxiosRequestConfig): AxiosPromise<ExecDebugFuncV1Response> {
+            return localVarFp.execDebugFunc(requestParameters.workspaceId, requestParameters.changeSetId, requestParameters.execDebugFuncV1Request, options).then((request) => request(axios, basePath));
+        },
+        /**
+         * 
+         * @summary Get debug funcs job state details
+         * @param {DebugFuncsApiGetDebugFuncStateRequest} requestParameters Request parameters.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        getDebugFuncState(requestParameters: DebugFuncsApiGetDebugFuncStateRequest, options?: RawAxiosRequestConfig): AxiosPromise<GetDebugFuncJobStateV1Response> {
+            return localVarFp.getDebugFuncState(requestParameters.workspaceId, requestParameters.changeSetId, requestParameters.debugFuncJobStateId, options).then((request) => request(axios, basePath));
+        },
+    };
+};
+
+/**
+ * DebugFuncsApi - interface
+ * @export
+ * @interface DebugFuncsApi
+ */
+export interface DebugFuncsApiInterface {
+    /**
+     * 
+     * @summary Execute a debug function in the context of a component
+     * @param {DebugFuncsApiExecDebugFuncRequest} requestParameters Request parameters.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof DebugFuncsApiInterface
+     */
+    execDebugFunc(requestParameters: DebugFuncsApiExecDebugFuncRequest, options?: RawAxiosRequestConfig): AxiosPromise<ExecDebugFuncV1Response>;
+
+    /**
+     * 
+     * @summary Get debug funcs job state details
+     * @param {DebugFuncsApiGetDebugFuncStateRequest} requestParameters Request parameters.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof DebugFuncsApiInterface
+     */
+    getDebugFuncState(requestParameters: DebugFuncsApiGetDebugFuncStateRequest, options?: RawAxiosRequestConfig): AxiosPromise<GetDebugFuncJobStateV1Response>;
+
+}
+
+/**
+ * Request parameters for execDebugFunc operation in DebugFuncsApi.
+ * @export
+ * @interface DebugFuncsApiExecDebugFuncRequest
+ */
+export interface DebugFuncsApiExecDebugFuncRequest {
+    /**
+     * Workspace identifier
+     * @type {string}
+     * @memberof DebugFuncsApiExecDebugFunc
+     */
+    readonly workspaceId: string
+
+    /**
+     * Change Set identifier
+     * @type {string}
+     * @memberof DebugFuncsApiExecDebugFunc
+     */
+    readonly changeSetId: string
+
+    /**
+     * 
+     * @type {ExecDebugFuncV1Request}
+     * @memberof DebugFuncsApiExecDebugFunc
+     */
+    readonly execDebugFuncV1Request: ExecDebugFuncV1Request
+}
+
+/**
+ * Request parameters for getDebugFuncState operation in DebugFuncsApi.
+ * @export
+ * @interface DebugFuncsApiGetDebugFuncStateRequest
+ */
+export interface DebugFuncsApiGetDebugFuncStateRequest {
+    /**
+     * Workspace identifier
+     * @type {string}
+     * @memberof DebugFuncsApiGetDebugFuncState
+     */
+    readonly workspaceId: string
+
+    /**
+     * Change Set identifier
+     * @type {string}
+     * @memberof DebugFuncsApiGetDebugFuncState
+     */
+    readonly changeSetId: string
+
+    /**
+     * Debug Func Job identifier
+     * @type {string}
+     * @memberof DebugFuncsApiGetDebugFuncState
+     */
+    readonly debugFuncJobStateId: string
+}
+
+/**
+ * DebugFuncsApi - object-oriented interface
+ * @export
+ * @class DebugFuncsApi
+ * @extends {BaseAPI}
+ */
+export class DebugFuncsApi extends BaseAPI implements DebugFuncsApiInterface {
+    /**
+     * 
+     * @summary Execute a debug function in the context of a component
+     * @param {DebugFuncsApiExecDebugFuncRequest} requestParameters Request parameters.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof DebugFuncsApi
+     */
+    public execDebugFunc(requestParameters: DebugFuncsApiExecDebugFuncRequest, options?: RawAxiosRequestConfig) {
+        return DebugFuncsApiFp(this.configuration).execDebugFunc(requestParameters.workspaceId, requestParameters.changeSetId, requestParameters.execDebugFuncV1Request, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * 
+     * @summary Get debug funcs job state details
+     * @param {DebugFuncsApiGetDebugFuncStateRequest} requestParameters Request parameters.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof DebugFuncsApi
+     */
+    public getDebugFuncState(requestParameters: DebugFuncsApiGetDebugFuncStateRequest, options?: RawAxiosRequestConfig) {
+        return DebugFuncsApiFp(this.configuration).getDebugFuncState(requestParameters.workspaceId, requestParameters.changeSetId, requestParameters.debugFuncJobStateId, options).then((request) => request(this.axios, this.basePath));
     }
 }
 

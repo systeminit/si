@@ -21,6 +21,7 @@ __all__ = [
     "ActionsApi",
     "ChangeSetsApi",
     "ComponentsApi",
+    "DebugFuncsApi",
     "FuncsApi",
     "ManagementFuncsApi",
     "RootApi",
@@ -92,6 +93,8 @@ __all__ = [
     "EraseComponentV1Response",
     "ErrorDetail",
     "ErrorResponse",
+    "ExecDebugFuncV1Request",
+    "ExecDebugFuncV1Response",
     "ExecuteManagementFunctionV1Request",
     "ExecuteManagementFunctionV1Response",
     "FindComponentV1Params",
@@ -109,6 +112,7 @@ __all__ = [
     "GetComponentV1Response",
     "GetComponentV1ResponseActionFunction",
     "GetComponentV1ResponseManagementFunction",
+    "GetDebugFuncJobStateV1Response",
     "GetFuncRunV1Response",
     "GetFuncV1Response",
     "GetManagementFuncJobStateV1Response",
@@ -183,6 +187,7 @@ __all__ = [
 from system_initiative_api_client.api.actions_api import ActionsApi as ActionsApi
 from system_initiative_api_client.api.change_sets_api import ChangeSetsApi as ChangeSetsApi
 from system_initiative_api_client.api.components_api import ComponentsApi as ComponentsApi
+from system_initiative_api_client.api.debug_funcs_api import DebugFuncsApi as DebugFuncsApi
 from system_initiative_api_client.api.funcs_api import FuncsApi as FuncsApi
 from system_initiative_api_client.api.management_funcs_api import ManagementFuncsApi as ManagementFuncsApi
 from system_initiative_api_client.api.root_api import RootApi as RootApi
@@ -258,6 +263,8 @@ from system_initiative_api_client.models.duplicate_components_v1_response import
 from system_initiative_api_client.models.erase_component_v1_response import EraseComponentV1Response as EraseComponentV1Response
 from system_initiative_api_client.models.error_detail import ErrorDetail as ErrorDetail
 from system_initiative_api_client.models.error_response import ErrorResponse as ErrorResponse
+from system_initiative_api_client.models.exec_debug_func_v1_request import ExecDebugFuncV1Request as ExecDebugFuncV1Request
+from system_initiative_api_client.models.exec_debug_func_v1_response import ExecDebugFuncV1Response as ExecDebugFuncV1Response
 from system_initiative_api_client.models.execute_management_function_v1_request import ExecuteManagementFunctionV1Request as ExecuteManagementFunctionV1Request
 from system_initiative_api_client.models.execute_management_function_v1_response import ExecuteManagementFunctionV1Response as ExecuteManagementFunctionV1Response
 from system_initiative_api_client.models.find_component_v1_params import FindComponentV1Params as FindComponentV1Params
@@ -275,6 +282,7 @@ from system_initiative_api_client.models.get_component_resource_data_v1_response
 from system_initiative_api_client.models.get_component_v1_response import GetComponentV1Response as GetComponentV1Response
 from system_initiative_api_client.models.get_component_v1_response_action_function import GetComponentV1ResponseActionFunction as GetComponentV1ResponseActionFunction
 from system_initiative_api_client.models.get_component_v1_response_management_function import GetComponentV1ResponseManagementFunction as GetComponentV1ResponseManagementFunction
+from system_initiative_api_client.models.get_debug_func_job_state_v1_response import GetDebugFuncJobStateV1Response as GetDebugFuncJobStateV1Response
 from system_initiative_api_client.models.get_func_run_v1_response import GetFuncRunV1Response as GetFuncRunV1Response
 from system_initiative_api_client.models.get_func_v1_response import GetFuncV1Response as GetFuncV1Response
 from system_initiative_api_client.models.get_management_func_job_state_v1_response import GetManagementFuncJobStateV1Response as GetManagementFuncJobStateV1Response
