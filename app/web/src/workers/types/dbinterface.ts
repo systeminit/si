@@ -339,13 +339,13 @@ export interface TabDBInterface {
     workspaceId: string,
     kind: GlobalEntity,
     id: Id,
-  ): typeof NOROW | AtomDocument;
+  ): Promise<typeof NOROW | AtomDocument>;
   get(
     workspaceId: string,
     changeSetId: ChangeSetId,
     kind: Gettable,
     id: Id,
-  ): typeof NOROW | AtomDocument;
+  ): Promise<typeof NOROW | AtomDocument>;
   getExists(
     workspaceId: string,
     changeSetId: ChangeSetId,

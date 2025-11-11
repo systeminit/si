@@ -1601,7 +1601,7 @@ const handlePatchOperations = async (
     }));
   for (const atom of removals) {
     try {
-      const doc = atomDocumentForChecksum(
+      const doc = await atomDocumentForChecksum(
         db,
         atom.kind,
         atom.id,
@@ -1629,7 +1629,7 @@ const handlePatchOperations = async (
   const startPost = performance.now();
   for (const atom of noops) {
     try {
-      const doc = atomDocumentForChecksum(
+      const doc = await atomDocumentForChecksum(
         db,
         atom.kind,
         atom.id,
@@ -4607,7 +4607,7 @@ const dbInterface: TabDBInterface = {
   addListenerLobbyExit(cb: LobbyExitFn) {
     lobbyExitFn = cb;
   },
-  getGlobal(workspaceId, kind, id) {
+  async getGlobal(workspaceId, kind, id) {
     if (!sqlite) {
       throw new Error(DB_NOT_INIT_ERR);
     }
