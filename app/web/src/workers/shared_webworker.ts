@@ -13,7 +13,6 @@ import { EntityKind, GlobalEntity } from "./types/entity_kind_types";
 import {
   SharedDBInterface,
   TabDBInterface,
-  NOROW,
   AtomDocument,
   BroadcastMessage,
   SHARED_BROADCAST_CHANNEL_NAME,
@@ -298,7 +297,7 @@ const dbInterface: SharedDBInterface = {
     workspaceId: string,
     kind: GlobalEntity,
     id: string,
-  ): Promise<typeof NOROW | AtomDocument> {
+  ): Promise<-1 | AtomDocument> {
     return await withLeader(
       async (remote) => await remote.getGlobal(workspaceId, kind, id),
     );
@@ -309,7 +308,7 @@ const dbInterface: SharedDBInterface = {
     changeSetId: string,
     kind: Gettable,
     id: string,
-  ): Promise<typeof NOROW | AtomDocument> {
+  ): Promise<-1 | AtomDocument> {
     return await withLeader(
       async (remote) => await remote.get(workspaceId, changeSetId, kind, id),
     );

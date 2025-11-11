@@ -209,13 +209,13 @@ export interface SharedDBInterface {
     workspaceId: string,
     kind: GlobalEntity,
     id: Id,
-  ): Promise<typeof NOROW | AtomDocument>;
+  ): Promise<-1 | AtomDocument>;
   get(
     workspaceId: string,
     changeSetId: ChangeSetId,
     kind: Gettable,
     id: Id,
-  ): Promise<typeof NOROW | AtomDocument>;
+  ): Promise<-1 | AtomDocument>;
   getExists(
     workspaceId: string,
     changeSetId: ChangeSetId,
@@ -339,13 +339,13 @@ export interface TabDBInterface {
     workspaceId: string,
     kind: GlobalEntity,
     id: Id,
-  ): Promise<typeof NOROW | AtomDocument>;
+  ): Promise<-1 | AtomDocument>;
   get(
     workspaceId: string,
     changeSetId: ChangeSetId,
     kind: Gettable,
     id: Id,
-  ): Promise<typeof NOROW | AtomDocument>;
+  ): Promise<-1 | AtomDocument>;
   getExists(
     workspaceId: string,
     changeSetId: ChangeSetId,
@@ -587,8 +587,7 @@ export interface AtomWithData extends Common {
   data: object;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export type AtomDocument = any;
+export type AtomDocument = object & { id: string };
 
 export type ComponentInfo = {
   name: string;

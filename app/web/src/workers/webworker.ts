@@ -797,7 +797,7 @@ const handleHammer = async (db: Database, msg: WorkspaceAtomMessage) => {
         msg.atom.workspaceId,
         msg.atom.changeSetId,
         msg.atom.kind,
-        msg.data,
+        msg.data as AtomDocument,
         msg.atom.id,
         indexChecksum,
       );
@@ -1088,7 +1088,8 @@ const handleIndexMvPatch = async (db: Database, msg: WorkspaceIndexUpdate) => {
     // now delete any atom mtms that dont exist in the index
     const placeholders: string[] = [];
     const bind: string[] = [];
-    const mvList = (patchedIndex as StoredMvIndex).mvList;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const mvList = (patchedIndex as any as StoredMvIndex).mvList;
     // add the MvIndex atom to the list of atoms so we don't delete it
     const common: Common = {
       ...atom,
@@ -1505,7 +1506,7 @@ const handlePatchOperations = async (
         kind: atom.kind,
         id: atom.id,
         checksum: atom.toChecksum,
-        doc,
+        doc: doc as AtomDocument,
       });
     } catch (err) {
       error("Failed to apply create operations for patch", atom, err);
@@ -1557,17 +1558,16 @@ const handlePatchOperations = async (
     const beforeDoc = atomToPatch.doc ?? {};
 
     try {
-      let afterDoc;
+      let afterDoc: AtomDocument;
       if (maybeOperations && beforeDoc) {
         afterDoc = applyOperations(beforeDoc, maybeOperations).newDocument;
+        atomsToInsert.push({
+          kind: atomToPatch.kind,
+          id: atomToPatch.id,
+          checksum: toChecksum,
+          doc: afterDoc,
+        });
       }
-
-      atomsToInsert.push({
-        kind: atomToPatch.kind,
-        id: atomToPatch.id,
-        checksum: toChecksum,
-        doc: afterDoc,
-      });
     } catch (err) {
       error("Failed to apply patch operations", err);
     }
@@ -1607,6 +1607,10 @@ const handlePatchOperations = async (
         atom.id,
         atom.checksum,
       );
+      if (!doc) {
+        error("Missing document", atom);
+        continue;
+      }
 
       removeAtom(db, indexChecksum, atom.kind, atom.id, atom.checksum);
       postProcess(
@@ -1636,17 +1640,19 @@ const handlePatchOperations = async (
         atom.checksum,
       );
 
-      postProcess(
-        db,
-        workspaceId,
-        changeSetId,
-        atom.kind,
-        doc,
-        atom.id,
-        indexChecksum,
-        false,
-        true,
-      );
+      if (doc)
+        postProcess(
+          db,
+          workspaceId,
+          changeSetId,
+          atom.kind,
+          doc,
+          atom.id,
+          indexChecksum,
+          false,
+          true,
+        );
+      else error("Failed to postProcess", atom);
     } catch (err) {
       error("Failed to apply NoOp patch", err, atom);
     }
@@ -1930,7 +1936,7 @@ const mjolnirBulk = async (
       workspaceId,
       changeSetId,
       obj.frontEndObject.kind,
-      obj.frontEndObject.data,
+      obj.frontEndObject.data as AtomDocument,
       obj.frontEndObject.id,
       indexChecksum,
     );
@@ -2108,6 +2114,7 @@ const mjolnirJob = async (
     debug("🔨 MJOLNIR JOB FAILED:", kind, id, "no response");
     return; // 404
   }
+  if (req.status === 201) return; // used in testing
 
   // Include index checksum in the atom meta for better validation
   const indexChecksum = req.data.indexChecksum;
@@ -3128,7 +3135,12 @@ const postProcess = async (
       indexChecksum,
       false,
     );
-    doc = result[0];
+    const _doc = result[0];
+    if (_doc && typeof _doc === "object") doc = _doc;
+    else {
+      error("Doc is not valid", kind, id, indexChecksum);
+      return;
+    }
   }
 
   if (kind === EntityKind.Component) {
@@ -3891,7 +3903,7 @@ const getGlobal = async (
   workspaceId: string,
   kind: GlobalEntity,
   id: Id,
-): Promise<-1 | object> => {
+): Promise<-1 | AtomDocument> => {
   const sql = `
     select
       data
@@ -3935,7 +3947,7 @@ const get = async (
   indexChecksum?: string,
   followComputed = true,
   followReferences = true,
-): Promise<-1 | object> => {
+): Promise<-1 | AtomDocument> => {
   if (kind in GLOBAL_ENTITIES) throw new Error(`Use "get_global" for ${kind}`);
 
   const sql = `
@@ -3999,7 +4011,8 @@ const get = async (
     // for the possible side-effects
     if (hasReferenceError) return -1;
 
-    return docAndRefs;
+    if (docAndRefs && typeof docAndRefs === "object") return docAndRefs;
+    else return -1;
   } catch (err) {
     // eslint-disable-next-line no-console
     console.error(err);
@@ -4611,7 +4624,9 @@ const dbInterface: TabDBInterface = {
     if (!sqlite) {
       throw new Error(DB_NOT_INIT_ERR);
     }
-    return sqlite.transaction((db) => getGlobal(db, workspaceId, kind, id));
+    return sqlite.transaction(async (db) =>
+      getGlobal(db, workspaceId, kind, id),
+    );
   },
   async get(workspaceId, changeSetId, kind, id) {
     if (IGNORE_LIST.has(kind)) return -1;
