@@ -5,10 +5,8 @@ use axum::{
 use dal::{
     Func,
     SchemaVariant,
-    func::binding::{
-        FuncBinding,
-        action::ActionBinding,
-    },
+    action::prototype::ActionPrototype,
+    func::binding::action::ActionBinding,
 };
 use sdf_extract::{
     PosthogEventTracker,
@@ -63,15 +61,15 @@ pub async fn detach_action_func_binding(
     let schema_variant = SchemaVariant::get_by_id(ctx, schema_variant_id).await?;
     let func = Func::get_by_id(ctx, func_id).await?;
 
-    let bindings =
-        FuncBinding::get_bindings_for_schema_variant_id(ctx, func_id, schema_variant_id).await?;
-    for binding in bindings {
-        if let FuncBinding::Action(action) = binding {
-            ActionBinding::delete_action_binding(
-                ctx,
-                action.action_prototype_id.into_raw_id().into(),
-            )
-            .await?;
+    // Get both variant-level AND schema-level (overlay) action prototypes
+    let action_prototypes =
+        ActionPrototype::list_for_schema_and_variant_id(ctx, schema_variant_id).await?;
+
+    // Filter by func_id and delete matching prototypes
+    for prototype in action_prototypes {
+        let prototype_func_id = ActionPrototype::func_id(ctx, prototype.id).await?;
+        if prototype_func_id == func_id {
+            ActionBinding::delete_action_binding(ctx, prototype.id).await?;
 
             tracker.track(
                 ctx,
@@ -79,8 +77,8 @@ pub async fn detach_action_func_binding(
                 serde_json::json!({
                     "func_id": func.id,
                     "schema_variant_id": schema_variant_id,
-                    "action_prototype_id": action.action_prototype_id,
-                    "action_kind": action.kind,
+                    "action_prototype_id": prototype.id,
+                    "action_kind": prototype.kind,
                 }),
             );
 

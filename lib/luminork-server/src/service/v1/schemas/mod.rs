@@ -37,7 +37,10 @@ use dal::{
     },
     management::prototype::ManagementPrototypeError,
     prop::PropError,
-    schema::variant::authoring::VariantAuthoringError,
+    schema::{
+        leaf::LeafPrototypeError,
+        variant::authoring::VariantAuthoringError,
+    },
 };
 use frigg::FriggError;
 use serde::{
@@ -102,6 +105,8 @@ pub enum SchemaError {
     FuncBinding(#[from] FuncBindingError),
     #[error("join error: {0}")]
     Join(#[from] tokio::task::JoinError),
+    #[error("leaf prototype error: {0}")]
+    LeafPrototype(#[from] LeafPrototypeError),
     #[error("trying to modify locked variant: {0}")]
     LockedVariant(SchemaVariantId),
     #[error("management prototype error: {0}")]

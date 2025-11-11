@@ -28,6 +28,7 @@ use pretty_assertions_sorted::assert_eq;
 mod binding;
 mod create_func;
 mod func_argument;
+mod overlay_updates;
 mod save_and_exec;
 mod save_func;
 mod test_execute;

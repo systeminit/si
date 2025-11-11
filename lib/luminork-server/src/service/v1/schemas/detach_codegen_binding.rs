@@ -12,6 +12,7 @@ use dal::{
         },
         leaf::LeafKind,
     },
+    schema::leaf::LeafPrototype,
 };
 use sdf_extract::{
     PosthogEventTracker,
@@ -67,6 +68,7 @@ pub async fn detach_codegen_func_binding(
     let schema_variant = SchemaVariant::get_by_id(ctx, schema_variant_id).await?;
     let func = Func::get_by_id(ctx, func_id).await?;
 
+    // Get variant-level bindings (AttributePrototypes)
     let bindings =
         FuncBinding::get_bindings_for_schema_variant_id(ctx, func_id, schema_variant_id).await?;
     for binding in bindings {
@@ -105,6 +107,41 @@ pub async fn detach_codegen_func_binding(
                 )
                 .await?;
             }
+        }
+    }
+
+    // Get schema-level overlay bindings (LeafPrototypes)
+    let schema_id = SchemaVariant::schema_id(ctx, schema_variant_id).await?;
+    let leaf_prototypes = LeafPrototype::for_schema(ctx, schema_id).await?;
+
+    // Delete schema-level overlays for this func that are code generation type
+    for leaf_prototype in leaf_prototypes {
+        let prototype_func_id = LeafPrototype::func_id(ctx, leaf_prototype.id()).await?;
+        if prototype_func_id == func_id && leaf_prototype.kind() == LeafKind::CodeGeneration {
+            LeafBinding::delete_leaf_overlay_func_binding(ctx, leaf_prototype.id()).await?;
+
+            tracker.track(
+                ctx,
+                "api_delete_codegen_func_binding",
+                serde_json::json!({
+                    "func_id": func.id,
+                    "schema_variant_id": schema_variant_id,
+                    "leaf_binding_prototype": LeafBindingPrototype::Overlay(leaf_prototype.id()),
+                }),
+            );
+
+            ctx.write_audit_log(
+                AuditLogKind::DetachFunc {
+                    func_id,
+                    func_display_name: func.display_name.clone(),
+                    schema_variant_id: Some(schema_variant_id),
+                    schema_ids: None,
+                    component_id: None,
+                    subject_name: schema_variant.display_name().to_owned(),
+                },
+                func.name.clone(),
+            )
+            .await?;
         }
     }
 

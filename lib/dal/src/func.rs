@@ -608,7 +608,16 @@ impl Func {
         L: FnOnce(&mut Self) -> FuncResult<()>,
     {
         let mut func = self;
-        func.error_if_locked()?;
+
+        // Variant-level bindings take precedence - if they exist, apply lock check
+        // Only skip lock check if there are NO variant-level bindings (only schema overlays)
+        let has_variant_bindings = FuncBinding::has_variant_bindings(ctx, func.id)
+            .await
+            .map_err(Box::new)?;
+        if has_variant_bindings {
+            func.error_if_locked()?;
+        }
+
         let before = FuncContent::from(func.clone());
         lambda(&mut func)?;
 
