@@ -1386,7 +1386,7 @@ const handleWorkspacePatchMessage = async (
         const ops = workspaceAtoms.map((atom) =>
           preprocessPatch(atom, existingAtoms),
         );
-        return await handlePatchOperations(
+        return handlePatchOperations(
           db,
           workspaceId,
           changeSetId,
@@ -1534,42 +1534,55 @@ const handlePatchOperations = async (
     }
   }
 
-  const startDocs = performance.now();
-  const { existingDocuments, hammers } = await atomDocumentsForChecksums(
-    db,
-    atomsToUpdate,
-  );
-  span.setAttribute(
-    "performance.atomDocumentsForChecksums",
-    performance.now() - startDocs,
-  );
+  if (atomsToUpdate.length > 0) {
+    const startDocs = performance.now();
+    const { existingDocuments, hammers } = await atomDocumentsForChecksums(
+      db,
+      atomsToUpdate,
+    );
+    span.setAttribute(
+      "performance.atomDocumentsForChecksums",
+      performance.now() - startDocs,
+    );
 
-  // Apply patches for every atom we could find
-  for (const atomToPatch of existingDocuments) {
-    const atomKey = `${atomToPatch.id}-${atomToPatch.kind}-${atomToPatch.checksum}`;
-    const maybeOperations = atomsByKindAndId[atomKey]?.operations;
-    const toChecksum = atomsByKindAndId[atomKey]?.toChecksum;
-    if (!toChecksum) {
-      error("Patch missing toChecksum, skipping", atomToPatch);
-      continue;
+    for (const hammer of hammers) {
+      const atomKey = `${hammer.id}-${hammer.kind}-${hammer.checksum}`;
+      const toChecksum = atomsByKindAndId[atomKey]?.toChecksum;
+      if (toChecksum) {
+        realHammers.push({
+          ...hammer,
+          checksum: toChecksum,
+        });
+      }
     }
 
-    const beforeDoc = atomToPatch.doc ?? {};
-
-    try {
-      let afterDoc;
-      if (maybeOperations && beforeDoc) {
-        afterDoc = applyOperations(beforeDoc, maybeOperations).newDocument;
+    // Apply patches for every atom we could find
+    for (const atomToPatch of existingDocuments) {
+      const atomKey = `${atomToPatch.id}-${atomToPatch.kind}-${atomToPatch.checksum}`;
+      const maybeOperations = atomsByKindAndId[atomKey]?.operations;
+      const toChecksum = atomsByKindAndId[atomKey]?.toChecksum;
+      if (!toChecksum) {
+        error("Patch missing toChecksum, skipping", atomToPatch);
+        continue;
       }
 
-      atomsToInsert.push({
-        kind: atomToPatch.kind,
-        id: atomToPatch.id,
-        checksum: toChecksum,
-        doc: afterDoc,
-      });
-    } catch (err) {
-      error("Failed to apply patch operations", err);
+      const beforeDoc = atomToPatch.doc ?? {};
+
+      try {
+        let afterDoc;
+        if (maybeOperations && beforeDoc) {
+          afterDoc = applyOperations(beforeDoc, maybeOperations).newDocument;
+        }
+
+        atomsToInsert.push({
+          kind: atomToPatch.kind,
+          id: atomToPatch.id,
+          checksum: toChecksum,
+          doc: afterDoc,
+        });
+      } catch (err) {
+        error("Failed to apply patch operations", err);
+      }
     }
   }
 
@@ -1601,7 +1614,7 @@ const handlePatchOperations = async (
     }));
   for (const atom of removals) {
     try {
-      const doc = atomDocumentForChecksum(
+      const doc = await atomDocumentForChecksum(
         db,
         atom.kind,
         atom.id,
@@ -1629,7 +1642,7 @@ const handlePatchOperations = async (
   const startPost = performance.now();
   for (const atom of noops) {
     try {
-      const doc = atomDocumentForChecksum(
+      const doc = await atomDocumentForChecksum(
         db,
         atom.kind,
         atom.id,
@@ -1673,17 +1686,6 @@ const handlePatchOperations = async (
 
   // Throw hammers for the ones we couldn't find
   try {
-    for (const hammer of hammers) {
-      const atomKey = `${hammer.id}-${hammer.kind}-${hammer.checksum}`;
-      const toChecksum = atomsByKindAndId[atomKey]?.toChecksum;
-      if (toChecksum) {
-        realHammers.push({
-          ...hammer,
-          checksum: toChecksum,
-        });
-      }
-    }
-
     if (realHammers.length > 0) {
       await mjolnirBulk(
         db,
@@ -2299,6 +2301,10 @@ const atomDocumentsForChecksums = async (
 
   const placeholders = [];
   const bind: string[] = [];
+
+  if (atoms.length === 0) {
+    throw new Error("No atoms provided");
+  }
 
   for (const atom of atoms) {
     placeholders.push("(?, ?, ?)");
@@ -3538,111 +3544,119 @@ const getReferences = async (
 
   let hasReferenceError = false;
 
-  if (kind === EntityKind.Component) {
-    const data = atomDoc as EddaComponent;
-    const sv = (await get(
-      db,
-      workspaceId,
-      changeSetId,
-      data.schemaVariantId.kind,
-      data.schemaVariantId.id,
-      undefined,
-      indexChecksum,
-      followComputed,
-    )) as SchemaVariant | -1;
-
-    if (sv === -1) {
-      hasReferenceError = true;
-      span.addEvent("mjolnir", {
-        workspaceId,
-        changeSetId,
-        kind: data.schemaVariantId.kind,
-        id: data.schemaVariantId.id,
-        source: "getReferences",
-        sourceKind: kind,
-      });
-      mjolnir(
+  try {
+    if (kind === EntityKind.Component) {
+      const data = atomDoc as EddaComponent;
+      const sv = (await get(
         db,
         workspaceId,
         changeSetId,
         data.schemaVariantId.kind,
         data.schemaVariantId.id,
-      );
-      // add a weak reference in the case of a miss
-      // because if we throw a hammer for what we missed
-      // this referencing data doesn't change and needs to bust
-      weakReference(
-        db,
-        changeSetId,
-        { kind: data.schemaVariantId.kind, args: data.schemaVariantId.id },
-        { kind, args: data.id },
-      );
-    }
+        undefined,
+        indexChecksum,
+        followComputed,
+      )) as SchemaVariant | -1;
 
-    const sm = (await get(
-      db,
-      workspaceId,
-      changeSetId,
-      data.schemaMembers.kind,
-      data.schemaMembers.id,
-      undefined,
-      indexChecksum,
-      followComputed,
-    )) as SchemaMembers | -1;
+      if (sv === -1) {
+        hasReferenceError = true;
+        span.addEvent("mjolnir", {
+          workspaceId,
+          changeSetId,
+          kind: data.schemaVariantId.kind,
+          id: data.schemaVariantId.id,
+          source: "getReferences",
+          sourceKind: kind,
+        });
+        mjolnir(
+          db,
+          workspaceId,
+          changeSetId,
+          data.schemaVariantId.kind,
+          data.schemaVariantId.id,
+        );
+        // add a weak reference in the case of a miss
+        // because if we throw a hammer for what we missed
+        // this referencing data doesn't change and needs to bust
+        weakReference(
+          db,
+          changeSetId,
+          { kind: data.schemaVariantId.kind, args: data.schemaVariantId.id },
+          { kind, args: data.id },
+        );
+      }
 
-    if (sm === -1) {
-      hasReferenceError = true;
-      span.addEvent("mjolnir", {
-        workspaceId,
-        changeSetId,
-        kind: data.schemaMembers.kind,
-        id: data.schemaMembers.id,
-        source: "getReferences",
-        sourceKind: kind,
-      });
-      mjolnir(
+      const sm = (await get(
         db,
         workspaceId,
         changeSetId,
         data.schemaMembers.kind,
         data.schemaMembers.id,
-      );
-      // add a weak reference in the case of a miss
-      // because if we throw a hammer for what we missed
-      // this referencing data doesn't change and needs to bust
-      weakReference(
-        db,
-        changeSetId,
-        { kind: data.schemaMembers.kind, args: data.schemaMembers.id },
-        { kind, args: data.id },
-      );
-    }
+        undefined,
+        indexChecksum,
+        followComputed,
+      )) as SchemaMembers | -1;
 
-    const schemaMembers = sm !== -1 ? sm : ({} as SchemaMembers);
-    let canBeUpgraded = false;
-    if (schemaMembers) {
-      if (
-        schemaMembers.editingVariantId &&
-        data.schemaVariantId.id !== schemaMembers.editingVariantId
-      ) {
-        canBeUpgraded = true;
-      } else if (
-        !schemaMembers.editingVariantId &&
-        data.schemaVariantId.id !== schemaMembers.defaultVariantId
-      ) {
-        canBeUpgraded = true;
+      if (sm === -1) {
+        hasReferenceError = true;
+        span.addEvent("mjolnir", {
+          workspaceId,
+          changeSetId,
+          kind: data.schemaMembers.kind,
+          id: data.schemaMembers.id,
+          source: "getReferences",
+          sourceKind: kind,
+        });
+        mjolnir(
+          db,
+          workspaceId,
+          changeSetId,
+          data.schemaMembers.kind,
+          data.schemaMembers.id,
+        );
+        // add a weak reference in the case of a miss
+        // because if we throw a hammer for what we missed
+        // this referencing data doesn't change and needs to bust
+        weakReference(
+          db,
+          changeSetId,
+          { kind: data.schemaMembers.kind, args: data.schemaMembers.id },
+          { kind, args: data.id },
+        );
       }
+
+      const schemaMembers = sm !== -1 ? sm : ({} as SchemaMembers);
+      let canBeUpgraded = false;
+      if (schemaMembers) {
+        if (
+          schemaMembers.editingVariantId &&
+          data.schemaVariantId.id !== schemaMembers.editingVariantId
+        ) {
+          canBeUpgraded = true;
+        } else if (
+          !schemaMembers.editingVariantId &&
+          data.schemaVariantId.id !== schemaMembers.defaultVariantId
+        ) {
+          canBeUpgraded = true;
+        }
+      }
+      const component: BifrostComponent = {
+        ...data,
+        canBeUpgraded,
+        schemaVariant: sv !== -1 ? sv : ({} as SchemaVariant),
+      };
+      span.end();
+      return [component, hasReferenceError];
+    } else {
+      span.end();
+      return [atomDoc, hasReferenceError];
     }
-    const component: BifrostComponent = {
-      ...data,
-      canBeUpgraded,
-      schemaVariant: sv !== -1 ? sv : ({} as SchemaVariant),
-    };
+  } catch (err) {
     span.end();
-    return [component, hasReferenceError];
-  } else {
-    span.end();
-    return [atomDoc, hasReferenceError];
+    // eslint-disable-next-line no-console
+    console.error(err);
+    reportError(err);
+    return [atomDoc, true];
   }
 };
 
@@ -4607,7 +4621,7 @@ const dbInterface: TabDBInterface = {
   addListenerLobbyExit(cb: LobbyExitFn) {
     lobbyExitFn = cb;
   },
-  getGlobal(workspaceId, kind, id) {
+  async getGlobal(workspaceId, kind, id) {
     if (!sqlite) {
       throw new Error(DB_NOT_INIT_ERR);
     }
