@@ -92,6 +92,14 @@ export const AWS_PROP_OVERRIDES: Record<
     ],
   },
 
+  "AWS::Organizations::Policy": {
+    "TargetIds/TargetIdsItem": [
+      suggest("AWS::Organizations::Organization", "RootId"),
+      suggest("AWS::Organizations::OrganizationalUnit", "/resource_value/Id"),
+      suggest("AWS::Organizations::Account", "/resource_value/AccountId"),
+    ],
+  },
+
   // Props that exist on resources across all of AWS
   ".*": {
     // Policy document props
