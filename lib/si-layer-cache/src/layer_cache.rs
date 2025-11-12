@@ -129,10 +129,33 @@ where
     }
 
     pub async fn get(&self, key: Arc<str>) -> LayerDbResult<Option<V>> {
+        monotonic!(
+            layer_cache_requests_total = 1,
+            cache_name = self.name.as_str()
+        );
+
         // Try memory/disk cache first
         if let Some(value) = self.cache.get(key.clone()).await {
+            monotonic!(
+                layer_cache_backend_resolved = 1,
+                cache_name = self.name.as_str(),
+                backend = "foyer",
+                result = "hit"
+            );
+            debug!(
+                cache.name = self.name.as_str(),
+                cache.key = key.as_ref(),
+                "cache hit in memory/disk"
+            );
             return Ok(Some(value));
         }
+
+        debug!(
+            cache.name = self.name.as_str(),
+            cache.key = key.as_ref(),
+            cache.mode = ?self.mode,
+            "cache miss in memory/disk, fetching from backend"
+        );
 
         // Cache miss - fetch from storage backend based on mode
         let bytes = match self.mode {
@@ -154,6 +177,12 @@ where
 
             PersisterMode::S3Primary => {
                 // Try S3 first, fallback to PG
+                debug!(
+                    cache.name = self.name.as_str(),
+                    cache.key = key.as_ref(),
+                    "attempting S3 read"
+                );
+
                 let s3_layers = self
                     .s3_layers
                     .as_ref()
@@ -162,6 +191,12 @@ where
                 let s3_layer = s3_layers
                     .get(self.name.as_str())
                     .ok_or(LayerDbError::S3NotConfigured)?;
+
+                debug!(
+                    cache.name = self.name.as_str(),
+                    cache.key = key.as_ref(),
+                    "S3 layer found, calling get"
+                );
 
                 match s3_layer.get(key.as_ref(), self.name.as_str()).await? {
                     Some(bytes) => {
@@ -179,6 +214,12 @@ where
                         Some(bytes)
                     }
                     None => {
+                        debug!(
+                            cache.name = self.name.as_str(),
+                            cache.key = key.as_ref(),
+                            "S3 miss, falling back to PG"
+                        );
+
                         monotonic!(
                             layer_cache_backend_resolved = 1,
                             cache_name = self.name.as_str(),
@@ -201,7 +242,8 @@ where
 
                         let result = self.pg.get(&key).await?;
 
-                        let result_label: &'static str = if result.is_some() { "hit" } else { "miss" };
+                        let result_label: &'static str =
+                            if result.is_some() { "hit" } else { "miss" };
                         monotonic!(
                             layer_cache_backend_resolved = 1,
                             cache_name = self.name.as_str(),
@@ -242,6 +284,12 @@ where
         // Deserialize and populate cache if found
         match bytes {
             Some(bytes) => {
+                debug!(
+                    cache.name = self.name.as_str(),
+                    cache.key = key.as_ref(),
+                    "found in backend, deserializing and caching"
+                );
+
                 let deserialized: V = serialize::from_bytes(&bytes)?;
 
                 // Insert into cache for future reads
@@ -250,7 +298,15 @@ where
 
                 Ok(Some(deserialized))
             }
-            None => Ok(None),
+            None => {
+                debug!(
+                    cache.name = self.name.as_str(),
+                    cache.key = key.as_ref(),
+                    cache.mode = ?self.mode,
+                    "not found in any backend, returning None"
+                );
+                Ok(None)
+            }
         }
     }
 
@@ -278,7 +334,97 @@ where
         &self,
         key: Arc<str>,
     ) -> LayerDbResult<Option<Vec<u8>>> {
-        self.pg.get(&key).await
+        debug!(
+            cache.name = self.name.as_str(),
+            cache.key = key.as_ref(),
+            cache.mode = ?self.mode,
+            "get_bytes_from_durable_storage called"
+        );
+
+        // Fetch from storage backend based on mode - DO NOT use foyer cache
+        match self.mode {
+            PersisterMode::PostgresOnly | PersisterMode::DualWrite => {
+                let result = self.pg.get(&key).await?;
+
+                debug!(
+                    cache.name = self.name.as_str(),
+                    cache.key = key.as_ref(),
+                    found = result.is_some(),
+                    backend = "postgres",
+                    "get_bytes_from_durable_storage result"
+                );
+
+                Ok(result)
+            }
+
+            PersisterMode::S3Primary => {
+                // Try S3 first, fallback to PG
+                let s3_layers = self
+                    .s3_layers
+                    .as_ref()
+                    .ok_or(LayerDbError::S3NotConfigured)?;
+
+                let s3_layer = s3_layers
+                    .get(self.name.as_str())
+                    .ok_or(LayerDbError::S3NotConfigured)?;
+
+                match s3_layer.get(key.as_ref(), self.name.as_str()).await? {
+                    Some(bytes) => {
+                        debug!(
+                            cache.name = self.name.as_str(),
+                            cache.key = key.as_ref(),
+                            found = true,
+                            backend = "s3",
+                            "get_bytes_from_durable_storage result"
+                        );
+                        Ok(Some(bytes))
+                    }
+                    None => {
+                        debug!(
+                            cache.name = self.name.as_str(),
+                            cache.key = key.as_ref(),
+                            "S3 miss, trying PG fallback"
+                        );
+
+                        let result = self.pg.get(&key).await?;
+
+                        debug!(
+                            cache.name = self.name.as_str(),
+                            cache.key = key.as_ref(),
+                            found = result.is_some(),
+                            backend = "postgres_fallback",
+                            "get_bytes_from_durable_storage result"
+                        );
+
+                        Ok(result)
+                    }
+                }
+            }
+
+            PersisterMode::S3Only => {
+                // Only read from S3
+                let s3_layers = self
+                    .s3_layers
+                    .as_ref()
+                    .ok_or(LayerDbError::S3NotConfigured)?;
+
+                let s3_layer = s3_layers
+                    .get(self.name.as_str())
+                    .ok_or(LayerDbError::S3NotConfigured)?;
+
+                let result = s3_layer.get(key.as_ref(), self.name.as_str()).await?;
+
+                debug!(
+                    cache.name = self.name.as_str(),
+                    cache.key = key.as_ref(),
+                    found = result.is_some(),
+                    backend = "s3",
+                    "get_bytes_from_durable_storage result"
+                );
+
+                Ok(result)
+            }
+        }
     }
 
     pub async fn get_bulk<K>(&self, keys: &[K]) -> LayerDbResult<HashMap<K, V>>
@@ -289,6 +435,7 @@ where
         let mut found_keys = HashMap::new();
         let mut not_found: Vec<Arc<str>> = vec![];
 
+        // Check foyer cache first
         for key in keys {
             let key_str: Arc<str> = key.to_string().into();
             if let Some(found) = match self.cache.get(key_str.clone()).await {
@@ -302,9 +449,78 @@ where
             }
         }
 
+        // Fetch missing keys from backend based on mode
         if !not_found.is_empty() {
-            if let Some(pg_found) = self.pg.get_many(&not_found).await? {
-                for (k, bytes) in pg_found {
+            let backend_found = match self.mode {
+                PersisterMode::PostgresOnly | PersisterMode::DualWrite => {
+                    self.pg.get_many(&not_found).await?
+                }
+
+                PersisterMode::S3Primary => {
+                    // Try S3 first
+                    let s3_layers = self
+                        .s3_layers
+                        .as_ref()
+                        .ok_or(LayerDbError::S3NotConfigured)?;
+
+                    let s3_layer = s3_layers
+                        .get(self.name.as_str())
+                        .ok_or(LayerDbError::S3NotConfigured)?;
+
+                    // Convert Vec<Arc<str>> to Vec<&str>
+                    let keys_refs: Vec<&str> = not_found.iter().map(|k| k.as_ref()).collect();
+                    let s3_results = s3_layer.get_bulk(&keys_refs, self.name.as_str()).await?;
+
+                    if !s3_results.is_empty() {
+                        // Find keys not in S3 for PG fallback
+                        let still_not_found: Vec<Arc<str>> = not_found
+                            .iter()
+                            .filter(|k| !s3_results.contains_key(k.as_ref()))
+                            .cloned()
+                            .collect();
+
+                        if !still_not_found.is_empty() {
+                            // Try PG fallback for remaining keys
+                            if let Some(pg_results) = self.pg.get_many(&still_not_found).await? {
+                                // Merge S3 and PG results
+                                let mut combined = s3_results;
+                                combined.extend(pg_results);
+                                Some(combined)
+                            } else {
+                                Some(s3_results)
+                            }
+                        } else {
+                            Some(s3_results)
+                        }
+                    } else {
+                        // All keys missed S3, try PG fallback
+                        self.pg.get_many(&not_found).await?
+                    }
+                }
+
+                PersisterMode::S3Only => {
+                    let s3_layers = self
+                        .s3_layers
+                        .as_ref()
+                        .ok_or(LayerDbError::S3NotConfigured)?;
+
+                    let s3_layer = s3_layers
+                        .get(self.name.as_str())
+                        .ok_or(LayerDbError::S3NotConfigured)?;
+
+                    // Convert Vec<Arc<str>> to Vec<&str>
+                    let keys_refs: Vec<&str> = not_found.iter().map(|k| k.as_ref()).collect();
+                    let results = s3_layer.get_bulk(&keys_refs, self.name.as_str()).await?;
+                    if results.is_empty() {
+                        None
+                    } else {
+                        Some(results)
+                    }
+                }
+            };
+
+            if let Some(results) = backend_found {
+                for (k, bytes) in results {
                     let deserialized: V = serialize::from_bytes(&bytes)?;
                     self.cache
                         .insert(k.clone().into(), deserialized.clone(), bytes.len());

@@ -12,7 +12,10 @@ use serde::{
 use si_data_nats::NatsClient;
 use si_data_pg::PgPool;
 use telemetry::prelude::*;
-use telemetry_utils::{metric, monotonic};
+use telemetry_utils::{
+    metric,
+    monotonic,
+};
 use tokio::{
     join,
     sync::{
@@ -67,7 +70,7 @@ pub enum PersisterMode {
     PostgresOnly,
     /// Write to both PostgreSQL and S3, read from PostgreSQL.
     DualWrite,
-    /// Write to S3 only, read from S3 with PostgreSQL fallback.
+    /// Write to both PostgreSQL and S3, read from S3 with PostgreSQL fallback.
     S3Primary,
     /// Write and read from S3 only.
     S3Only,
@@ -286,7 +289,52 @@ impl PersisterTask {
                 }
             }
 
-            PersisterMode::S3Primary | PersisterMode::S3Only => {
+            PersisterMode::S3Primary => {
+                // Write to both backends in parallel (same as DualWrite)
+                // Read preference is S3 first, but we keep PG updated for fallback
+                let (pg_result, s3_result) = tokio::join!(
+                    Self::do_write_to_backend(event, BackendType::Postgres, pg_pool, s3_layers),
+                    Self::do_write_to_backend(event, BackendType::S3, pg_pool, s3_layers)
+                );
+
+                // Handle PG result
+                if let Err(e) = pg_result {
+                    if Self::do_is_retryable(&e, BackendType::Postgres) {
+                        retry_queue_command_tx
+                            .send(crate::retry_queue::RetryQueueMessage::Enqueue {
+                                event: event.clone(),
+                                backend: BackendType::Postgres,
+                            })
+                            .map_err(|e| LayerDbError::RetryQueueSend(e.to_string()))?;
+                    }
+                } else {
+                    monotonic!(
+                        layer_cache_persister_write_success = 1,
+                        cache_name = cache_name,
+                        backend = BackendType::Postgres.as_ref()
+                    );
+                }
+
+                // Handle S3 result
+                if let Err(e) = s3_result {
+                    if Self::do_is_retryable(&e, BackendType::S3) {
+                        retry_queue_command_tx
+                            .send(crate::retry_queue::RetryQueueMessage::Enqueue {
+                                event: event.clone(),
+                                backend: BackendType::S3,
+                            })
+                            .map_err(|e| LayerDbError::RetryQueueSend(e.to_string()))?;
+                    }
+                } else {
+                    monotonic!(
+                        layer_cache_persister_write_success = 1,
+                        cache_name = cache_name,
+                        backend = BackendType::S3.as_ref()
+                    );
+                }
+            }
+
+            PersisterMode::S3Only => {
                 // Write only to S3
                 if let Err(e) =
                     Self::do_write_to_backend(event, BackendType::S3, pg_pool, s3_layers).await
