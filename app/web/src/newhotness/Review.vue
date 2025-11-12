@@ -763,8 +763,9 @@ function fixAttributeSourceAndValue(
 // });
 
 /** The currently-selected component data, including diffs */
-const selectedComponent = computed(() =>
-  componentList.value.find((c) => c.id === selectedComponentId.value),
+const selectedComponent = computed(
+  () =>
+    componentList.value.find((c) => c.id === selectedComponentId.value) || null,
 );
 
 const disableRevert = computed(

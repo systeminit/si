@@ -120,6 +120,15 @@ const fullDiagnosticTest = async (db: Comlink.Remote<TabDBInterface>) => {
     "01JZK1VKDN40NZCCTYR350RDFD",
   )) as ComponentInList;
   assert(component.name === "si-1835", `${component.name} not named si-1835`);
+
+  const componentExists = await db.getExists(
+    workspaceId,
+    changeSetId,
+    EntityKind.ComponentInList,
+    "01JZK1VKDN40NZCCTYR350RDFD",
+  );
+  assert(componentExists, "si-1835 gone");
+
   log("si-1835 exists");
 
   const componentListStr = await db.getList(
@@ -147,6 +156,14 @@ const fullDiagnosticTest = async (db: Comlink.Remote<TabDBInterface>) => {
     "01JZK1VKDN40NZCCTYR350RDFD",
   );
   assert(componentAgain === -1, "si-1835 wasn't deleted");
+
+  const componentExistsAgain = await db.getExists(
+    workspaceId,
+    changeSetId,
+    EntityKind.ComponentInList,
+    "01JZK1VKDN40NZCCTYR350RDFD",
+  );
+  assert(!componentExistsAgain, "si-1835 exists, wasn't deleted");
 
   db.exec({
     sql: "delete from index_mtm_atoms where index_checksum = ? and kind = ? and args = ? and checksum = ?",
@@ -5474,9 +5491,9 @@ const fullDiagnosticTest = async (db: Comlink.Remote<TabDBInterface>) => {
   "kind": "PatchMessage",
   "patches": [
     {
-      "kind": "ComponentInList",
+      "kind": "ComponentDiff",
       "id": "01K4ZGNVS7EQKKBA67BMG0A62S",
-      "fromChecksum": "37b7770cd00c8b9b116a7b80dab12f4e",
+      "fromChecksum": "8aa8765552b1dfb5c84ae0e7ff2b885a",
       "toChecksum": "0",
       "patch": []
     }
@@ -5486,12 +5503,12 @@ const fullDiagnosticTest = async (db: Comlink.Remote<TabDBInterface>) => {
   const compoenentInListAtom = (await db.get(
     workspaceId,
     changeSetId,
-    EntityKind.ComponentInList,
+    EntityKind.ComponentDiff,
     "01K4ZGNVS7EQKKBA67BMG0A62S",
   )) as object | -1;
   assert(
     compoenentInListAtom === -1,
-    `ComponentInList Atom shouldn't exist when it does`,
+    `ComponentDiff Atom shouldn't exist when it does`,
   );
   log("removed component");
 
