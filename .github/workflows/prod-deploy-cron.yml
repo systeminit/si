@@ -2,7 +2,7 @@ name: Production Deploy Cron
 
 on:
   schedule:
-    - cron: "45 13 * * 1-5" # Deploys every weekday at 2pm UTC
+    - cron: "00 10 * * 1-5" # Deploys every weekday at 10am UTC
 
 jobs:
   deploy-production:
