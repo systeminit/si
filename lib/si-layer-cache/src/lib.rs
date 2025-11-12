@@ -31,6 +31,7 @@
 //!
 #![allow(clippy::doc_lazy_continuation)]
 
+use serde::{Deserialize, Serialize};
 use strum::AsRefStr;
 
 pub mod activities;
@@ -44,8 +45,9 @@ mod nats;
 pub mod persister;
 pub mod pg;
 pub mod retry_queue;
+pub mod s3;
 
-#[derive(AsRefStr, Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(AsRefStr, Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[strum(serialize_all = "snake_case")]
 pub enum BackendType {
     Postgres,
@@ -59,3 +61,4 @@ pub use pg::{
     DBNAME,
     default_pg_pool_config,
 };
+pub use s3::{KeyTransformStrategy, ObjectStorageConfig, S3AuthConfig};
