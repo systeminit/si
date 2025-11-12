@@ -42,7 +42,7 @@ export function generateEntityBase(
   project: Project,
   entity: MaterializableEntity,
   schemaName: string,
-  isOverlay?: boolean,
+  isOverlay: boolean,
 ) {
   return materialize.materializeEntityBase(
     project,

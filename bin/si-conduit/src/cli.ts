@@ -26,7 +26,10 @@ import { unknownValueToErrorMessage } from "./helpers.ts";
 import { Context } from "./context.ts";
 import * as jwt from "./jwt.ts";
 import { FunctionKind, Project } from "./project.ts";
-import { callRemoteSchemaPush } from "./command/remote/schema/push.ts";
+import {
+  callRemoteSchemaPush,
+  callRemoteSchemaOverlaysPush
+} from "./command/remote/schema/push.ts";
 import { callSchemaFuncGenerate } from "./command/schema/func/generate.ts";
 
 /** Current version of the SI Conduit CLI */
@@ -272,7 +275,32 @@ function buildRemoteSchemaCommand() {
 
           await callRemoteSchemaPush(cliContext, project, skipConfirmation);
         }),
-    );
+    )
+    .command("overlay", buildRemoteSchemaOverlayCommand())
+}
+
+function buildRemoteSchemaOverlayCommand() {
+  return createSubCommand()
+    .description("Interacts with overlays for remote workspace schemas")
+    .action(function () {
+      this.showHelp();
+    })
+    .command(
+      "push",
+      createSubCommand()
+        .description(
+          "Pushes overlay funcs to your remote System Initiative workspace",
+        )
+        .option("-s, --skip-confirmation", "Skip confirmation prompt")
+        .action(async ({ root, skipConfirmation }) => {
+          const project = createProject(root);
+
+          const ctx = Context.instance();
+          const cliContext = await initializeCliContextWithAuth({ ctx });
+
+          await callRemoteSchemaOverlaysPush(cliContext, project, skipConfirmation);
+        }),
+    )
 }
 
 /**

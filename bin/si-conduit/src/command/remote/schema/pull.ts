@@ -8,7 +8,10 @@ import { SCHEMA_FILE_FORMAT_VERSION } from "../../../config.ts";
 import { Context } from "../../../context.ts";
 import { FunctionMetadata, SchemaMetadata } from "../../../generators.ts";
 import * as materialize from "../../../materialize.ts";
-import { MaterializableEntity } from "../../../materialize.ts";
+import {
+  functionKindToMaterializableEntity,
+  MaterializableEntity
+} from "../../../materialize.ts";
 import { getLogger } from "../../../logger.ts";
 import {
   AbsoluteDirectoryPath,
@@ -25,7 +28,7 @@ export async function callRemoteSchemaPull(
   project: Project,
   apiCtx: ApiContext,
   schemaNames: string[],
-): Promise<PullFullSchemaResult[]> {
+) {
   logger.info("Pulling remote schemas to local system");
   logger.info("---");
   logger.info("");
@@ -88,6 +91,7 @@ type SchemaAndVariantData = {
   };
   variant: {
     id: string;
+    isBuiltin: boolean;
     displayName: string;
     description?: string | null;
     category: string;
@@ -95,6 +99,13 @@ type SchemaAndVariantData = {
   };
   func: {
     schemaId: string;
+    actionIds: string[];
+    authIds: string[];
+    codegenIds: string[];
+    managementIds: string[];
+    qualificationIds: string[];
+  };
+  overlays: {
     actionIds: string[];
     authIds: string[];
     codegenIds: string[];
@@ -117,7 +128,7 @@ async function pullSchemaByName(
   api: Api,
   changeSetCoord: ChangeSetCoordinate,
   schemaName: string,
-): Promise<PullFullSchemaResult | undefined> {
+) {
   logger.info("Pulling schema {schemaName}", { schemaName });
 
   const data = await getSchemaAndVariantBySchemaName(
@@ -129,6 +140,10 @@ async function pullSchemaByName(
   if (!data) {
     // TODO(fnichol): log error, throw, or other here?
     return undefined;
+  }
+
+  if (data.variant.isBuiltin) {
+    logger.info("{schemaName} is a builtin", { schemaName });
   }
 
   const formatVersionBody = SCHEMA_FILE_FORMAT_VERSION.toString();
@@ -145,6 +160,7 @@ async function pullSchemaByName(
     project,
     MaterializableEntity.Schema,
     schemaName,
+    false,
   );
   const { formatVersionPath } = await materialize
     .materializeSchemaFormatVersion(
@@ -161,325 +177,119 @@ async function pullSchemaByName(
     { overwrite: true },
   );
 
-  // Render all action funcs
-  // First, get list of existing local actions before pulling
-  const actionBasePath = project.schemas.funcBasePath(
-    schemaName,
-    FunctionKind.Action,
-  );
-  const existingActionNames = await listFunctionNamesInDir(actionBasePath);
 
-  if (data.func.actionIds.length > 0) {
-    await materialize.materializeEntityBase(
+  // Render funcs
+  const { paths: actionPaths, deletedPaths: deletedActionPaths } =
+    await pullFunctionsByKind(
       project,
-      MaterializableEntity.Action,
+      api,
+      changeSetCoord,
       schemaName,
+      FunctionKind.Action,
+      data.func.actionIds,
+      false,
     );
-  }
-  const actionPaths = [];
-  const pulledActionNames = [];
-  for (const funcId of data.func.actionIds) {
-    const { metadata, codeBody } = await fetchFuncMetadataAndCode(api, {
-      funcId,
-      ...changeSetCoord,
-    });
-    const metadataBody = JSON.stringify(metadata, null, 2);
 
-    const paths = await materialize.materializeEntity(
+  const { paths: authPaths, deletedPaths: deletedAuthPaths } =
+    await pullFunctionsByKind(
       project,
-      { entity: MaterializableEntity.Action, schemaName, name: metadata.name },
-      metadataBody,
-      codeBody,
-      { overwrite: true },
-    );
-    actionPaths.push(paths);
-    pulledActionNames.push(normalizeFsName(metadata.name));
-  }
-
-  // Delete actions that exist locally but weren't in the remote data
-  const deletedActionPaths = [];
-  for (const localActionName of existingActionNames) {
-    if (!pulledActionNames.includes(localActionName)) {
-      const metadataPath = project.schemas.funcMetadataPath(
-        schemaName,
-        localActionName,
-        FunctionKind.Action,
-      );
-      const codePath = project.schemas.funcCodePath(
-        schemaName,
-        localActionName,
-        FunctionKind.Action,
-      );
-
-      await deleteFunctionFiles(project, metadataPath, codePath);
-      deletedActionPaths.push({ metadataPath, codePath });
-    }
-  }
-
-  // Clean up actions directory if it's now empty
-  if (existingActionNames.length > 0 && pulledActionNames.length === 0) {
-    await deleteIfEmpty(actionBasePath);
-  }
-
-  // Render all auth funcs
-  // First, get list of existing local authentication functions before pulling
-  const authBasePath = project.schemas.funcBasePath(
-    schemaName,
-    FunctionKind.Auth,
-  );
-  const existingAuthNames = await listFunctionNamesInDir(authBasePath);
-
-  if (data.func.authIds.length > 0) {
-    await materialize.materializeEntityBase(
-      project,
-      MaterializableEntity.Auth,
+      api,
+      changeSetCoord,
       schemaName,
+      FunctionKind.Auth,
+      data.func.authIds,
+      false,
     );
-  }
-  const authPaths = [];
-  const pulledAuthNames = [];
-  for (const funcId of data.func.authIds) {
-    const { metadata, codeBody } = await fetchFuncMetadataAndCode(api, {
-      funcId,
-      ...changeSetCoord,
-    });
-    const metadataBody = JSON.stringify(metadata, null, 2);
 
-    const paths = await materialize.materializeEntity(
+  const { paths: codegenPaths, deletedPaths: deletedCodegenPaths } =
+    await pullFunctionsByKind(
       project,
-      { entity: MaterializableEntity.Auth, schemaName, name: metadata.name },
-      metadataBody,
-      codeBody,
-      { overwrite: true },
-    );
-    authPaths.push(paths);
-    pulledAuthNames.push(normalizeFsName(metadata.name));
-  }
-
-  // Delete authentication functions that exist locally but weren't in the
-  // remote data
-  const deletedAuthPaths = [];
-  for (const localAuthName of existingAuthNames) {
-    if (!pulledAuthNames.includes(localAuthName)) {
-      const metadataPath = project.schemas.funcMetadataPath(
-        schemaName,
-        localAuthName,
-        FunctionKind.Auth,
-      );
-      const codePath = project.schemas.funcCodePath(
-        schemaName,
-        localAuthName,
-        FunctionKind.Auth,
-      );
-
-      await deleteFunctionFiles(project, metadataPath, codePath);
-      deletedAuthPaths.push({ metadataPath, codePath });
-    }
-  }
-
-  // Clean up authentication directory if it's now empty
-  if (existingAuthNames.length > 0 && pulledAuthNames.length === 0) {
-    await deleteIfEmpty(authBasePath);
-  }
-
-  // Render all codegen funcs
-  // First, get list of existing local codegens before pulling
-  const codegenBasePath = project.schemas.funcBasePath(
-    schemaName,
-    FunctionKind.Codegen,
-  );
-  const existingCodegenNames = await listFunctionNamesInDir(codegenBasePath);
-
-  if (data.func.codegenIds.length > 0) {
-    await materialize.materializeEntityBase(
-      project,
-      MaterializableEntity.Codegen,
+      api,
+      changeSetCoord,
       schemaName,
+      FunctionKind.Codegen,
+      data.func.codegenIds,
+      false,
     );
-  }
-  const codegenPaths = [];
-  const pulledCodegenNames = [];
-  for (const funcId of data.func.codegenIds) {
-    const { metadata, codeBody } = await fetchFuncMetadataAndCode(api, {
-      funcId,
-      ...changeSetCoord,
-    });
-    const metadataBody = JSON.stringify(metadata, null, 2);
 
-    const paths = await materialize.materializeEntity(
+  const { paths: managementPaths, deletedPaths: deletedManagementPaths } =
+    await pullFunctionsByKind(
       project,
-      { entity: MaterializableEntity.Codegen, schemaName, name: metadata.name },
-      metadataBody,
-      codeBody,
-      { overwrite: true },
-    );
-    codegenPaths.push(paths);
-    pulledCodegenNames.push(normalizeFsName(metadata.name));
-  }
-
-  // Delete codegens that exist locally but weren't in the remote data
-  const deletedCodegenPaths = [];
-  for (const localCodegenName of existingCodegenNames) {
-    if (!pulledCodegenNames.includes(localCodegenName)) {
-      const metadataPath = project.schemas.funcMetadataPath(
-        schemaName,
-        localCodegenName,
-        FunctionKind.Codegen,
-      );
-      const codePath = project.schemas.funcCodePath(
-        schemaName,
-        localCodegenName,
-        FunctionKind.Codegen,
-      );
-
-      await deleteFunctionFiles(project, metadataPath, codePath);
-      deletedCodegenPaths.push({ metadataPath, codePath });
-    }
-  }
-
-  // Clean up codegens directory if it's now empty
-  if (existingCodegenNames.length > 0 && pulledCodegenNames.length === 0) {
-    await deleteIfEmpty(codegenBasePath);
-  }
-
-  // Render all management funcs
-  // First, get list of existing local management functions before pulling
-  const managementBasePath = project.schemas.funcBasePath(
-    schemaName,
-    FunctionKind.Management,
-  );
-  const existingManagementNames = await listFunctionNamesInDir(
-    managementBasePath,
-  );
-
-  if (data.func.managementIds.length > 0) {
-    await materialize.materializeEntityBase(
-      project,
-      MaterializableEntity.Management,
+      api,
+      changeSetCoord,
       schemaName,
+      FunctionKind.Management,
+      data.func.managementIds,
+      false,
     );
-  }
-  const managementPaths = [];
-  const pulledManagementNames = [];
-  for (const funcId of data.func.managementIds) {
-    const { metadata, codeBody } = await fetchFuncMetadataAndCode(api, {
-      funcId,
-      ...changeSetCoord,
-    });
-    const metadataBody = JSON.stringify(metadata, null, 2);
 
-    const paths = await materialize.materializeEntity(
+  const { paths: qualificationPaths, deletedPaths: deletedQualificationPaths } =
+    await pullFunctionsByKind(
       project,
-      {
-        entity: MaterializableEntity.Management,
-        schemaName,
-        name: metadata.name,
-      },
-      metadataBody,
-      codeBody,
-      { overwrite: true },
-    );
-    managementPaths.push(paths);
-    pulledManagementNames.push(normalizeFsName(metadata.name));
-  }
-
-  // Delete management functions that exist locally but weren't in the remote data
-  const deletedManagementPaths = [];
-  for (const localManagementName of existingManagementNames) {
-    if (!pulledManagementNames.includes(localManagementName)) {
-      const metadataPath = project.schemas.funcMetadataPath(
-        schemaName,
-        localManagementName,
-        FunctionKind.Management,
-      );
-      const codePath = project.schemas.funcCodePath(
-        schemaName,
-        localManagementName,
-        FunctionKind.Management,
-      );
-
-      await deleteFunctionFiles(project, metadataPath, codePath);
-      deletedManagementPaths.push({ metadataPath, codePath });
-    }
-  }
-
-  // Clean up management directory if it's now empty
-  if (
-    existingManagementNames.length > 0 &&
-    pulledManagementNames.length === 0
-  ) {
-    await deleteIfEmpty(managementBasePath);
-  }
-
-  // Render all qualification funcs
-  // First, get list of existing local qualifications before pulling
-  const qualificationBasePath = project.schemas.funcBasePath(
-    schemaName,
-    FunctionKind.Qualification,
-  );
-  const existingQualificationNames = await listFunctionNamesInDir(
-    qualificationBasePath,
-  );
-
-  if (data.func.qualificationIds.length > 0) {
-    await materialize.materializeEntityBase(
-      project,
-      MaterializableEntity.Qualification,
+      api,
+      changeSetCoord,
       schemaName,
+      FunctionKind.Qualification,
+      data.func.qualificationIds,
+      false,
     );
-  }
-  const qualificationPaths = [];
-  const pulledQualificationNames = [];
-  for (const funcId of data.func.qualificationIds) {
-    const { metadata, codeBody } = await fetchFuncMetadataAndCode(api, {
-      funcId,
-      ...changeSetCoord,
-    });
-    const metadataBody = JSON.stringify(metadata, null, 2);
 
-    const paths = await materialize.materializeEntity(
+  const { paths: overlayActionPaths, deletedPaths: deletedOverlayActionPaths } =
+    await pullFunctionsByKind(
       project,
-      {
-        entity: MaterializableEntity.Qualification,
-        schemaName,
-        name: metadata.name,
-      },
-      metadataBody,
-      codeBody,
-      { overwrite: true },
+      api,
+      changeSetCoord,
+      schemaName,
+      FunctionKind.Action,
+      data.overlays.actionIds,
+      true,
     );
-    qualificationPaths.push(paths);
-    pulledQualificationNames.push(normalizeFsName(metadata.name));
-  }
 
-  // Delete qualifications that exist locally but weren't in the remote data
-  const deletedQualificationPaths = [];
-  for (const localQualificationName of existingQualificationNames) {
-    if (!pulledQualificationNames.includes(localQualificationName)) {
-      const metadataPath = project.schemas.funcMetadataPath(
-        schemaName,
-        localQualificationName,
-        FunctionKind.Qualification,
-      );
-      const codePath = project.schemas.funcCodePath(
-        schemaName,
-        localQualificationName,
-        FunctionKind.Qualification,
-      );
+  const { paths: overlayAuthPaths, deletedPaths: deletedOverlayAuthPaths } =
+    await pullFunctionsByKind(
+      project,
+      api,
+      changeSetCoord,
+      schemaName,
+      FunctionKind.Auth,
+      data.overlays.authIds,
+      true,
+    );
 
-      await deleteFunctionFiles(project, metadataPath, codePath);
-      deletedQualificationPaths.push({ metadataPath, codePath });
-    }
-  }
+  const { paths: overlayCodegenPaths, deletedPaths: deletedOverlayCodegenPaths } =
+    await pullFunctionsByKind(
+      project,
+      api,
+      changeSetCoord,
+      schemaName,
+      FunctionKind.Codegen,
+      data.overlays.codegenIds,
+      true,
+    );
 
-  // Clean up qualifications directory if it's now empty
-  if (
-    existingQualificationNames.length > 0 &&
-    pulledQualificationNames.length === 0
-  ) {
-    await deleteIfEmpty(qualificationBasePath);
-  }
+  const { paths: overlayManagementPaths, deletedPaths: deletedOverlayManagementPaths } =
+    await pullFunctionsByKind(
+      project,
+      api,
+      changeSetCoord,
+      schemaName,
+      FunctionKind.Management,
+      data.overlays.managementIds,
+      true,
+    );
 
+  const { paths: overlayQualificationPaths, deletedPaths: deletedOverlayQualificationPaths } =
+    await pullFunctionsByKind(
+      project,
+      api,
+      changeSetCoord,
+      schemaName,
+      FunctionKind.Qualification,
+      data.overlays.qualificationIds,
+      true,
+    );
+
+  // TODO(victor) Tidy this up, too many fields
   return {
     formatVersionPath,
     metadataPath,
@@ -490,9 +300,20 @@ async function pullSchemaByName(
     managementPaths,
     qualificationPaths,
     deletedActionPaths,
+    deletedAuthPaths,
     deletedCodegenPaths,
     deletedManagementPaths,
     deletedQualificationPaths,
+    overlayActionPaths,
+    overlayAuthPaths,
+    overlayCodegenPaths,
+    overlayManagementPaths,
+    overlayQualificationPaths,
+    deletedOverlayActionPaths,
+    deletedOverlayAuthPaths,
+    deletedOverlayCodegenPaths,
+    deletedOverlayManagementPaths,
+    deletedOverlayQualificationPaths,
   };
 }
 
@@ -543,7 +364,6 @@ async function getSchemaAndVariantBySchemaName(
     ...changeSetCoord,
   };
 
-  // FIXME Here in variant, we'll get an `installedFromUpstream` field that tells us if this variant is a builtin
   const { data: variant } = await api.schemas.getDefaultVariant({
     ...schemaCoord,
   });
@@ -558,6 +378,7 @@ async function getSchemaAndVariantBySchemaName(
     },
     variant: {
       id: variant.variantId,
+      isBuiltin: variant.installedFromUpstream,
       displayName: variant.displayName,
       description: variant.description,
       category: variant.category,
@@ -565,12 +386,19 @@ async function getSchemaAndVariantBySchemaName(
     },
     func: {
       schemaId: variant.assetFuncId,
-      actionIds: funcs.actionIds(),
-      authIds: funcs.authIds(),
-      codegenIds: funcs.codegenIds(),
-      managementIds: funcs.managementIds(),
-      qualificationIds: funcs.qualificationIds(),
+      actionIds: funcs.nonOverlays().byKind(FunctionKind.Action).ids(),
+      authIds: funcs.nonOverlays().byKind(FunctionKind.Auth).ids(),
+      codegenIds: funcs.nonOverlays().byKind(FunctionKind.Codegen).ids(),
+      managementIds: funcs.nonOverlays().byKind(FunctionKind.Management).ids(),
+      qualificationIds: funcs.nonOverlays().byKind(FunctionKind.Qualification).ids(),
     },
+    overlays: {
+      actionIds: funcs.overlays().byKind(FunctionKind.Action).ids(),
+      authIds: funcs.overlays().byKind(FunctionKind.Auth).ids(),
+      codegenIds: funcs.overlays().byKind(FunctionKind.Codegen).ids(),
+      managementIds: funcs.overlays().byKind(FunctionKind.Management).ids(),
+      qualificationIds: funcs.overlays().byKind(FunctionKind.Qualification).ids(),
+    }
   };
 }
 
@@ -608,7 +436,7 @@ async function deleteFunctionFiles(
   project: Project,
   metadataPath: AbsoluteFilePath,
   codePath: AbsoluteFilePath,
-): Promise<void> {
+) {
   if (await metadataPath.exists()) {
     await Deno.remove(metadataPath.path);
     logger.info("  - Deleted: {path}", {
@@ -645,6 +473,85 @@ async function deleteIfEmpty(dirPath: AbsoluteDirectoryPath): Promise<void> {
   }
 }
 
+/**
+ * Pulls functions of a specific kind (Action, Auth, Codegen, Management, or Qualification)
+ * from the remote API and materializes them locally.
+ *
+ * Also handles deletion of functions that exist locally but weren't in the remote data.
+ */
+async function pullFunctionsByKind(
+  project: Project,
+  api: Api,
+  changeSetCoord: ChangeSetCoordinate,
+  schemaName: string,
+  functionKind: FunctionKind,
+  funcIds: string[],
+  isOverlay: boolean, // TODO(victor) this argument is not the best way to get this. Take in module only instead of project?
+): Promise<{
+  paths: { metadataPath: AbsoluteFilePath; codePath: AbsoluteFilePath }[];
+  deletedPaths: { metadataPath: AbsoluteFilePath; codePath: AbsoluteFilePath }[];
+}> {
+  const paths = [];
+  const deletedPaths = [];
+  const entity = functionKindToMaterializableEntity(functionKind);
+
+  const module = isOverlay ? project.overlays : project.schemas;
+  const basePath = module.funcBasePath(schemaName, functionKind);
+  const existingNames = await listFunctionNamesInDir(basePath);
+
+  if (funcIds.length > 0) {
+    await materialize.materializeEntityBase(project, entity, schemaName, isOverlay);
+  }
+
+  const pulledNames = [];
+  for (const funcId of funcIds) {
+    const { metadata, codeBody } = await fetchFuncMetadataAndCode(api, {
+      funcId,
+      ...changeSetCoord,
+    });
+    const metadataBody = JSON.stringify(metadata, null, 2);
+
+    const result = await materialize.materializeEntity(
+      project,
+      { entity, schemaName, name: metadata.name },
+      metadataBody,
+      codeBody,
+      {
+        overwrite: true,
+        isOverlay,
+      },
+    );
+    paths.push(result);
+    pulledNames.push(normalizeFsName(metadata.name));
+  }
+
+  // Delete functions that exist locally but weren't in the remote data
+  for (const localName of existingNames) {
+    if (!pulledNames.includes(localName)) {
+      const metadataPath = module.funcMetadataPath(
+        schemaName,
+        localName,
+        functionKind,
+      );
+      const codePath = module.funcCodePath(
+        schemaName,
+        localName,
+        functionKind,
+      );
+
+      await deleteFunctionFiles(project, metadataPath, codePath);
+      deletedPaths.push({ metadataPath, codePath });
+    }
+  }
+
+  // Clean up directory if it's now empty
+  if (existingNames.length > 0 && pulledNames.length === 0) {
+    await deleteIfEmpty(basePath);
+  }
+
+  return { paths, deletedPaths };
+}
+
 function schemaMetadata(data: SchemaAndVariantData): SchemaMetadata {
   return {
     name: data.schema.name,
@@ -657,103 +564,59 @@ function schemaMetadata(data: SchemaAndVariantData): SchemaMetadata {
 class SchemaVariantFuncs {
   constructor(public readonly funcs: SchemaVariantFunc[]) {}
 
-  public actionFuncs(): SchemaVariantFunc[] {
-    return this.funcs.filter((svf) => svf.funcKind.kind === "action");
+  public byKind(kind: FunctionKind) {
+    let filtered: SchemaVariantFunc[];
+    switch (kind) {
+      case FunctionKind.Action:
+        filtered = this.funcs.filter((svf) => svf.funcKind.kind === "action");
+        break;
+      case FunctionKind.Auth:
+        filtered = this.funcs.filter(
+          (svf) =>
+            svf.funcKind.kind === "other" &&
+            svf.funcKind.funcKind === "Authentication",
+        );
+        break;
+      case FunctionKind.Codegen:
+        filtered = this.funcs.filter(
+          (svf) =>
+            svf.funcKind.kind === "other" &&
+            svf.funcKind.funcKind === "CodeGeneration",
+        );
+        break;
+      case FunctionKind.Management:
+        filtered = this.funcs.filter((svf) => svf.funcKind.kind === "management");
+        break;
+      case FunctionKind.Qualification:
+        filtered = this.funcs.filter(
+          (svf) =>
+            svf.funcKind.kind === "other" &&
+            svf.funcKind.funcKind === "Qualification",
+        );
+        break;
+      default:
+        throw new Error(`Unknown function kind: ${kind}`);
+    }
+
+    return new SchemaVariantFuncs(filtered);
   }
 
-  public actionIds(): string[] {
-    return this.actionFuncs().map((func) => func.id);
-  }
-
-  /**
-   * Returns all authentication functions for the schema variant.
-   */
-  public authFuncs(): SchemaVariantFunc[] {
-    return this.funcs.filter(
-      (svf) =>
-        svf.funcKind.kind === "other" &&
-        svf.funcKind.funcKind === "Authentication",
+  public overlays() {
+    return new SchemaVariantFuncs(this
+      .funcs
+      .filter((f) => f.isOverlay)
     );
   }
 
-  /**
-   * Returns the IDs of all authentication functions.
-   */
-  public authIds(): string[] {
-    return this.authFuncs().map((func) => func.id);
-  }
-
-  public codegenFuncs(): SchemaVariantFunc[] {
-    return this.funcs.filter(
-      (svf) =>
-        svf.funcKind.kind === "other" &&
-        svf.funcKind.funcKind === "CodeGeneration",
+  public nonOverlays() {
+    return new SchemaVariantFuncs(this
+      .funcs
+      .filter((f) => !f.isOverlay)
     );
   }
 
-  public codegenIds(): string[] {
-    return this.codegenFuncs().map((func) => func.id);
-  }
-
-  public managementFuncs(): SchemaVariantFunc[] {
-    return this.funcs.filter((svf) => svf.funcKind.kind === "management");
-  }
-
-  public managementIds(): string[] {
-    return this.managementFuncs().map((func) => func.id);
-  }
-
-  public qualificationFuncs(): SchemaVariantFunc[] {
-    return this.funcs.filter(
-      (svf) =>
-        svf.funcKind.kind === "other" &&
-        svf.funcKind.funcKind === "Qualification",
-    );
-  }
-
-  public qualificationIds(): string[] {
-    return this.qualificationFuncs().map((func) => func.id);
+  public ids() {
+    return this.funcs.map((func) => func.id);
   }
 }
 
-/**
- * Result of pulling a complete schema including all functions and their paths.
- */
-export interface PullFullSchemaResult {
-  formatVersionPath: AbsoluteFilePath;
-  metadataPath: AbsoluteFilePath;
-  codePath: AbsoluteFilePath;
-  actionPaths: { metadataPath: AbsoluteFilePath; codePath: AbsoluteFilePath }[];
-  authPaths: {
-    metadataPath: AbsoluteFilePath;
-    codePath: AbsoluteFilePath;
-  }[];
-  codegenPaths: {
-    metadataPath: AbsoluteFilePath;
-    codePath: AbsoluteFilePath;
-  }[];
-  managementPaths: {
-    metadataPath: AbsoluteFilePath;
-    codePath: AbsoluteFilePath;
-  }[];
-  qualificationPaths: {
-    metadataPath: AbsoluteFilePath;
-    codePath: AbsoluteFilePath;
-  }[];
-  deletedActionPaths: {
-    metadataPath: AbsoluteFilePath;
-    codePath: AbsoluteFilePath;
-  }[];
-  deletedCodegenPaths: {
-    metadataPath: AbsoluteFilePath;
-    codePath: AbsoluteFilePath;
-  }[];
-  deletedManagementPaths: {
-    metadataPath: AbsoluteFilePath;
-    codePath: AbsoluteFilePath;
-  }[];
-  deletedQualificationPaths: {
-    metadataPath: AbsoluteFilePath;
-    codePath: AbsoluteFilePath;
-  }[];
-}
