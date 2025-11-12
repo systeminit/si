@@ -13,7 +13,7 @@ use serde::{
 use si_data_pg::PgPool;
 use si_runtime::DedicatedExecutor;
 use telemetry::prelude::*;
-use telemetry_utils::metric;
+use telemetry_utils::monotonic;
 use tokio_util::{
     sync::CancellationToken,
     task::TaskTracker,
@@ -138,7 +138,18 @@ where
         let bytes = match self.mode {
             PersisterMode::PostgresOnly | PersisterMode::DualWrite => {
                 // Read from PG
-                self.pg.get(&key).await?
+                let result = self.pg.get(&key).await?;
+
+                // Track backend resolution
+                let result_label: &'static str = if result.is_some() { "hit" } else { "miss" };
+                monotonic!(
+                    layer_cache_backend_resolved = 1,
+                    cache_name = self.name.as_str(),
+                    backend = BackendType::Postgres.as_ref(),
+                    result = result_label
+                );
+
+                result
             }
 
             PersisterMode::S3Primary => {
@@ -154,27 +165,51 @@ where
 
                 match s3_layer.get(key.as_ref(), self.name.as_str()).await? {
                     Some(bytes) => {
-                        metric!(
-                            counter.layer_cache_read_success = 1,
+                        monotonic!(
+                            layer_cache_backend_resolved = 1,
+                            cache_name = self.name.as_str(),
+                            backend = BackendType::S3.as_ref(),
+                            result = "hit"
+                        );
+                        monotonic!(
+                            layer_cache_read_success = 1,
                             cache_name = self.name.as_str(),
                             backend = BackendType::S3.as_ref()
                         );
                         Some(bytes)
                     }
                     None => {
-                        // S3 miss - try PG fallback
-                        metric!(
-                            counter.layer_cache_read_miss = 1,
+                        monotonic!(
+                            layer_cache_backend_resolved = 1,
+                            cache_name = self.name.as_str(),
+                            backend = BackendType::S3.as_ref(),
+                            result = "miss"
+                        );
+
+                        // S3 miss - try PG fallback (keep existing metric calls for now)
+                        monotonic!(
+                            layer_cache_read_miss = 1,
                             cache_name = self.name.as_str(),
                             backend = BackendType::S3.as_ref()
                         );
-                        metric!(
-                            counter.layer_cache_read_fallback = 1,
+                        monotonic!(
+                            layer_cache_read_fallback = 1,
                             cache_name = self.name.as_str(),
                             from_backend = BackendType::S3.as_ref(),
                             to_backend = BackendType::Postgres.as_ref()
                         );
-                        self.pg.get(&key).await?
+
+                        let result = self.pg.get(&key).await?;
+
+                        let result_label: &'static str = if result.is_some() { "hit" } else { "miss" };
+                        monotonic!(
+                            layer_cache_backend_resolved = 1,
+                            cache_name = self.name.as_str(),
+                            backend = BackendType::Postgres.as_ref(),
+                            result = result_label
+                        );
+
+                        result
                     }
                 }
             }
@@ -190,7 +225,17 @@ where
                     .get(self.name.as_str())
                     .ok_or(LayerDbError::S3NotConfigured)?;
 
-                s3_layer.get(key.as_ref(), self.name.as_str()).await?
+                let result = s3_layer.get(key.as_ref(), self.name.as_str()).await?;
+
+                let result_label: &'static str = if result.is_some() { "hit" } else { "miss" };
+                monotonic!(
+                    layer_cache_backend_resolved = 1,
+                    cache_name = self.name.as_str(),
+                    backend = BackendType::S3.as_ref(),
+                    result = result_label
+                );
+
+                result
             }
         };
 

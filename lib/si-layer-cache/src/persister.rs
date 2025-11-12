@@ -12,7 +12,7 @@ use serde::{
 use si_data_nats::NatsClient;
 use si_data_pg::PgPool;
 use telemetry::prelude::*;
-use telemetry_utils::metric;
+use telemetry_utils::{metric, monotonic};
 use tokio::{
     join,
     sync::{
@@ -209,8 +209,8 @@ impl PersisterTask {
                     return Err(e);
                 }
 
-                metric!(
-                    counter.layer_cache_persister_write_success = 1,
+                monotonic!(
+                    layer_cache_persister_write_success = 1,
                     cache_name = cache_name,
                     backend = BackendType::Postgres.as_ref()
                 );
@@ -239,16 +239,16 @@ impl PersisterTask {
                             })
                             .map_err(|e| LayerDbError::RetryQueueSend(e.to_string()))?;
 
-                        metric!(
-                            counter.layer_cache_persister_write_failed_retryable = 1,
+                        monotonic!(
+                            layer_cache_persister_write_failed_retryable = 1,
                             cache_name = cache_name,
                             backend = BackendType::Postgres.as_ref(),
                             event_kind = event.event_kind.as_ref()
                         );
                     }
                 } else {
-                    metric!(
-                        counter.layer_cache_persister_write_success = 1,
+                    monotonic!(
+                        layer_cache_persister_write_success = 1,
                         cache_name = cache_name,
                         backend = BackendType::Postgres.as_ref()
                     );
@@ -270,16 +270,16 @@ impl PersisterTask {
                             })
                             .map_err(|e| LayerDbError::RetryQueueSend(e.to_string()))?;
 
-                        metric!(
-                            counter.layer_cache_persister_write_failed_retryable = 1,
+                        monotonic!(
+                            layer_cache_persister_write_failed_retryable = 1,
                             cache_name = cache_name,
                             backend = BackendType::S3.as_ref(),
                             event_kind = event.event_kind.as_ref()
                         );
                     }
                 } else {
-                    metric!(
-                        counter.layer_cache_persister_write_success = 1,
+                    monotonic!(
+                        layer_cache_persister_write_success = 1,
                         cache_name = cache_name,
                         backend = BackendType::S3.as_ref()
                     );
@@ -302,8 +302,8 @@ impl PersisterTask {
                     return Err(e);
                 }
 
-                metric!(
-                    counter.layer_cache_persister_write_success = 1,
+                monotonic!(
+                    layer_cache_persister_write_success = 1,
                     cache_name = cache_name,
                     backend = BackendType::S3.as_ref()
                 );
@@ -523,9 +523,16 @@ impl PersisterTask {
                 let pg_pool = self.pg_pool.clone();
                 let s3_layers = self.s3_layers.clone();
 
+                let backend = match self.mode {
+                    PersisterMode::PostgresOnly => BackendType::Postgres,
+                    PersisterMode::DualWrite => BackendType::Postgres, // Primary is PG
+                    PersisterMode::S3Primary | PersisterMode::S3Only => BackendType::S3,
+                };
+
                 metric!(
                     counter.layer_cache_persister_write_attempted = 1,
                     cache_name = &cache_name,
+                    backend = backend.as_ref(),
                     event_kind = event.event_kind.as_ref()
                 );
 
@@ -567,8 +574,8 @@ impl PersisterTask {
                 let retry_queue_command_tx = self.retry_queue_command_tx.clone();
                 let cache_name = event.payload.db_name.to_string();
 
-                metric!(
-                    counter.layer_cache_persister_evict_attempted = 1,
+                monotonic!(
+                    layer_cache_persister_evict_attempted = 1,
                     cache_name = &cache_name,
                     backend = BackendType::Postgres.as_ref(),
                     event_kind = event.event_kind.as_ref()
@@ -577,8 +584,8 @@ impl PersisterTask {
                 self.tracker.spawn(async move {
                     match task.try_evict_layers(event.clone()).await {
                         Ok(_) => {
-                            metric!(
-                                counter.layer_cache_persister_evict_success = 1,
+                            monotonic!(
+                                layer_cache_persister_evict_success = 1,
                                 cache_name = &cache_name,
                                 backend = BackendType::Postgres.as_ref(),
                                 event_kind = event.event_kind.as_ref()
@@ -602,8 +609,8 @@ impl PersisterTask {
                         Err(err) => {
                             // Check if error is retryable and enqueue if so
                             if crate::retry_queue::is_retryable_error(&err) {
-                                metric!(
-                                    counter.layer_cache_persister_evict_failed_retryable = 1,
+                                monotonic!(
+                                    layer_cache_persister_evict_failed_retryable = 1,
                                     cache_name = &cache_name,
                                     backend = BackendType::Postgres.as_ref(),
                                     event_kind = event.event_kind.as_ref()
@@ -614,8 +621,8 @@ impl PersisterTask {
                                         backend: BackendType::Postgres,
                                     });
                             } else {
-                                metric!(
-                                    counter.layer_cache_persister_evict_failed_permanent = 1,
+                                monotonic!(
+                                    layer_cache_persister_evict_failed_permanent = 1,
                                     cache_name = &cache_name,
                                     backend = BackendType::Postgres.as_ref(),
                                     event_kind = event.event_kind.as_ref()
@@ -633,8 +640,8 @@ impl PersisterTask {
                 let retry_queue_command_tx = self.retry_queue_command_tx.clone();
                 let cache_name = event.payload.db_name.to_string();
 
-                metric!(
-                    counter.layer_cache_persister_evict_memory_only_attempted = 1,
+                monotonic!(
+                    layer_cache_persister_evict_memory_only_attempted = 1,
                     cache_name = &cache_name,
                     backend = BackendType::Postgres.as_ref(),
                     event_kind = event.event_kind.as_ref()
@@ -643,8 +650,8 @@ impl PersisterTask {
                 self.tracker.spawn(async move {
                     match task.try_evict_memory_only(event.clone()).await {
                         Ok(_) => {
-                            metric!(
-                                counter.layer_cache_persister_evict_memory_only_success = 1,
+                            monotonic!(
+                                layer_cache_persister_evict_memory_only_success = 1,
                                 cache_name = &cache_name,
                                 backend = BackendType::Postgres.as_ref(),
                                 event_kind = event.event_kind.as_ref()
@@ -668,8 +675,8 @@ impl PersisterTask {
                         Err(err) => {
                             // Check if error is retryable and enqueue if so
                             if crate::retry_queue::is_retryable_error(&err) {
-                                metric!(
-                                    counter.layer_cache_persister_evict_memory_only_failed_retryable = 1,
+                                monotonic!(
+                                    layer_cache_persister_evict_memory_only_failed_retryable = 1,
                                     cache_name = &cache_name,
                                     backend = BackendType::Postgres.as_ref(),
                                     event_kind = event.event_kind.as_ref()
@@ -680,8 +687,8 @@ impl PersisterTask {
                                         backend: BackendType::Postgres,
                                     });
                             } else {
-                                metric!(
-                                    counter.layer_cache_persister_evict_memory_only_failed_permanent = 1,
+                                monotonic!(
+                                    layer_cache_persister_evict_memory_only_failed_permanent = 1,
                                     cache_name = &cache_name,
                                     backend = BackendType::Postgres.as_ref(),
                                     event_kind = event.event_kind.as_ref()
@@ -703,8 +710,8 @@ impl PersisterTask {
         let cache_name = handle.cache_name.clone();
         let backend = handle.backend;
 
-        metric!(
-            counter.layer_cache_persister_retry_attempted = 1,
+        monotonic!(
+            layer_cache_persister_retry_attempted = 1,
             cache_name = &cache_name,
             backend = backend.as_ref(),
             event_kind = event.event_kind.as_ref()
