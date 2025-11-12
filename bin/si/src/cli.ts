@@ -25,7 +25,10 @@ import { unknownValueToErrorMessage } from "./helpers.ts";
 import { Context } from "./context.ts";
 import * as jwt from "./jwt.ts";
 import { FunctionKind, Project } from "./project.ts";
-import { callRemoteSchemaPush } from "./command/remote/schema/push.ts";
+import {
+  callRemoteSchemaOverlaysPush,
+  callRemoteSchemaPush,
+} from "./command/remote/schema/push.ts";
 import { callSchemaFuncGenerate } from "./command/schema/func/generate.ts";
 import { callRunTemplate } from "./command/template/run.ts";
 import { callComponentGet } from "./command/component/get.ts";
@@ -283,13 +286,48 @@ function buildRemoteSchemaCommand() {
           "Pushes schemas to your remote System Initiative workspace",
         )
         .option("-s, --skip-confirmation", "Skip confirmation prompt")
+        .arguments("[...SCHEMA_NAME:string]")
+        .action(async ({ root, skipConfirmation }, ...schemaNames) => {
+          const project = createProject(root);
+
+          const ctx = Context.instance();
+          const cliContext = await initializeCliContextWithAuth({ ctx });
+
+          await callRemoteSchemaPush(
+            cliContext,
+            project,
+            schemaNames,
+            skipConfirmation,
+          );
+        }),
+    )
+    .command("overlay", buildRemoteSchemaOverlayCommand());
+}
+
+function buildRemoteSchemaOverlayCommand() {
+  return createSubCommand()
+    .description("Interacts with overlays for remote workspace schemas")
+    .action(function () {
+      this.showHelp();
+    })
+    .command(
+      "push",
+      createSubCommand()
+        .description(
+          "Pushes overlay funcs to your remote System Initiative workspace",
+        )
+        .option("-s, --skip-confirmation", "Skip confirmation prompt")
         .action(async ({ root, skipConfirmation }) => {
           const project = createProject(root);
 
           const ctx = Context.instance();
           const cliContext = await initializeCliContextWithAuth({ ctx });
 
-          await callRemoteSchemaPush(cliContext, project, skipConfirmation);
+          await callRemoteSchemaOverlaysPush(
+            cliContext,
+            project,
+            skipConfirmation,
+          );
         }),
     );
 }

@@ -32,7 +32,7 @@
     "@std/path": "jsr:@std/path@^1.1.2",
     "@std/ulid": "jsr:@std/ulid@^1.0.0",
     "@std/yaml": "jsr:@std/yaml@^1.0.5",
-    "@systeminit/api-client": "jsr:@systeminit/api-client@^1.6.1",
+    "@systeminit/api-client": "jsr:@systeminit/api-client@^1.9.0",
     "axios": "npm:axios@^1.13.1",
     "ejs": "npm:ejs@^3.1.10",
     "jwt-decode": "npm:jwt-decode@^4.0.0",

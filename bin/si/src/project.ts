@@ -139,7 +139,7 @@ export enum FunctionKind {
   Qualification = "qualification",
 }
 
-class ProjectModuleWithFunctions {
+export class ProjectModuleWithFunctions {
   constructor(public readonly moduleRootPath: string) {}
 
   moduleBaseRelativePath() {
