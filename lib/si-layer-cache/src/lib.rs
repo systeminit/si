@@ -31,7 +31,10 @@
 //!
 #![allow(clippy::doc_lazy_continuation)]
 
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use strum::AsRefStr;
 
 pub mod activities;
@@ -61,4 +64,9 @@ pub use pg::{
     DBNAME,
     default_pg_pool_config,
 };
-pub use s3::{KeyTransformStrategy, ObjectStorageConfig, S3AuthConfig};
+pub use s3::{
+    KeyTransformStrategy,
+    ObjectStorageConfig,
+    S3AuthConfig,
+    S3Layer,
+};
