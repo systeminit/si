@@ -25,7 +25,6 @@ use frigg::{
     FriggStore,
     frigg_kv,
 };
-use futures::StreamExt;
 use naxum::{
     Message,
     MessageHead,
@@ -212,21 +211,6 @@ impl Server {
             .await?
             .messages()
             .await?;
-
-        let tasks = tasks.inspect(|m| match m {
-            Ok(message) => {
-                if message
-                    .subject()
-                    .as_str()
-                    .contains(super::BAD_CHANGE_SET_ID)
-                {
-                    info!("DBG: message on tasks for bad change set: {:?}", message);
-                }
-            }
-            Err(err) => {
-                info!("DBG: error on tasks: {:?}", err);
-            }
-        });
 
         let requests_stream = nats::edda_requests_jetstream_stream(&context).await?;
 
