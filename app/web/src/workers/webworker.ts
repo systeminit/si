@@ -4029,7 +4029,7 @@ const getExists = async (
 ): Promise<boolean> => {
   const sql = `
     select
-      args
+      atoms.args
     from
       atoms
     INNER JOIN
@@ -4043,30 +4043,29 @@ const getExists = async (
             json_each.value as ref
           from
             atoms,
-            json_each(jsonb_extract(CAST(atoms.data as text), 'mvList'))
+            json_each(jsonb_extract(CAST(atoms.data as text), '$.mvList'))
             inner join index_mtm_atoms mtm
               ON atoms.kind = mtm.kind AND atoms.args = mtm.args AND atoms.checksum = mtm.checksum
             inner join indexes ON mtm.index_checksum = indexes.checksum
-              "inner join changesets ON changesets.index_checksum = indexes.checksum"
+            inner join changesets ON changesets.index_checksum = indexes.checksum
           where
             changesets.change_set_id = ?
             AND atoms.kind = ?
             AND atoms.args = ?
         ) as items
       ) item_refs
-    ON
-    atoms.args = item_refs.args
-    AND atoms.kind = item_refs.kind
+      ON
+      atoms.args = item_refs.args
+      AND atoms.kind = item_refs.kind
     inner join index_mtm_atoms mtm
       ON atoms.kind = mtm.kind AND atoms.args = mtm.args AND atoms.checksum = mtm.checksum
     inner join indexes ON mtm.index_checksum = indexes.checksum
     inner join changesets ON changesets.index_checksum = indexes.checksum
     where
       changesets.change_set_id = ?
-      and kind = ?
-      and args = ?
-  ) as resolved
-;      `;
+      and atoms.kind = ?
+      and atoms.args = ?
+;`;
   const bind = [
     changeSetId,
     EntityKind.MvIndex,

@@ -109,9 +109,7 @@ const atLeastOneNormalComponent = computed(() =>
 
 // ================================================================================================
 // HANDLE SINGLE COMPONENT MENU OPTIONS
-const singleComponent = computed(() =>
-  components.value.length === 1 ? components.value[0] : undefined,
-);
+const singleComponent = computed(() => components.value[0] || null);
 
 // Use the composable for action functionality
 const { actionPrototypeViews, actionByPrototype, toggleActionHandler } =

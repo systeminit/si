@@ -87,7 +87,7 @@
         </div>
       </template>
       <!-- No component banner -->
-      <template v-else>
+      <template v-else-if="showComponentExists">
         <div
           :class="
             clsx(
@@ -252,7 +252,7 @@
           <AttributePanel
             ref="attributePanelRef"
             :component="component"
-            :attributeTree="attributeTree"
+            :attributeTree="attributeTree || undefined"
             :importFunc="
               specialCaseManagementFuncKind === 'import' && showResourceInput
                 ? specialCaseManagementFunc
@@ -278,7 +278,7 @@
           </template>
           <ResourceValuesPanel
             :component="component"
-            :attributeTree="attributeTree"
+            :attributeTree="attributeTree || undefined"
           />
         </CollapsingFlexItem>
         <CollapsingFlexItem ref="actionRef" :expandable="false">
@@ -333,7 +333,7 @@
           </template>
           <QualificationPanel
             :component="component"
-            :attributeTree="attributeTree"
+            :attributeTree="attributeTree || undefined"
           />
         </CollapsingFlexItem>
         <CollapsingFlexItem ref="connectionsFlex" expandable>
@@ -556,37 +556,45 @@ const attributePanelRef = ref<InstanceType<typeof AttributePanel>>();
 
 const featureFlagsStore = useFeatureFlagsStore();
 
-const componentQuery = useQuery<BifrostComponent | undefined>({
+const componentQuery = useQuery<BifrostComponent | null>({
   queryKey: key(EntityKind.Component, componentId),
-  queryFn: async (queryContext) =>
-    (await bifrost<BifrostComponent>(
+  queryFn: async (queryContext) => {
+    const c = await bifrost<BifrostComponent>(
       args(EntityKind.Component, componentId.value),
-    )) ??
-    queryContext.client.getQueryData(
+    );
+    if (c) return c;
+    const d = queryContext.client.getQueryData(
       key(EntityKind.Component, componentId).value,
-    ),
+    ) as BifrostComponent | undefined;
+    if (d) return d;
+    return null;
+  },
 });
 
+const enableExists = computed(
+  () => componentQuery.isFetched && !componentQuery.data.value,
+);
 const componentExistsInIndexQuery = useQuery<boolean>({
   queryKey: key(EntityKind.Component, componentId, "exists"),
-  queryFn: async () =>
-    await bifrostExists(args(EntityKind.Component, componentId.value)),
-  enabled: computed(() => componentQuery.isFetched && !componentQuery.data),
+  queryFn: async () => {
+    return await bifrostExists(args(EntityKind.Component, componentId.value));
+  },
+  enabled: enableExists,
 });
 
-const componentExists = computed(
-  () => !!component.value || (componentExistsInIndexQuery.data.value ?? false),
-);
-
-const attributeTreeQuery = useQuery<AttributeTree | undefined>({
+const attributeTreeQuery = useQuery<AttributeTree | null>({
   queryKey: key(EntityKind.AttributeTree, componentId),
-  queryFn: async (queryContext) =>
-    (await bifrost<AttributeTree>(
+  queryFn: async (queryContext) => {
+    const a = await bifrost<AttributeTree>(
       args(EntityKind.AttributeTree, componentId.value),
-    )) ??
-    queryContext.client.getQueryData(
+    );
+    if (a) return a;
+    const d = queryContext.client.getQueryData(
       key(EntityKind.AttributeTree, componentId).value,
-    ),
+    ) as AttributeTree | undefined;
+    if (d) return d;
+    return null;
+  },
 });
 const attributeTree = computed(() => attributeTreeQuery.data.value);
 
@@ -616,7 +624,15 @@ const hasSocketConnection = computed(() => {
   );
 });
 
-const component = computed(() => componentQuery.data.value);
+const component = computed(() => componentQuery.data.value || null);
+
+const componentExists = computed(
+  () => !!component.value || (componentExistsInIndexQuery.data.value ?? false),
+);
+
+const showComponentExists = computed(
+  () => !component.value && componentExistsInIndexQuery.isFetched.value,
+);
 
 // Actions composable - reactive to component changes
 const { refreshEnabled, refreshActionRunning, runRefreshHandler } =

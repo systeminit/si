@@ -28,9 +28,7 @@ import { ActionProposedView } from "../types";
 import { useContext } from "./context";
 
 export const useComponentActions = (
-  componentRef: MaybeRefOrGetter<
-    BifrostComponent | ComponentInList | undefined
-  >,
+  componentRef: MaybeRefOrGetter<BifrostComponent | ComponentInList | null>,
 ) => {
   const makeKey = useMakeKey();
   const makeKeyForHead = useMakeKeyForHead();
