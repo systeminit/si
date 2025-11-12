@@ -2729,6 +2729,12 @@
       "NONE"
     ]
   },
+  "The type of authentication that your function URL uses. Set to ``AWS_IAM`` if you want to restrict access to authenticated users only. Set to ``NONE`` if you want to bypass IAM authentication to create a public endpoint. For more information, see [Control access to Lambda function URLs](https://docs.aws.amazon.com/lambda/latest/dg/urls-auth.html).": {
+    "enum": [
+      "AWS_IAM",
+      "NONE"
+    ]
+  },
   "The type of authentication that your function URL uses. Set to ``AWS_IAM`` if you want to restrict access to authenticated users only. Set to ``NONE`` if you want to bypass IAM authentication to create a public endpoint. For more information, see [Security and auth model for Lambda function URLs](https://docs.aws.amazon.com/lambda/latest/dg/urls-auth.html).": {
     "enum": [
       "AWS_IAM",
@@ -5118,6 +5124,9 @@
     "enum": null
   },
   "Current status of model package": {
+    "enum": null
+  },
+  "Current warm throughput in MiB/s": {
     "enum": null
   },
   "Custom SQL to run against the provided AWS Glue connection. This SQL will be used as the input for DataBrew projects and jobs.": {
@@ -8025,6 +8034,12 @@
     "enum": null
   },
   "Target Interval Seconds defines the interval at which thumbnails are recorded. This field is required if RecordingMode is INTERVAL.": {
+    "enum": null
+  },
+  "Target warm throughput in MiB/s for the stream. This property can ONLY be set when StreamMode is ON_DEMAND.": {
+    "enum": null
+  },
+  "Target warm throughput in MiB/s that a customer can write to a stream at any given time": {
     "enum": null
   },
   "Telemetry Type associated with the Organization Telemetry Rule": {
