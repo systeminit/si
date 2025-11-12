@@ -77,6 +77,45 @@ where
         }
         .into();
 
+        // Log cache initialization with persister mode and key transform strategy
+        match lc.mode {
+            PersisterMode::PostgresOnly => {
+                info!(
+                    cache.name = lc.name,
+                    cache.persister_mode = ?lc.mode,
+                    "layer cache initialized"
+                );
+            }
+            PersisterMode::DualWrite | PersisterMode::S3Primary | PersisterMode::S3Only => {
+                // For S3-enabled modes, also log the key transform strategy
+                if let Some(s3_layers) = &lc.s3_layers {
+                    if let Some(s3_layer) = s3_layers.get(lc.name.as_str()) {
+                        info!(
+                            cache.name = lc.name,
+                            cache.persister_mode = ?lc.mode,
+                            cache.key_transform_strategy = ?s3_layer.strategy(),
+                            "layer cache initialized"
+                        );
+                    } else {
+                        // S3 layer not found for this cache - this shouldn't happen in normal operation
+                        // but log it without the strategy if it does
+                        info!(
+                            cache.name = lc.name,
+                            cache.persister_mode = ?lc.mode,
+                            "layer cache initialized (S3 layer not found)"
+                        );
+                    }
+                } else {
+                    // S3 not configured despite S3 mode - this shouldn't happen in normal operation
+                    info!(
+                        cache.name = lc.name,
+                        cache.persister_mode = ?lc.mode,
+                        "layer cache initialized (S3 not configured)"
+                    );
+                }
+            }
+        }
+
         tracker.spawn(lc.clone().shutdown_handler(token.clone()));
         Ok(lc)
     }
