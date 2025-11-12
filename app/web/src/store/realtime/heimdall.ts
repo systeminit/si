@@ -458,7 +458,8 @@ export const global = async <T>(args: {
   // eslint-disable-next-line no-console
   console.log("🌈 bifrost query", args.kind, args.id, end - start, "ms");
   if (maybeAtomDoc === -1) return null;
-  return reactive(maybeAtomDoc);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return reactive(maybeAtomDoc as any);
 };
 
 export const bifrost = async <T>(args: {
@@ -480,7 +481,8 @@ export const bifrost = async <T>(args: {
   // eslint-disable-next-line no-console
   console.log("🌈 bifrost query", args.kind, args.id, end - start, "ms");
   if (maybeAtomDoc === -1) return null;
-  return reactive(maybeAtomDoc);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return reactive(maybeAtomDoc as any);
 };
 
 export const bifrostExists = async (args: {

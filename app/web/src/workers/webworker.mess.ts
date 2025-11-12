@@ -6,6 +6,7 @@ import {
   BustCacheFn,
   AtomWithDocument,
   Gettable,
+  AtomDocument,
 } from "@/workers/types/dbinterface";
 import { EntityKind } from "./types/entity_kind_types";
 
@@ -1119,11 +1120,16 @@ const small3 = `
     }
 `;
 
-const opts = [large, small, small2, small3];
+const opts: object[] = [
+  JSON.parse(large),
+  JSON.parse(small),
+  JSON.parse(small2),
+  JSON.parse(small3),
+];
 const checksums = await Promise.all(
   opts.map(async (doc) => {
     const encoder = new TextEncoder();
-    const buffer = encoder.encode(doc);
+    const buffer = encoder.encode(JSON.stringify(doc));
     const hashBuffer = await window.crypto.subtle.digest("SHA-256", buffer);
     const hashArray = Array.from(new Uint8Array(hashBuffer));
     const checksum = hashArray
@@ -1133,7 +1139,7 @@ const checksums = await Promise.all(
   }),
 );
 
-const _docData = (): [string, string] => {
+const _docData = (): [object, string] => {
   const idx = Math.floor(Math.random() * opts.length);
   const doc = opts[idx];
   const checksum = checksums[idx];
@@ -1160,7 +1166,7 @@ const _makeComponents = async (count: number): Promise<AtomWithDocument[]> => {
         const [doc, checksum] = await _docData();
 
         const atom: AtomWithDocument = {
-          doc,
+          doc: doc as AtomDocument,
           kind,
           id,
           checksum,
@@ -1340,7 +1346,6 @@ const fullPerfTest = async (db: Comlink.Remote<TabDBInterface>) => {
       return {
         ...a,
         checksum: `${a.checksum}-different`,
-        doc: `${a.doc}-different`,
       };
     });
 
@@ -1371,7 +1376,6 @@ const fullPerfTest = async (db: Comlink.Remote<TabDBInterface>) => {
       return {
         ...a,
         checksum: `${a.checksum}-again`,
-        doc: `${a.doc}-again`,
       };
     });
 

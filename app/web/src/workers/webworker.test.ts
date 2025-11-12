@@ -16,7 +16,9 @@ import { ChangeSetId } from "@/api/sdf/dal/change_set";
 import {
   AttributeTree,
   BifrostComponent,
+  CachedDefaultVariant,
   ComponentInList,
+  EddaComponent,
   EntityKind,
   IncomingConnections,
 } from "./types/entity_kind_types";
@@ -380,23 +382,23 @@ const fullDiagnosticTest = async (db: Comlink.Remote<TabDBInterface>) => {
 
   db.addAtomUpdated(Comlink.proxy(() => {}));
 
-  const renamedComponent = await db.get(
+  const renamedComponent = (await db.get(
     workspaceId,
     newChangeSetId,
     EntityKind.Component,
     "01JZND7T6F6VEWK5Q0FBNFYQBZ",
-  );
+  )) as EddaComponent;
   assert(
     renamedComponent.name === "i changed your name",
     `Name change failed ${renamedComponent.name}`,
   );
 
-  const renamedComponentInList = await db.get(
+  const renamedComponentInList = (await db.get(
     workspaceId,
     newChangeSetId,
     EntityKind.ComponentInList,
     "01JZND7T6F6VEWK5Q0FBNFYQBZ",
-  );
+  )) as ComponentInList;
   assert(
     renamedComponentInList.name === "i changed your name",
     `Name change failed in list ${renamedComponent.name}`,
@@ -5420,11 +5422,11 @@ const fullDiagnosticTest = async (db: Comlink.Remote<TabDBInterface>) => {
   assert(num > 0, "no global MVs after vanaheim");
 
   const variantId = "01J1QXEJC12EEBZ00H4T15YHNQ";
-  const variant = await db.getGlobal(
+  const variant = (await db.getGlobal(
     workspaceId,
     EntityKind.CachedDefaultVariant,
     variantId,
-  );
+  )) as CachedDefaultVariant;
   assert(variant.id === variantId, "global variant id does not match");
 
   const updatedName = "Updated Docker Image";
@@ -5445,11 +5447,11 @@ const fullDiagnosticTest = async (db: Comlink.Remote<TabDBInterface>) => {
     ],
   });
 
-  const variantAfter = await db.getGlobal(
+  const variantAfter = (await db.getGlobal(
     workspaceId,
     EntityKind.CachedDefaultVariant,
     variantId,
-  );
+  )) as CachedDefaultVariant;
   assert(
     variantAfter.id === variantId,
     "after global variant id does not match",
@@ -5459,6 +5461,39 @@ const fullDiagnosticTest = async (db: Comlink.Remote<TabDBInterface>) => {
     variantAfter.displayName === updatedName,
     "variant name did not update",
   );
+
+  // remove an MV to express more of the functionality
+  const removePatch = JSON.parse(`
+{
+  "meta": {
+    "workspaceId": "01HRFEV0S23R1G23RP75QQDCA7",
+    "changeSetId": "01K4ZF6QXKB3ZV3124ER2C0TFT",
+    "toIndexChecksum": "03ce85f750506ee4f9d64396fdbacad0-removed",
+    "fromIndexChecksum": "03ce85f750506ee4f9d64396fdbacad0"
+  },
+  "kind": "PatchMessage",
+  "patches": [
+    {
+      "kind": "ComponentInList",
+      "id": "01K4ZGNVS7EQKKBA67BMG0A62S",
+      "fromChecksum": "37b7770cd00c8b9b116a7b80dab12f4e",
+      "toChecksum": "0",
+      "patch": []
+    }
+  ]
+}`) as WorkspacePatchBatch;
+  await db.handleWorkspacePatchMessage(removePatch);
+  const compoenentInListAtom = (await db.get(
+    workspaceId,
+    changeSetId,
+    EntityKind.ComponentInList,
+    "01K4ZGNVS7EQKKBA67BMG0A62S",
+  )) as object | -1;
+  assert(
+    compoenentInListAtom === -1,
+    `ComponentInList Atom shouldn't exist when it does`,
+  );
+  log("removed component");
 
   log("deployment MV done");
 };

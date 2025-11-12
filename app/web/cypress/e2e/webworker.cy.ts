@@ -68307,6 +68307,14 @@ describe('webworkertest', () => {
         body: hammerBody,
       })
 
+    cy.intercept('GET', "http://localhost:8080/api/v2/workspaces/01HRFEV0S23R1G23RP75QQDCA7/change-sets/01JYPTEC5JM3T1Y4ECEPT9560J/index/mjolnir?changeSetId=01JYPTEC5JM3T1Y4ECEPT9560J&kind=ComponentInList&id=01K4ZGNVS7EQKKBA67BMG0A62S",
+      {
+        statusCode: 201,
+        headers: {
+          'Content-Type': 'application/json'
+        },
+      })
+
     cy.intercept('POST', `http://localhost:8080/api/v2/workspaces/${workspaceId}/change-sets/${avChangeSetId}/index/multi_mjolnir`,
       {
         statusCode: 500,  // this shouldn't actually get called!
@@ -68369,7 +68377,11 @@ describe('webworkertest', () => {
         body: globalHammer,
       })
 
-    cy.visit('http://localhost:8080/webworkertest.html');
+    cy.visit('http://localhost:8080/webworkertest.html', {
+      onBeforeLoad(win) {
+        cy.stub(win.console, 'error').throws('Console error detected!');
+      }
+    });
       
     // wait for it to run
     cy.wait(10000);
