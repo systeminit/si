@@ -19,8 +19,11 @@
         :enableSecondaryAction="calculateShowSecondaryAction"
         :sizeClass="tw`h-[28px]`"
         secondaryActionIcon="edit2"
+        :hoverBorder="false"
+        :class="youHaveNewChangeSet && 'new-change-set-alert'"
         @select="onSelectChangeSet"
         @secondaryAction="openRenameModal"
+        @click="clearAnimation"
       >
         <template #afterOptions>
           <DropdownMenuItem
@@ -157,6 +160,27 @@ watch(
 const ctx = useContext();
 
 const { openChangeSets, changeSet } = useChangeSets(computed(() => ctx));
+
+// when change set list updates with new data
+// are any of the new CS from me (or my AI agent?)
+const youHaveNewChangeSet = ref(false);
+watch([openChangeSets, ctx.changeSetId], ([newCS, _], [oldCS, _c]) => {
+  const myOld = new Set(
+    oldCS.filter((c) => c.createdByUserId === ctx.user?.pk).map((c) => c.id),
+  );
+  const myNew = new Set(
+    newCS.filter((c) => c.createdByUserId === ctx.user?.pk).map((c) => c.id),
+  );
+  const diff = [...myNew].filter((id) => !myOld.has(id));
+  if (diff.length > 1) youHaveNewChangeSet.value = true;
+  else if (diff.length === 0) youHaveNewChangeSet.value = false;
+  else if (diff[0] && diff[0] !== ctx.changeSetId.value)
+    youHaveNewChangeSet.value = true;
+});
+
+const clearAnimation = () => {
+  youHaveNewChangeSet.value = false;
+};
 
 const dropdownMenuRef = ref<InstanceType<typeof DropdownMenuButton>>();
 
@@ -297,3 +321,60 @@ function openCreateModal() {
 
 defineExpose({ openCreateModal });
 </script>
+
+<style scoped>
+/* 
+  Taken right from the lobby with minimal alterations (jobelenus)
+  Note*(victor): These styles exist to power the spinning border on the lobby terminal */
+
+/*
+  We need to declare --angle as a property with an initial value so that keyframes can correctly interpolate it
+  If we don't, the keyframes below would only blip between the declared states
+ */
+@property --angle {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+@keyframes borderRotate {
+  100% {
+    --angle: 360deg;
+  }
+}
+
+@keyframes pulse {
+  0%,
+  35%,
+  70%,
+  100% {
+    background-color: #000;
+  }
+  50% {
+    background-color: rgba(134, 239, 172, 0.25); /* success-300 */
+  }
+}
+
+.new-change-set-alert {
+  border: 1px solid;
+  /*
+    use a spinning conic-gradient as the border image. It looks like this: https://www.geeksforgeeks.org/css/css-conic-gradient-function/
+    But "masked" through the border
+  */
+  border-image: conic-gradient(
+      from var(--angle),
+      #333,
+      #333 0.65turn,
+      #86efac 1turn /* success-300 */
+    )
+    1;
+  /*
+    Enable the animation. Although the rotation is linear, since it's showing through a rectangular shape,
+    both the moving speed and the trail length vary depending on the position. We could fudge the border speed by
+    compensating on the keyframes vs the "radius" of each border position but this wouldn't fix the trail so
+    we chose to use this as is.
+  */
+  animation: borderRotate 1500ms linear infinite forwards, pulse 5s infinite;
+  /* border-radius does not interact with border images, so this all black mask that takes the size of the div makes it round again */
+  mask-image: radial-gradient(#000 0, #000 0);
+}
+</style>

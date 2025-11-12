@@ -29,6 +29,7 @@ export interface ChangeSet {
   updatedAt?: IsoDateString;
   abandonRequestedAt?: IsoDateString;
   abandonRequestedByUserId?: UserId;
+  createdByUserId?: UserId;
 }
 
 export type ChangeStatus = "added" | "deleted" | "modified" | "unmodified";

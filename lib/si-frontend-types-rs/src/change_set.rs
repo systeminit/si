@@ -36,6 +36,7 @@ pub struct ChangeSet {
     pub reviewed_by_user_id: Option<String>,
     pub reviewed_by_user: Option<String>,
     pub reviewed_at: Option<DateTime<Utc>>,
+    pub created_by_user_id: Option<String>,
 }
 
 #[derive(Deserialize, Serialize, Debug)]

@@ -275,6 +275,7 @@ pub struct ChangeSet {
     pub merge_requested_at: Option<DateTime<Utc>>,
     pub reviewed_by_user_id: Option<UserPk>,
     pub reviewed_at: Option<DateTime<Utc>>,
+    pub created_by_user_id: Option<UserPk>,
 }
 
 impl TryFrom<PgRow> for ChangeSet {
@@ -296,6 +297,7 @@ impl TryFrom<PgRow> for ChangeSet {
             merge_requested_at: value.try_get("merge_requested_at")?,
             reviewed_by_user_id: value.try_get("reviewed_by_user_id")?,
             reviewed_at: value.try_get("reviewed_at")?,
+            created_by_user_id: value.try_get("created_by_user_id")?,
         })
     }
 }
@@ -310,6 +312,10 @@ impl ChangeSet {
         let id: Ulid = Ulid::new();
         let change_set_id: ChangeSetId = id.into();
         let workspace_id = ctx.tenancy().workspace_pk_opt();
+        let user_id = match ctx.history_actor() {
+            HistoryActor::User(user_pk) => Some(user_pk),
+            _ => None,
+        };
 
         let name = name.as_ref();
         let row = ctx
@@ -317,8 +323,8 @@ impl ChangeSet {
             .await?
             .pg()
             .query_one(
-                "INSERT INTO change_set_pointers (id, name, base_change_set_id, status, workspace_id, workspace_snapshot_address) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *",
-                &[&change_set_id, &name, &base_change_set_id, &ChangeSetStatus::Open.to_string(), &workspace_id, &workspace_snapshot_address],
+                "INSERT INTO change_set_pointers (id, name, base_change_set_id, status, workspace_id, workspace_snapshot_address, created_by_user_id) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *",
+                &[&change_set_id, &name, &base_change_set_id, &ChangeSetStatus::Open.to_string(), &workspace_id, &workspace_snapshot_address, &user_id],
             )
             .await?;
         let change_set = Self::try_from(row)?;
@@ -391,6 +397,7 @@ impl ChangeSet {
             reviewed_by_user_id: self.reviewed_by_user_id.map(|id| id.into()),
             reviewed_by_user,
             reviewed_at: self.reviewed_at,
+            created_by_user_id: self.created_by_user_id.map(|id| id.into()),
         };
 
         Ok(change_set)
