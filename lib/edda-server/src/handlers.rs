@@ -50,7 +50,6 @@ use crate::{
         DeploymentProcessorTask,
         DeploymentProcessorTaskError,
     },
-    is_bad_change_set_id,
 };
 
 #[remain::sorted]
@@ -281,30 +280,10 @@ async fn run_change_set_processor_task(
     } = state;
     let subject_prefix = nats.metadata().subject_prefix();
 
-    let is_on_bad_change_set = is_bad_change_set_id(change_set.id);
-
-    if is_on_bad_change_set {
-        info!(
-            "DBG: run_change_set_processor_task: detected bad change set for change_set_id: {}",
-            change_set.id
-        );
-    }
-
     let requests_stream_filter_subject =
         nats::subject::request_for_change_set(subject_prefix, workspace.str, change_set.str);
 
-    if is_on_bad_change_set {
-        info!(
-            "DBG: run_change_set_processor_task: created filter subject: {}",
-            requests_stream_filter_subject
-        );
-    }
-
     let tracker = TaskTracker::new();
-
-    if is_on_bad_change_set {
-        info!("DBG: run_change_set_processor_task: created TaskTracker");
-    }
 
     // We want to independently control the lifecyle of our tasks
     let tasks_token = CancellationToken::new();
@@ -312,16 +291,8 @@ async fn run_change_set_processor_task(
     let quiesced_token = CancellationToken::new();
     let quiesced_notify = Arc::new(Notify::new());
 
-    if is_on_bad_change_set {
-        info!("DBG: run_change_set_processor_task: created cancellation tokens and notify");
-    }
-
     let (last_compressing_heartbeat_tx, last_compressing_heartbeat_rx) =
         watch::channel(Instant::now());
-
-    if is_on_bad_change_set {
-        info!("DBG: run_change_set_processor_task: created heartbeat watch channel");
-    }
 
     let incoming = requests_stream
         .create_consumer(edda_requests_per_change_set_consumer_config(
@@ -333,20 +304,11 @@ async fn run_change_set_processor_task(
         .messages()
         .await
         .map_err(Error::Subscribe)?;
-
-    if is_on_bad_change_set {
-        info!("DBG: run_change_set_processor_task: created consumer and subscribed to messages");
-    }
-
     let incoming = CompressingStream::new(
         incoming,
         requests_stream.clone(),
         last_compressing_heartbeat_tx,
     );
-
-    if is_on_bad_change_set {
-        info!("DBG: run_change_set_processor_task: created CompressingStream");
-    }
 
     let processor_task = ChangeSetProcessorTask::create(
         metadata.clone(),
@@ -366,19 +328,8 @@ async fn run_change_set_processor_task(
         server_tracker,
     );
 
-    if is_on_bad_change_set {
-        info!(
-            "DBG: run_change_set_processor_task: created ChangeSetProcessorTask for workspace: {}, change_set: {}",
-            workspace.id, change_set.id
-        );
-    }
-
     let processor_task_result = tracker.spawn(processor_task.try_run());
     tracker.close();
-
-    if is_on_bad_change_set {
-        info!("DBG: run_change_set_processor_task: spawned processor task and closed tracker");
-    }
 
     let result = tokio::select! {
         biased;
@@ -391,19 +342,12 @@ async fn run_change_set_processor_task(
                 si.change_set.id = %change_set.str,
                 "received cancellation",
             );
-            if is_on_bad_change_set {
-                info!("DBG: run_change_set_processor_task: received server cancellation token");
-            }
             // Task may not be complete but was interupted; reply `Err` to nack for task to persist
             // and retry to continue progress
             Err(Error::TaskInterrupted(subject_str.to_string()))
         }
         // Processor task completed
         processor_task_result_result = processor_task_result => {
-            if is_on_bad_change_set {
-                info!("DBG: run_change_set_processor_task: processor task completed with result: {:?}",
-                    processor_task_result_result.as_ref().map(|r| r.is_ok()));
-            }
             match processor_task_result_result {
                 // Processor exited cleanly, but unexpectedly; reply `Err` to nack for task to
                 // persist and retry
@@ -424,33 +368,16 @@ async fn run_change_set_processor_task(
                 "quiesced notified, starting to shut down",
             );
 
-            if is_on_bad_change_set {
-                info!("DBG: run_change_set_processor_task: received quiesced notification");
-            }
-
             // Fire the quiesced_token so that the processing task immediately stops
             // processing additional requests
             quiesced_token.cancel();
-
-            if is_on_bad_change_set {
-                info!("DBG: run_change_set_processor_task: cancelled quiesced token");
-            }
 
             Ok(())
         }
     };
 
     tasks_token.cancel();
-
-    if is_on_bad_change_set {
-        info!("DBG: run_change_set_processor_task: cancelled tasks token");
-    }
-
     tracker.wait().await;
-
-    if is_on_bad_change_set {
-        info!("DBG: run_change_set_processor_task: waited for tracker to complete");
-    }
 
     // If the processor task was ended via a quiesced shutdown, then check one last time if there
     // are messages on the subject. This means that during the quiet period-triggered shutdown,
@@ -464,12 +391,6 @@ async fn run_change_set_processor_task(
         {
             // We found a message on the subject
             Ok(message) => {
-                if is_on_bad_change_set {
-                    info!(
-                        "DBG: run_change_set_processor_task: found message on subject after graceful shutdown, sequence: {}",
-                        message.sequence
-                    );
-                }
                 debug!(
                     messaging.message.id = message.sequence,
                     messaging.destination.name = message.subject.as_str(),
@@ -484,23 +405,10 @@ async fn run_change_set_processor_task(
             }
             // Either there was not a message or another error with this call. Either way, we can
             // return the current `result` value
-            Err(_) => {
-                if is_on_bad_change_set {
-                    info!(
-                        "DBG: run_change_set_processor_task: no messages found after shutdown check"
-                    );
-                }
-                result
-            }
+            Err(_) => result,
         }
     } else {
         // In all other cases, return our computed `result` value
-        if is_on_bad_change_set {
-            info!(
-                "DBG: run_change_set_processor_task: returning final result: {:?}",
-                result.as_ref().err().map(std::mem::discriminant)
-            );
-        }
         result
     }
 }
