@@ -167,11 +167,11 @@ function validateEnums(cfSchema: CfSchema, inferred: Record<string, Inferred>) {
     const missingValues = realValues.difference(inferredValues);
     if (missingValues.size > 0) {
       logger.warn(`
-      ${
-        cfSchema.typeName
-      } ${cfPropPath}: Missing inferred enum values ${new Array(
-        ...missingValues,
-      ).toSorted()}:
+      ${cfSchema.typeName} ${cfPropPath}: Missing inferred enum values ${
+        new Array(
+          ...missingValues,
+        ).toSorted()
+      }:
       - Real enum:     ${cfProp.enum.map(String).toSorted()}
       - Inferred enum: ${cfPropOverrides.enum.toSorted()}
 
@@ -182,9 +182,11 @@ function validateEnums(cfSchema: CfSchema, inferred: Record<string, Inferred>) {
     const extraValues = inferredValues.difference(realValues);
     if (extraValues.size > 0) {
       logger.debug(
-        `ADD ${cfSchema.typeName} ${cfPropPath}: ${cfProp.enum} +${new Array(
-          ...extraValues,
-        ).toSorted()}`,
+        `ADD ${cfSchema.typeName} ${cfPropPath}: ${cfProp.enum} +${
+          new Array(
+            ...extraValues,
+          ).toSorted()
+        }`,
       );
     }
   }

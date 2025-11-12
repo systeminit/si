@@ -271,6 +271,31 @@ export function suggest(suggestSchema: string, suggestProp: string) {
   };
 }
 
+// Generate a function to fix schema or category names for a schema
+export function fixNames(
+  names: { schemaName?: string; categoryName?: string },
+) {
+  return (spec: ExpandedPkgSpec) => {
+    const schema = spec.schemas[0];
+    if (!schema.data) {
+      throw new Error(
+        "Schema data should exist for Microsoft.Aad/domainServices/ouContainer",
+      );
+    }
+    if (names.categoryName) {
+      schema.data.category = names.categoryName;
+    }
+    if (names.schemaName) {
+      spec.name = names.schemaName;
+      schema.name = names.schemaName;
+      schema.data.name = names.schemaName;
+      for (const v of schema.variants) {
+        v.data.displayName = names.schemaName;
+      }
+    }
+  };
+}
+
 // ComboBox override with fixed set of options. Options can be specified any of these ways:
 //
 // - widget("TextArea")

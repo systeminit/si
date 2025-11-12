@@ -650,9 +650,10 @@ function intersectAzureSchema(
           !util.isDeepStrictEqual(intersected[key], prop[key])
         ) {
           throw new Error(
-            `Incompatible property ${key}: ${util.inspect(
-              intersected[key],
-            )
+            `Incompatible property ${key}: ${
+              util.inspect(
+                intersected[key],
+              )
             } vs ${util.inspect(prop[key])}`,
           );
         }
@@ -766,11 +767,13 @@ function buildDomainAndResourceValue(
     // If it's a writeable resource, the result must have ID so we can update/delete
     if (!(resourceValue.properties && "id" in resourceValue.properties)) {
       throw new Error(
-        `No id property in GET response: ${get.operation.operationId}\n\n${util.inspect(get.operation, { depth: 12 })
-        }\n\n${util.inspect(
-          get.operation.responses?.["200"]?.schema,
-          { depth: 4 },
-        )
+        `No id property in GET response: ${get.operation.operationId}\n\n${
+          util.inspect(get.operation, { depth: 12 })
+        }\n\n${
+          util.inspect(
+            get.operation.responses?.["200"]?.schema,
+            { depth: 4 },
+          )
         }`,
       );
     }
