@@ -1314,6 +1314,11 @@ impl DalContext {
         jetstream::new(self.nats_conn().to_owned())
     }
 
+    /// Returns a reference to the cached [`JetstreamStreams`].
+    pub fn jetstream_streams(&self) -> &JetstreamStreams {
+        &self.services_context.jetstream_streams
+    }
+
     /// Convenience wrapper around [`audit_logging::write`].
     #[instrument(name = "dal_context.write_audit_log", level = "debug", skip_all)]
     pub async fn write_audit_log(

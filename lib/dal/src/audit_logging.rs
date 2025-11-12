@@ -5,14 +5,8 @@ use audit_database::{
     AuditDatabaseError,
     AuditLogRow,
 };
-use audit_logs_stream::{
-    AuditLogsStream,
-    AuditLogsStreamError,
-};
-use pending_events::{
-    PendingEventsError,
-    PendingEventsStream,
-};
+use audit_logs_stream::AuditLogsStreamError;
+use pending_events::PendingEventsError;
 use serde::{
     Deserialize,
     Serialize,
@@ -98,9 +92,9 @@ pub(crate) async fn publish_pending(
         None => (TaskTracker::new(), true),
     };
 
-    // Get a handle on the source and destination streams.
-    let source_stream = PendingEventsStream::get_or_create(ctx.jetstream_context()).await?;
-    let destination_stream = AuditLogsStream::get_or_create(ctx.jetstream_context()).await?;
+    // Get a handle on the source and destination streams from the cached instances.
+    let source_stream = ctx.jetstream_streams().pending_events();
+    let destination_stream = ctx.jetstream_streams().audit_logs();
 
     // Create a shuttle instance for shuttling audit logs from the pending events stream.
     let audit_logs_shuttle = Shuttle::new(
@@ -236,7 +230,7 @@ pub(crate) async fn write(
     let destination_change_set_id =
         override_destination_change_set_id.unwrap_or(ctx.change_set_id());
 
-    let pending_events_stream = PendingEventsStream::get_or_create(ctx.jetstream_context()).await?;
+    let pending_events_stream = ctx.jetstream_streams().pending_events();
     pending_events_stream
         .publish_audit_log(
             workspace_id,
@@ -268,7 +262,7 @@ pub(crate) async fn write_final_message(ctx: &DalContext) -> Result<()> {
         Err(err) => return Err(AuditLoggingError::Transactions(Box::new(err))),
     };
 
-    let pending_events_stream = PendingEventsStream::get_or_create(ctx.jetstream_context()).await?;
+    let pending_events_stream = ctx.jetstream_streams().pending_events();
     pending_events_stream
         .publish_audit_log_final_message(workspace_id, ctx.change_set_id(), ctx.event_session_id())
         .await?;
