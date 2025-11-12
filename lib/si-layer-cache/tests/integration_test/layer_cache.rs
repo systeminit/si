@@ -8,6 +8,7 @@ use si_layer_cache::{
     db::serialize,
     hybrid_cache::CacheConfig,
     layer_cache::LayerCache,
+    persister::PersisterMode,
 };
 use tokio_util::{
     sync::CancellationToken,
@@ -22,6 +23,8 @@ async fn make_layer_cache(db_name: &str) -> Arc<LayerCache<String>> {
         super::setup_compute_executor(),
         TaskTracker::new(),
         CancellationToken::new(),
+        None,
+        PersisterMode::PostgresOnly,
     )
     .await
     .expect("cannot create layer cache");
