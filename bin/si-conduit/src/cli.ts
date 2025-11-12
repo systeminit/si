@@ -267,13 +267,14 @@ function buildRemoteSchemaCommand() {
           "Pushes schemas to your remote System Initiative workspace",
         )
         .option("-s, --skip-confirmation", "Skip confirmation prompt")
-        .action(async ({ root, skipConfirmation }) => {
+        .arguments("[...SCHEMA_NAME:string]")
+        .action(async ({ root, skipConfirmation }, ...schemaNames) => {
           const project = createProject(root);
 
           const ctx = Context.instance();
           const cliContext = await initializeCliContextWithAuth({ ctx });
 
-          await callRemoteSchemaPush(cliContext, project, skipConfirmation);
+          await callRemoteSchemaPush(cliContext, project, schemaNames, skipConfirmation);
         }),
     )
     .command("overlay", buildRemoteSchemaOverlayCommand())

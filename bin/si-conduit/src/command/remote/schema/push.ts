@@ -264,6 +264,7 @@ function allSchemaFuncsWithKind(schema: Schema) {
 export async function callRemoteSchemaPush(
   cliContext: AuthenticatedCliContext,
   project: Project,
+  filterSchemaNames: string[],
   skipConfirmation?: boolean,
 ) {
   const { apiConfiguration, workspace, ctx } = cliContext;
@@ -356,6 +357,11 @@ export async function callRemoteSchemaPush(
 
           if (!schemaName || schemaName.trim() === "") {
             throw new Error("Missing required 'name' field in metadata.json");
+          }
+
+          if (filterSchemaNames.length > 0 && !filterSchemaNames.includes(schemaName)) {
+            logger.debug("skipping filtered schema: {schemaName}", { schemaName });
+            continue;
           }
 
           category = metadata.category || "";
@@ -493,10 +499,10 @@ export async function callRemoteSchemaPush(
   const headChangesetId = changeSets.find((cs) => cs.isHead)?.id;
 
   if (!headChangesetId) {
-    throw new Error("No head changeset found");
+    throw new Error("No head change set found");
   }
 
-  logger.info(`comparing filesystem assets to HEAD changeset...`);
+  logger.info(`comparing filesystem assets to HEAD change set...`);
 
   const schemasToPush = [] as {
     schemaPayload: Schema;
@@ -730,11 +736,7 @@ export async function callRemoteSchemaPush(
         "Do you want to continue? (y = yes, l = list assets, any other key = cancel)",
       );
 
-      const buf = new Uint8Array(1024);
-      const n = await Deno.stdin.read(buf);
-      const line = new TextDecoder().decode(buf.subarray(0, n ?? 0)).trim();
-      const input = line.charAt(0).toLowerCase();
-
+      const input = await readRawInput();
       if (input === "l") {
         console.log("\nAssets to be pushed:");
         schemasToPush.forEach((schema) =>
@@ -752,7 +754,7 @@ export async function callRemoteSchemaPush(
   // ==================================
   // Create schemas on the server
   // ==================================
-  logger.info("creating changeset and pushing schema changes...");
+  logger.info("creating change set and pushing schema changes...");
   await wrapInChangeSet(
     changeSetsApi,
     logger,
@@ -918,14 +920,14 @@ export async function callRemoteSchemaOverlaysPush(
   logger.info("---");
   logger.info("");
 
-  // Get HEAD changeset
+  // Get HEAD change set
   const changeSets = (await changeSetsApi.listChangeSets({ workspaceId }))
     .data.changeSets as { id: string; isHead: boolean }[];
 
   const headChangesetId = changeSets.find((cs) => cs.isHead)?.id;
 
   if (!headChangesetId) {
-    throw new Error("No head changeset found");
+    throw new Error("No head change set found");
   }
 
   // Get all assets that have overlays (folders in project.overlays)
@@ -1124,11 +1126,7 @@ export async function callRemoteSchemaOverlaysPush(
         "Do you want to continue? (y = yes, l = list schemas, any other key = cancel)",
       );
 
-      const buf = new Uint8Array(1024);
-      const n = await Deno.stdin.read(buf);
-      const line = new TextDecoder().decode(buf.subarray(0, n ?? 0)).trim();
-      const input = line.charAt(0).toLowerCase();
-
+      const input = await readRawInput();
       if (input === "l") {
         console.log("\nSchemas with overlays to be pushed:");
         schemasToPush.forEach((schema) =>
@@ -1143,7 +1141,7 @@ export async function callRemoteSchemaOverlaysPush(
     }
   }
 
-  logger.info("creating changeset and pushing overlay changes...");
+  logger.info("creating change set and pushing overlay changes...");
 
   await wrapInChangeSet(
     changeSetsApi,
@@ -1365,13 +1363,13 @@ async function unbindFunc(
   }
 }
 
-// runs callback with a changesetId, abandoning it if anything throws
+// runs callback with a changeSetId, abandoning it if anything throws
 async function wrapInChangeSet(
   api: ChangeSetsApi,
   logger: Logger,
   workspaceId: string,
   changeSetNamePrefix: string,
-  callback: (changesetId: string) => Promise<void>,
+  callback: (changeSetId: string) => Promise<void>,
 ) {
   const changeSetName = changeSetNamePrefix + " " + new Date().toISOString();
 
@@ -1395,10 +1393,26 @@ async function wrapInChangeSet(
         `Error creating schemas: ${unknownValueToErrorMessage(error)}`,
       );
     }
-    logger.info("Deleting changeset...");
+    logger.info("Deleting change set...");
     api.abandonChangeSet({
       workspaceId,
       changeSetId,
     });
+  }
+}
+
+// Read input from the first keyboard press. We need to make sure we are no longer in raw mode
+// after we capture the input.
+async function readRawInput() {
+  Deno.stdin.setRaw(true);
+  let input: string | undefined;
+  try {
+    const buf = new Uint8Array(1);
+    await Deno.stdin.read(buf);
+    input = new TextDecoder().decode(buf).toLowerCase();
+    console.log(input);
+  } finally {
+    Deno.stdin.setRaw(false);
+    return input;
   }
 }
