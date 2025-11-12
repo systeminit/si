@@ -1,0 +1,5 @@
+# For devs - Don't add the si project folders that get created when you run the commands on this folder.
+schemas/
+overlays/
+.siroot
+si

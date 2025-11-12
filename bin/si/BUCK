@@ -1,0 +1,58 @@
+load(
+    "@prelude-si//:deno.bzl",
+    "deno_compile",
+    "deno_format",
+    "deno_test",
+)
+load(
+    "@prelude-si//:macros.bzl",
+    "alias",
+    "export_file",
+)
+
+deno_compile(
+    name = "si",
+    main = "main.ts",
+    out = "si",
+    srcs = glob([
+        "src/**/*.ts",
+        "lint/**/*.ts",
+        "main.ts",
+    ]),
+    permissions = [
+        "allow-env",
+        "allow-net",
+        "allow-read",
+        "allow-write",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+deno_format(
+    name = "fix-format",
+    srcs = glob(["**/*.ts"]),
+    ignore = ["node_modules"],
+)
+
+deno_format(
+    name = "check-format",
+    srcs = glob(["**/*.ts"]),
+    check = True,
+)
+
+deno_test(
+    name = "test-unit",
+    permissions = [
+        "allow-env",
+        "allow-net",
+        "allow-read",
+        "allow-write",
+    ],
+    srcs = glob([
+        "src/**/*_test.ts",
+        "lint/**/*_test.ts",
+    ]),
+    env = [
+        "SI_API_TOKEN=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ3b3Jrc3BhY2VJZCI6InRlc3Qtd29ya3NwYWNlLWlkIiwidXNlcklkIjoidGVzdC11c2VyLWlkIn0.fakesignature",
+    ],
+)
