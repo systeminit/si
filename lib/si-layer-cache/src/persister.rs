@@ -4,6 +4,10 @@ use std::{
 };
 
 use chrono::Utc;
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use si_data_nats::NatsClient;
 use si_data_pg::PgPool;
 use telemetry::prelude::*;
@@ -52,6 +56,20 @@ use crate::{
     nats::layerdb_events_stream,
     pg::PgLayer,
 };
+
+/// Controls which storage backend(s) are used for reads and writes.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+pub enum PersisterMode {
+    /// Write and read from PostgreSQL only.
+    #[default]
+    PostgresOnly,
+    /// Write to both PostgreSQL and S3, read from PostgreSQL.
+    DualWrite,
+    /// Write to S3 only, read from S3 with PostgreSQL fallback.
+    S3Primary,
+    /// Write and read from S3 only.
+    S3Only,
+}
 
 #[derive(Debug)]
 pub enum PersistMessage {

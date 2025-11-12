@@ -64,6 +64,7 @@ use tokio::sync::mpsc;
 use tokio_util::sync::CancellationToken;
 
 use crate::{
+    BackendType,
     error::{
         LayerDbError,
         LayerDbResult,
@@ -99,15 +100,18 @@ impl Default for RetryQueueConfig {
 #[derive(Debug)]
 struct QueueState {
     retry_dir: PathBuf,
+    #[allow(dead_code)] // Stored for potential future logging/debugging
+    backend: BackendType,
     current_backoff: Duration,
     next_retry_time: Instant,
     pending_files: BTreeSet<OsString>,
 }
 
 impl QueueState {
-    fn new(retry_dir: PathBuf, initial_backoff: Duration) -> Self {
+    fn new(retry_dir: PathBuf, backend: BackendType, initial_backoff: Duration) -> Self {
         Self {
             retry_dir,
+            backend,
             current_backoff: initial_backoff,
             next_retry_time: Instant::now(),
             pending_files: BTreeSet::new(),
@@ -146,6 +150,7 @@ impl QueueState {
 #[derive(Debug)]
 pub struct RetryHandle {
     pub(crate) cache_name: String,
+    pub(crate) backend: BackendType,
     pub(crate) filename: OsString,
 }
 
@@ -194,7 +199,10 @@ pub fn is_retryable_error(error: &LayerDbError) -> bool {
 #[derive(Debug)]
 pub enum RetryQueueMessage {
     /// Enqueue a failed event for retry
-    Enqueue(LayeredEvent),
+    Enqueue {
+        event: LayeredEvent,
+        backend: BackendType,
+    },
     /// Mark a retry attempt as successful (removes from queue)
     MarkSuccess(RetryHandle),
     /// Mark a retry attempt as failed with retryable error (updates backoff)
@@ -276,7 +284,7 @@ async fn delete_retry_file(path: &std::path::Path) -> LayerDbResult<()> {
 #[derive(Debug)]
 pub struct RetryQueueManager {
     config: RetryQueueConfig,
-    queues: HashMap<String, QueueState>,
+    queues: HashMap<(String, BackendType), QueueState>,
 }
 
 impl RetryQueueManager {
@@ -285,6 +293,14 @@ impl RetryQueueManager {
             config,
             queues: HashMap::new(),
         }
+    }
+
+    /// Get retry directory path for a specific backend
+    /// Uses BackendType::as_ref() to get snake_case backend name
+    fn retry_dir_for_backend(&self, cache_name: &str, backend: BackendType) -> PathBuf {
+        self.config
+            .base_path
+            .join(format!("{}_retries_{}", cache_name, backend.as_ref()))
     }
 
     /// Run the retry queue manager as an independent task
@@ -323,8 +339,8 @@ impl RetryQueueManager {
         use telemetry::prelude::*;
 
         match msg {
-            RetryQueueMessage::Enqueue(event) => {
-                if let Err(err) = self.enqueue(event).await {
+            RetryQueueMessage::Enqueue { event, backend } => {
+                if let Err(err) = self.enqueue(event, backend).await {
                     error!(error = ?err, "failed to enqueue for retry");
                 }
             }
@@ -348,65 +364,147 @@ impl RetryQueueManager {
         use tokio::fs;
 
         for &cache_name in cache_names {
-            let retry_dir = self.config.base_path.join(format!("{cache_name}_retries"));
+            // Check for OLD format: {cache_name}_retries/
+            let old_retry_dir = self.config.base_path.join(format!("{cache_name}_retries"));
 
-            // Skip if directory doesn't exist
-            if !retry_dir.exists() {
-                continue;
-            }
-
-            // Read directory entries
-            let mut entries = fs::read_dir(&retry_dir)
-                .await
-                .map_err(LayerDbError::RetryQueueDirRead)?;
-
-            let mut pending_files = BTreeSet::new();
-
-            while let Some(entry) = entries
-                .next_entry()
-                .await
-                .map_err(LayerDbError::RetryQueueDirRead)?
-            {
-                let path = entry.path();
-
-                // Only process .pending files
-                if path.extension() == Some(std::ffi::OsStr::new("pending")) {
-                    pending_files.insert(entry.file_name());
-                }
-            }
-
-            if !pending_files.is_empty() {
+            if old_retry_dir.exists() {
                 info!(
                     cache.name = cache_name,
-                    queue.depth = pending_files.len(),
-                    "found existing retry queue on startup"
+                    "found old retry queue format, migrating to backend-specific queues"
                 );
 
-                gauge!(
-                    layer_cache_retry_queue_depth = pending_files.len(),
-                    cache_name = cache_name
-                );
+                // Migrate old files to Postgres queue (backwards compatibility)
+                self.migrate_old_queue_files(&old_retry_dir, cache_name, BackendType::Postgres)
+                    .await?;
+            }
 
-                let mut state = QueueState::new(retry_dir, self.config.initial_backoff);
-                state.pending_files = pending_files;
-                // Retry immediately on startup
-                state.next_retry_time = Instant::now();
+            // Scan NEW format: {cache_name}_retries_postgres/ and {cache_name}_retries_s3/
+            for backend in [BackendType::Postgres, BackendType::S3] {
+                let retry_dir = self.retry_dir_for_backend(cache_name, backend);
 
-                self.queues.insert(cache_name.to_string(), state);
+                if !retry_dir.exists() {
+                    continue;
+                }
+
+                // Read directory entries
+                let mut entries = fs::read_dir(&retry_dir)
+                    .await
+                    .map_err(LayerDbError::RetryQueueDirRead)?;
+
+                let mut pending_files = BTreeSet::new();
+
+                while let Some(entry) = entries
+                    .next_entry()
+                    .await
+                    .map_err(LayerDbError::RetryQueueDirRead)?
+                {
+                    let path = entry.path();
+
+                    // Only process .pending files
+                    if path.extension() == Some(std::ffi::OsStr::new("pending")) {
+                        pending_files.insert(entry.file_name());
+                    }
+                }
+
+                if !pending_files.is_empty() {
+                    let queue_depth = pending_files.len();
+
+                    info!(
+                        cache.name = cache_name,
+                        backend = ?backend,
+                        queue.depth = queue_depth,
+                        "found existing retry queue on startup"
+                    );
+
+                    gauge!(
+                        layer_cache_retry_queue_depth = queue_depth,
+                        cache_name = cache_name,
+                        backend = backend.as_ref()
+                    );
+
+                    let mut state =
+                        QueueState::new(retry_dir, backend, self.config.initial_backoff);
+                    state.pending_files = pending_files;
+                    // Retry immediately on startup
+                    state.next_retry_time = Instant::now();
+
+                    self.queues.insert((cache_name.to_string(), backend), state);
+                }
             }
         }
 
         Ok(())
     }
 
+    /// Migrate old retry queue files to backend-specific directories
+    async fn migrate_old_queue_files(
+        &mut self,
+        old_dir: &std::path::Path,
+        cache_name: &str,
+        target_backend: BackendType,
+    ) -> LayerDbResult<()> {
+        use telemetry::prelude::*;
+        use tokio::fs;
+
+        let new_dir = self.retry_dir_for_backend(cache_name, target_backend);
+
+        // Create new directory
+        fs::create_dir_all(&new_dir)
+            .await
+            .map_err(LayerDbError::RetryQueueDirCreate)?;
+
+        // Move all .pending files
+        let mut entries = fs::read_dir(old_dir)
+            .await
+            .map_err(LayerDbError::RetryQueueDirRead)?;
+
+        let mut migrated_count = 0;
+
+        while let Some(entry) = entries
+            .next_entry()
+            .await
+            .map_err(LayerDbError::RetryQueueDirRead)?
+        {
+            let old_path = entry.path();
+
+            if old_path.extension() == Some(std::ffi::OsStr::new("pending")) {
+                let file_name = entry.file_name();
+                let new_path = new_dir.join(&file_name);
+
+                // Move file atomically
+                fs::rename(&old_path, &new_path)
+                    .await
+                    .map_err(LayerDbError::RetryQueueFileWrite)?;
+
+                migrated_count += 1;
+            }
+        }
+
+        // Try to remove old directory (will fail if not empty, which is fine)
+        let _ = fs::remove_dir(old_dir).await;
+
+        info!(
+            cache.name = cache_name,
+            backend = ?target_backend,
+            migrated_files = migrated_count,
+            "migrated old retry queue files to new format"
+        );
+
+        Ok(())
+    }
+
     /// Enqueue a failed write for retry
-    pub async fn enqueue(&mut self, event: LayeredEvent) -> LayerDbResult<()> {
+    pub async fn enqueue(
+        &mut self,
+        event: LayeredEvent,
+        backend: BackendType,
+    ) -> LayerDbResult<()> {
         use telemetry::prelude::*;
         use tokio::fs;
         use ulid::Ulid;
 
         let cache_name = event.payload.db_name.to_string();
-        let retry_dir = self.config.base_path.join(format!("{cache_name}_retries"));
+        let retry_dir = self.retry_dir_for_backend(&cache_name, backend);
 
         // Ensure retry directory exists
         fs::create_dir_all(&retry_dir)
@@ -424,8 +522,8 @@ impl RetryQueueManager {
         // Get or create queue state
         let state = self
             .queues
-            .entry(cache_name.clone())
-            .or_insert_with(|| QueueState::new(retry_dir, self.config.initial_backoff));
+            .entry((cache_name.clone(), backend))
+            .or_insert_with(|| QueueState::new(retry_dir, backend, self.config.initial_backoff));
 
         // Add filename to pending set
         state.pending_files.insert(filename.into());
@@ -434,6 +532,7 @@ impl RetryQueueManager {
 
         info!(
             cache.name = %cache_name,
+            backend = ?backend,
             event.kind = ?event.event_kind,
             event.ulid = %ulid,
             queue.depth = queue_depth,
@@ -442,11 +541,13 @@ impl RetryQueueManager {
 
         monotonic!(
             layer_cache_retry_queue_enqueued = 1,
-            cache_name = cache_name
+            cache_name = cache_name.clone(),
+            backend = backend.as_ref()
         );
         gauge!(
             layer_cache_retry_queue_depth = queue_depth,
-            cache_name = cache_name
+            cache_name = cache_name,
+            backend = backend.as_ref()
         );
 
         Ok(())
@@ -458,9 +559,9 @@ impl RetryQueueManager {
     }
 
     /// Get the next retry time for a specific cache queue (for testing/observability)
-    pub fn next_retry_time(&self, cache_name: &str) -> Option<Instant> {
+    pub fn next_retry_time(&self, cache_name: &str, backend: BackendType) -> Option<Instant> {
         self.queues
-            .get(cache_name)
+            .get(&(cache_name.to_string(), backend))
             .map(|state| state.next_retry_time)
     }
 
@@ -469,13 +570,13 @@ impl RetryQueueManager {
         use telemetry::prelude::*;
 
         // Find first ready queue with pending files
-        let cache_name = self
+        let (cache_name, backend) = self
             .queues
             .iter()
             .find(|(_, state)| state.is_ready())
-            .map(|(name, _)| name.clone())?;
+            .map(|((name, backend), _)| (name.clone(), *backend))?;
 
-        let state = self.queues.get_mut(&cache_name)?;
+        let state = self.queues.get_mut(&(cache_name.clone(), backend))?;
 
         // Get first filename (BTreeSet is sorted)
         let filename = state.pending_files.iter().next()?.clone();
@@ -486,6 +587,7 @@ impl RetryQueueManager {
             Ok(event) => {
                 debug!(
                     cache.name = %cache_name,
+                    backend = ?backend,
                     filename = ?filename,
                     backoff_ms = state.current_backoff.as_millis(),
                     "attempting retry from queue"
@@ -495,7 +597,8 @@ impl RetryQueueManager {
                 state.pending_files.remove(&filename);
 
                 let handle = RetryHandle {
-                    cache_name: cache_name.clone(),
+                    cache_name,
+                    backend,
                     filename,
                 };
 
@@ -504,6 +607,7 @@ impl RetryQueueManager {
             Err(err) => {
                 error!(
                     cache.name = %cache_name,
+                    backend = ?backend,
                     filename = ?filename,
                     error = %err,
                     "failed to read retry file, skipping"
@@ -544,7 +648,10 @@ impl RetryQueueManager {
     pub async fn mark_success(&mut self, handle: RetryHandle) -> LayerDbResult<()> {
         use telemetry::prelude::*;
 
-        let state = match self.queues.get_mut(&handle.cache_name) {
+        let state = match self
+            .queues
+            .get_mut(&(handle.cache_name.clone(), handle.backend))
+        {
             Some(state) => state,
             None => return Ok(()), // Queue was removed, nothing to do
         };
@@ -555,13 +662,12 @@ impl RetryQueueManager {
         if let Err(err) = delete_retry_file(&file_path).await {
             warn!(
                 cache.name = %handle.cache_name,
+                backend = ?handle.backend,
                 filename = ?handle.filename,
                 error = %err,
                 "failed to delete retry file after success"
             );
         }
-
-        // Note: file was already removed from pending_files when it was retrieved for retry
 
         // Reset backoff on success
         state.record_success(self.config.initial_backoff);
@@ -570,6 +676,7 @@ impl RetryQueueManager {
 
         info!(
             cache.name = %handle.cache_name,
+            backend = ?handle.backend,
             filename = ?handle.filename,
             queue.depth = queue_depth,
             "retry successful, removed from queue"
@@ -577,11 +684,13 @@ impl RetryQueueManager {
 
         monotonic!(
             layer_cache_retry_queue_success = 1,
-            cache_name = &handle.cache_name
+            cache_name = &handle.cache_name,
+            backend = handle.backend.as_ref()
         );
         gauge!(
             layer_cache_retry_queue_depth = queue_depth,
-            cache_name = &handle.cache_name
+            cache_name = &handle.cache_name,
+            backend = handle.backend.as_ref()
         );
 
         Ok(())
@@ -591,7 +700,10 @@ impl RetryQueueManager {
     pub fn mark_failure(&mut self, handle: RetryHandle, error: &LayerDbError) {
         use telemetry::prelude::*;
 
-        let state = match self.queues.get_mut(&handle.cache_name) {
+        let state = match self
+            .queues
+            .get_mut(&(handle.cache_name.clone(), handle.backend))
+        {
             Some(state) => state,
             None => return, // Queue was removed, nothing to do
         };
@@ -614,6 +726,7 @@ impl RetryQueueManager {
 
         warn!(
             cache.name = %handle.cache_name,
+            backend = ?handle.backend,
             filename = ?handle.filename,
             retry.backoff_ms = state.current_backoff.as_millis(),
             error = %error,
@@ -621,15 +734,10 @@ impl RetryQueueManager {
             "retry failed, will retry after backoff"
         );
 
-        let queue_depth = state.pending_files.len();
-
         monotonic!(
             layer_cache_retry_queue_failed = 1,
-            cache_name = &handle.cache_name
-        );
-        gauge!(
-            layer_cache_retry_queue_depth = queue_depth,
-            cache_name = &handle.cache_name
+            cache_name = &handle.cache_name,
+            backend = handle.backend.as_ref()
         );
     }
 
@@ -637,7 +745,10 @@ impl RetryQueueManager {
     pub async fn mark_permanent_failure(&mut self, handle: RetryHandle) {
         use telemetry::prelude::*;
 
-        let state = match self.queues.get_mut(&handle.cache_name) {
+        let state = match self
+            .queues
+            .get_mut(&(handle.cache_name.clone(), handle.backend))
+        {
             Some(state) => state,
             None => return, // Queue was removed, nothing to do
         };
@@ -648,18 +759,18 @@ impl RetryQueueManager {
         if let Err(err) = delete_retry_file(&file_path).await {
             warn!(
                 cache.name = %handle.cache_name,
+                backend = ?handle.backend,
                 filename = ?handle.filename,
                 error = %err,
                 "failed to delete retry file after permanent failure"
             );
         }
 
-        // Note: file was already removed from pending_files when it was retrieved for retry
-
         let queue_depth = state.pending_files.len();
 
         warn!(
             cache.name = %handle.cache_name,
+            backend = ?handle.backend,
             filename = ?handle.filename,
             queue.depth = queue_depth,
             "retry permanently failed (non-retryable error), removed from queue"
@@ -667,11 +778,13 @@ impl RetryQueueManager {
 
         monotonic!(
             layer_cache_retry_queue_permanent_failure = 1,
-            cache_name = &handle.cache_name
+            cache_name = &handle.cache_name,
+            backend = handle.backend.as_ref()
         );
         gauge!(
             layer_cache_retry_queue_depth = queue_depth,
-            cache_name = &handle.cache_name
+            cache_name = &handle.cache_name,
+            backend = handle.backend.as_ref()
         );
     }
 }

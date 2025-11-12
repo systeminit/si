@@ -59,6 +59,7 @@ pub enum BackendType {
 
 pub use db::LayerDb;
 pub use error::LayerDbError;
+pub use persister::PersisterMode;
 pub use pg::{
     APPLICATION_NAME,
     DBNAME,
