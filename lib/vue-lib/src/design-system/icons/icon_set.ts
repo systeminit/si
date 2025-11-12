@@ -155,6 +155,7 @@ import VimLogo from "~icons/raphael/vim";
 import FastlyLogo from "~icons/simple-icons/fastly";
 import HetznerLogo from "./custom-icons/hetzner.svg?raw";
 import AzureLogo from "./custom-icons/azure-icon.svg?raw";
+import DigitalOceanLogo from "~icons/mdi/digital-ocean";
 
 // carbon
 import Create from "~icons/carbon/intent-request-create";
@@ -450,6 +451,7 @@ export const LOGO_ICONS = Object.freeze({
   "logo-aws": AwsLogo,
   "logo-azure": AzureLogo,
   "logo-coreos": CoreOsLogo,
+  "logo-digital-ocean": DigitalOceanLogo,
   "logo-docker": DockerLogo,
   "logo-k8s": KubernetesLogo,
   "logo-si": SiLogo,
@@ -472,6 +474,7 @@ export const LOGO_FORCED_SIZE_NUMBERS = {
   "logo-aws": VIEWBOX32,
   "logo-azure": VIEWBOX24,
   "logo-coreos": VIEWBOX24,
+  "logo-digital-ocean": VIEWBOX24,
   "logo-docker": VIEWBOX24,
   "logo-k8s": VIEWBOX32,
   "logo-si": {

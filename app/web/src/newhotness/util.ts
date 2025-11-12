@@ -35,9 +35,14 @@ export const pickBrandIconByString = (name: string): IconNames => {
   else if (
     name.toLowerCase().includes("microsoft") ||
     name.toLowerCase().includes("azure")
-  ) {
+  )
     return "logo-azure";
-  } else return "logo-si";
+  else if (
+    name.toLowerCase().includes("digitalocean") ||
+    name.toLowerCase().includes("digital ocean")
+  )
+    return "logo-digital-ocean";
+  else return "logo-si";
 };
 
 /**
