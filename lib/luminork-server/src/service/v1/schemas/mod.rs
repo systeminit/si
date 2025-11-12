@@ -64,12 +64,14 @@ use utoipa::{
 use crate::AppState;
 
 pub mod create_action;
+pub mod create_attribute;
 pub mod create_authentication;
 pub mod create_codegen;
 pub mod create_management;
 pub mod create_qualification;
 pub mod create_schema;
 pub mod detach_action_binding;
+pub mod detach_attribute_binding;
 pub mod detach_authentication_binding;
 pub mod detach_codegen_binding;
 pub mod detach_management_binding;
@@ -93,12 +95,16 @@ pub enum SchemaError {
     AttributePrototype(#[from] dal::attribute::prototype::AttributePrototypeError),
     #[error("cached module error: {0}")]
     CachedModule(#[from] dal::cached_module::CachedModuleError),
+    #[error("component error: {0}")]
+    Component(#[from] dal::ComponentError),
     #[error("decode error: {0}")]
     Decode(#[from] ulid::DecodeError),
     #[error("frigg error: {0}")]
     Frigg(#[from] FriggError),
     #[error("func error: {0}")]
     Func(#[from] FuncError),
+    #[error("func argument error: {0}")]
+    FuncArgument(#[from] dal::func::argument::FuncArgumentError),
     #[error("func authoring error: {0}")]
     FuncAuthoring(#[from] FuncAuthoringError),
     #[error("func binding error: {0}")]
@@ -113,10 +119,16 @@ pub enum SchemaError {
     ManagementPrototype(#[from] ManagementPrototypeError),
     #[error("materialized views error: {0}")]
     MaterializedViews(#[from] dal_materialized_views::Error),
+    #[error("missing input location for attribute func argument")]
+    MissingInputLocationForAttributeFunc,
+    #[error("missing output location (prop_id or output_socket_id) for attribute func")]
+    MissingOutputLocationForAttributeFunc,
     #[error("schema missing asset func id: {0}")]
     MissingVariantFunc(SchemaVariantId),
     #[error("changes not permitted on HEAD change set")]
     NotPermittedOnHead,
+    #[error("output socket error: {0}")]
+    OutputSocket(#[from] dal::socket::output::OutputSocketError),
     #[error("prop error: {0}")]
     Prop(#[from] Box<PropError>),
     #[error("schema error: {0}")]
@@ -279,9 +291,17 @@ pub fn routes() -> Router<AppState> {
                                         post(create_qualification::create_variant_qualification),
                                     )
                                     .route(
-                                    "/qualification/:func_id",
-                                    delete(detach_qualification_binding::detach_qualification_func_binding),
-                                ),
+                                        "/qualification/:func_id",
+                                        delete(detach_qualification_binding::detach_qualification_func_binding),
+                                    )
+                                    .route(
+                                        "/attribute",
+                                        post(create_attribute::create_variant_attribute),
+                                    )
+                                    .route(
+                                        "/attribute/:func_id",
+                                        delete(detach_attribute_binding::detach_attribute_func_binding),
+                                    ),
                             ),
                         ),
                 ),

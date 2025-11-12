@@ -144,8 +144,6 @@ pub async fn create_variant_qualification(
     )
     .await?;
 
-    FuncAuthoringClient::publish_func_create_event(ctx, &func).await?;
-
     tracker.track(
         ctx,
         "api_create_qualification_func",

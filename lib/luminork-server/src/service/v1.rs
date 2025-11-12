@@ -111,6 +111,10 @@ pub use funcs::{
     FuncRunV1RequestPath,
     FuncV1RequestPath,
     FuncsResult,
+    create_transformation::{
+        CreateTransformationFuncV1Request,
+        CreateTransformationFuncV1Response,
+    },
     get_func::GetFuncV1Response,
     get_func_run::GetFuncRunV1Response,
     unlock_func::{
@@ -140,6 +144,10 @@ pub use schemas::{
     create_action::{
         CreateVariantActionFuncV1Request,
         CreateVariantActionFuncV1Response,
+    },
+    create_attribute::{
+        CreateVariantAttributeFuncV1Request,
+        CreateVariantAttributeFuncV1Response,
     },
     create_authentication::{
         CreateVariantAuthenticationFuncV1Request,
@@ -232,6 +240,7 @@ pub use crate::api_types::func_run::v1::{
         schemas::create_action::create_variant_action,
         schemas::search_schemas::search_schemas,
         schemas::create_authentication::create_variant_authentication,
+        schemas::create_attribute::create_variant_attribute,
         schemas::create_qualification::create_variant_qualification,
         schemas::create_codegen::create_variant_codegen,
         schemas::create_management::create_variant_management,
@@ -241,6 +250,8 @@ pub use crate::api_types::func_run::v1::{
         schemas::detach_codegen_binding::detach_codegen_func_binding,
         schemas::detach_qualification_binding::detach_qualification_func_binding,
         schemas::detach_management_binding::detach_management_func_binding,
+        schemas::detach_attribute_binding::detach_attribute_func_binding,
+        funcs::create_transformation::create_transformation,
         funcs::get_func_run::get_func_run,
         funcs::get_func::get_func,
         funcs::update_func::update_func,
@@ -331,6 +342,10 @@ pub use crate::api_types::func_run::v1::{
             SearchSchemasV1Response,
             GetManagementFuncJobStateV1Response,
             ManagementFuncJobStateV1RequestPath,
+            CreateVariantAttributeFuncV1Response,
+            CreateVariantAttributeFuncV1Request,
+            CreateTransformationFuncV1Response,
+            CreateTransformationFuncV1Request,
             CreateVariantActionFuncV1Request,
             CreateVariantActionFuncV1Response,
             CreateVariantAuthenticationFuncV1Request,
