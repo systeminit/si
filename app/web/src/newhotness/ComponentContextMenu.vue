@@ -109,7 +109,12 @@ const atLeastOneNormalComponent = computed(() =>
 
 // ================================================================================================
 // HANDLE SINGLE COMPONENT MENU OPTIONS
-const singleComponent = computed(() => components.value[0] || null);
+const singleComponent = computed(() => {
+  if (components.value.length === 1 && components.value[0]) {
+    return components.value[0];
+  }
+  return null;
+});
 
 // Use the composable for action functionality
 const { actionPrototypeViews, actionByPrototype, toggleActionHandler } =
@@ -274,7 +279,7 @@ const rightClickMenuItems = computed(() => {
       label: "Create Template",
       shortcut: "T",
       icon: "template-new",
-      onSelect: createTemplateStart,
+      onSelect: () => createTemplateStart(componentIds.value),
     });
   }
 
@@ -415,6 +420,8 @@ const rightClickMenuItems = computed(() => {
 
   return items;
 });
+// END CREATING THE MENU OPTIONS
+// ================================================================================================
 
 const mgmtRunApi = useApi();
 const runMgmtFunc = async (funcId: string) => {
@@ -490,7 +497,7 @@ const eraseComponentIds = ref<ComponentId[] | undefined>(undefined);
 const eraseModalRef = ref<InstanceType<typeof EraseModal>>();
 
 const componentsStartErase = (components: ComponentInList[]) => {
-  eraseComponentIds.value = componentIds.value;
+  eraseComponentIds.value = components.map((c) => c.id);
   eraseModalRef.value?.open(components);
   close();
 };
@@ -500,6 +507,7 @@ const componentsFinishErase = async () => {
   const result = await eraseComponents(eraseComponentIds.value);
   if (result.success) {
     eraseModalRef.value?.close();
+    emit("finishAction");
   }
 };
 
@@ -511,7 +519,7 @@ const componentsStartDelete = (components: ComponentInList[]) => {
   const atLeastOneNormalComponent = components.some((c) => !c.toDelete);
   if (atLeastOneGhostedComponent && atLeastOneNormalComponent) return;
   if (components.length < 1) return;
-  deleteComponentIds.value = componentIds.value;
+  deleteComponentIds.value = components.map((c) => c.id);
   deleteModalRef.value?.open(components);
   close();
 };
@@ -521,6 +529,7 @@ const componentsFinishDelete = async (mode: DeleteMode) => {
   const result = await deleteComponents(deleteComponentIds.value, mode);
   if (result.success) {
     deleteModalRef.value?.close();
+    emit("finishAction");
   }
 };
 
@@ -545,6 +554,7 @@ const duplicateComponentsFinish = async (name: string) => {
     const result = await duplicateComponents(duplicateComponentIds.value, name);
     if (result.success) {
       duplicateComponentsModalRef.value?.close();
+      emit("finishAction");
     }
   } finally {
     isDuplicating.value = false;
@@ -634,13 +644,14 @@ const componentsRemoveFromView = async (
 };
 
 const componentsUpgrade = async (componentIds: ComponentId[]) => {
-  await upgradeComponents(componentIds);
+  await upgradeComponents([...componentIds]);
+  close();
 };
 
 const createTemplateModalRef = ref<InstanceType<typeof CreateTemplateModal>>();
 
-const createTemplateStart = () => {
-  createTemplateModalRef.value?.open(componentIds.value, explore.viewId.value);
+const createTemplateStart = (componentIds: ComponentId[]) => {
+  createTemplateModalRef.value?.open(componentIds, explore.viewId.value);
   close();
 };
 
@@ -681,6 +692,7 @@ const emit = defineEmits<{
   (e: "clearSelected"): void;
   (e: "pin", componentId: ComponentId): void;
   (e: "bulk"): void;
+  (e: "finishAction"): void;
 }>();
 
 defineExpose({

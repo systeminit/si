@@ -577,6 +577,7 @@
         }
       "
       @bulk="startBulkEdit"
+      @finishAction="onMenuFinishAction"
     />
   </section>
 </template>
@@ -2474,8 +2475,14 @@ const shortcuts: { [Key in string]: (e: KeyDetails[Key]) => void } = {
     if (e.metaKey || e.ctrlKey) return;
     e.preventDefault();
 
-    if (showGrid.value && selectedComponents.value.length > 0) {
-      componentContextMenuRef.value?.createTemplateStart();
+    if (
+      showGrid.value &&
+      selectionComponentsForActionIds.value &&
+      selectionComponentsForActionIds.value.length > 0
+    ) {
+      componentContextMenuRef.value?.createTemplateStart(
+        selectionComponentsForActionIds.value,
+      );
     }
   },
   u: (e) => {
@@ -2855,6 +2862,10 @@ watch([sortBySelection], () => {
     query,
   });
 });
+
+const onMenuFinishAction = () => {
+  clearSelection();
+};
 
 // ================================================================================================
 // EMITS AND THE REST

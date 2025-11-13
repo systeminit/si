@@ -86,7 +86,7 @@ const componentIdsRef = ref<ComponentId[] | undefined>();
 function open(componentIds: ComponentId[], viewId: string) {
   if (!componentIds.length) return;
 
-  componentIdsRef.value = componentIds;
+  componentIdsRef.value = [...componentIds];
   viewIdRef.value = viewId;
 
   requestError.value = undefined;
