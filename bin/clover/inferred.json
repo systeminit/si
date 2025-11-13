@@ -4721,6 +4721,9 @@
   "An expression that denotes when to trigger the scheduled query run. This can be a cron expression or a rate expression.": {
     "enum": null
   },
+  "An external service connecting to your AWS IPAM scope.": {
+    "enum": null
+  },
   "An identifier for an object in IAM Identity Center, such as a user or group": {
     "enum": null
   },
@@ -7206,6 +7209,9 @@
     "enum": null
   },
   "Resource Type definition for AWS::ApiGateway::DomainNameAccessAssociation.": {
+    "enum": null
+  },
+  "Resource identifier of the scope in the external service connecting to your AWS IPAM scope.": {
     "enum": null
   },
   "Resource tag value": {
