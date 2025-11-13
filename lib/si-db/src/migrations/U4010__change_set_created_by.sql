@@ -1,0 +1,1 @@
+ALTER TABLE change_set_pointers ADD COLUMN created_by_user_id ident;
