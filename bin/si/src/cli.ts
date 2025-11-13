@@ -258,10 +258,16 @@ function buildRemoteSchemaCommand() {
       "pull",
       createSubCommand()
         .description(
-          "Pulls schemas from your remote System Initiative workspace",
+          "Pulls schemas from your remote System Initiative workspace. " +
+          "Supports wildcard patterns like 'Fastly::*' to pull all schemas in a category, " +
+          "or '*' to pull all schemas.",
         )
         .arguments("[...SCHEMA_NAME:string]")
-        .action(async ({ root, apiBaseUrl, apiToken }, ...schemaNames) => {
+        .option(
+          "--builtins",
+          "Include builtin schemas (schemas you don't own). By default, builtins are skipped.",
+        )
+        .action(async ({ root, apiBaseUrl, apiToken, builtins }, ...schemaNames) => {
           const project = createProject(root);
           const apiCtx = await createApiContext(apiBaseUrl, apiToken);
           let finalSchemaNames;
@@ -276,6 +282,7 @@ function buildRemoteSchemaCommand() {
             project,
             apiCtx,
             finalSchemaNames,
+            builtins ?? false,
           );
         }),
     )

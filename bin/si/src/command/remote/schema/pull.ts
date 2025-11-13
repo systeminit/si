@@ -23,11 +23,67 @@ import {
 
 const logger = getLogger();
 
+/**
+ * Detects if a schema name is a search pattern (e.g., "Fastly::*")
+ */
+function isSearchPattern(schemaName: string): boolean {
+  return schemaName.includes("*");
+}
+
+/**
+ * Extracts the category from a search pattern like "Fastly::*"
+ * Returns the category or null if pattern is invalid
+ */
+function extractCategoryFromPattern(pattern: string): string | null {
+  // Match patterns like "Category::*" or "Category::Subcategory::*"
+  const match = pattern.match(/^(.+)::\*$/);
+  if (match && match[1]) {
+    return match[1];
+  }
+  // If pattern is just "*", return null to search all
+  if (pattern === "*") {
+    return null;
+  }
+  return null;
+}
+
+/**
+ * Searches for schemas using the search API
+ */
+async function searchSchemas(
+  api: Api,
+  changeSetCoord: ChangeSetCoordinate,
+  pattern: string,
+): Promise<string[]> {
+  const category = extractCategoryFromPattern(pattern);
+
+  logger.info(`Searching for schemas matching pattern: ${pattern}`);
+  if (category) {
+    logger.info(`  Using category filter: ${category}`);
+  } else {
+    logger.info(`  Searching all schemas`);
+  }
+
+  const response = await api.schemas.searchSchemas({
+    workspaceId: changeSetCoord.workspaceId,
+    changeSetId: changeSetCoord.changeSetId,
+    searchSchemasV1Request: {
+      category: category,
+    },
+  });
+
+  const schemaNames = response.data.schemas.map((s) => s.schemaName);
+  logger.info(`  Found ${schemaNames.length} matching schema(s)`);
+
+  return schemaNames;
+}
+
 export async function callRemoteSchemaPull(
   ctx: Context,
   project: Project,
   apiCtx: ApiContext,
   schemaNames: string[],
+  includeBuiltins = false,
 ) {
   logger.info("Pulling remote schemas to local system");
   logger.info("---");
@@ -43,15 +99,40 @@ export async function callRemoteSchemaPull(
     changeSetId: "HEAD",
   };
 
+  // Expand any search patterns into actual schema names
+  const expandedSchemaNames: string[] = [];
+  for (const schemaName of schemaNames) {
+    if (isSearchPattern(schemaName)) {
+      const matchingSchemas = await searchSchemas(
+        api,
+        changeSetCoord,
+        schemaName,
+      );
+      expandedSchemaNames.push(...matchingSchemas);
+    } else {
+      expandedSchemaNames.push(schemaName);
+    }
+  }
+
+  if (expandedSchemaNames.length === 0) {
+    logger.warn("No schemas found matching the search criteria");
+    return [];
+  }
+
+  logger.info("");
+  logger.info(`Pulling ${expandedSchemaNames.length} schema(s)...`);
+  logger.info("");
+
   const results = [];
   const pulledSchemaNames = [];
   const notFoundSchemaNames = [];
-  for (const schemaName of schemaNames) {
+  for (const schemaName of expandedSchemaNames) {
     const result = await pullSchemaByName(
       project,
       api,
       changeSetCoord,
       schemaName,
+      includeBuiltins,
     );
     if (result) {
       results.push(result);
@@ -128,6 +209,7 @@ async function pullSchemaByName(
   api: Api,
   changeSetCoord: ChangeSetCoordinate,
   schemaName: string,
+  includeBuiltins = false,
 ) {
   logger.info("Pulling schema {schemaName}", { schemaName });
 
@@ -144,6 +226,18 @@ async function pullSchemaByName(
 
   if (data.variant.isBuiltin) {
     logger.info("{schemaName} is a builtin", { schemaName });
+
+    if (!includeBuiltins) {
+      throw new Error(
+        `Cannot pull builtin schema "${schemaName}" without --builtins flag. ` +
+        `Builtin schemas are schemas you don't own. Use --builtins to pull them.`,
+      );
+    }
+
+    logger.info(
+      "{schemaName}: pulling builtin schema",
+      { schemaName },
+    );
   }
 
   const formatVersionBody = SCHEMA_FILE_FORMAT_VERSION.toString();
