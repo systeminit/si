@@ -145,6 +145,7 @@
           :actionId="actionId"
         />
         <Review v-else-if="onReviewPage" />
+        <WorkspaceDashboard v-else-if="onDashPage" />
         <Explore v-else @openChangesetModal="openChangesetModal" />
       </main>
     </template>
@@ -184,6 +185,7 @@ import { ChangeSet, ChangeSetStatus } from "@/api/sdf/dal/change_set";
 import { muspelheimStatuses } from "@/store/realtime/heimdall";
 import { trackEvent } from "@/utils/tracking";
 import Onboarding, { DEBUG_MODE } from "@/newhotness/Onboarding2.vue";
+import WorkspaceDashboard from "@/newhotness/WorkspaceDashboard.vue";
 import NavbarPanelRight from "./nav/NavbarPanelRight.vue";
 import Lobby from "./Lobby.vue";
 import Explore, { GroupByUrlQuery, SortByUrlQuery } from "./Explore.vue";
@@ -960,6 +962,7 @@ const bumpToWorkspaces = () => {
 };
 
 const onReviewPage = computed(() => route.name === "new-hotness-review");
+const onDashPage = computed(() => route.name === "new-hotness-dash");
 
 // POSTHOG TRACKING
 watch(heimdall.initCompleted, () => {
