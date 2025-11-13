@@ -38,6 +38,9 @@ def deno_compile_impl(ctx: AnalysisContext) -> list[Provider]:
     if ctx.attrs.unstable_flags:
         cmd.add("--unstable-flags", *ctx.attrs.unstable_flags)
 
+    if ctx.attrs.target:
+        cmd.add("--target", ctx.attrs.target)
+
     # Add includes for JavaScript files from extra_srcs (generated files)
     for src in ctx.attrs.extra_srcs:
         if src.basename.endswith(".js"):
@@ -78,6 +81,10 @@ deno_compile = rule(
         attrs.list(attrs.string(),
                    default=[],
                    doc="List of unstable flags to enable"),
+        "target":
+        attrs.option(attrs.string(),
+                     default=None,
+                     doc="Target platform for cross-compilation (e.g., x86_64-unknown-linux-gnu, aarch64-apple-darwin)"),
         "_python_toolchain":
         attrs.toolchain_dep(default="toolchains//:python",
                             providers=[PythonToolchainInfo]),

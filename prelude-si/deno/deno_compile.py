@@ -2,6 +2,7 @@
 """
 Builds a portable, standalone deno binary.
 """
+
 import argparse
 import os
 import pathlib
@@ -28,7 +29,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--extra-srcs",
-        nargs='*',
+        nargs="*",
         default=[],
         help="Sources that will be copied into the source tree",
     )
@@ -68,6 +69,13 @@ def parse_args() -> argparse.Namespace:
         default=[],
         help="List of files to include in the compilation.",
     )
+    parser.add_argument(
+        "--target",
+        type=str,
+        default=None,
+        help=
+        "Target platform for cross-compilation (e.g., x86_64-unknown-linux-gnu).",
+    )
     return parser.parse_args()
 
 
@@ -80,6 +88,7 @@ def run_compile(
     deno_dir: Optional[pathlib.Path],
     workspace_dir: Optional[pathlib.Path],
     includes: List[str] = None,
+    target: Optional[str] = None,
 ) -> None:
     """Run deno compile with the specified arguments."""
     deno_binary_abs = deno_binary.resolve()
@@ -91,6 +100,10 @@ def run_compile(
 
     cmd.extend([f"--{p}" for p in permissions])
     cmd.extend([f"--unstable-{f}" for f in flags])
+
+    if target:
+        cmd.append("--target")
+        cmd.append(target)
 
     if includes:
         for include in includes:
@@ -150,6 +163,7 @@ def main() -> int:
             args.deno_dir,
             args.workspace_dir,
             include_files,
+            args.target,
         )
 
         args.output.resolve().chmod(0o775)
