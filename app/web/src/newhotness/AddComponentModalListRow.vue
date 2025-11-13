@@ -9,17 +9,23 @@
           themeClasses('hover:text-action-500', 'hover:text-action-300'),
         schema &&
           'hover:outline hover:z-10 hover:-outline-offset-1 hover:outline-1',
-        themeClasses(
-          'bg-shade-0 hover:outline-action-500',
-          'bg-neutral-800 hover:outline-action-300',
-        ),
-        selected && [
-          'add-component-selected-item',
-          themeClasses(
-            'outline-action-500 bg-action-200',
-            'outline-action-300 bg-action-900',
-          ),
-        ],
+        selected
+          ? [
+              'add-component-selected-item',
+              createFailed
+                ? themeClasses(
+                    'outline-destructive-500 bg-destructive-200',
+                    'outline-destructive-400 bg-destructive-900',
+                  )
+                : themeClasses(
+                    'outline-action-500 bg-action-200',
+                    'outline-action-300 bg-action-900',
+                  ),
+            ]
+          : themeClasses(
+              'bg-shade-0 hover:outline-action-500',
+              'bg-neutral-800 hover:outline-action-300',
+            ),
       )
     "
   >
@@ -44,7 +50,7 @@
         :color="rowData.color"
       />
     </div>
-    <div class="ml-auto flex flex-none">
+    <div class="ml-auto flex flex-none max-w-full truncate">
       <Icon v-if="submitted" name="loader" size="sm" />
       <div
         v-else-if="selected"
@@ -52,7 +58,13 @@
           clsx('text-xs', themeClasses('text-neutral-900', 'text-neutral-200'))
         "
       >
-        <TextPill tighter variant="key2">Enter</TextPill> to add
+        <div v-if="createFailed" class="flex flex-row items-center">
+          <Icon name="x" class="text-destructive-500" /> Component creation
+          failed
+        </div>
+        <template v-else>
+          <TextPill tighter variant="key2">Enter</TextPill> to add
+        </template>
       </div>
     </div>
   </div>
@@ -76,6 +88,7 @@ const props = defineProps<{
   open?: boolean;
   selected: boolean;
   submitted: boolean;
+  createFailed: boolean;
   idx: number;
 }>();
 

@@ -125,6 +125,7 @@
                       schemaFromVirtualRowIndex(row.index)?.key,
                     ) && api.inFlight.value
                   "
+                  :createFailed="componentCreateFailed"
                   @click="() => assetClick(row.index)"
                 />
               </div>
@@ -217,6 +218,7 @@ import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import AddComponentModalListRow, {
   AddComponentRowData,
 } from "@/newhotness/AddComponentModalListRow.vue";
+import { trackEvent } from "@/utils/tracking";
 import { useFzf } from "./logic_composables/fzf";
 import FilterTile from "./layout_components/FilterTile.vue";
 import { assertIsDefined, Context, ExploreContext } from "./types";
@@ -269,6 +271,8 @@ const clearSelection = () => {
   selectionIndex.value = undefined;
 };
 
+const componentCreateFailed = ref(false);
+
 const explore = inject<ExploreContext>("EXPLORE_CONTEXT");
 assertIsDefined<ExploreContext>(explore);
 
@@ -283,8 +287,11 @@ const makeArgs = useMakeArgs();
 
 const onEnter = async () => {
   if (api.inFlight.value) return; // you've already submitted, disable submission
-
   if (!selectedAsset.value) return;
+
+  // Reset component create error
+  componentCreateFailed.value = false;
+
   const key = selectedAsset.value.key;
   let params: componentTypes.ComponentIdType;
   if ("schemaVariantId" in key && key.schemaVariantId)
@@ -357,10 +364,20 @@ const onEnter = async () => {
     };
     if (newChangeSetId) api.navigateToNewChangeSet(to, newChangeSetId);
     else router.push(to);
+  } else {
+    // component create failed!
+    componentCreateFailed.value = true;
+    trackEvent("error-component-creation-failure", {
+      payload,
+      call,
+    });
   }
 };
 const onUp = (e: KeyboardEvent) => {
   if (!showResults.value) return;
+
+  // Reset component create error
+  componentCreateFailed.value = false;
 
   const goByCategory =
     e.key !== "Tab" && (e.shiftKey || e.ctrlKey || e.metaKey);
@@ -382,6 +399,9 @@ const onUp = (e: KeyboardEvent) => {
 };
 const onDown = (e: KeyboardEvent) => {
   if (!showResults.value) return;
+
+  // Reset component create error
+  componentCreateFailed.value = false;
 
   const goByCategory =
     e.key !== "Tab" && (e.shiftKey || e.ctrlKey || e.metaKey);
@@ -442,6 +462,9 @@ const changeFilterRight = () => {
 };
 const onTab = (e: KeyboardEvent) => {
   if (!showResults.value) return;
+
+  // Reset component create error
+  componentCreateFailed.value = false;
 
   if (e.shiftKey) changeFilterLeft();
   else changeFilterRight();
@@ -757,6 +780,7 @@ const resetModal = () => {
   fuzzySearchString.value = "";
   debouncedSearchString.value = "";
   bannerClosed.value = false;
+  componentCreateFailed.value = false;
   closeAllCategories();
   selectedAsset.value = undefined;
   selectionIndex.value = undefined;
@@ -778,6 +802,9 @@ const close = () => {
 };
 
 const assetClick = (idx: number) => {
+  // Reset component create error
+  componentCreateFailed.value = false;
+
   const cat = categoryFromVirtualRowIndex(idx);
   if (cat) {
     if (categoryIsOpen.value.has(cat.name))
