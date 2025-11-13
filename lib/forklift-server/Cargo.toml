@@ -32,7 +32,9 @@ si-tls = { path = "../../lib/si-tls" }
 snapshot-eviction = { path = "../../lib/snapshot-eviction" }
 telemetry = { path = "../../lib/telemetry-rs" }
 telemetry-nats = { path = "../../lib/telemetry-nats-rs" }
+telemetry-utils = { path = "../../lib/telemetry-utils-rs" }
 thiserror = { workspace = true }
 tokio = { workspace = true }
 tokio-util = { workspace = true }
+tower = { workspace = true }
 ulid = { workspace = true }

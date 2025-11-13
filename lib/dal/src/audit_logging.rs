@@ -24,6 +24,7 @@ use si_id::{
     WorkspacePk,
 };
 use telemetry::prelude::*;
+use telemetry_utils::monotonic;
 use thiserror::Error;
 use tokio_util::task::TaskTracker;
 
@@ -91,6 +92,12 @@ pub(crate) async fn publish_pending(
         Some(provided_tracker) => (provided_tracker, false),
         None => (TaskTracker::new(), true),
     };
+
+    // Emit metric for pending events published during this event session
+    let count = ctx
+        .pending_audit_logs_count()
+        .load(std::sync::atomic::Ordering::Relaxed);
+    monotonic!(pending_events_published = count);
 
     // Get a handle on the source and destination streams from the cached instances.
     let source_stream = ctx.jetstream_streams().pending_events();
@@ -246,6 +253,11 @@ pub(crate) async fn write(
             destination_change_set_id,
         )
         .await?;
+
+    // Increment counter for metrics
+    ctx.pending_audit_logs_count()
+        .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+
     Ok(())
 }
 

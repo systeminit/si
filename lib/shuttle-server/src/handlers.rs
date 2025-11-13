@@ -1,3 +1,5 @@
+use std::sync::atomic::Ordering;
+
 use naxum::{
     Message,
     extract::State,
@@ -14,8 +16,9 @@ use si_data_nats::{
         jetstream,
     },
 };
-use telemetry::tracing::error;
+use telemetry::prelude::*;
 use telemetry_nats::propagation;
+use telemetry_utils::monotonic;
 use thiserror::Error;
 
 use crate::{
@@ -36,9 +39,17 @@ pub(crate) async fn default(
     State(state): State<AppState>,
     msg: Message<jetstream::Message>,
 ) -> HandlerResult<()> {
+    // Increment message counter (before checking for final message)
+    state.messages_shuttled.fetch_add(1, Ordering::Relaxed);
+
     let destination_subject = match msg.headers() {
         Some(headers) => {
             if headers.get(FINAL_MESSAGE_HEADER_KEY).is_some() {
+                // Emit metric for total messages shuttled (excluding this final message)
+                let count = state.messages_shuttled.load(Ordering::Relaxed);
+                // Subtract 1 because we don't count the final message itself
+                monotonic!(audit_logs_shuttled = count.saturating_sub(1));
+
                 state.self_shutdown_token.cancel();
                 return Ok(());
             }

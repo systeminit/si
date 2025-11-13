@@ -26,6 +26,7 @@
 )]
 
 mod config;
+mod middleware;
 mod server;
 pub use config::{
     Config,

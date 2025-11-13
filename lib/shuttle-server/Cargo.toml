@@ -17,6 +17,7 @@ si-data-nats = { path = "../../lib/si-data-nats" }
 si-events = { path = "../../lib/si-events-rs" }
 telemetry = { path = "../../lib/telemetry-rs" }
 telemetry-nats = { path = "../../lib/telemetry-nats-rs" }
+telemetry-utils = { path = "../../lib/telemetry-utils-rs" }
 thiserror = { workspace = true }
 tokio-util = { workspace = true }
 
