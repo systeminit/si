@@ -43,32 +43,6 @@
         :invalidWorkspace="tokenFail"
       />
     </nav>
-    <div
-      v-if="!hasUsedAiAgent"
-      :class="
-        clsx(
-          'w-full shrink-0 flex flex-row items-center justify-between border px-sm py-xs',
-          themeClasses(
-            'bg-warning-100 border-warning-600',
-            'bg-newhotness-warningdark border-warning-500',
-          ),
-        )
-      "
-    >
-      <div class="flex flex-row items-center gap-xs">
-        <Icon name="alert-triangle-outline" class="text-warning-500" />
-        <span>
-          System Initiative works best with an AI Agent.
-          <a
-            href="https://docs.systeminit.com/tutorials/getting-started"
-            class="underline"
-            target="_blank"
-          >
-            Follow these instructions to get started.
-          </a>
-        </span>
-      </div>
-    </div>
 
     <main
       v-if="changeSetRetrievalError"
@@ -194,7 +168,7 @@ import {
 import * as _ from "lodash-es";
 import { useQuery, useQueryClient } from "@tanstack/vue-query";
 import { Span, trace } from "@opentelemetry/api";
-import { Icon, themeClasses } from "@si/vue-lib/design-system";
+import { themeClasses } from "@si/vue-lib/design-system";
 import { storeToRefs } from "pinia";
 import * as heimdall from "@/store/realtime/heimdall";
 import { useAuthStore } from "@/store/auth.store";
@@ -258,36 +232,6 @@ const realtimeStore = useRealtimeStore();
 
 const workspacePk = computed(() => props.workspacePk);
 const changeSetId = computed(() => props.changeSetId);
-
-const hasUsedAiAgent = computed(() => {
-  const restoreAuthStatus = authStore.getRequestStatus("RESTORE_AUTH");
-  const reconnectAuthStatus = authStore.getRequestStatus("AUTH_RECONNECT");
-
-  // If still loading auth data, hide banner to avoid flickering
-  if (
-    restoreAuthStatus.value.isPending ||
-    reconnectAuthStatus.value.isPending
-  ) {
-    return true;
-  }
-
-  // If auth failed and we never got user workspace flags, hide banner
-  // (we can't reliably know the state, so err on the side of not showing it)
-  if (
-    (restoreAuthStatus.value.isError || reconnectAuthStatus.value.isError) &&
-    !authStore.userIsLoggedInAndInitialized
-  ) {
-    return true;
-  }
-
-  // If we have valid auth but no executedAgent flag, show the banner
-  if (authStore.userIsLoggedInAndInitialized) {
-    return authStore.userWorkspaceFlags.executedAgent ?? false;
-  }
-
-  // Default: hide banner if we're in an uncertain state
-  return true;
-});
 
 const coldStartInProgress = computed(() => heimdall.muspelheimInProgress.value);
 

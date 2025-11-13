@@ -300,7 +300,6 @@
             "
             class="flex-1 gap-sm scrollable flex flex-col items-center"
           >
-            <WelcomeBanner />
             <div class="grow flex items-center justify-center">
               <EmptyState
                 icon="logo-si"
