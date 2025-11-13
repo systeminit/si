@@ -182,7 +182,8 @@ export async function* findLatestAzureOpenApiSpecFiles(specsRepo: string) {
 
   // keep the latest version for each resource type
   const resourceTypeMap: Record<string, {
-    path: string;
+    resourceType: string;
+    specPath: string;
     metadata: SpecMetadata;
   }> = {};
 
@@ -211,11 +212,14 @@ export async function* findLatestAzureOpenApiSpecFiles(specsRepo: string) {
 
         // track the latest version
         for (const resourceType of resourceTypes) {
-          const existing = resourceTypeMap[resourceType];
+          const resourceTypeLower = resourceType.toLowerCase();
+
+          const existing = resourceTypeMap[resourceTypeLower];
 
           if (!existing || shouldReplace(existing.metadata, metadata)) {
-            resourceTypeMap[resourceType] = {
-              path: specPath,
+            resourceTypeMap[resourceTypeLower] = {
+              resourceType,
+              specPath,
               metadata,
             };
           }
@@ -227,7 +231,7 @@ export async function* findLatestAzureOpenApiSpecFiles(specsRepo: string) {
   // Group resource types by spec path
   const specPathToResourceTypes: Record<string, Set<string>> = {};
   for (
-    const [resourceType, { path: specPath }] of Object.entries(resourceTypeMap)
+    const { specPath, resourceType } of Object.values(resourceTypeMap)
   ) {
     if (!specPathToResourceTypes[specPath]) {
       specPathToResourceTypes[specPath] = new Set();
