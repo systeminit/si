@@ -84,6 +84,16 @@
               class="grow min-h-0 scrollable"
             >
               <div
+                v-if="virtualItems.length === 0 && fuzzySearchString.length > 0"
+                class="w-full h-full flex flex-row items-center justify-center"
+              >
+                <EmptyState
+                  text="No components match your search."
+                  icon="component"
+                  noTopMargin
+                />
+              </div>
+              <div
                 class="w-full relative flex flex-col"
                 :style="{
                   ['overflow-anchor']: 'none',
@@ -117,7 +127,6 @@
                   "
                   @click="() => assetClick(row.index)"
                 />
-                <!-- TODO: Fix indices for category is open -->
               </div>
             </div>
           </div>
@@ -714,13 +723,28 @@ const justCleared = ref(false);
 
 watch([fuzzySearchString, selectedFilter], ([newFuzzySearchString]) => {
   updateDebouncedSearch(newFuzzySearchString);
+  openAllCategories();
 });
+
+const closeAllCategories = () => {
+  categoryIsOpen.value = new Set();
+};
+
+const openAllCategories = () => {
+  filteredCategories.value.forEach((category) => {
+    categoryIsOpen.value.add(category.name);
+  });
+};
 
 const toggleFilterTile = (name?: string) => {
   clearSelection();
-  if (!name) selectedFilter.value = undefined;
-  else if (selectedFilter.value === name) selectedFilter.value = undefined;
-  else selectedFilter.value = name;
+  if (!name || selectedFilter.value === name) {
+    selectedFilter.value = undefined;
+    nextTick(closeAllCategories);
+  } else {
+    selectedFilter.value = name;
+    nextTick(openAllCategories);
+  }
 };
 
 const isFilterSelected = (name: string) => {
@@ -733,7 +757,7 @@ const resetModal = () => {
   fuzzySearchString.value = "";
   debouncedSearchString.value = "";
   bannerClosed.value = false;
-  categoryIsOpen.value = new Set();
+  closeAllCategories();
   selectedAsset.value = undefined;
   selectionIndex.value = undefined;
   toggleFilterTile();
@@ -785,9 +809,6 @@ const categoryFromVirtualRowIndex = (rowIdx: number) => {
 };
 
 const openFromIndex = (idx: number) => {
-  // if searching open everything
-  if (selectedFilter.value || debouncedSearchString.value) return true;
-
   const cat = categoryFromVirtualRowIndex(idx);
   if (!cat) return false;
   return categoryIsOpen.value.has(cat.name);
@@ -906,11 +927,7 @@ const categoryAndSchemaRows = computed(() => {
       color: category.color,
     });
 
-    if (
-      selectedFilter.value ||
-      debouncedSearchString.value ||
-      categoryIsOpen.value.has(category.name)
-    ) {
+    if (categoryIsOpen.value.has(category.name)) {
       category.assets.forEach((asset) => {
         rows.push({
           type: "schema",

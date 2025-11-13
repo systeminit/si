@@ -4,7 +4,8 @@
       :class="
         clsx(
           !iconNoBg && [
-            'mt-sm p-sm rounded-full',
+            !noTopMargin && 'mt-sm',
+            'p-sm rounded-full',
             themeClasses('bg-neutral-200', 'bg-neutral-700'),
           ],
         )
@@ -75,6 +76,7 @@ const props = defineProps({
   icon: { type: String as PropType<IconNames>, required: true },
   iconSize: { type: String as PropType<IconSizes> },
   iconNoBg: { type: Boolean },
+  noTopMargin: { type: Boolean },
 });
 
 const emit = defineEmits<{
