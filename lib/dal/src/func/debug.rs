@@ -261,7 +261,7 @@ impl DebugFuncJobStateRow {
                 AND change_set_id = $5;
         "#,
                 &[
-                    &DebugFuncJobState::Success.to_string(),
+                    &DebugFuncJobState::Running.to_string(),
                     &func_run_id,
                     &id,
                     &workspace_id,
