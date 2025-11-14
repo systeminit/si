@@ -66,6 +66,7 @@ pub mod add_to_view;
 pub mod create_component;
 pub mod create_many_components;
 pub mod delete_component;
+pub mod delete_many_components;
 pub mod duplicate_components;
 pub mod erase_component;
 pub mod execute_management_function;
