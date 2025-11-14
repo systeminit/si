@@ -1,22 +1,14 @@
 use axum::response::Json;
 use dal::{
-    AttributeValue,
     Component,
-    Prop,
-    Schema,
     SchemaVariant,
     attribute::attributes::AttributeSources,
-    cached_module::CachedModule,
-    diagram::view::View,
-    prop::PropPath,
 };
 use serde::{
     Deserialize,
     Serialize,
 };
 use serde_json::json;
-use si_events::audit_log::AuditLogKind;
-use si_id::ViewId;
 use utoipa::{
     self,
     ToSchema,
@@ -24,7 +16,7 @@ use utoipa::{
 
 use super::{
     ComponentReference,
-    resolve_component_reference,
+    operations,
 };
 use crate::{
     extract::{
@@ -68,132 +60,47 @@ pub async fn create_component(
         return Err(ComponentsError::NotPermittedOnHead);
     }
 
-    let schema_id =
-        match CachedModule::find_latest_for_schema_name(ctx, payload.schema_name.as_str()).await? {
-            Some(module) => module.schema_id,
-            None => match Schema::get_by_name_opt(ctx, payload.schema_name.as_str()).await? {
-                Some(schema) => schema.id(),
-                None => return Err(ComponentsError::SchemaNameNotFound(payload.schema_name)),
-            },
-        };
-    // Ensure that the schema is installed, get the default variant id
-    let mut variant_id = Schema::get_or_install_default_variant(ctx, schema_id).await?;
-
-    // Determine which variant to use based on use_working_copy flag
-    if payload.use_working_copy.unwrap_or(false) {
-        // User wants to use the unlocked (working copy) variant
-        match SchemaVariant::get_unlocked_for_schema(ctx, schema_id).await? {
-            Some(unlocked_variant) => {
-                // An unlocked variant already exists, use it
-                variant_id = unlocked_variant.id();
-            }
-            None => {
-                // No unlocked variant exists, so we should throw an error
-                return Err(ComponentsError::NoWorkingCopy(schema_id));
-            }
-        }
-    };
-
-    let variant = SchemaVariant::get_by_id(ctx, variant_id).await?;
-
-    let view_id: ViewId;
-    if let Some(view_name) = payload.view_name {
-        if let Some(view) = View::find_by_name(ctx, view_name.as_str()).await? {
-            view_id = view.id();
-        } else {
-            let view = View::new(ctx, view_name.as_str()).await?;
-            view_id = view.id()
-        }
+    // Lazy fetch component list only if managed_by is specified
+    let component_list = if !payload.managed_by.is_empty() {
+        Component::list_ids(ctx).await?
     } else {
-        let default_view = View::get_id_for_default(ctx).await?;
-        view_id = default_view
+        vec![]
     };
 
-    let mut component = Component::new(ctx, payload.name, variant_id, view_id).await?;
-    let comp_name = component.name(ctx).await?;
-    let initial_geometry = component.geometry(ctx, view_id).await?;
-    component
-        .set_geometry(
-            ctx,
-            view_id,
-            0,
-            0,
-            initial_geometry.width(),
-            initial_geometry.height(),
-        )
-        .await?;
+    // Call core logic (includes audit logs, transactional)
+    let component_view = operations::create_component_core(
+        ctx,
+        payload.name,
+        payload.schema_name.clone(),
+        payload.view_name,
+        payload.resource_id,
+        payload.attributes.clone(),
+        payload.managed_by,
+        payload.use_working_copy,
+        &component_list,
+    )
+    .await?;
 
+    // Get variant info for tracking
+    let variant = SchemaVariant::get_by_id(ctx, component_view.schema_variant_id).await?;
+
+    // Track creation (non-transactional analytics)
     tracker.track(
         ctx,
         "api_create_component",
         json!({
-            "component_id": component.id(),
-            "schema_variant_id": variant_id,
+            "component_id": component_view.id,
+            "schema_variant_id": component_view.schema_variant_id,
             "schema_variant_name": variant.display_name().to_string(),
             "category": variant.category(),
         }),
     );
-    ctx.write_audit_log(
-        AuditLogKind::CreateComponent {
-            name: comp_name.clone(),
-            component_id: component.id(),
-            schema_variant_id: variant_id,
-            schema_variant_name: variant.display_name().to_string(),
-        },
-        comp_name.clone(),
-    )
-    .await?;
 
-    if !payload.attributes.is_empty() {
-        dal::update_attributes(ctx, component.id(), payload.attributes.clone()).await?;
-    }
-
-    let component_list = Component::list_ids(ctx).await?;
-    if let Some(resource_id) = payload.resource_id {
-        let resource_prop_path = ["root", "si", "resourceId"];
-        let resource_prop_id =
-            Prop::find_prop_id_by_path(ctx, variant_id, &PropPath::new(resource_prop_path)).await?;
-
-        let av_for_resource_id =
-            Component::attribute_value_for_prop_id(ctx, component.id(), resource_prop_id).await?;
-
-        AttributeValue::update(
-            ctx,
-            av_for_resource_id,
-            Some(serde_json::to_value(resource_id)?),
-        )
-        .await?;
-    }
-
-    if !payload.managed_by.is_empty() {
-        let manager_component_id =
-            resolve_component_reference(ctx, &payload.managed_by, &component_list).await?;
-
-        Component::manage_component(ctx, manager_component_id, component.id()).await?;
-    }
-
-    ctx.write_audit_log(
-        AuditLogKind::UpdateComponent {
-            component_id: component.id(),
-            component_name: comp_name.clone(),
-        },
-        comp_name.clone(),
-    )
-    .await?;
-
-    tracker.track(
-        ctx,
-        "api_update_component",
-        json!({
-            "component_id": component.id(),
-            "component_name": comp_name.clone(),
-        }),
-    );
-
+    // Commit (publishes queued audit logs)
     ctx.commit().await?;
 
     Ok(Json(CreateComponentV1Response {
-        component: ComponentViewV1::assemble(ctx, component.id()).await?,
+        component: component_view,
     }))
 }
 
