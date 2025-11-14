@@ -122,8 +122,11 @@ export function parseAzureSpec(
     if (IGNORE_RESOURCE_TYPES.has(resource.resourceType)) continue;
     // Skip resource types not in the filter (if filter is provided)
     if (
-      resourceTypesFilter && !resourceTypesFilter.has(resource.resourceType)
-    ) continue;
+      resourceTypesFilter &&
+      !resourceTypesFilter.has(resource.resourceType)
+    ) {
+      continue;
+    }
     // Skip subresources > 2 levels deep for now
     // TODO pick which of these to support
     const resourceDepth = resource.resourceType.split("/").length - 1;
@@ -303,10 +306,12 @@ export class AzureNormalizer {
   private expandDiscriminators(
     discriminator: AzureSchemaDefinition["discriminator"],
     properties: AzureSchemaDefinition["properties"],
-  ): {
-    expandedProperties: Record<string, JSONSchema>;
-    discriminators: Record<string, Record<string, string>>;
-  } | undefined {
+  ):
+    | {
+      expandedProperties: Record<string, JSONSchema>;
+      discriminators: Record<string, Record<string, string>>;
+    }
+    | undefined {
     if (!discriminator) return undefined;
     if (!this.definitions) {
       throw new Error(
@@ -345,9 +350,10 @@ export class AzureNormalizer {
 
           const hasDirectMatch =
             defSchema["x-ms-discriminator-value"] === enumStr;
-          const hasAllOfMatch = defSchema.allOf?.some((
-            s: AzureSchemaDefinition,
-          ) => s["x-ms-discriminator-value"] === enumStr);
+          const hasAllOfMatch = defSchema.allOf?.some(
+            (s: AzureSchemaDefinition) =>
+              s["x-ms-discriminator-value"] === enumStr,
+          );
 
           if (hasDirectMatch || hasAllOfMatch) {
             subtypes.set(defName, [defSchema, enumStr]);
@@ -427,10 +433,9 @@ export class AzureNormalizer {
       if (typeof defSchema === "boolean") return false;
 
       const hasDirectProp = !!defSchema.properties?.[propName];
-      const hasAllOfProp =
-        defSchema.allOf?.some((s: AzureSchemaDefinition) =>
-          !!s.properties?.[propName]
-        ) ?? false;
+      const hasAllOfProp = defSchema.allOf?.some(
+        (s: AzureSchemaDefinition) => !!s.properties?.[propName],
+      ) ?? false;
       return hasDirectProp || hasAllOfProp;
     }
   }
@@ -505,7 +510,9 @@ export class AzureNormalizer {
       // Add discriminators to collector
       if (this.discriminatorCollector) {
         for (
-          const [key, subtypeMap] of Object.entries(expansion.discriminators)
+          const [key, subtypeMap] of Object.entries(
+            expansion.discriminators,
+          )
         ) {
           this.discriminatorCollector[key] = subtypeMap;
         }
@@ -518,7 +525,9 @@ export class AzureNormalizer {
       prop.properties = {};
       if (Object.keys(expandedProperties).length > 0) {
         for (
-          const [propName, childProp] of Object.entries(expandedProperties)
+          const [propName, childProp] of Object.entries(
+            expandedProperties,
+          )
         ) {
           const child = this.normalizeOrCycle(childProp);
           if (!child) continue; // If the prop is part of a cycle, don't include it
@@ -993,12 +1002,20 @@ export function parseEndpointPath(path: string) {
 
   // /virtualMachines/{vmName}[/extensions/{vmExtensionName}...]
   while (segments.length >= 2) {
-    resourceType = `${resourceType}/${segments.shift()!}`;
-    // Validate that the resource name segment is a parameter
-    // TODO maybe constants or substring replacements are supported? Check
-    if (!segments[0].startsWith("{")) return undefined;
-    if (!segments[0].endsWith("}")) return undefined;
-    segments.shift();
+    // If the resource type name is a parameter, we don't support it right now
+    // e.g. /dnsZones/{zoneName}/{recordType}/{relativeRecordSetName}
+    const resourceTypeName = segments.shift()!;
+    if (resourceTypeName.startsWith("{")) return undefined;
+    if (resourceTypeName.startsWith("}")) return undefined;
+
+    // If the parameter isn't a parameter, it's a constant subresource or some kind of operation
+    // we don't understand
+    // e.g. /storageAccounts/{accountName}/fileServices/default
+    const resourceTypeParam = segments.shift()!;
+    if (!resourceTypeParam.startsWith("{")) return undefined;
+    if (!resourceTypeParam.endsWith("}")) return undefined;
+
+    resourceType = `${resourceType}/${resourceTypeName}`;
   }
 
   // /operation (the final segment)

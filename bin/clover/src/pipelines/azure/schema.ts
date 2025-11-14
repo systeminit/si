@@ -30,9 +30,7 @@ export type AzureDefinitions = Record<string, AzureSchemaDefinition>;
 
 /// OpenAPI.Document without $ref, with some Azure-specific extensions
 export type AzureOpenApiDocument =
-  & OpenAPIV3_1.Document<
-    AzureOpenApiOperationExt
-  >
+  & OpenAPIV3_1.Document<AzureOpenApiOperationExt>
   & {
     definitions?: AzureDefinitions;
   };
@@ -161,7 +159,7 @@ const EXCLUDE_SPECS = [
   // Unsupported int32 number format
   "/azure-rest-api-specs/specification/azurearcdata/resource-manager/Microsoft.AzureArcData/preview/2025-06-01-preview/azurearcdata.json",
   // Unsupported duration-constant format (all servicefabricmanagedclusters versions)
-  "/azure-rest-api-specs/specification/servicefabricmanagedclusters",
+  "/azure-rest-api-specs/specification/servicefabricmanagedclusters/",
   // Unsupported time format
   "/azure-rest-api-specs/specification/computeschedule/resource-manager/Microsoft.ComputeSchedule/preview/2025-04-15-preview/computeschedule.json",
   // "/azure-rest-api-specs/specification/workloads/resource-manager/Microsoft.Workloads/stable/2023-04-01/monitors.json",
@@ -181,48 +179,46 @@ export async function* findLatestAzureOpenApiSpecFiles(specsRepo: string) {
   const specsRoot = path.join(specsRepo, "specification");
 
   // keep the latest version for each resource type
-  const resourceTypeMap: Record<string, {
-    resourceType: string;
-    specPath: string;
-    metadata: SpecMetadata;
-  }> = {};
+  const resourceTypeMap: Record<
+    string,
+    {
+      resourceType: string;
+      specPath: string;
+      metadata: SpecMetadata;
+    }
+  > = {};
 
   for await (const specDir of findAllAzureOpenApiSpecDirs(specsRoot)) {
     for await (const spec of Deno.readDir(specDir)) {
-      if (spec.isFile && spec.name.endsWith(".json")) {
-        const specPath = path.join(specDir, spec.name);
+      if (!spec.isFile) continue;
+      if (!spec.name.endsWith(".json")) continue;
+      const specPath = path.join(specDir, spec.name);
+      if (EXCLUDE_SPECS.some((s) => specPath.includes(s))) continue;
 
-        if (
-          EXCLUDE_SPECS.some((s) =>
-            specPath.endsWith(s) || specPath.includes(s)
-          )
-        ) continue;
+      const metadata = parseSpecPath(specPath);
+      if (!metadata) continue;
 
-        const metadata = parseSpecPath(specPath);
-        if (!metadata) continue;
+      // extract resource types
+      let resourceTypes: string[];
+      try {
+        resourceTypes = await extractResourceTypesFromSpec(specPath);
+      } catch (e) {
+        console.warn(`Failed to parse ${specPath}: ${e}`);
+        throw e;
+      }
 
-        // extract resource types
-        let resourceTypes: string[];
-        try {
-          resourceTypes = await extractResourceTypesFromSpec(specPath);
-        } catch (e) {
-          console.warn(`Failed to parse ${specPath}: ${e}`);
-          continue;
-        }
+      // track the latest version
+      for (const resourceType of resourceTypes) {
+        const resourceTypeLower = resourceType.toLowerCase();
 
-        // track the latest version
-        for (const resourceType of resourceTypes) {
-          const resourceTypeLower = resourceType.toLowerCase();
+        const existing = resourceTypeMap[resourceTypeLower];
 
-          const existing = resourceTypeMap[resourceTypeLower];
-
-          if (!existing || shouldReplace(existing.metadata, metadata)) {
-            resourceTypeMap[resourceTypeLower] = {
-              resourceType,
-              specPath,
-              metadata,
-            };
-          }
+        if (!existing || shouldReplace(existing.metadata, metadata)) {
+          resourceTypeMap[resourceTypeLower] = {
+            resourceType,
+            specPath,
+            metadata,
+          };
         }
       }
     }
@@ -230,9 +226,7 @@ export async function* findLatestAzureOpenApiSpecFiles(specsRepo: string) {
 
   // Group resource types by spec path
   const specPathToResourceTypes: Record<string, Set<string>> = {};
-  for (
-    const { specPath, resourceType } of Object.values(resourceTypeMap)
-  ) {
+  for (const { specPath, resourceType } of Object.values(resourceTypeMap)) {
     if (!specPathToResourceTypes[specPath]) {
       specPathToResourceTypes[specPath] = new Set();
     }
@@ -257,7 +251,9 @@ async function extractResourceTypesFromSpec(
   const fileUrl = new URL(`file://${specPath}`);
 
   // Parse the spec (but don't dereference, just get the paths)
-  const spec = await SwaggerParser.parse(fileUrl.href) as AzureOpenApiDocument;
+  const spec = (await SwaggerParser.parse(
+    fileUrl.href,
+  )) as AzureOpenApiDocument;
 
   if (!spec.paths) return [];
 
