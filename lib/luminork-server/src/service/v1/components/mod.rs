@@ -96,6 +96,12 @@ pub enum ComponentsError {
     AttributeValue(#[from] dal::attribute::value::AttributeValueError),
     #[error("attribute value {0} not from component {1}")]
     AttributeValueNotFromComponent(AttributeValueId, ComponentId),
+    #[error("bulk operation failed at index {index}")]
+    BulkOperationFailed {
+        index: usize,
+        #[source]
+        source: Box<ComponentsError>,
+    },
     #[error("cached module error: {0}")]
     CachedModule(#[from] dal::cached_module::CachedModuleError),
     #[error("component error: {0}")]
@@ -217,6 +223,14 @@ impl From<JsonRejection> for ComponentsError {
 impl crate::service::v1::common::ErrorIntoResponse for ComponentsError {
     fn status_and_message(&self) -> (StatusCode, String) {
         match self {
+            // Handle bulk error by delegating to inner error's status
+            ComponentsError::BulkOperationFailed { index, source } => {
+                let (status, msg) = source.status_and_message();
+                (
+                    status,
+                    format!("Bulk operation failed at index {}: {}", index, msg),
+                )
+            }
             ComponentsError::Attribute(
                 dal::attribute::attributes::AttributesError::CannotUpdateCreateOnlyProperty(_),
             ) => (StatusCode::PRECONDITION_FAILED, self.to_string()),
