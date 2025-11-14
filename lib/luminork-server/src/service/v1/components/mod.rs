@@ -650,6 +650,22 @@ pub fn routes() -> Router<AppState> {
     Router::new()
         .route("/", post(create_component::create_component))
         .route("/", get(list_components::list_components))
+        .route(
+            "/create_many",
+            post(create_many_components::create_many_components),
+        )
+        .route(
+            "/update_many",
+            put(update_many_components::update_many_components),
+        )
+        .route(
+            "/delete_many",
+            delete(delete_many_components::delete_many_components),
+        )
+        .route(
+            "/erase_many",
+            post(erase_many_components::erase_many_components),
+        )
         .route("/find", get(find_component::find_component))
         .route("/search", post(search_components::search_components))
         .route(
