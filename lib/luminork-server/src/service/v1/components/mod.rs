@@ -69,6 +69,7 @@ pub mod delete_component;
 pub mod delete_many_components;
 pub mod duplicate_components;
 pub mod erase_component;
+pub mod erase_many_components;
 pub mod execute_management_function;
 pub mod find_component;
 pub mod generate_template;
