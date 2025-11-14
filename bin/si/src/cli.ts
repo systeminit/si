@@ -40,6 +40,7 @@ import { type ComponentGetOptions } from "./component/get.ts";
 import { type ComponentUpdateOptions } from "./component/update.ts";
 import { type ComponentDeleteOptions } from "./component/delete.ts";
 import { type ComponentSearchOptions } from "./component/search.ts";
+import { callTui } from "./command/tui.ts";
 
 /** Current version of the SI CLI */
 const VERSION = "0.1.0";
@@ -175,7 +176,9 @@ function buildCommand() {
     // deno-lint-ignore no-explicit-any
     .command("template", buildTemplateCommand() as any)
     // deno-lint-ignore no-explicit-any
-    .command("whoami", buildWhoamiCommand() as any);
+    .command("whoami", buildWhoamiCommand() as any)
+    // deno-lint-ignore no-explicit-any
+    .command("tui", buildTuiCommand() as any);
 }
 
 /**
@@ -267,7 +270,7 @@ function buildRemoteSchemaCommand() {
           "--builtins",
           "Include builtin schemas (schemas you don't own). By default, builtins are skipped.",
         )
-        .action(async ({ root, apiBaseUrl, apiToken, builtins }, ...schemaNames) => {
+        .action(async ({ root, apiBaseUrl, apiToken }, ...schemaNames) => {
           const project = createProject(root);
           const apiCtx = await createApiContext(apiBaseUrl, apiToken);
           let finalSchemaNames;
@@ -282,7 +285,6 @@ function buildRemoteSchemaCommand() {
             project,
             apiCtx,
             finalSchemaNames,
-            builtins ?? false,
           );
         }),
     )
@@ -352,6 +354,22 @@ function buildWhoamiCommand() {
       const apiCtx = await createApiContext(apiBaseUrl, apiToken);
 
       await callWhoami(Context.instance(), apiCtx);
+    });
+}
+
+/**
+ * Builds the tui command.
+ *
+ * @returns A SubCommand to start the TUI
+ * @internal
+ */
+function buildTuiCommand() {
+  return createSubCommand()
+    .description("Starts the TUI")
+    .action(async ({ apiBaseUrl, apiToken }) => {
+      const apiCtx = await createApiContext(apiBaseUrl, apiToken);
+
+      await callTui(Context.instance(), apiCtx);
     });
 }
 
