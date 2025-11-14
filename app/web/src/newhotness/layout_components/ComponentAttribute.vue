@@ -146,6 +146,7 @@
                     ),
                   )
                 "
+                @keydown.enter.stop.prevent="createSubscription"
                 @click.stop.prevent="createSubscription"
                 @keydown.tab.stop.prevent="onConnectButtonTab"
               />
@@ -180,6 +181,7 @@
                   )
                 "
                 @click="remove"
+                @keydown.enter.stop.prevent="remove"
                 @keydown.tab.stop.prevent="onDeleteButtonTab"
               />
             </div>
@@ -282,15 +284,6 @@
                 !props.forceReadOnly
               "
               ref="addButtonRef"
-              :class="
-                clsx(
-                  'focus:outline',
-                  themeClasses(
-                    'focus:outline-action-500',
-                    'focus:outline-action-300',
-                  ),
-                )
-              "
               :loading="addButtonBifrosting"
               :disabled="addButtonBifrosting"
               loadingIcon="loader"
@@ -365,6 +358,7 @@ import AttributeInput from "./AttributeInput.vue";
 import { AttrTree } from "../logic_composables/attribute_tree";
 import { useApi, UseApi } from "../api_composables";
 import { useWatchedForm } from "../logic_composables/watched_form";
+import { handleTab } from "../logic_composables/controls";
 
 const props = defineProps<{
   component: BifrostComponent | ComponentInList;
@@ -647,38 +641,6 @@ const headerRef = ref<HTMLDivElement>();
 const addButtonRef = ref<InstanceType<typeof NewButton>>();
 const connectButtonRef = ref<InstanceType<typeof NewButton>>();
 const deleteButtonRef = ref<InstanceType<typeof NewButton>>();
-
-const handleTab = (e: KeyboardEvent, currentFocus?: HTMLElement) => {
-  const focusable = Array.from(
-    document.querySelectorAll('[tabindex="0"]'),
-  ) as HTMLElement[];
-
-  if (!currentFocus) return;
-  const index = focusable.indexOf(currentFocus);
-
-  if (e.shiftKey) {
-    nextTick(() => {
-      if (currentFocus && focusable) {
-        if (index > 0) {
-          focusable[index - 1]?.focus();
-        } else {
-          focusable[focusable.length - 1]?.focus();
-        }
-      }
-    });
-  } else if (index === focusable.length - 1) {
-    // When you hit the last attribute, go back to the
-    // fuzzy search instead of searching the document for more things to tab to.
-    e.preventDefault();
-    nextTick(() => {
-      focusable[0]?.focus();
-    });
-  } else {
-    nextTick(() => {
-      focusable[index + 1]?.focus();
-    });
-  }
-};
 
 const onHeaderTab = (e: KeyboardEvent) => {
   handleTab(e, headerRef.value);

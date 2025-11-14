@@ -3,7 +3,7 @@
     v-if="attributeTree.prop?.isOriginSecret && showSecretForm"
     ref="secretFormRef"
   >
-    <AttributeChildLayout>
+    <AttributeChildLayout secret>
       <template #header>
         <div class="flex flex-row items-center gap-2xs">
           <div>{{ displayName }}</div>
@@ -12,8 +12,8 @@
       <div
         :class="
           clsx(
-            'p-xs flex flex-col gap-xs',
-            themeClasses('bg-shade-0', 'bg-neutral-900'),
+            'p-xs flex flex-col gap-xs text-sm font-normal',
+            themeClasses('bg-white', 'bg-neutral-900'),
           )
         "
       >
@@ -62,38 +62,54 @@
               </template>
             </secretForm.Field>
           </li>
-          <!-- TODO(Wendy) - figure out tabbing for buttons -->
           <NewButton
+            ref="addSecretButtonRef"
             :label="attributeTree.secret ? 'Replace Secret' : 'Add Secret'"
             :loading="wForm.bifrosting.value"
             loadingText="Saving Secret"
             tone="action"
-            tabindex="-1"
+            :tabIndex="0"
             :disabled="!secretForm.state.canSubmit"
             @click="submitSecretForm"
+            @keydown.enter.stop.prevent="submitSecretForm"
+            @keydown.tab.stop.prevent="onAddSecretTab"
           />
         </ul>
-        <div
+        <label
+          ref="defaultSubRef"
+          tabindex="0"
+          data-default-sub-checkbox="label"
+          :for="`default-subs-checkbox-${attributeTree.prop?.id}`"
           :class="
             clsx(
-              'border w-full',
-              themeClasses('border-neutral-300', 'border-neutral-600'),
+              'border w-full flex flex-row items-center gap-xs px-xs py-2xs cursor-pointer',
+              'focus:outline-none rounded-sm',
+              themeClasses(
+                'border-neutral-400 focus:border-action-500 hover:border-action-500',
+                'border-neutral-600 focus:border-action-300 hover:border-action-300',
+              ),
             )
           "
+          @click.stop.prevent="
+            () => toggleIsDefaultSource(attributeTree.attributeValue.path, true)
+          "
+          @keydown.enter.stop.prevent="
+            () => toggleIsDefaultSource(attributeTree.attributeValue.path, true)
+          "
+          @keydown.tab.stop.prevent="onDefaultSubTab"
         >
           <input
             :id="`default-subs-checkbox-${attributeTree.prop?.id}`"
+            ref="defaultSubCheckboxRef"
+            data-default-sub-checkbox="input"
             type="checkbox"
             :checked="attributeTree.attributeValue.isDefaultSource"
-            @input="
-              (ev) =>
-                toggleIsDefaultSource(ev, attributeTree.attributeValue.path)
+            @click.stop.prevent="
+              () => toggleIsDefaultSource(attributeTree.attributeValue.path)
             "
           />
-          <label :for="`default-subs-checkbox-${attributeTree.prop?.id}`">
-            Make this the default subscription for new components
-          </label>
-        </div>
+          <div>Make this the default subscription for new components</div>
+        </label>
       </div>
     </AttributeChildLayout>
   </div>
@@ -144,6 +160,7 @@ import { useApi, routes, componentTypes } from "../api_composables";
 import { useWatchedForm } from "../logic_composables/watched_form";
 import SecretInput from "./SecretInput.vue";
 import { MouseDetails, mouseEmitter } from "../logic_composables/emitters";
+import { handleTab } from "../logic_composables/controls";
 
 const props = defineProps<{
   component: BifrostComponent | ComponentInList;
@@ -320,7 +337,7 @@ const secretForm = wForm.newForm({
   validators: {
     onSubmit: ({ value }) => {
       if (!value.Name || value.Name.trim() === "") {
-        return " "; // Return non-empty string to indicate validation failure
+        return "Each secret must have a name";
       }
       return undefined; // Return undefined for successful validation
     },
@@ -395,8 +412,26 @@ const submitSecretForm = async () => {
   closeSecretForm();
 };
 
-const toggleIsDefaultSource = (event: Event, path: AttributePath) => {
-  const checked = (event.target as HTMLInputElement).checked;
+const addSecretButtonRef = ref<InstanceType<typeof NewButton>>();
+const defaultSubRef = ref<HTMLLabelElement>();
+const defaultSubCheckboxRef = ref<HTMLInputElement>();
+
+const toggleIsDefaultSource = (path: AttributePath, flipped?: boolean) => {
+  if (!defaultSubCheckboxRef.value) return;
+
+  const checked = flipped
+    ? !defaultSubCheckboxRef.value.checked
+    : defaultSubCheckboxRef.value.checked;
   emit("setDefaultSubscriptionSource", path, checked);
+};
+
+const onAddSecretTab = (e: KeyboardEvent) => {
+  if (!addSecretButtonRef.value || !addSecretButtonRef.value.mainElRef) {
+    return;
+  }
+  handleTab(e, addSecretButtonRef.value.mainElRef);
+};
+const onDefaultSubTab = (e: KeyboardEvent) => {
+  handleTab(e, defaultSubRef.value);
 };
 </script>
