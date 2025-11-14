@@ -8657,6 +8657,9 @@
   "The AWS Key Management System (AWS KMS) key identifier for the key to use to encrypt the integration. If you don't specify an encryption key, RDS uses a default AWS owned key.": {
     "enum": null
   },
+  "The AWS Region for the router network interface. Defaults to the current region if not specified.": {
+    "enum": null
+  },
   "The AWS Region in which the user pool was created.": {
     "enum": null
   },
@@ -9702,6 +9705,9 @@
     "enum": null
   },
   "The IAM instance profile.": {
+    "enum": null
+  },
+  "The IAM policy applied to the cluster resource.": {
     "enum": null
   },
   "The IAM policy arn for pods": {
@@ -14853,6 +14859,9 @@
     "enum": null
   },
   "The name of the room. The value does not need to be unique.": {
+    "enum": null
+  },
+  "The name of the router network interface.": {
     "enum": null
   },
   "The name of the routing control. You can use any non-white space character in the name.": {
