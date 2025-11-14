@@ -10,6 +10,7 @@ mod components;
 mod debug_funcs;
 mod funcs;
 mod management_funcs;
+mod mv;
 mod schemas;
 mod search;
 mod secrets;
@@ -132,6 +133,7 @@ pub use management_funcs::{
     ManagementFuncsResult,
     get_management_func_run_state::GetManagementFuncJobStateV1Response,
 };
+pub use mv::get::MvResponse;
 pub use schemas::{
     DetachFuncBindingV1Response,
     GetSchemaV1Response,
@@ -266,6 +268,7 @@ pub use crate::api_types::func_run::v1::{
         secrets::update_secret::update_secret,
         secrets::get_secrets::get_secrets,
         search::search,
+        mv::get::get,
     ),
     components(
         schemas(
@@ -364,6 +367,7 @@ pub use crate::api_types::func_run::v1::{
             ExecDebugFuncV1Request,
             ExecDebugFuncV1Response,
             GetDebugFuncJobStateV1Response,
+            MvResponse,
         )
     ),
     tags(
@@ -375,7 +379,8 @@ pub use crate::api_types::func_run::v1::{
         (name = "secrets", description = "Secret management endpoints"),
         (name = "funcs", description = "Functions management endpoints"),
         (name = "debug_funcs", description = "Debug function endpoints"),
-        (name = "management_funcs", description = "Management functions endpoints")
+        (name = "management_funcs", description = "Management functions endpoints"),
+        (name = "mv", description = "Materialized view endpoints"),
     )
 )]
 pub struct V1ApiDoc;

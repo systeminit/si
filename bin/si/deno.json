@@ -14,7 +14,7 @@
   },
   "workspace": [],
   "tasks": {
-    "dev": "deno run --allow-net --allow-env --allow-read --env-file=.env.local --allow-write --watch main.ts",
+    "dev": "deno run --unstable-sloppy-imports --allow-net --allow-env --allow-read --env-file=.env.local --allow-write --watch main.ts",
     "build": "deno compile --allow-net --allow-env --allow-read --allow-write main.ts",
     "lint": "deno lint",
     "test": "deno test --allow-env --allow-read --allow-write"
