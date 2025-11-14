@@ -30,6 +30,7 @@ import { templateRunTool } from "./tools/templateRun.ts";
 import { templateListTool } from "./tools/templateList.ts";
 import { changeSetAbandonTool } from "./tools/changeSetAbandon.ts";
 import { changeSetForceApplyTool } from "./tools/changeSetForceApply.ts";
+import { execDebugFunc } from "./tools/execDebugFunc.ts";
 
 export function createServer(): McpServer {
   const server = new McpServer({
@@ -42,6 +43,7 @@ export function createServer(): McpServer {
   changeSetUpdateTool(server);
   changeSetAbandonTool(server);
   changeSetForceApplyTool(server);
+  execDebugFunc(server);
   schemaFindTool(server);
   schemaAttributesListTool(server);
   schemaAttributesDocumentationTool(server);
