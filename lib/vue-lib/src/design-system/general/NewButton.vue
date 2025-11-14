@@ -31,7 +31,7 @@
             : [
                 computedLoading
                   ? 'cursor-not-allowed'
-                  : 'cursor-pointer hover:scale-105 active:scale-100',
+                  : ['cursor-pointer', scaleEffectClasses],
                 {
                   neutral: themeClasses(
                     'text-neutral-900 bg-neutral-200 border-neutral-400 hover:bg-neutral-100',
@@ -41,7 +41,7 @@
                     'text-white',
                     themeClasses(
                       'bg-[#1264BF] border-[#318AED] hover:bg-[#2583EC]',
-                      'bg-[#1264BF] border-[#318AED] hover:bg-[#2583EC]',
+                      'bg-[#17487F] border-[#1264BF] hover:bg-[#1D5BA0]',
                     ),
                   ],
                   warning: themeClasses(
@@ -55,6 +55,14 @@
                   empty: '',
                 }[tone],
               ],
+          // focus styles
+          'focus:outline-2',
+          tone !== 'action'
+            ? themeClasses(
+                'focus:outline-action-500',
+                'focus:outline-action-300',
+              )
+            : themeClasses('focus:outline-black', 'focus:outline-white'),
         ],
       )
     "
@@ -145,6 +153,7 @@ import { RouterLink } from "vue-router";
 import * as _ from "lodash-es";
 import clsx from "clsx";
 import { Placement } from "floating-vue";
+import { useElementSize } from "@vueuse/core";
 import { ApiRequestStatus } from "../../pinia";
 import Icon, { IconSizes } from "../icons/Icon.vue";
 import { IconNames } from "../icons/icon_set";
@@ -316,6 +325,19 @@ const mainElRef = ref<InstanceType<typeof HTMLElement>>();
 const focus = () => {
   mainElRef.value?.focus();
 };
+
+const { width: buttonWidth } = useElementSize(mainElRef);
+
+const scaleEffectClasses = computed(() => {
+  // This prevents the button from scaling too much if it is wide
+  if (buttonWidth.value < 200) {
+    return tw`hover:scale-105 active:scale-100`;
+  } else if (buttonWidth.value < 400) {
+    return tw`hover:scale-[1.01] active:scale-100`;
+  } else {
+    return tw`hover:scale-y-105 active:scale-100`;
+  }
+});
 
 defineExpose({
   focus,

@@ -47,15 +47,6 @@
               :loading="bifrostingTrash"
               loadingText=""
               :tabIndex="0"
-              :class="
-                clsx(
-                  'focus:outline',
-                  themeClasses(
-                    'focus:outline-action-500',
-                    'focus:outline-action-300',
-                  ),
-                )
-              "
               @click.left="remove"
               @keydown.tab.stop.prevent="onDeleteButtonTab"
             />
@@ -733,13 +724,17 @@
             />
           </div>
           <label
-            tabindex="0"
+            tabindex="-1"
             data-default-sub-checkbox="label"
             :for="`checkbox-${prop?.id}`"
             :class="
               clsx(
                 'border w-full flex flex-row items-center gap-xs px-xs py-2xs cursor-pointer',
-                themeClasses('border-neutral-400', 'border-neutral-600'),
+                'focus:outline-none rounded-sm',
+                themeClasses(
+                  'border-neutral-400 focus:border-action-500 hover:border-action-500',
+                  'border-neutral-600 focus:border-action-300 hover:border-action-300',
+                ),
               )
             "
             @click="

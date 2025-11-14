@@ -31,7 +31,7 @@
       <CollapseExpandChevron :open="open" />
       <slot name="header" />
     </dt>
-    <dd v-if="open" class="p-2xs">
+    <dd v-if="open" :class="secret ? '' : 'p-2xs'">
       <slot />
       <!-- the children are, so far, another list or a button that would create a list -->
     </dd>
@@ -49,6 +49,7 @@ const props = withDefaults(
     sticky?: boolean;
     stickyTopOffset?: number;
     stickyZIndex?: number;
+    secret?: boolean;
   }>(),
   {
     defaultOpen: true,
