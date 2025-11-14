@@ -5,13 +5,8 @@ use axum::{
     response::Json,
 };
 use dal::{
-    AttributeValue,
-    Component,
-    Prop,
     PropId,
-    SchemaVariant,
     SchemaVariantId,
-    WsEvent,
     attribute::attributes::AttributeSources,
     prop::{
         PROP_PATH_SEPARATOR,
@@ -24,7 +19,6 @@ use serde::{
     Serialize,
 };
 use serde_json::json;
-use si_events::audit_log::AuditLogKind;
 use utoipa::{
     self,
     ToSchema,
@@ -42,7 +36,7 @@ use crate::{
     },
     service::v1::{
         ComponentsError,
-        components::get_component::into_front_end_type,
+        components::operations,
     },
 };
 
@@ -78,111 +72,32 @@ pub async fn update_component(
         return Err(ComponentsError::NotPermittedOnHead);
     }
 
-    let component = Component::get_by_id(ctx, component_id).await?;
-
-    let old_name = component.name(ctx).await?;
-
-    if let Some(name) = payload.name {
-        component.set_name(ctx, name.as_str()).await?;
-
-        tracker.track(
-            ctx,
-            "api_component_renamed",
-            json!({
-                "component_id": component_id,
-                "old_name": old_name,
-                "new_name": name.clone(),
-            }),
-        );
-
-        ctx.write_audit_log(
-            AuditLogKind::RenameComponent {
-                component_id,
-                old_name,
-                new_name: name.clone(),
-            },
-            name.clone(),
-        )
-        .await?;
-    }
-
-    let schema_variant = component.schema_variant(ctx).await?;
-    let variant_id = schema_variant.id;
-    let is_secret_defining = SchemaVariant::is_secret_defining(ctx, variant_id).await?;
-
-    if !payload.attributes.is_empty() {
-        dal::update_attributes(ctx, component_id, payload.attributes.clone()).await?;
-    }
-
-    if !is_secret_defining && !payload.secrets.is_empty() {
-        return Err(ComponentsError::NotSecretDefiningComponent(component_id));
-    }
-
-    // For secrets, if the user needs to attach a secret to the component, the attributes API would require them to know what the secretId
-    // is, so we create a convenience method that allows them to attach a secret definition directly by name. Ideally, this would be
-    // guarded so that we could only do this on secret defining components.
-    if is_secret_defining {
-        for (key, value) in payload.secrets.clone().into_iter() {
-            let prop_id = key.prop_id(ctx, variant_id).await?;
-
-            let secret_id = resolve_secret_id(ctx, &value).await?;
-
-            let attribute_value_id =
-                Component::attribute_value_for_prop_id(ctx, component_id, prop_id).await?;
-            dal::Secret::attach_for_attribute_value(ctx, attribute_value_id, Some(secret_id))
-                .await?;
-        }
-    }
-
-    if let Some(resource_id) = payload.resource_id {
-        let resource_prop_path = ["root", "si", "resourceId"];
-        let resource_prop_id =
-            Prop::find_prop_id_by_path(ctx, variant_id, &PropPath::new(resource_prop_path)).await?;
-
-        let av_for_resource_id =
-            Component::attribute_value_for_prop_id(ctx, component.id(), resource_prop_id).await?;
-
-        AttributeValue::update(
-            ctx,
-            av_for_resource_id,
-            Some(serde_json::to_value(resource_id)?),
-        )
-        .await?;
-    }
-
-    // Send a websocket event about the component update
-    let updated_component = Component::get_by_id(ctx, component_id).await?;
-    let new_name = updated_component.name(ctx).await?;
-    WsEvent::component_updated(
+    // Call core logic (includes audit logs, WsEvents, transactional)
+    let component_view = operations::update_component_core(
         ctx,
-        into_front_end_type(ctx, updated_component.clone()).await?,
-    )
-    .await?
-    .publish_on_commit(ctx)
-    .await?;
-
-    ctx.write_audit_log(
-        AuditLogKind::UpdateComponent {
-            component_id: updated_component.id(),
-            component_name: new_name.clone(),
-        },
-        new_name.clone(),
+        component_id,
+        payload.name.clone(),
+        payload.resource_id,
+        payload.secrets,
+        payload.attributes,
     )
     .await?;
 
+    // Track update (non-transactional analytics)
     tracker.track(
         ctx,
         "api_update_component",
         json!({
-            "component_id": component.id(),
-            "component_name": new_name.clone(),
+            "component_id": component_id,
+            "component_name": component_view.name,
         }),
     );
 
+    // Commit (publishes queued audit logs and WsEvents)
     ctx.commit().await?;
 
     Ok(Json(UpdateComponentV1Response {
-        component: ComponentViewV1::assemble(ctx, component_id).await?,
+        component: component_view,
     }))
 }
 
