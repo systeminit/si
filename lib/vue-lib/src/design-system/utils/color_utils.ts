@@ -6,6 +6,7 @@ import { useTheme } from "./theme_tools";
 export const COLOR_PALETTE = colorsJson;
 
 export const BRAND_COLOR_FILTER_HEX_CODES = {
+  DigitalOcean: "#ABF7FF",
   "Digital Ocean": "#ABF7FF",
   "Google Cloud": "#EF6255",
   "Open AI": "#FFBE19",

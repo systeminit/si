@@ -154,6 +154,7 @@ import GitHubLogo from "~icons/carbon/logo-github";
 import VimLogo from "~icons/raphael/vim";
 import FastlyLogo from "~icons/simple-icons/fastly";
 import HetznerLogo from "./custom-icons/hetzner.svg?raw";
+import HetznerLogotype from "./custom-icons/hetzner-logotype.svg?raw";
 import AzureLogo from "./custom-icons/azure-icon.svg?raw";
 import DigitalOceanLogo from "~icons/mdi/digital-ocean";
 
@@ -461,6 +462,8 @@ export const LOGO_ICONS = Object.freeze({
   "logo-discord": DiscordLogo,
   "logo-github": GitHubLogo,
   "logo-vim": VimLogo,
+  // logotypes - not standard icon size
+  "hetzner-logotype": HetznerLogotype,
 });
 
 export type IconSizeNumbers = {
