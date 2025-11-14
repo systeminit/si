@@ -3,7 +3,10 @@ use std::{
     fmt,
     mem,
     path::PathBuf,
-    sync::Arc,
+    sync::{
+        Arc,
+        atomic::AtomicU64,
+    },
     time::Duration,
 };
 
@@ -474,6 +477,8 @@ pub struct DalContext {
     authentication_method: AuthenticationMethod,
     /// A type cache of data which saves on constant re-fetching
     cache: ConcurrentExtensions,
+    /// Counter for audit logs published to pending_events stream during this event session
+    pending_audit_logs_count: Arc<AtomicU64>,
 }
 
 #[async_trait]
@@ -860,6 +865,11 @@ impl DalContext {
 
     pub fn event_session_id(&self) -> EventSessionId {
         self.event_session_id
+    }
+
+    /// Returns a reference to the pending audit logs counter
+    pub fn pending_audit_logs_count(&self) -> &Arc<AtomicU64> {
+        &self.pending_audit_logs_count
     }
 
     pub fn layer_db(&self) -> DalLayerDb {
@@ -1314,6 +1324,11 @@ impl DalContext {
         jetstream::new(self.nats_conn().to_owned())
     }
 
+    /// Returns a reference to the cached [`JetstreamStreams`].
+    pub fn jetstream_streams(&self) -> &JetstreamStreams {
+        &self.services_context.jetstream_streams
+    }
+
     /// Convenience wrapper around [`audit_logging::write`].
     #[instrument(name = "dal_context.write_audit_log", level = "debug", skip_all)]
     pub async fn write_audit_log(
@@ -1496,6 +1511,7 @@ impl DalContextBuilder {
             event_session_id: EventSessionId::new(),
             authentication_method: AuthenticationMethod::System,
             cache: Default::default(),
+            pending_audit_logs_count: Arc::new(AtomicU64::new(0)),
         })
     }
 
@@ -1523,6 +1539,7 @@ impl DalContextBuilder {
             event_session_id: EventSessionId::new(),
             authentication_method,
             cache: Default::default(),
+            pending_audit_logs_count: Arc::new(AtomicU64::new(0)),
         })
     }
 
@@ -1550,6 +1567,7 @@ impl DalContextBuilder {
             event_session_id: EventSessionId::new(),
             authentication_method: AuthenticationMethod::System,
             cache: Default::default(),
+            pending_audit_logs_count: Arc::new(AtomicU64::new(0)),
         };
 
         ctx.update_snapshot_to_visibility().await?;
@@ -1578,6 +1596,7 @@ impl DalContextBuilder {
             event_session_id: EventSessionId::new(),
             authentication_method: access_builder.authentication_method,
             cache: Default::default(),
+            pending_audit_logs_count: Arc::new(AtomicU64::new(0)),
         };
 
         // Update changeset so it's correct, but don't pull the snapshot yet
@@ -1615,6 +1634,7 @@ impl DalContextBuilder {
             event_session_id: EventSessionId::new(),
             authentication_method: request_context.authentication_method,
             cache: Default::default(),
+            pending_audit_logs_count: Arc::new(AtomicU64::new(0)),
         };
 
         if ctx.history_actor() != &HistoryActor::SystemInit {

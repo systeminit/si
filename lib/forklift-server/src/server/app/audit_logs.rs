@@ -89,13 +89,13 @@ pub(crate) async fn build_and_run(
     DeadLetterQueue::create_stream(jetstream_context.clone()).await?;
 
     let incoming = {
-        let stream = AuditLogsStream::get_or_create(jetstream_context).await?;
+        let stream = AuditLogsStream::get_or_create(jetstream_context.clone()).await?;
         let consumer_subject = stream.consuming_subject_for_all_workspaces();
         stream
             .stream()
             .await?
             .create_consumer(async_nats::jetstream::consumer::pull::Config {
-                durable_name: Some(durable_consumer_name),
+                durable_name: Some(durable_consumer_name.clone()),
                 filter_subject: consumer_subject.into_string(),
                 max_deliver: 4,
                 backoff: vec![
@@ -117,6 +117,12 @@ pub(crate) async fn build_and_run(
 
     // NOTE(nick,fletcher): the "NatsMakeSpan" builder defaults to "info" level logging. Bump it down, if needed.
     let app = ServiceBuilder::new()
+        .layer(
+            crate::middleware::consumer_lag_gauge::ConsumerLagGaugeLayer::new(|lag| {
+                use telemetry_utils::gauge;
+                gauge!(audit_logs_consumer_lag = lag as f64);
+            }),
+        )
         .layer(
             MatchedSubjectLayer::new().for_subject(ForkliftAuditLogsForSubject::with_prefix(
                 connection_metadata.subject_prefix(),
