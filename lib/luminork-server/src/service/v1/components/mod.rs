@@ -79,6 +79,7 @@ pub mod operations;
 pub mod restore_component;
 pub mod search_components;
 pub mod update_component;
+pub mod update_many_components;
 pub mod upgrade_component;
 
 #[remain::sorted]
