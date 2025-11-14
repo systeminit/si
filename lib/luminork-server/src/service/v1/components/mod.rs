@@ -64,6 +64,7 @@ use crate::AppState;
 pub mod add_action;
 pub mod add_to_view;
 pub mod create_component;
+pub mod create_many_components;
 pub mod delete_component;
 pub mod duplicate_components;
 pub mod erase_component;
