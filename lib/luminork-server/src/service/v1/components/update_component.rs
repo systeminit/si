@@ -261,7 +261,7 @@ pub struct UpdateComponentV1Response {
 }
 
 /// Resolves a secret value (ID or name) to a SecretId
-async fn resolve_secret_id(
+pub(super) async fn resolve_secret_id(
     ctx: &dal::DalContext,
     value: &serde_json::Value,
 ) -> ComponentsResult<dal::SecretId> {

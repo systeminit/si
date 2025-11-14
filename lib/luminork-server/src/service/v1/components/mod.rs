@@ -74,6 +74,7 @@ pub mod get_component;
 pub mod get_component_resource;
 pub mod list_components;
 pub mod manage_component;
+pub mod operations;
 pub mod restore_component;
 pub mod search_components;
 pub mod update_component;
