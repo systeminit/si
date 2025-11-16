@@ -2,14 +2,15 @@
   <Icon
     :name="open ? 'chevron-down' : 'chevron-right'"
     size="sm"
-    class="cursor-pointer flex-none"
+    :class="['flex-none', !noPointer && 'cursor-pointer']"
   />
 </template>
 
 <script setup lang="ts">
 import Icon from "../icons/Icon.vue";
 
-defineProps({
-  open: Boolean,
-});
+defineProps<{
+  open: boolean;
+  noPointer?: boolean;
+}>();
 </script>

@@ -26,27 +26,42 @@
           'group/header',
           'flex-none flex items-center px-xs m-0 min-h-[2.5rem]',
           !disableCollapse && [
-            'cursor-pointer',
+            !disableOpen && 'cursor-pointer',
             variant === 'standard' &&
+              !disableOpen &&
               themeClasses('hover:bg-neutral-100', 'hover:bg-neutral-700'),
           ],
           `text-${computedHeaderTextSize}`,
           variant === 'standard' && [
             showOpen && 'border-b',
-            themeClasses(
-              'bg-white border-neutral-400',
-              'bg-neutral-800 border-neutral-600',
-            ),
+            !disableOpen &&
+              themeClasses(
+                'bg-white border-neutral-400',
+                'bg-neutral-800 border-neutral-600',
+              ),
+            disableOpen &&
+              themeClasses(
+                'bg-neutral-200 border-neutral-300 text-gray-700',
+                'bg-neutral-900 border-neutral-700 text-gray-300',
+              ),
           ],
           variant === 'onboarding' && 'hover:underline',
         )
       "
       @click="toggleOpen"
     >
-      <CollapseExpandChevron v-if="!disableCollapse" :open="showOpen" />
+      <CollapseExpandChevron
+        v-if="!disableCollapse"
+        :open="showOpen"
+        :noPointer="disableOpen"
+      />
       <slot name="header" />
-      <div v-if="$slots.headerIcons || showExpandButton" class="ml-auto" />
+      <div
+        v-if="!iconsLeft && ($slots.headerIcons || showExpandButton)"
+        class="ml-auto"
+      />
       <slot name="headerIcons" />
+      <div v-if="iconsLeft && showExpandButton" class="ml-auto" />
       <NewButton
         v-if="showExpandButton"
         tooltip="Expand"
@@ -56,8 +71,8 @@
         size="xs"
         :class="
           clsx(
-            'active:bg-white active:text-black',
-            themeClasses('hover:bg-neutral-200', 'hover:bg-neutral-600'),
+            !disableOpen &&
+              themeClasses('hover:bg-neutral-200', 'hover:bg-neutral-600'),
           )
         "
         @click.prevent.stop="expand"
@@ -122,8 +137,10 @@ const props = withDefaults(
     expandable?: boolean;
     headerTextSize?: SpacingSizes;
     disableCollapse?: boolean;
+    disableOpen?: boolean;
     maxHeightContent?: boolean;
     variant?: CollapsingVariant;
+    iconsLeft?: boolean;
   }>(),
   {
     h3class: tw`flex flex-row items-center gap-xs p-2xs z-30`,
@@ -153,6 +170,7 @@ const emit = defineEmits<{
 }>();
 
 const toggleOpen = () => {
+  if (props.disableOpen) return;
   emit("toggle");
   openState.toggle();
 };

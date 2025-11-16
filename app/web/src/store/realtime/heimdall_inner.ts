@@ -9,7 +9,9 @@ import {
 import { Gettable } from "@/workers/types/dbinterface";
 import { Context } from "@/newhotness/types";
 
-export const innerUseMakeKey = (ctx: Context) => {
+export const rawUseMakeKey = (
+  ctx: Pick<Context, "workspacePk" | "changeSetId">,
+) => {
   return <K = Gettable>(
     kind: MaybeRefOrGetter<K>,
     id?: MaybeRefOrGetter<string>,
@@ -44,7 +46,13 @@ export const innerUseMakeKey = (ctx: Context) => {
     });
 };
 
-export const innerUseMakeArgs = (ctx: Context) => {
+export const innerUseMakeKey = (ctx: Context) => {
+  return rawUseMakeKey(ctx);
+};
+
+export const rawUseMakeArgs = (
+  ctx: Pick<Context, "workspacePk" | "changeSetId">,
+) => {
   return <K = Gettable | GlobalEntity>(kind: EntityKind, id?: string) => {
     if (GLOBAL_ENTITIES.includes(kind as GlobalEntity)) {
       return {
@@ -61,4 +69,8 @@ export const innerUseMakeArgs = (ctx: Context) => {
       id: id ?? ctx.workspacePk.value,
     };
   };
+};
+
+export const innerUseMakeArgs = (ctx: Context) => {
+  return rawUseMakeArgs(ctx);
 };
