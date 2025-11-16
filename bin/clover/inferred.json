@@ -314,6 +314,23 @@
       "SM2"
     ]
   },
+  "The type of policy to create. You can specify one of the following values: AISERVICES_OPT_OUT_POLICY, BACKUP_POLICY, SERVICE_CONTROL_POLICY, TAG_POLICY, CHATBOT_POLICY, RESOURCE_CONTROL_POLICY,DECLARATIVE_POLICY_EC2, SECURITYHUB_POLICY, S3_POLICY, INSPECTOR_POLICY, BEDROCK_POLICY, NETWORK_SECURITY_DIRECTOR_POLICY, UPGRADE_ROLLOUT_POLICY": {
+    "enum": [
+      "AISERVICES_OPT_OUT_POLICY",
+      "BACKUP_POLICY",
+      "SERVICE_CONTROL_POLICY",
+      "TAG_POLICY",
+      "CHATBOT_POLICY",
+      "RESOURCE_CONTROL_POLICY",
+      "DECLARATIVE_POLICY_EC2",
+      "SECURITYHUB_POLICY",
+      "S3_POLICY",
+      "INSPECTOR_POLICY",
+      "BEDROCK_POLICY",
+      "NETWORK_SECURITY_DIRECTOR_POLICY",
+      "UPGRADE_ROLLOUT_POLICY"
+    ]
+  },
   "Specifies the name of the engine that this option group should be associated with.\n Valid Values: \n  +   ``mariadb`` \n  +   ``mysql`` \n  +   ``oracle-ee`` \n  +   ``oracle-ee-cdb`` \n  +   ``oracle-se2`` \n  +   ``oracle-se2-cdb`` \n  +   ``postgres`` \n  +   ``sqlserver-ee`` \n  +   ``sqlserver-se`` \n  +   ``sqlserver-ex`` \n  +   ``sqlserver-web``": {
     "enum": [
       "mariadb",
@@ -3866,6 +3883,9 @@
   "A name for resource policy": {
     "enum": null
   },
+  "A name for the API key. If you don't specify a name, CFN generates a unique physical ID and uses that ID for the API key name. For more information, see [Name Type](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-name.html).\n  If you specify a name, you cannot perform updates that require replacement of this resource. You can perform updates that require no or some interruption. If you must replace the resource, specify a new name.": {
+    "enum": null
+  },
   "A name for the API key. If you don't specify a name, CFN generates a unique physical ID and uses that ID for the API key name. For more information, see [Name Type](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-name.html).\n If you specify a name, you cannot perform updates that require replacement of this resource. You can perform updates that require no or some interruption. If you must replace the resource, specify a new name.": {
     "enum": null
   },
@@ -5526,6 +5546,9 @@
     "enum": null
   },
   "Error message associated with a failed monitor deployment of a signal map.": {
+    "enum": null
+  },
+  "Event source mapping log granularity level override": {
     "enum": null
   },
   "Execution Role ARN required to run Athena Spark Calculations": {
@@ -8657,7 +8680,13 @@
   "The AWS Key Management System (AWS KMS) key identifier for the key to use to encrypt the integration. If you don't specify an encryption key, RDS uses a default AWS owned key.": {
     "enum": null
   },
+  "The AWS Region for the router input. Defaults to the current region if not specified.": {
+    "enum": null
+  },
   "The AWS Region for the router network interface. Defaults to the current region if not specified.": {
+    "enum": null
+  },
+  "The AWS Region for the router output. Defaults to the current region if not specified.": {
     "enum": null
   },
   "The AWS Region in which the user pool was created.": {
@@ -9116,6 +9145,9 @@
   "The Amazon Resource Name (ARN) of the destination resource.": {
     "enum": null
   },
+  "The Amazon Resource Name (ARN) of the destination resource.\n To retain records of unsuccessful [asynchronous invocations](https://docs.aws.amazon.com/lambda/latest/dg/invocation-async.html#invocation-async-destinations), you can configure an Amazon SNS topic, Amazon SQS queue, Amazon S3 bucket, Lambda function, or Amazon EventBridge event bus as the destination.\n  Amazon SNS destinations have a message size limit of 256 KB. If the combined size of the function request and response payload exceeds the limit, Lambda will drop the payload when sending ``OnFailure`` event to the destination. For details on this behavior, refer to [Retaining records of asynchronous invocations](https://docs.aws.amazon.com/lambda/latest/dg/invocation-async-retain-records.html).\n  To retain records of failed invocations from [Kinesis](https://docs.aws.amazon.com/lambda/latest/dg/with-kinesis.html), [DynamoDB](https://docs.aws.amazon.com/lambda/latest/dg/with-ddb.html), [self-managed Kafka](https://docs.aws.amazon.com/lambda/latest/dg/with-kafka.html#services-smaa-onfailure-destination) or [Amazon MSK](https://docs.aws.amazon.com/lambda/latest/dg/with-msk.html#services-msk-onfailure-destination), you can configure an Amazon SNS topic, Amazon SQS queue, or Amazon S3 bucket as the destination.": {
+    "enum": null
+  },
   "The Amazon Resource Name (ARN) of the destination resource.\n To retain records of unsuccessful [asynchronous invocations](https://docs.aws.amazon.com/lambda/latest/dg/invocation-async.html#invocation-async-destinations), you can configure an Amazon SNS topic, Amazon SQS queue, Amazon S3 bucket, Lambda function, or Amazon EventBridge event bus as the destination.\n To retain records of failed invocations from [Kinesis](https://docs.aws.amazon.com/lambda/latest/dg/with-kinesis.html), [DynamoDB](https://docs.aws.amazon.com/lambda/latest/dg/with-ddb.html), [self-managed Kafka](https://docs.aws.amazon.com/lambda/latest/dg/with-kafka.html#services-smaa-onfailure-destination) or [Amazon MSK](https://docs.aws.amazon.com/lambda/latest/dg/with-msk.html#services-msk-onfailure-destination), you can configure an Amazon SNS topic, Amazon SQS queue, or Amazon S3 bucket as the destination.": {
     "enum": null
   },
@@ -9489,6 +9521,12 @@
     "enum": null
   },
   "The Availability Zone where the disk snapshot was created.": {
+    "enum": null
+  },
+  "The Availability Zone where you want to create the router input. This must be a valid Availability Zone for the region specified by regionName, or the current region if no regionName is provided.": {
+    "enum": null
+  },
+  "The Availability Zone where you want to create the router output. This must be a valid Availability Zone for the region specified by regionName, or the current region if no regionName is provided.": {
     "enum": null
   },
   "The Availability Zone.": {
@@ -13205,6 +13243,12 @@
   "The maximum baseline bandwidth, in Mbps. To specify no maximum limit, omit this parameter.": {
     "enum": null
   },
+  "The maximum bitrate for the router input.": {
+    "enum": null
+  },
+  "The maximum bitrate for the router output.": {
+    "enum": null
+  },
   "The maximum cached data capacity of the Serverless Cache.": {
     "enum": null
   },
@@ -14861,7 +14905,13 @@
   "The name of the room. The value does not need to be unique.": {
     "enum": null
   },
+  "The name of the router input.": {
+    "enum": null
+  },
   "The name of the router network interface.": {
+    "enum": null
+  },
+  "The name of the router output.": {
     "enum": null
   },
   "The name of the routing control. You can use any non-white space character in the name.": {
