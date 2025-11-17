@@ -183,7 +183,10 @@ import { SchemaId } from "@/api/sdf/dal/schema";
 import { ChangeSet, ChangeSetStatus } from "@/api/sdf/dal/change_set";
 import { muspelheimStatuses } from "@/store/realtime/heimdall";
 import { trackEvent } from "@/utils/tracking";
-import Onboarding, { DEBUG_MODE } from "@/newhotness/Onboarding2.vue";
+import Onboarding, {
+  DEBUG_MODE,
+  FORCE_ONBOARDING_TO_SHOW,
+} from "@/newhotness/Onboarding.vue";
 import NavbarPanelRight from "./nav/NavbarPanelRight.vue";
 import Lobby from "./Lobby.vue";
 import Explore, { GroupByUrlQuery, SortByUrlQuery } from "./Explore.vue";
@@ -502,8 +505,8 @@ const lobby = computed(
 );
 
 const showOnboarding = computed(() => {
-  // Force Onboarding if this debug boolean is set to true
-  if (DEBUG_MODE) return true;
+  // Force Onboarding if one of the two debug options is set to true
+  if (DEBUG_MODE || FORCE_ONBOARDING_TO_SHOW) return true;
 
   // If null (endpoint failed), skip onboarding to avoid blocking the user
   if (componentsOnHead.value === null) return false;
@@ -1001,10 +1004,16 @@ onBeforeUnmount(() => {
   overflow-y: auto;
   scrollbar-width: thin;
 }
-body.dark .scrollable {
+.scrollable-horizontal {
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+body.dark .scrollable,
+body.dark .scrollable-horizontal {
   scrollbar-color: @colors-neutral-800 @colors-black;
 }
-body.light .scrollable {
+body.light .scrollable,
+body.light .scrollable-horizontal {
   scrollbar-color: @colors-neutral-200 @colors-white;
 }
 
