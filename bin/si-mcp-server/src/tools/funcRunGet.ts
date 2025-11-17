@@ -15,7 +15,7 @@ import { decodeBase64 } from "@std/encoding/base64";
 const name = "func-run-get";
 const title = "Get a function run information";
 const description =
-  `<description>Get the information about a function exeuction run. Returns the state of the function run, the componentId and componentName it was for, the schemaName, and the function name, description, kind, arguments, and result - if asked, it will also return the logs and the executed source code. On failure, returns error details</description><usage>Use this tool when the user asks you to work with or troubleshoot a function run - for example, when an action, qualification, or other kind of function as failed.</usage>`;
+  `<description>Get the information about a function execution run. Returns the state of the function run, the componentId and componentName it was for, the schemaName, and the function name, description, kind, arguments, and result - if asked, it will also return the logs and the executed source code. On failure, returns error details</description><usage>Use this tool when the user asks you to work with or troubleshoot a function run - for example, when an action, qualification, or other kind of function as failed.</usage>`;
 
 const GetFuncRunInputSchemaRaw = {
   changeSetId: z
@@ -97,6 +97,7 @@ const GetFuncRunOutputSchemaRaw = {
           "Attribute",
           "Authentication",
           "CodeGeneration",
+          "Debug",
           "Intrinsic",
           "Qualification",
           "SchemaVariantDefinition",
