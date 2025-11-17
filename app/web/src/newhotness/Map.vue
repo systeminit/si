@@ -204,7 +204,7 @@
           />
         </marker>
       </defs>
-      <g :transform="`matrix(${transformMatrix})`"></g>
+      <g id="mapRootGroup" :transform="`matrix(${transformMatrix})`"></g>
     </svg>
 
     <ComponentContextMenu
@@ -1541,7 +1541,7 @@ watch(
       }
 
       nextTick(() => {
-        const svg = d3.select("#map > svg g");
+        const svg = d3.select("#map > svg #mapRootGroup");
         // the viewbox should be based on "how much of the coordinate space is in use"
 
         // the types generated aren't exactly matching the actual data!

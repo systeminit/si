@@ -24,14 +24,6 @@ import { Context } from "../types";
  */
 export function useComponentSearch(
   searchString: MaybeRefOrGetter<string | undefined>,
-  componentsRef: MaybeRefOrGetter<ComponentInList[]>,
-): Ref<ComponentInList[]>;
-export function useComponentSearch(
-  searchString: MaybeRefOrGetter<string | undefined>,
-  componentsRef: MaybeRefOrGetter<ComponentInList[] | undefined>,
-): Ref<ComponentInList[] | undefined>;
-export function useComponentSearch(
-  searchString: MaybeRefOrGetter<string | undefined>,
   componentsRef: MaybeRefOrGetter<ComponentInList[] | undefined>,
 ): Ref<ComponentInList[] | undefined> {
   // This listens for changes to attributes so the search will be re-run if they change.
