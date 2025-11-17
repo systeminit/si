@@ -46,5 +46,16 @@ export function validateSchemaPrereqs(
     }
   }
 
+  if (schemaName.startsWith("DigitalOcean")) {
+    const hasCredential = has("/secrets/DigitalOcean Credential");
+    if (!hasCredential) {
+      return errorResponse({
+        response: { status: "bad prereq", data: {} },
+        message:
+          "This is a DigitalOcean resource, and to import it we must have /secrets/DigitalOcean Credential set to a subscription.",
+      });
+    }
+  }
+
   return null;
 }
