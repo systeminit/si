@@ -1,8 +1,8 @@
 import * as _ from "lodash-es";
 import { Ref, unref } from "vue";
 import {
-  IconNames,
   BRAND_COLOR_FILTER_HEX_CODES,
+  IconNames,
 } from "@si/vue-lib/design-system";
 import {
   AttributeTree,
@@ -27,21 +27,21 @@ export const getAssetColor = (name: string) => {
 
 export const pickBrandIconByString = (name: string): IconNames => {
   if (name.toLowerCase().includes("aws")) return "logo-aws";
-  else if (name.toLowerCase().includes("coreos")) return "logo-coreos";
-  else if (name.toLowerCase().includes("docker")) return "logo-docker";
-  else if (name.toLowerCase().includes("fastly")) return "logo-fastly";
-  else if (name.toLowerCase().includes("kubernetes")) return "logo-k8s";
-  else if (name.toLowerCase().includes("hetzner")) return "logo-hetzner";
   else if (
     name.toLowerCase().includes("microsoft") ||
     name.toLowerCase().includes("azure")
-  )
+  ) {
     return "logo-azure";
-  else if (
+  } else if (
     name.toLowerCase().includes("digitalocean") ||
     name.toLowerCase().includes("digital ocean")
-  )
+  ) {
     return "logo-digital-ocean";
+  } else if (name.toLowerCase().includes("coreos")) return "logo-coreos";
+  else if (name.toLowerCase().includes("docker")) return "logo-docker";
+  else if (name.toLowerCase().includes("fastly")) return "logo-fastly";
+  else if (name.toLowerCase().includes("hetzner")) return "logo-hetzner";
+  else if (name.toLowerCase().includes("kubernetes")) return "logo-k8s";
   else return "logo-si";
 };
 
