@@ -58,7 +58,7 @@ pub enum S3AuthConfig {
 /// Resolved S3 configuration for a specific cache
 #[derive(Debug, Clone)]
 pub struct S3CacheConfig {
-    /// S3 endpoint URL (e.g., `http://localhost:9000` or `https://s3.us-west-2.amazonaws.com`)
+    /// S3 endpoint URL (e.g., `http://localhost:9200` or `https://s3.us-west-2.amazonaws.com`)
     pub endpoint: String,
     /// Complete bucket name for this cache
     pub bucket_name: String,
@@ -90,7 +90,7 @@ pub struct S3CacheConfig {
 /// - After test prefix: `"test-uuid-1234/ab/c1/23/abc123def456"`
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ObjectStorageConfig {
-    /// S3 endpoint URL (e.g., `http://localhost:9000` or `https://s3.us-west-2.amazonaws.com`)
+    /// S3 endpoint URL (e.g., `http://localhost:9200` or `https://s3.us-west-2.amazonaws.com`)
     pub endpoint: String,
     /// Bucket prefix for all caches (e.g., `si-layer-cache`)
     pub bucket_prefix: String,
@@ -109,7 +109,7 @@ pub struct ObjectStorageConfig {
 impl Default for ObjectStorageConfig {
     fn default() -> Self {
         Self {
-            endpoint: "http://localhost:9000".to_string(),
+            endpoint: "http://localhost:9200".to_string(),
             bucket_prefix: "si-layer-cache".to_string(),
             bucket_suffix: None,
             region: "us-east-1".to_string(),
@@ -373,7 +373,7 @@ mod tests {
 
     fn test_cache_config(key_prefix: Option<String>) -> S3CacheConfig {
         let base_config = ObjectStorageConfig {
-            endpoint: "http://localhost:9000".to_string(),
+            endpoint: "http://localhost:9200".to_string(),
             bucket_prefix: "test-bucket".to_string(),
             bucket_suffix: None,
             region: "us-east-1".to_string(),
@@ -444,7 +444,7 @@ mod tests {
     #[test]
     fn test_bucket_suffix_in_final_bucket_name() {
         let base_config = ObjectStorageConfig {
-            endpoint: "http://localhost:9000".to_string(),
+            endpoint: "http://localhost:9200".to_string(),
             bucket_prefix: "si-layer-cache".to_string(),
             bucket_suffix: Some("production".to_string()),
             region: "us-east-1".to_string(),

@@ -184,11 +184,11 @@ services:
       - "-c"
       - |
         /usr/local/bin/init-buckets.sh &&
-        exec /app/versitygw --port :9000 --access siadmin --secret bugbear posix /data
+        exec /app/versitygw --port :9200 --access siadmin --secret bugbear posix /data
     environment:
       - "VGW_DATA_DIR=/data"
     ports:
-      - "9000:9000" # S3 API
+      - "9200:9200" # S3 API
     healthcheck:
       test:
         - "CMD-SHELL"
