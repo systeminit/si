@@ -66,6 +66,13 @@ export async function queryExistingSet(
       continue;
     }
 
+    // Fetch schema name from cache
+    const schemaName = await ctx.getSchemaName(
+      workspaceId,
+      changeSetId,
+      comp.schemaId,
+    );
+
     // Log component loading with schema name
     await logComponentWithSchema(
       ctx,
@@ -80,6 +87,7 @@ export async function queryExistingSet(
     existing.push({
       id: comp.id,
       schemaId: comp.schemaId,
+      schemaName: schemaName,
       name: comp.name,
       resourceId: comp.resourceId,
       attributes: filterComponentAttributes(comp.attributes || {}),

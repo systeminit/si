@@ -32,7 +32,7 @@
  * @module
  */
 
-import { ArgumentValue, Type, ValidationError } from "@cliffy/command";
+import { type ArgumentValue, Type, ValidationError } from "@cliffy/command";
 import { dirname } from "@std/path";
 import { Project } from "../project.ts";
 

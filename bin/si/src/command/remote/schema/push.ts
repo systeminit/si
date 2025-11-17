@@ -1,20 +1,20 @@
 import {
   ChangeSetsApi,
-  FindSchemaV1Response,
+  type FindSchemaV1Response,
   FuncsApi,
-  GetFuncV1Response,
+  type GetFuncV1Response,
   SchemasApi,
 } from "@systeminit/api-client";
 import { AxiosError } from "axios";
-import { Context } from "../../../context.ts";
-import { AuthenticatedCliContext } from "../../../cli/helpers.ts";
+import type { Context } from "../../../context.ts";
+import type { AuthenticatedCliContext } from "../../../cli/helpers.ts";
 import { unknownValueToErrorMessage } from "../../../helpers.ts";
 import { SCHEMA_FILE_FORMAT_VERSION } from "../../../config.ts";
 import {
-  AbsoluteDirectoryPath,
+  type AbsoluteDirectoryPath,
   FunctionKind,
   normalizeFsName,
-  Project,
+  type Project,
 } from "../../../project.ts";
 import type { Logger } from "@logtape/logtape";
 

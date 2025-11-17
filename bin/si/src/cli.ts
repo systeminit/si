@@ -12,7 +12,7 @@ import { CompletionsCommand } from "@cliffy/command/completions";
 import * as prompt from "./cli/prompt.ts";
 import {
   RootPath,
-  RootPathNotFoundError,
+  type RootPathNotFoundError,
   RootPathType,
 } from "./cli/root-path.ts";
 import { initializeCliContextWithAuth } from "./cli/helpers.ts";
@@ -20,7 +20,7 @@ import { callWhoami } from "./command/whoami.ts";
 import { callProjectInit } from "./command/project/init.ts";
 import { callRemoteSchemaPull } from "./command/remote/schema/pull.ts";
 import { callSchemaScaffoldGenerate } from "./command/schema/scaffold/generate.ts";
-import { ApiContext, apiContext } from "./api.ts";
+import { type ApiContext, apiContext } from "./api.ts";
 import { unknownValueToErrorMessage } from "./helpers.ts";
 import { Context } from "./context.ts";
 import * as jwt from "./jwt.ts";
@@ -35,11 +35,11 @@ import { callComponentGet } from "./command/component/get.ts";
 import { callComponentUpdate } from "./command/component/update.ts";
 import { callComponentDelete } from "./command/component/delete.ts";
 import { callComponentSearch } from "./command/component/search.ts";
-import { type TemplateContextOptions } from "./template.ts";
-import { type ComponentGetOptions } from "./component/get.ts";
-import { type ComponentUpdateOptions } from "./component/update.ts";
-import { type ComponentDeleteOptions } from "./component/delete.ts";
-import { type ComponentSearchOptions } from "./component/search.ts";
+import type { TemplateContextOptions } from "./template.ts";
+import type { ComponentGetOptions } from "./component/get.ts";
+import type { ComponentUpdateOptions } from "./component/update.ts";
+import type { ComponentDeleteOptions } from "./component/delete.ts";
+import type { ComponentSearchOptions } from "./component/search.ts";
 
 /** Current version of the SI CLI */
 const VERSION = "0.1.0";
@@ -83,7 +83,11 @@ export async function start() {
       ctx = await Context.init({ verbose: 0 });
     }
 
+    // Log error with stack trace for debugging
     ctx.logger.error(errorMsg);
+    if (error instanceof Error && error.stack) {
+      console.error(error.stack);
+    }
 
     const [command, ...args] = Deno.args;
 
@@ -259,32 +263,34 @@ function buildRemoteSchemaCommand() {
       createSubCommand()
         .description(
           "Pulls schemas from your remote System Initiative workspace. " +
-          "Supports wildcard patterns like 'Fastly::*' to pull all schemas in a category, " +
-          "or '*' to pull all schemas.",
+            "Supports wildcard patterns like 'Fastly::*' to pull all schemas in a category, " +
+            "or '*' to pull all schemas.",
         )
         .arguments("[...SCHEMA_NAME:string]")
         .option(
           "--builtins",
           "Include builtin schemas (schemas you don't own). By default, builtins are skipped.",
         )
-        .action(async ({ root, apiBaseUrl, apiToken, builtins }, ...schemaNames) => {
-          const project = createProject(root);
-          const apiCtx = await createApiContext(apiBaseUrl, apiToken);
-          let finalSchemaNames;
-          if (schemaNames.length > 0) {
-            finalSchemaNames = schemaNames;
-          } else {
-            finalSchemaNames = [await prompt.schemaName(undefined, project)];
-          }
+        .action(
+          async ({ root, apiBaseUrl, apiToken, builtins }, ...schemaNames) => {
+            const project = createProject(root);
+            const apiCtx = await createApiContext(apiBaseUrl, apiToken);
+            let finalSchemaNames;
+            if (schemaNames.length > 0) {
+              finalSchemaNames = schemaNames;
+            } else {
+              finalSchemaNames = [await prompt.schemaName(undefined, project)];
+            }
 
-          await callRemoteSchemaPull(
-            Context.instance(),
-            project,
-            apiCtx,
-            finalSchemaNames,
-            builtins ?? false,
-          );
-        }),
+            await callRemoteSchemaPull(
+              Context.instance(),
+              project,
+              apiCtx,
+              finalSchemaNames,
+              builtins ?? false,
+            );
+          },
+        ),
     )
     .command(
       "push",

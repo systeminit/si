@@ -160,7 +160,11 @@ Deno.test("Dry-run logic - should not delete when dry-run is true", () => {
     deleteWasCalled = true;
   }
 
-  assertEquals(deleteWasCalled, false, "Delete should not be called in dry-run mode");
+  assertEquals(
+    deleteWasCalled,
+    false,
+    "Delete should not be called in dry-run mode",
+  );
 });
 
 Deno.test("Dry-run logic - should delete when dry-run is false or undefined", () => {
@@ -185,8 +189,16 @@ Deno.test("Dry-run logic - should delete when dry-run is false or undefined", ()
     deleteWasCalled2 = true;
   }
 
-  assertEquals(deleteWasCalled1, true, "Delete should be called when dry-run is false");
-  assertEquals(deleteWasCalled2, true, "Delete should be called when dry-run is undefined");
+  assertEquals(
+    deleteWasCalled1,
+    true,
+    "Delete should be called when dry-run is false",
+  );
+  assertEquals(
+    deleteWasCalled2,
+    true,
+    "Delete should be called when dry-run is undefined",
+  );
 });
 
 Deno.test("Already deleted component - should handle gracefully", () => {
@@ -201,7 +213,11 @@ Deno.test("Already deleted component - should handle gracefully", () => {
   // Check if already marked for deletion
   const isAlreadyDeleted = component.toDelete;
 
-  assertEquals(isAlreadyDeleted, true, "Component should be marked as toDelete");
+  assertEquals(
+    isAlreadyDeleted,
+    true,
+    "Component should be marked as toDelete",
+  );
 
   // In this case, we should not call delete API again
   let deleteApiCalled = false;
@@ -209,7 +225,11 @@ Deno.test("Already deleted component - should handle gracefully", () => {
     deleteApiCalled = true;
   }
 
-  assertEquals(deleteApiCalled, false, "Delete API should not be called for already deleted component");
+  assertEquals(
+    deleteApiCalled,
+    false,
+    "Delete API should not be called for already deleted component",
+  );
 });
 
 Deno.test("Not deleted component - should proceed with deletion", () => {

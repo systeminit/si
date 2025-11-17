@@ -7,7 +7,7 @@
  * @module
  */
 
-import { Context } from "../../context.ts";
+import type { Context } from "../../context.ts";
 import { runTemplate, type TemplateContextOptions } from "../../template.ts";
 
 /**

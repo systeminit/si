@@ -301,7 +301,10 @@ export function displayComponentInfo(cacheData: ComponentGetCache): void {
 
   if (cacheData.resourceData) {
     ctx.logger.info("Resource Data:");
-    formatJsonWithAlignment(ctx, JSON.stringify(cacheData.resourceData, null, 2));
+    formatJsonWithAlignment(
+      ctx,
+      JSON.stringify(cacheData.resourceData, null, 2),
+    );
   }
 
   if (cacheData.resource) {

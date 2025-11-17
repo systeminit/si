@@ -3,3 +3,4 @@ schemas/
 overlays/
 .siroot
 si
+tmpl/**/*transpile*

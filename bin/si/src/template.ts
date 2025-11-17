@@ -188,8 +188,11 @@ export async function runTemplate(
       });
     } catch (error) {
       ctx.logger.error(
-        `Failed to transpile TypeScript template: {message}`,
-        { message: error instanceof Error ? error.message : String(error) },
+        `Failed to transpile TypeScript template: {message} {stack}`,
+        {
+          message: error instanceof Error ? error.message : String(error),
+          stack: error instanceof Error ? error.stack : undefined,
+        },
       );
       throw error;
     }
