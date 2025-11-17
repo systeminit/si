@@ -1,7 +1,7 @@
 <template>
   <div
     data-testid="lobby"
-    class="absolute w-screen h-screen bg-neutral-900 z-[1000] flex flex-col items-center justify-center"
+    class="absolute top-[60px] w-screen h-[calc(100vh-60px)] bg-neutral-900 z-[1000] flex flex-col items-center justify-center"
   >
     <!-- Floating panel (holds box shadow)  -->
     <div

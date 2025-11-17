@@ -10,7 +10,7 @@
       :class="
         clsx(
           'navbar relative shadow-[0_4px_4px_0_rgba(0,0,0,0.15)] border-b',
-          'z-90 h-[60px] overflow-hidden shrink-0 flex flex-row justify-between select-none',
+          'z-[1001] h-[60px] overflow-hidden shrink-0 flex flex-row justify-between select-none',
           'bg-neutral-800 border-neutral-600 text-white',
           windowWidth > 740 && 'gap-sm',
         )
@@ -531,6 +531,10 @@ watch(
     }
 
     if (span.value && !lobby.value) {
+      span.value.setAttribute(
+        "numOpenChangeSets",
+        openChangeSets.value.length || -1,
+      );
       span.value.end();
       span.value = undefined;
     }
