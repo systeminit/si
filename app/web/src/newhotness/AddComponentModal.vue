@@ -647,7 +647,7 @@ const fzfInstance = computed(() => {
   // Get the same filtering logic for consistency
   if (selectedFilter.value) {
     filteredResults.push(
-      ...getCategoriesAndCountForFilterString(selectedFilter.value).categories,
+      ...getCategoriesAndCountForFilterStrings(selectedFilter.value).categories,
     );
   } else {
     filteredResults.push(...categories.value);
@@ -665,7 +665,7 @@ const filteredCategories = computed(() => {
   // Filtering by the selected top level category filter
   if (selectedFilter.value) {
     filteredResults.push(
-      ...getCategoriesAndCountForFilterString(selectedFilter.value).categories,
+      ...getCategoriesAndCountForFilterStrings(selectedFilter.value).categories,
     );
   } else {
     filteredResults.push(...categories.value);
@@ -847,25 +847,37 @@ const foundCategoryMatch = (categoryName: string, category: UICategory) => {
   return category.name.toLowerCase().includes(categoryName.toLowerCase());
 };
 
-const getCategoriesAndCountForFilterString = (categoryName = "All") => {
+const getCategoriesAndCountForFilterStrings = (
+  categoryFilterStrings: string | Array<string> = "All",
+) => {
+  const filterForOneString = (filterStr: string) => {
+    const output: UICategory[] = [];
+    categories.value.forEach((category) => {
+      const filtered: UICategory = { ...category, assets: [] };
+      category.assets.forEach((asset) => {
+        if (foundCategoryMatch(filterStr, category)) {
+          count++;
+          filtered.assets.push(asset);
+        }
+      });
+      if (filtered.assets.length > 0) {
+        output.push(filtered);
+      }
+    });
+    return output;
+  };
+
   let count = 0;
   let filteredCategories: UICategory[] = [];
 
-  categories.value.forEach((category) => {
-    const filtered: UICategory = { ...category, assets: [] };
-    category.assets.forEach((asset) => {
-      if (foundCategoryMatch(categoryName, category)) {
-        count++;
-        filtered.assets.push(asset);
-      }
-    });
-    if (filtered.assets.length > 0) {
-      filteredCategories.push(filtered);
-    }
-  });
-
-  if (categoryName === "All") {
+  if (categoryFilterStrings === "All") {
     filteredCategories = categories.value;
+  } else if (Array.isArray(categoryFilterStrings)) {
+    categoryFilterStrings.forEach((filterStr) => {
+      filteredCategories.push(...filterForOneString(filterStr));
+    });
+  } else {
+    filteredCategories = filterForOneString(categoryFilterStrings);
   }
 
   return {
@@ -879,30 +891,30 @@ const componentFilters = computed((): AssetFilter[] => {
     {
       name: "All",
       icon: "logo-si", // TODO(Wendy) - different logo for this?
-      count: getCategoriesAndCountForFilterString().count,
+      count: getCategoriesAndCountForFilterStrings().count,
     },
     {
       name: "AWS",
       icon: pickBrandIconByString("aws"),
-      count: getCategoriesAndCountForFilterString("aws").count,
+      count: getCategoriesAndCountForFilterStrings("aws").count,
       color: BRAND_COLOR_FILTER_HEX_CODES.AWS,
     },
     {
       name: "Hetzner",
       icon: pickBrandIconByString("hetzner"),
-      count: getCategoriesAndCountForFilterString("hetzner").count,
+      count: getCategoriesAndCountForFilterStrings("hetzner").count,
       color: BRAND_COLOR_FILTER_HEX_CODES.Hetzner,
     },
     {
       name: "Fastly",
       icon: pickBrandIconByString("fastly"),
-      count: getCategoriesAndCountForFilterString("fastly").count,
+      count: getCategoriesAndCountForFilterStrings("fastly").count,
       color: BRAND_COLOR_FILTER_HEX_CODES.Fastly,
     },
     {
       name: "Templates",
       icon: "logo-si", // TODO(Wendy) - different logo for this?
-      count: getCategoriesAndCountForFilterString("Templates").count,
+      count: getCategoriesAndCountForFilterStrings("Templates").count,
     },
   ];
 
@@ -910,8 +922,20 @@ const componentFilters = computed((): AssetFilter[] => {
     filters.splice(2, 0, {
       name: "Microsoft",
       icon: "logo-azure",
-      count: getCategoriesAndCountForFilterString("microsoft").count,
+      count: getCategoriesAndCountForFilterStrings("microsoft").count,
       color: BRAND_COLOR_FILTER_HEX_CODES.MS,
+    });
+  }
+
+  if (ffStore.DIGITAL_OCEAN_ONBOARDING) {
+    filters.splice(4, 0, {
+      name: "DigitalOcean",
+      icon: "logo-digital-ocean",
+      count: getCategoriesAndCountForFilterStrings([
+        "digitalocean",
+        "digital ocean",
+      ]).count,
+      color: BRAND_COLOR_FILTER_HEX_CODES.DigitalOcean,
     });
   }
 
