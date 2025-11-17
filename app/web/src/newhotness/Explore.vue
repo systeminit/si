@@ -1845,10 +1845,11 @@ provide("EXPLORE_CONTEXT", exploreContext.value);
 // searchString can be null because VormInput sets the value to null onBlur if it's an empty string
 const searchString = ref<string | null>("");
 const showSearchFooter = ref(false);
-const filteredComponents = useComponentSearch(
+const filteredComponentsRaw = useComponentSearch(
   () => searchString.value ?? "",
   componentList,
 );
+const filteredComponents = computed(() => filteredComponentsRaw.value ?? []);
 const componentsById = computed(
   () =>
     filteredComponents.value?.reduce((accum, comp) => {
