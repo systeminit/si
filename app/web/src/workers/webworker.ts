@@ -779,13 +779,13 @@ const handleHammer = async (db: Database, msg: WorkspaceAtomMessage) => {
       span.setAttributes({
         needToInsertMTM: true,
       });
-      const inserted = insertAtomMTM(db, msg.atom, indexChecksum);
-      span.setAttribute("insertedMTM", await inserted);
+      const inserted = await insertAtomMTM(db, msg.atom, indexChecksum);
+      span.setAttribute("insertedMTM", inserted);
     }
 
-    updateChangeSetWithNewIndex(db, msg.atom);
+    await updateChangeSetWithNewIndex(db, msg.atom);
     span.setAttribute("updatedWithNewIndex", true);
-    removeOldIndex(db, span);
+    await removeOldIndex(db, span);
 
     if (
       COMPUTED_KINDS.includes(msg.atom.kind) ||
@@ -899,7 +899,15 @@ const bulkInsertAtomMTMs = async (
       on conflict (index_checksum, kind, args) do update set checksum=excluded.checksum
       ;`;
 
-    await dbWrite(db, { sql, bind });
+    try {
+      await dbWrite(db, { sql, bind });
+    } catch (err: unknown) {
+      const span = trace.getActiveSpan();
+      span?.addEvent("error", {
+        source: "bulkInsertAtomMTMs",
+        error: err instanceof Error ? err.toString() : "unknown",
+      });
+    }
   }
 };
 
@@ -1233,7 +1241,7 @@ const handleDeploymentPatchMessage = async (
       modifications.push({ ...p, data: doc, checksum: p.toChecksum });
     }
 
-    if (inserts.length > 0) writeDeploymentAtoms(db, inserts);
+    if (inserts.length > 0) await writeDeploymentAtoms(db, inserts);
 
     if (removals.length > 0) {
       const bind: string[] = [];
@@ -1250,7 +1258,7 @@ const handleDeploymentPatchMessage = async (
       });
     }
 
-    if (modifications.length > 0) writeDeploymentAtoms(db, modifications);
+    if (modifications.length > 0) await writeDeploymentAtoms(db, modifications);
 
     const kinds: Set<GlobalEntity> = new Set();
     [...modifications, ...inserts, ...removals]
@@ -1309,7 +1317,7 @@ const handleWorkspacePatchMessage = async (
       if (data.patches.length === 0) {
         try {
           await initIndexAndChangeSet(db, data.meta, span);
-          updateChangeSetWithNewIndex(db, data.meta);
+          await updateChangeSetWithNewIndex(db, data.meta);
         } catch (err) {
           error("Failed to handle empty patch", data);
         }
@@ -1411,9 +1419,9 @@ const handleWorkspacePatchMessage = async (
         (a) => a.kind === EntityKind.IncomingConnections,
       );
 
-      updateChangeSetWithNewIndex(db, data.meta);
+      await updateChangeSetWithNewIndex(db, data.meta);
       span.setAttribute("updatedWithNewIndex", true);
-      removeOldIndex(db, span);
+      await removeOldIndex(db, span);
 
       await Promise.all(
         nonListAtomsToBust.map(async (atom) =>
@@ -1485,7 +1493,7 @@ const handlePatchOperations = async (
       checksum: op.atom.toChecksum,
     }));
   const bulkMtmStart = performance.now();
-  bulkInsertAtomMTMs(db, noops, indexChecksum);
+  await bulkInsertAtomMTMs(db, noops, indexChecksum);
   span.setAttribute(
     "performance.NoopBulkMtm",
     performance.now() - bulkMtmStart,
@@ -1576,14 +1584,14 @@ const handlePatchOperations = async (
   // Ok we have all the patches we could apply, insert them into the database
   if (atomsToInsert.length > 0) {
     const startCreate = performance.now();
-    bulkCreateAtoms(db, atomsToInsert);
+    await bulkCreateAtoms(db, atomsToInsert);
     span.setAttribute(
       "performance.bulkCreateAtoms",
       performance.now() - startCreate,
     );
 
     const startMtm = performance.now();
-    bulkInsertAtomMTMs(db, atomsToInsert, indexChecksum);
+    await bulkInsertAtomMTMs(db, atomsToInsert, indexChecksum);
     span.setAttribute(
       "performance.bulkCreateMtms",
       performance.now() - startMtm,
@@ -1612,8 +1620,8 @@ const handlePatchOperations = async (
         continue;
       }
 
-      removeAtom(db, indexChecksum, atom.kind, atom.id, atom.checksum);
-      postProcess(
+      await removeAtom(db, indexChecksum, atom.kind, atom.id, atom.checksum);
+      await postProcess(
         db,
         workspaceId,
         changeSetId,
@@ -1641,7 +1649,7 @@ const handlePatchOperations = async (
       );
 
       if (doc)
-        postProcess(
+        await postProcess(
           db,
           workspaceId,
           changeSetId,
@@ -1660,7 +1668,7 @@ const handlePatchOperations = async (
 
   for (const atom of atomsToInsert) {
     try {
-      postProcess(
+      await postProcess(
         db,
         workspaceId,
         changeSetId,
@@ -1828,8 +1836,8 @@ const mjolnirBulk = async (
     }
   }
 
-  bulkCreateAtoms(db, cachedAtoms);
-  bulkInsertAtomMTMs(db, cachedAtoms, indexChecksum);
+  await bulkCreateAtoms(db, cachedAtoms);
+  await bulkInsertAtomMTMs(db, cachedAtoms, indexChecksum);
 
   const pattern = [
     "v2",
@@ -1922,8 +1930,8 @@ const mjolnirBulk = async (
   );
   await handleHammer(db, msg);
 
-  bulkCreateAtoms(db, req.data.successful);
-  bulkInsertAtomMTMs(db, req.data.successful, indexChecksum);
+  await bulkCreateAtoms(db, req.data.successful);
+  await bulkInsertAtomMTMs(db, req.data.successful, indexChecksum);
 
   for (const obj of req.data.successful) {
     returnedFn(
@@ -1931,7 +1939,7 @@ const mjolnirBulk = async (
       `${obj.frontEndObject.kind}.${obj.frontEndObject.id}`,
     );
 
-    postProcess(
+    await postProcess(
       db,
       workspaceId,
       changeSetId,
@@ -1941,7 +1949,7 @@ const mjolnirBulk = async (
       indexChecksum,
     );
 
-    bustCacheAndReferences(
+    await bustCacheAndReferences(
       db,
       workspaceId,
       changeSetId,
@@ -2002,7 +2010,7 @@ const deploymentMjolnir = async (
   if (!req || req.status !== 200) return;
 
   const { checksum, data } = req.data;
-  writeDeploymentAtoms(db, [{ checksum, data, kind, id }]);
+  await writeDeploymentAtoms(db, [{ checksum, data, kind, id }]);
 };
 
 const mjolnir = async (
@@ -2025,17 +2033,17 @@ const mjolnir = async (
     // storing the index becomes useful here, we can lookup the
     // checksum we would expect to be returned, and see if we have it already
     if (!checksum) {
-      return mjolnirJob(workspaceId, changeSetId, kind, id, checksum);
+      return await mjolnirJob(workspaceId, changeSetId, kind, id, checksum);
     }
 
     // these are sent after patches are completed
     // double check that i am still necessary!
     const exists = await workspaceAtomExistsOnIndexes(db, kind, id, checksum);
     if (exists.length === 0) {
-      return mjolnirJob(workspaceId, changeSetId, kind, id, checksum);
+      return await mjolnirJob(workspaceId, changeSetId, kind, id, checksum);
     } // if i have it, bust!
     else
-      bustCacheAndReferences(
+      await bustCacheAndReferences(
         db,
         workspaceId,
         changeSetId,
@@ -2231,7 +2239,7 @@ const pruneAtomsForClosedChangeSet = async (
       `,
       bind: [changeSetId],
     });
-    removeOldIndex(db, span);
+    await removeOldIndex(db, span);
     span.end();
   });
 };
@@ -2680,7 +2688,7 @@ const niflheim = async (
     bulkInflight({ workspaceId, changeSetId });
 
     // clear out references, no queries have been performed yet
-    clearAllWeakReferences(db, changeSetId);
+    await clearAllWeakReferences(db, changeSetId);
 
     const pattern = CHANGE_SET_INDEX_URL(workspaceId, changeSetId);
 
@@ -2723,7 +2731,7 @@ const niflheim = async (
       toIndexChecksum: indexChecksum,
       fromIndexChecksum: indexChecksum,
     };
-    initIndexAndChangeSet(db, meta, frigg);
+    await initIndexAndChangeSet(db, meta, frigg);
     debug("niflheim atom count", atoms.length);
     frigg.setAttribute("numEntries", atoms.length);
     frigg.setAttribute("indexChecksum", indexChecksum);
@@ -2748,7 +2756,7 @@ const niflheim = async (
         db,
         chunk,
       );
-      bulkInsertAtomMTMs(db, existingDocuments, indexChecksum, chunkSize);
+      await bulkInsertAtomMTMs(db, existingDocuments, indexChecksum, chunkSize);
       hammerObjs.push(...hammers);
     }
 
@@ -2763,7 +2771,7 @@ const niflheim = async (
         setCachedDocument(atom, doc);
       }
 
-      postProcess(
+      await postProcess(
         db,
         workspaceId,
         changeSetId,
@@ -2776,7 +2784,7 @@ const niflheim = async (
         false,
       );
 
-      bustCacheAndReferences(
+      await bustCacheAndReferences(
         db,
         workspaceId,
         changeSetId,
@@ -2804,7 +2812,7 @@ const niflheim = async (
     if (atomsToUnlink.length > 0) {
       // We are not awaiting this promise so that we can continue forward since we don't
       // need to see the result
-      bulkRemoveAtoms(db, atomsToUnlink, indexChecksum);
+      await bulkRemoveAtoms(db, atomsToUnlink, indexChecksum);
     }
 
     // store the MvIndex itself
@@ -2816,10 +2824,10 @@ const niflheim = async (
       toChecksum: indexChecksum,
     };
     await createAtom(db, mvAtom, req.data.frontEndObject.data);
-    insertAtomMTM(db, mvAtom, indexChecksum);
+    await insertAtomMTM(db, mvAtom, indexChecksum);
 
     // link the checksum to the change set (just in case its not done in init)
-    updateChangeSetWithNewIndex(db, meta);
+    await updateChangeSetWithNewIndex(db, meta);
 
     // Now to deal with all the atoms we don't have present. Throw the big hammer.
     if (hammerObjs.length > 0) {
@@ -3573,6 +3581,18 @@ const getReferences = async (
         source: "getReferences",
         sourceKind: kind,
       });
+      /**
+       * NOTE: neither `mjolnir` or `weakReference` are await'd on purpose
+       * this `getReferences` call is inside the client "read" path.
+       *
+       * We want to return from that path ASAP to keep the UI responsive.
+       * If there is a thrown hammer, when it returns, it busts cache to re-read
+       *
+       * Keeping track of references is needed for the write path, so we don't need
+       * to `await` and slow down the read path. This will resolve before subsequent writes
+       * from a wholly different patch message.
+       * */
+
       mjolnir(
         db,
         workspaceId,
@@ -3612,6 +3632,7 @@ const getReferences = async (
         source: "getReferences",
         sourceKind: kind,
       });
+      // no await on purpose
       mjolnir(
         db,
         workspaceId,
