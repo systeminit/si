@@ -52,6 +52,8 @@ pub enum LayerDbError {
     CacheUpdateNoHeaders,
     #[error("canonical file error: {0}")]
     CanonicalFile(#[from] CanonicalFileError),
+    #[error("Configuration validation error: {0}")]
+    ConfigValidation(String),
     #[error("content conversion error: {0}")]
     ContentConversion(String),
     #[error("could not convert to key from string")]
@@ -120,6 +122,12 @@ pub enum LayerDbError {
     RetryQueueFileWrite(#[source] std::io::Error),
     #[error("invalid retry queue filename: {0:?}")]
     RetryQueueInvalidFilename(std::ffi::OsString),
+    #[error("retry queue send error: {0}")]
+    RetryQueueSend(String),
+    #[error("S3 error: {0}")]
+    S3(String),
+    #[error("S3 not configured")]
+    S3NotConfigured,
     #[error("serde json error: {0}")]
     SerdeJson(#[from] serde_json::Error),
     #[error("tokio oneshot recv error: {0}")]
@@ -134,6 +142,15 @@ impl LayerDbError {
         E: error::Error + Send + Sync + 'static,
     {
         Self::NatsHeaderParse(Box::new(err))
+    }
+}
+
+impl<E> From<aws_sdk_s3::error::SdkError<E>> for LayerDbError
+where
+    E: std::error::Error + Send + Sync + 'static,
+{
+    fn from(err: aws_sdk_s3::error::SdkError<E>) -> Self {
+        LayerDbError::S3(err.to_string())
     }
 }
 

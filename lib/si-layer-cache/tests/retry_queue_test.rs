@@ -7,6 +7,7 @@ use si_events::{
     WorkspacePk,
 };
 use si_layer_cache::{
+    BackendType,
     event::{
         LayeredEvent,
         LayeredEventKind,
@@ -54,7 +55,10 @@ async fn test_enqueue_and_retrieve() {
     // Enqueue an event
     let event = create_test_event("test_cache");
     queue_tx
-        .send(RetryQueueMessage::Enqueue(event.clone()))
+        .send(RetryQueueMessage::Enqueue {
+            event: event.clone(),
+            backend: BackendType::Postgres,
+        })
         .unwrap();
 
     // Should receive it as ready (backoff starts at 100ms, but immediately ready after enqueue)
@@ -90,7 +94,12 @@ async fn test_mark_success_removes_from_queue() {
 
     // Enqueue event
     let event = create_test_event("test_cache");
-    queue_tx.send(RetryQueueMessage::Enqueue(event)).unwrap();
+    queue_tx
+        .send(RetryQueueMessage::Enqueue {
+            event,
+            backend: BackendType::Postgres,
+        })
+        .unwrap();
 
     // Receive ready retry
     tokio::time::sleep(tokio::time::Duration::from_millis(150)).await;
@@ -138,7 +147,12 @@ async fn test_backoff_increases_on_failure() {
 
     // Enqueue event
     let event = create_test_event("test_cache");
-    queue_tx.send(RetryQueueMessage::Enqueue(event)).unwrap();
+    queue_tx
+        .send(RetryQueueMessage::Enqueue {
+            event,
+            backend: BackendType::Postgres,
+        })
+        .unwrap();
 
     // Receive first retry
     tokio::time::sleep(tokio::time::Duration::from_millis(150)).await;
@@ -184,7 +198,10 @@ async fn test_scan_existing_queues() {
     // Create first manager and enqueue
     let mut manager1 = RetryQueueManager::new(config.clone());
     let event = create_test_event("test_cache");
-    manager1.enqueue(event).await.unwrap();
+    manager1
+        .enqueue(event, BackendType::Postgres)
+        .await
+        .unwrap();
 
     // Create second manager, scan, and spawn
     let mut manager2 = RetryQueueManager::new(config);

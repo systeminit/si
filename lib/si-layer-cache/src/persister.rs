@@ -1,13 +1,21 @@
 use std::{
+    collections::HashMap,
     path::PathBuf,
     sync::Arc,
 };
 
 use chrono::Utc;
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use si_data_nats::NatsClient;
 use si_data_pg::PgPool;
 use telemetry::prelude::*;
-use telemetry_utils::metric;
+use telemetry_utils::{
+    metric,
+    monotonic,
+};
 use tokio::{
     join,
     sync::{
@@ -51,7 +59,22 @@ use crate::{
     },
     nats::layerdb_events_stream,
     pg::PgLayer,
+    s3::S3Layer,
 };
+
+/// Controls which storage backend(s) are used for reads and writes.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+pub enum PersisterMode {
+    /// Write and read from PostgreSQL only.
+    #[default]
+    PostgresOnly,
+    /// Write to both PostgreSQL and S3, read from PostgreSQL.
+    DualWrite,
+    /// Write to both PostgreSQL and S3, read from S3 with PostgreSQL fallback.
+    S3Primary,
+    /// Write and read from S3 only.
+    S3Only,
+}
 
 #[derive(Debug)]
 pub enum PersistMessage {
@@ -153,11 +176,271 @@ pub struct PersisterTask {
     retry_queue_command_tx: mpsc::UnboundedSender<crate::retry_queue::RetryQueueMessage>,
     pending_retry_rx:
         mpsc::UnboundedReceiver<(crate::event::LayeredEvent, crate::retry_queue::RetryHandle)>,
+
+    s3_layers: Option<Arc<HashMap<&'static str, S3Layer>>>,
+    mode: PersisterMode,
 }
 
 impl PersisterTask {
     const NAME: &'static str = "LayerDB::PersisterTask";
 
+    async fn do_persist_event(
+        event: &LayeredEvent,
+        mode: PersisterMode,
+        pg_pool: &PgPool,
+        s3_layers: &Option<Arc<HashMap<&'static str, S3Layer>>>,
+        layered_event_client: &LayeredEventClient,
+        retry_queue_command_tx: &mpsc::UnboundedSender<crate::retry_queue::RetryQueueMessage>,
+    ) -> LayerDbResult<()> {
+        let cache_name = event.payload.db_name.as_ref();
+
+        match mode {
+            PersisterMode::PostgresOnly => {
+                // Write only to PG
+                if let Err(e) =
+                    Self::do_write_to_backend(event, BackendType::Postgres, pg_pool, s3_layers)
+                        .await
+                {
+                    if Self::do_is_retryable(&e, BackendType::Postgres) {
+                        retry_queue_command_tx
+                            .send(crate::retry_queue::RetryQueueMessage::Enqueue {
+                                event: event.clone(),
+                                backend: BackendType::Postgres,
+                            })
+                            .map_err(|e| LayerDbError::RetryQueueSend(e.to_string()))?;
+                    }
+                    return Err(e);
+                }
+
+                monotonic!(
+                    layer_cache_persister_write_success = 1,
+                    cache_name = cache_name,
+                    backend = BackendType::Postgres.as_ref()
+                );
+            }
+
+            PersisterMode::DualWrite => {
+                // Write to both backends in parallel
+                let (pg_result, s3_result) = tokio::join!(
+                    Self::do_write_to_backend(event, BackendType::Postgres, pg_pool, s3_layers),
+                    Self::do_write_to_backend(event, BackendType::S3, pg_pool, s3_layers)
+                );
+
+                // Handle PG result
+                if let Err(e) = pg_result {
+                    error!(
+                        error = ?e,
+                        backend = "postgres",
+                        cache_name = cache_name,
+                        "dual write failed for postgres backend"
+                    );
+                    if Self::do_is_retryable(&e, BackendType::Postgres) {
+                        retry_queue_command_tx
+                            .send(crate::retry_queue::RetryQueueMessage::Enqueue {
+                                event: event.clone(),
+                                backend: BackendType::Postgres,
+                            })
+                            .map_err(|e| LayerDbError::RetryQueueSend(e.to_string()))?;
+
+                        monotonic!(
+                            layer_cache_persister_write_failed_retryable = 1,
+                            cache_name = cache_name,
+                            backend = BackendType::Postgres.as_ref(),
+                            event_kind = event.event_kind.as_ref()
+                        );
+                    }
+                } else {
+                    monotonic!(
+                        layer_cache_persister_write_success = 1,
+                        cache_name = cache_name,
+                        backend = BackendType::Postgres.as_ref()
+                    );
+                }
+
+                // Handle S3 result
+                if let Err(e) = s3_result {
+                    error!(
+                        error = ?e,
+                        backend = "s3",
+                        cache_name = cache_name,
+                        "dual write failed for s3 backend"
+                    );
+                    if Self::do_is_retryable(&e, BackendType::S3) {
+                        retry_queue_command_tx
+                            .send(crate::retry_queue::RetryQueueMessage::Enqueue {
+                                event: event.clone(),
+                                backend: BackendType::S3,
+                            })
+                            .map_err(|e| LayerDbError::RetryQueueSend(e.to_string()))?;
+
+                        monotonic!(
+                            layer_cache_persister_write_failed_retryable = 1,
+                            cache_name = cache_name,
+                            backend = BackendType::S3.as_ref(),
+                            event_kind = event.event_kind.as_ref()
+                        );
+                    }
+                } else {
+                    monotonic!(
+                        layer_cache_persister_write_success = 1,
+                        cache_name = cache_name,
+                        backend = BackendType::S3.as_ref()
+                    );
+                }
+            }
+
+            PersisterMode::S3Primary => {
+                // Write to both backends in parallel (same as DualWrite)
+                // Read preference is S3 first, but we keep PG updated for fallback
+                let (pg_result, s3_result) = tokio::join!(
+                    Self::do_write_to_backend(event, BackendType::Postgres, pg_pool, s3_layers),
+                    Self::do_write_to_backend(event, BackendType::S3, pg_pool, s3_layers)
+                );
+
+                // Handle PG result
+                if let Err(e) = pg_result {
+                    if Self::do_is_retryable(&e, BackendType::Postgres) {
+                        retry_queue_command_tx
+                            .send(crate::retry_queue::RetryQueueMessage::Enqueue {
+                                event: event.clone(),
+                                backend: BackendType::Postgres,
+                            })
+                            .map_err(|e| LayerDbError::RetryQueueSend(e.to_string()))?;
+                    }
+                } else {
+                    monotonic!(
+                        layer_cache_persister_write_success = 1,
+                        cache_name = cache_name,
+                        backend = BackendType::Postgres.as_ref()
+                    );
+                }
+
+                // Handle S3 result
+                if let Err(e) = s3_result {
+                    if Self::do_is_retryable(&e, BackendType::S3) {
+                        retry_queue_command_tx
+                            .send(crate::retry_queue::RetryQueueMessage::Enqueue {
+                                event: event.clone(),
+                                backend: BackendType::S3,
+                            })
+                            .map_err(|e| LayerDbError::RetryQueueSend(e.to_string()))?;
+                    }
+                } else {
+                    monotonic!(
+                        layer_cache_persister_write_success = 1,
+                        cache_name = cache_name,
+                        backend = BackendType::S3.as_ref()
+                    );
+                }
+            }
+
+            PersisterMode::S3Only => {
+                // Write only to S3
+                if let Err(e) =
+                    Self::do_write_to_backend(event, BackendType::S3, pg_pool, s3_layers).await
+                {
+                    if Self::do_is_retryable(&e, BackendType::S3) {
+                        retry_queue_command_tx
+                            .send(crate::retry_queue::RetryQueueMessage::Enqueue {
+                                event: event.clone(),
+                                backend: BackendType::S3,
+                            })
+                            .map_err(|e| LayerDbError::RetryQueueSend(e.to_string()))?;
+                    }
+                    return Err(e);
+                }
+
+                monotonic!(
+                    layer_cache_persister_write_success = 1,
+                    cache_name = cache_name,
+                    backend = BackendType::S3.as_ref()
+                );
+            }
+        }
+
+        // Publish to NATS regardless of backend
+        let _ = layered_event_client
+            .publish(Arc::new(event.clone()))
+            .await?
+            .await?;
+
+        Ok(())
+    }
+
+    fn do_is_retryable(error: &LayerDbError, backend: BackendType) -> bool {
+        match backend {
+            BackendType::Postgres => crate::retry_queue::is_retryable_error(error),
+            BackendType::S3 => {
+                // S3 errors are generally retryable (network, throttling, etc)
+                matches!(error, LayerDbError::S3(_))
+            }
+        }
+    }
+
+    async fn do_write_to_backend(
+        event: &LayeredEvent,
+        backend: BackendType,
+        pg_pool: &PgPool,
+        s3_layers: &Option<Arc<HashMap<&'static str, S3Layer>>>,
+    ) -> LayerDbResult<()> {
+        match backend {
+            BackendType::Postgres => {
+                let pg_layer = PgLayer::new(pg_pool.clone(), event.payload.db_name.as_ref());
+
+                match event.event_kind {
+                    LayeredEventKind::CasInsertion
+                    | LayeredEventKind::ChangeBatchEvict
+                    | LayeredEventKind::ChangeBatchWrite
+                    | LayeredEventKind::EncryptedSecretInsertion
+                    | LayeredEventKind::Raw
+                    | LayeredEventKind::RebaseBatchEvict
+                    | LayeredEventKind::RebaseBatchWrite
+                    | LayeredEventKind::SnapshotEvict
+                    | LayeredEventKind::SnapshotWrite
+                    | LayeredEventKind::SplitSnapshotSubGraphEvict
+                    | LayeredEventKind::SplitSnapshotSubGraphWrite
+                    | LayeredEventKind::SplitSnapshotSuperGraphEvict
+                    | LayeredEventKind::SplitSnapshotSuperGraphWrite
+                    | LayeredEventKind::SplitRebaseBatchEvict
+                    | LayeredEventKind::SplitRebaseBatchWrite => {
+                        pg_layer
+                            .insert(
+                                &event.payload.key,
+                                event.payload.sort_key.as_ref(),
+                                &event.payload.value[..],
+                            )
+                            .await
+                    }
+                    LayeredEventKind::FuncRunLogWrite => {
+                        // Skip doing the write here - we don't need it. - we do it in the FunRunLog
+                        // write method directly, to ensure we write to PG in order.
+                        Ok(())
+                    }
+                    LayeredEventKind::FuncRunWrite => {
+                        FuncRunDb::insert_to_pg(&pg_layer, &event.payload).await
+                    }
+                }
+            }
+            BackendType::S3 => {
+                let s3_layers = s3_layers.as_ref().ok_or(LayerDbError::S3NotConfigured)?;
+
+                let s3_layer = s3_layers
+                    .get(event.payload.db_name.as_str())
+                    .ok_or(LayerDbError::S3NotConfigured)?;
+
+                s3_layer
+                    .insert(
+                        event.key.as_ref(),
+                        event.payload.sort_key.as_ref(),
+                        event.payload.value.as_ref(),
+                        event.payload.db_name.as_ref(),
+                    )
+                    .await
+            }
+        }
+    }
+
+    #[allow(clippy::too_many_arguments)]
     pub async fn create(
         messages: mpsc::UnboundedReceiver<PersistMessage>,
         pg_pool: PgPool,
@@ -165,6 +448,8 @@ impl PersisterTask {
         instance_id: Ulid,
         retry_queue_base_path: PathBuf,
         shutdown_token: CancellationToken,
+        s3_layers: Option<Arc<HashMap<&'static str, S3Layer>>>,
+        mode: PersisterMode,
     ) -> LayerDbResult<Self> {
         use crate::retry_queue::{
             RetryQueueConfig,
@@ -231,6 +516,8 @@ impl PersisterTask {
             shutdown_token,
             retry_queue_command_tx,
             pending_retry_rx,
+            s3_layers,
+            mode,
         })
     }
 
@@ -277,65 +564,55 @@ impl PersisterTask {
     fn spawn_persist_task(&mut self, msg: PersistMessage) {
         match msg {
             PersistMessage::Write((event, status_tx)) => {
-                let task =
-                    PersistEventTask::new(self.pg_pool.clone(), self.layered_event_client.clone());
+                let layered_event_client = self.layered_event_client.clone();
                 let retry_queue_command_tx = self.retry_queue_command_tx.clone();
                 let cache_name = event.payload.db_name.to_string();
+                let mode = self.mode;
+                let pg_pool = self.pg_pool.clone();
+                let s3_layers = self.s3_layers.clone();
+
+                let backend = match self.mode {
+                    PersisterMode::PostgresOnly => BackendType::Postgres,
+                    PersisterMode::DualWrite => BackendType::Postgres, // Primary is PG
+                    PersisterMode::S3Primary | PersisterMode::S3Only => BackendType::S3,
+                };
 
                 metric!(
                     counter.layer_cache_persister_write_attempted = 1,
                     cache_name = &cache_name,
-                    backend = BackendType::Postgres.as_ref(),
+                    backend = backend.as_ref(),
                     event_kind = event.event_kind.as_ref()
                 );
 
                 self.tracker.spawn(async move {
-                    match task.try_write_layers(event.clone(), false).await {
-                        Ok(_) => {
-                            metric!(
-                                counter.layer_cache_persister_write_success = 1,
-                                cache_name = &cache_name,
-                                backend = BackendType::Postgres.as_ref(),
-                                event_kind = event.event_kind.as_ref()
-                            );
+                    let result = Self::do_persist_event(
+                        &event,
+                        mode,
+                        &pg_pool,
+                        &s3_layers,
+                        &layered_event_client,
+                        &retry_queue_command_tx,
+                    )
+                    .await;
 
+                    match result {
+                        Ok(_) => {
                             // Emit end-to-end persistence latency
                             let latency = Utc::now()
                                 .signed_duration_since(event.metadata.timestamp)
                                 .to_std()
                                 .unwrap_or_default();
                             metric!(
-                                histogram.layer_cache_persistence_latency_seconds = latency.as_secs_f64(),
+                                histogram.layer_cache_persistence_latency_seconds =
+                                    latency.as_secs_f64(),
                                 cache_name = &cache_name,
-                                backend = BackendType::Postgres.as_ref(),
                                 operation = "write",
                                 event_kind = event.event_kind.as_ref()
                             );
 
                             status_tx.send(PersistStatus::Finished)
                         }
-                        Err(err) => {
-                            // Check if error is retryable and enqueue if so
-                            if crate::retry_queue::is_retryable_error(&err) {
-                                metric!(
-                                    counter.layer_cache_persister_write_failed_retryable = 1,
-                                    cache_name = &cache_name,
-                                    backend = BackendType::Postgres.as_ref(),
-                                    event_kind = event.event_kind.as_ref()
-                                );
-                                let _ = retry_queue_command_tx
-                                    .send(crate::retry_queue::RetryQueueMessage::Enqueue(event));
-                            } else {
-                                metric!(
-                                    counter.layer_cache_persister_write_failed_permanent = 1,
-                                    cache_name = &cache_name,
-                                    backend = BackendType::Postgres.as_ref(),
-                                    event_kind = event.event_kind.as_ref()
-                                );
-                                error!(error = ?err, "persister write task failed with non-retryable error");
-                            }
-                            status_tx.send(PersistStatus::Error(err));
-                        }
+                        Err(err) => status_tx.send(PersistStatus::Error(err)),
                     }
                 });
             }
@@ -345,8 +622,8 @@ impl PersisterTask {
                 let retry_queue_command_tx = self.retry_queue_command_tx.clone();
                 let cache_name = event.payload.db_name.to_string();
 
-                metric!(
-                    counter.layer_cache_persister_evict_attempted = 1,
+                monotonic!(
+                    layer_cache_persister_evict_attempted = 1,
                     cache_name = &cache_name,
                     backend = BackendType::Postgres.as_ref(),
                     event_kind = event.event_kind.as_ref()
@@ -355,8 +632,8 @@ impl PersisterTask {
                 self.tracker.spawn(async move {
                     match task.try_evict_layers(event.clone()).await {
                         Ok(_) => {
-                            metric!(
-                                counter.layer_cache_persister_evict_success = 1,
+                            monotonic!(
+                                layer_cache_persister_evict_success = 1,
                                 cache_name = &cache_name,
                                 backend = BackendType::Postgres.as_ref(),
                                 event_kind = event.event_kind.as_ref()
@@ -380,17 +657,20 @@ impl PersisterTask {
                         Err(err) => {
                             // Check if error is retryable and enqueue if so
                             if crate::retry_queue::is_retryable_error(&err) {
-                                metric!(
-                                    counter.layer_cache_persister_evict_failed_retryable = 1,
+                                monotonic!(
+                                    layer_cache_persister_evict_failed_retryable = 1,
                                     cache_name = &cache_name,
                                     backend = BackendType::Postgres.as_ref(),
                                     event_kind = event.event_kind.as_ref()
                                 );
                                 let _ = retry_queue_command_tx
-                                    .send(crate::retry_queue::RetryQueueMessage::Enqueue(event));
+                                    .send(crate::retry_queue::RetryQueueMessage::Enqueue {
+                                        event,
+                                        backend: BackendType::Postgres,
+                                    });
                             } else {
-                                metric!(
-                                    counter.layer_cache_persister_evict_failed_permanent = 1,
+                                monotonic!(
+                                    layer_cache_persister_evict_failed_permanent = 1,
                                     cache_name = &cache_name,
                                     backend = BackendType::Postgres.as_ref(),
                                     event_kind = event.event_kind.as_ref()
@@ -408,8 +688,8 @@ impl PersisterTask {
                 let retry_queue_command_tx = self.retry_queue_command_tx.clone();
                 let cache_name = event.payload.db_name.to_string();
 
-                metric!(
-                    counter.layer_cache_persister_evict_memory_only_attempted = 1,
+                monotonic!(
+                    layer_cache_persister_evict_memory_only_attempted = 1,
                     cache_name = &cache_name,
                     backend = BackendType::Postgres.as_ref(),
                     event_kind = event.event_kind.as_ref()
@@ -418,8 +698,8 @@ impl PersisterTask {
                 self.tracker.spawn(async move {
                     match task.try_evict_memory_only(event.clone()).await {
                         Ok(_) => {
-                            metric!(
-                                counter.layer_cache_persister_evict_memory_only_success = 1,
+                            monotonic!(
+                                layer_cache_persister_evict_memory_only_success = 1,
                                 cache_name = &cache_name,
                                 backend = BackendType::Postgres.as_ref(),
                                 event_kind = event.event_kind.as_ref()
@@ -443,17 +723,20 @@ impl PersisterTask {
                         Err(err) => {
                             // Check if error is retryable and enqueue if so
                             if crate::retry_queue::is_retryable_error(&err) {
-                                metric!(
-                                    counter.layer_cache_persister_evict_memory_only_failed_retryable = 1,
+                                monotonic!(
+                                    layer_cache_persister_evict_memory_only_failed_retryable = 1,
                                     cache_name = &cache_name,
                                     backend = BackendType::Postgres.as_ref(),
                                     event_kind = event.event_kind.as_ref()
                                 );
                                 let _ = retry_queue_command_tx
-                                    .send(crate::retry_queue::RetryQueueMessage::Enqueue(event));
+                                    .send(crate::retry_queue::RetryQueueMessage::Enqueue {
+                                        event,
+                                        backend: BackendType::Postgres,
+                                    });
                             } else {
-                                metric!(
-                                    counter.layer_cache_persister_evict_memory_only_failed_permanent = 1,
+                                monotonic!(
+                                    layer_cache_persister_evict_memory_only_failed_permanent = 1,
                                     cache_name = &cache_name,
                                     backend = BackendType::Postgres.as_ref(),
                                     event_kind = event.event_kind.as_ref()
@@ -469,14 +752,16 @@ impl PersisterTask {
     }
 
     fn spawn_retry_task(&mut self, event: LayeredEvent, handle: crate::retry_queue::RetryHandle) {
-        let task = PersistEventTask::new(self.pg_pool.clone(), self.layered_event_client.clone());
+        let pg_pool = self.pg_pool.clone();
+        let s3_layers = self.s3_layers.clone();
         let retry_queue_command_tx = self.retry_queue_command_tx.clone();
         let cache_name = handle.cache_name.clone();
+        let backend = handle.backend;
 
-        metric!(
-            counter.layer_cache_persister_retry_attempted = 1,
+        monotonic!(
+            layer_cache_persister_retry_attempted = 1,
             cache_name = &cache_name,
-            backend = BackendType::Postgres.as_ref(),
+            backend = backend.as_ref(),
             event_kind = event.event_kind.as_ref()
         );
 
@@ -487,14 +772,14 @@ impl PersisterTask {
             let event_kind = event.event_kind;
             let event_timestamp = event.metadata.timestamp;
 
-            // Attempt the retry
-            let result = task.try_write_layers(event, true).await;
+            // Attempt the retry using the backend-specific write
+            let result = Self::do_write_to_backend(&event, backend, &pg_pool, &s3_layers).await;
 
             let duration = start.elapsed().as_secs_f64();
             metric!(
                 histogram.layer_cache_persister_retry_duration_seconds = duration,
                 cache_name = &cache_name,
-                backend = BackendType::Postgres.as_ref(),
+                backend = backend.as_ref(),
                 event_kind = event_kind.as_ref()
             );
 
@@ -508,7 +793,7 @@ impl PersisterTask {
                     metric!(
                         histogram.layer_cache_persistence_latency_seconds = latency.as_secs_f64(),
                         cache_name = &cache_name,
-                        backend = BackendType::Postgres.as_ref(),
+                        backend = backend.as_ref(),
                         operation = "retry",
                         event_kind = event_kind.as_ref()
                     );
@@ -517,7 +802,7 @@ impl PersisterTask {
                     let _ = retry_queue_command_tx
                         .send(crate::retry_queue::RetryQueueMessage::MarkSuccess(handle));
                 }
-                Err(err) if crate::retry_queue::is_retryable_error(&err) => {
+                Err(err) if Self::do_is_retryable(&err, backend) => {
                     // Retryable failure - update backoff
                     let _ = retry_queue_command_tx.send(
                         crate::retry_queue::RetryQueueMessage::MarkRetryableFailure(handle, err),
@@ -527,6 +812,7 @@ impl PersisterTask {
                     // Permanent failure - remove from queue
                     error!(
                         cache.name = %cache_name,
+                        backend = ?backend,
                         error = ?err,
                         "retry failed with non-retryable error"
                     );

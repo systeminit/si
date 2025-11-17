@@ -10,7 +10,7 @@ use si_data_pg::{
     postgres_types::ToSql,
 };
 use telemetry::tracing::info;
-use telemetry_utils::metric;
+use telemetry_utils::monotonic;
 
 use crate::error::LayerDbResult;
 
@@ -82,7 +82,7 @@ impl PgLayer {
 
         match maybe_row {
             Some(row) => {
-                metric!(counter.layer_cache.hit.pg = 1);
+                monotonic!(layer_cache.hit.pg = 1);
                 Ok(Some(row.get("value")))
             }
             None => Ok(None),
@@ -114,7 +114,7 @@ impl PgLayer {
             .query(&self.get_value_many_query, &[&key_refs])
             .await?
         {
-            metric!(counter.layer_cache.hit.pg = 1);
+            monotonic!(layer_cache.hit.pg = 1);
             result.insert(
                 row.get::<&str, String>("key").to_owned(),
                 row.get::<&str, Vec<u8>>("value"),

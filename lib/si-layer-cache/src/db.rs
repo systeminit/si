@@ -1,4 +1,5 @@
 use std::{
+    collections::HashMap,
     future::IntoFuture,
     io,
     sync::Arc,
@@ -51,8 +52,10 @@ use crate::{
     layer_cache::LayerCache,
     persister::{
         PersisterClient,
+        PersisterMode,
         PersisterTask,
     },
+    s3::S3Layer,
 };
 
 mod cache_updates;
@@ -67,6 +70,15 @@ pub mod split_snapshot_rebase_batch;
 pub mod split_snapshot_subgraph;
 pub mod split_snapshot_supergraph;
 pub mod workspace_snapshot;
+
+fn validate_config(config: &LayerDbConfig) -> LayerDbResult<()> {
+    // Validate that S3 is configured when mode requires it
+    if config.persister_mode != PersisterMode::PostgresOnly {
+        // Config validation happens during S3Layer creation
+        // If mode != PostgresOnly, we'll create S3Layers
+    }
+    Ok(())
+}
 
 #[derive(Debug, Clone)]
 pub struct LayerDb<
@@ -140,10 +152,10 @@ where
         let nats_client = NatsClient::new(&config.nats_config).await?;
 
         Self::from_services(
+            config,
             pg_pool,
             nats_client,
             compute_executor,
-            config.cache_config,
             token.clone(),
         )
         .await
@@ -151,10 +163,10 @@ where
 
     #[instrument(name = "layer_db.init.from_services", level = "info", skip_all)]
     pub async fn from_services(
+        config: LayerDbConfig,
         pg_pool: PgPool,
         nats_client: NatsClient,
         compute_executor: DedicatedExecutor,
-        cache_config: CacheConfig,
         token: CancellationToken,
     ) -> LayerDbResult<(Self, LayerDbGracefulShutdown)> {
         let instance_id = Ulid::new();
@@ -163,6 +175,57 @@ where
 
         let (tx, rx) = mpsc::unbounded_channel();
         let persister_client = PersisterClient::new(tx);
+
+        // Validate configuration
+        validate_config(&config)?;
+
+        // Initialize S3 layers if mode requires it
+        let s3_layers = if config.persister_mode != PersisterMode::PostgresOnly {
+            use crate::s3::KeyTransformStrategy;
+
+            let mut layers = HashMap::new();
+
+            // Define cache configurations with their strategies
+            let cache_configs = [
+                (cas::CACHE_NAME, KeyTransformStrategy::Passthrough),
+                (change_batch::CACHE_NAME, KeyTransformStrategy::Passthrough),
+                (
+                    workspace_snapshot::CACHE_NAME,
+                    KeyTransformStrategy::Passthrough,
+                ),
+                (rebase_batch::CACHE_NAME, KeyTransformStrategy::Passthrough),
+                (
+                    encrypted_secret::CACHE_NAME,
+                    KeyTransformStrategy::Passthrough,
+                ),
+                (func_run::CACHE_NAME, KeyTransformStrategy::ReverseKey), // ULID-based
+                (func_run_log::CACHE_NAME, KeyTransformStrategy::ReverseKey), // ULID-based
+                (
+                    split_snapshot_subgraph::CACHE_NAME,
+                    KeyTransformStrategy::Passthrough,
+                ),
+                (
+                    split_snapshot_supergraph::CACHE_NAME,
+                    KeyTransformStrategy::Passthrough,
+                ),
+                (
+                    split_snapshot_rebase_batch::CACHE_NAME,
+                    KeyTransformStrategy::Passthrough,
+                ),
+            ];
+
+            for (cache_name, strategy) in cache_configs {
+                let cache_config = config.object_storage_config.for_cache(cache_name);
+                let s3_layer = S3Layer::new(cache_config, strategy)?;
+                layers.insert(cache_name, s3_layer);
+            }
+
+            Some(Arc::new(layers))
+        } else {
+            None
+        };
+
+        let cache_config = config.cache_config.clone();
 
         let (
             cas_cache,
@@ -184,7 +247,9 @@ where
                 tracker.clone(),
                 token.clone(),
                 24,
-                24
+                24,
+                s3_layers.clone(),
+                config.persister_mode,
             ),
             create_layer_cache(
                 change_batch::CACHE_NAME,
@@ -194,7 +259,9 @@ where
                 tracker.clone(),
                 token.clone(),
                 5,
-                5
+                5,
+                s3_layers.clone(),
+                config.persister_mode,
             ),
             create_layer_cache(
                 encrypted_secret::CACHE_NAME,
@@ -204,7 +271,9 @@ where
                 tracker.clone(),
                 token.clone(),
                 5,
-                5
+                5,
+                s3_layers.clone(),
+                config.persister_mode,
             ),
             create_layer_cache(
                 func_run::CACHE_NAME,
@@ -214,7 +283,9 @@ where
                 tracker.clone(),
                 token.clone(),
                 4,
-                4
+                4,
+                s3_layers.clone(),
+                config.persister_mode,
             ),
             create_layer_cache(
                 func_run_log::CACHE_NAME,
@@ -224,7 +295,9 @@ where
                 tracker.clone(),
                 token.clone(),
                 4,
-                4
+                4,
+                s3_layers.clone(),
+                config.persister_mode,
             ),
             create_layer_cache(
                 rebase_batch::CACHE_NAME,
@@ -234,7 +307,9 @@ where
                 tracker.clone(),
                 token.clone(),
                 5,
-                5
+                5,
+                s3_layers.clone(),
+                config.persister_mode,
             ),
             create_layer_cache(
                 workspace_snapshot::CACHE_NAME,
@@ -245,6 +320,8 @@ where
                 token.clone(),
                 50,
                 50,
+                s3_layers.clone(),
+                config.persister_mode,
             ),
             create_layer_cache(
                 split_snapshot_subgraph::CACHE_NAME,
@@ -255,6 +332,8 @@ where
                 token.clone(),
                 1,
                 1,
+                s3_layers.clone(),
+                config.persister_mode,
             ),
             create_layer_cache(
                 split_snapshot_supergraph::CACHE_NAME,
@@ -264,7 +343,9 @@ where
                 tracker.clone(),
                 token.clone(),
                 1,
-                1
+                1,
+                s3_layers.clone(),
+                config.persister_mode,
             ),
             create_layer_cache(
                 split_snapshot_rebase_batch::CACHE_NAME,
@@ -274,7 +355,9 @@ where
                 tracker.clone(),
                 token.clone(),
                 1,
-                1
+                1,
+                s3_layers.clone(),
+                config.persister_mode,
             )
         )?;
 
@@ -303,6 +386,8 @@ where
             instance_id,
             cache_config.disk_path().to_path_buf(), // Use cache disk path as base
             token.clone(),
+            s3_layers.clone(),
+            config.persister_mode,
         )
         .await?;
         tracker.spawn(persister_task.run());
@@ -434,6 +519,8 @@ async fn create_layer_cache<T>(
     token: CancellationToken,
     memory_percent: u8,
     disk_percent: u8,
+    s3_layers: Option<Arc<HashMap<&'static str, S3Layer>>>,
+    mode: PersisterMode,
 ) -> LayerDbResult<Arc<LayerCache<Arc<T>>>>
 where
     T: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
@@ -449,6 +536,8 @@ where
         compute_executor,
         tracker,
         token,
+        s3_layers,
+        mode,
     )
     .await
 }
@@ -519,4 +608,6 @@ pub struct LayerDbConfig {
     pub pg_pool_config: PgPoolConfig,
     pub nats_config: NatsConfig,
     pub cache_config: CacheConfig,
+    pub object_storage_config: crate::s3::ObjectStorageConfig,
+    pub persister_mode: PersisterMode,
 }

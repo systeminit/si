@@ -27,6 +27,7 @@ const ENV_VAR_PG_HOSTNAME: &str = "SI_TEST_PG_HOSTNAME";
 const ENV_VAR_PG_DBNAME: &str = "SI_TEST_PG_DBNAME";
 const ENV_VAR_PG_USER: &str = "SI_TEST_PG_USER";
 const ENV_VAR_PG_PORT: &str = "SI_TEST_PG_PORT";
+const ENV_VAR_PERSISTER_MODE: &str = "SI_TEST_PERSISTER_MODE";
 
 const ENV_VAR_NATS_URL: &str = "SI_TEST_NATS_URL";
 
@@ -146,4 +147,23 @@ pub async fn setup_nats_client(subject_prefix: Option<String>) -> NatsClient {
 
 pub fn setup_compute_executor() -> si_runtime::DedicatedExecutor {
     si_runtime::compute_executor("test").expect("failed to create executor")
+}
+
+#[allow(clippy::disallowed_methods)] // Environment variables are used exclusively in test
+pub fn make_test_layerdb_config() -> si_layer_cache::db::LayerDbConfig {
+    let persister_mode = env::var(ENV_VAR_PERSISTER_MODE)
+        .ok()
+        .and_then(|s| serde_json::from_str(&format!("\"{s}\"")).ok())
+        .unwrap_or_default();
+
+    si_layer_cache::db::LayerDbConfig {
+        pg_pool_config: PgPoolConfig {
+            application_name: "si-layer-cache-test".into(),
+            ..Default::default()
+        },
+        nats_config: NatsConfig::default(),
+        cache_config: si_layer_cache::hybrid_cache::CacheConfig::default(),
+        object_storage_config: si_layer_cache::ObjectStorageConfig::default(),
+        persister_mode,
+    }
 }

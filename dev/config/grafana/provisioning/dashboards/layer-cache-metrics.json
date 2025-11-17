@@ -68,6 +68,20 @@
         "multi": true,
         "includeAll": true,
         "allValue": ".*"
+      },
+      {
+        "name": "backend",
+        "type": "query",
+        "label": "Backend",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${datasource}"
+        },
+        "query": "label_values(layer_cache_backend_resolved_total{exported_job=~\"$service\"}, backend)",
+        "refresh": 2,
+        "sort": 1,
+        "multi": true,
+        "includeAll": true
       }
     ]
   },
@@ -611,7 +625,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "rate(layer_cache_persister_write_success{exported_job=~\"$service\", cache_name=~\"$cache\"}[1m])",
+          "expr": "rate(layer_cache_persister_write_success{exported_job=~\"$service\", cache_name=~\"$cache\", backend=~\"$backend\"}[1m])",
           "legendFormat": "{{exported_job}}/{{cache_name}} - success",
           "refId": "B"
         }
@@ -783,7 +797,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "(rate(layer_cache_persister_evict_duration_seconds_sum{exported_job=~\"$service\", cache_name=~\"$cache\"}[1m]) / rate(layer_cache_persister_evict_duration_seconds_count{exported_job=~\"$service\", cache_name=~\"$cache\"}[1m])) * 1000",
+          "expr": "(rate(layer_cache_persister_evict_duration_seconds_sum{exported_job=~\"$service\", cache_name=~\"$cache\", backend=~\"$backend\"}[1m]) / rate(layer_cache_persister_evict_duration_seconds_count{exported_job=~\"$service\", cache_name=~\"$cache\", backend=~\"$backend\"}[1m])) * 1000",
           "legendFormat": "{{exported_job}}/{{cache_name}} - avg",
           "refId": "A"
         }
@@ -1145,7 +1159,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "histogram_quantile(0.50, rate(layer_cache_persistence_latency_seconds_bucket{exported_job=~\"$service\", cache_name=~\"$cache\"}[1m])) * 1000",
+          "expr": "histogram_quantile(0.50, rate(layer_cache_persistence_latency_seconds_bucket{exported_job=~\"$service\", cache_name=~\"$cache\", backend=~\"$backend\"}[1m])) * 1000",
           "legendFormat": "{{exported_job}}/{{cache_name}}/{{operation}}/{{event_kind}} - p50",
           "refId": "A"
         },
@@ -1154,7 +1168,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "histogram_quantile(0.95, rate(layer_cache_persistence_latency_seconds_bucket{exported_job=~\"$service\", cache_name=~\"$cache\"}[1m])) * 1000",
+          "expr": "histogram_quantile(0.95, rate(layer_cache_persistence_latency_seconds_bucket{exported_job=~\"$service\", cache_name=~\"$cache\", backend=~\"$backend\"}[1m])) * 1000",
           "legendFormat": "{{exported_job}}/{{cache_name}}/{{operation}}/{{event_kind}} - p95",
           "refId": "B"
         },
@@ -1163,7 +1177,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "histogram_quantile(0.99, rate(layer_cache_persistence_latency_seconds_bucket{exported_job=~\"$service\", cache_name=~\"$cache\"}[1m])) * 1000",
+          "expr": "histogram_quantile(0.99, rate(layer_cache_persistence_latency_seconds_bucket{exported_job=~\"$service\", cache_name=~\"$cache\", backend=~\"$backend\"}[1m])) * 1000",
           "legendFormat": "{{exported_job}}/{{cache_name}}/{{operation}}/{{event_kind}} - p99",
           "refId": "C"
         }
@@ -1218,7 +1232,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "rate(layer_cache_persister_evict_attempted{exported_job=~\"$service\", cache_name=~\"$cache\"}[1m])",
+          "expr": "rate(layer_cache_persister_evict_attempted{exported_job=~\"$service\", cache_name=~\"$cache\", backend=~\"$backend\"}[1m])",
           "legendFormat": "{{exported_job}}/{{cache_name}} - attempted",
           "refId": "A"
         },
@@ -1227,7 +1241,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "rate(layer_cache_persister_evict_success{exported_job=~\"$service\", cache_name=~\"$cache\"}[1m])",
+          "expr": "rate(layer_cache_persister_evict_success{exported_job=~\"$service\", cache_name=~\"$cache\", backend=~\"$backend\"}[1m])",
           "legendFormat": "{{exported_job}}/{{cache_name}} - success",
           "refId": "B"
         }
@@ -1281,7 +1295,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "rate(layer_cache_persister_evict_failed_retryable{exported_job=~\"$service\", cache_name=~\"$cache\"}[1m])",
+          "expr": "rate(layer_cache_persister_evict_failed_retryable{exported_job=~\"$service\", cache_name=~\"$cache\", backend=~\"$backend\"}[1m])",
           "legendFormat": "{{exported_job}}/{{cache_name}} - retryable",
           "refId": "A"
         },
@@ -1290,7 +1304,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "rate(layer_cache_persister_evict_failed_permanent{exported_job=~\"$service\", cache_name=~\"$cache\"}[1m])",
+          "expr": "rate(layer_cache_persister_evict_failed_permanent{exported_job=~\"$service\", cache_name=~\"$cache\", backend=~\"$backend\"}[1m])",
           "legendFormat": "{{exported_job}}/{{cache_name}} - permanent",
           "refId": "B"
         }
@@ -1321,6 +1335,171 @@
             "max",
             "mean"
           ]
+        }
+      }
+    },
+    {
+      "id": null,
+      "gridPos": {
+        "x": 0,
+        "y": 104,
+        "w": 24,
+        "h": 1
+      },
+      "type": "row",
+      "title": "Read Path Performance",
+      "collapsed": false
+    },
+    {
+      "id": null,
+      "gridPos": {
+        "x": 0,
+        "y": 105,
+        "w": 8,
+        "h": 8
+      },
+      "type": "gauge",
+      "title": "${backend} Resolution Rate",
+      "repeat": "backend",
+      "repeatDirection": "h",
+      "maxPerRow": 3,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "sum(rate(layer_cache_backend_resolved_total{exported_job=~\"$service\", cache_name=~\"$cache\", backend=\"${backend}\", result=\"hit\"}[5m])) / sum(rate(layer_cache_requests_total{exported_job=~\"$service\", cache_name=~\"$cache\"}[5m]))",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "min": 0,
+          "max": 1,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "blue"
+          }
+        }
+      }
+    },
+    {
+      "id": null,
+      "gridPos": {
+        "x": 0,
+        "y": 113,
+        "w": 24,
+        "h": 8
+      },
+      "type": "timeseries",
+      "title": "Cache Resolution Distribution Over Time",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "sum(rate(layer_cache_backend_resolved_total{exported_job=~\"$service\", cache_name=~\"$cache\", backend=\"foyer\", result=\"hit\"}[1m]))",
+          "legendFormat": "Foyer",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "sum(rate(layer_cache_backend_resolved_total{exported_job=~\"$service\", cache_name=~\"$cache\", backend=\"s3\", result=\"hit\"}[1m]))",
+          "legendFormat": "S3",
+          "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "sum(rate(layer_cache_backend_resolved_total{exported_job=~\"$service\", cache_name=~\"$cache\", backend=\"pg\", result=\"hit\"}[1m]))",
+          "legendFormat": "PostgreSQL",
+          "refId": "C"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "sum(rate(layer_cache_backend_resolved_total{exported_job=~\"$service\", cache_name=~\"$cache\", result=\"miss\"}[1m]))",
+          "legendFormat": "Not Found",
+          "refId": "D"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "fillOpacity": 10,
+            "lineWidth": 2,
+            "spanNulls": false
+          },
+          "unit": "reqps"
+        }
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        }
+      }
+    },
+    {
+      "id": null,
+      "gridPos": {
+        "x": 0,
+        "y": 121,
+        "w": 8,
+        "h": 8
+      },
+      "type": "bargauge",
+      "title": "${cache} Resolution by Backend",
+      "repeat": "cache",
+      "repeatDirection": "h",
+      "maxPerRow": 3,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "sum by (backend) (rate(layer_cache_backend_resolved_total{exported_job=~\"$service\", cache_name=\"${cache}\", backend=~\"$backend\"}[5m]))",
+          "legendFormat": "{{backend}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "min": 0,
+          "displayName": "${__field.labels.backend}"
+        }
+      },
+      "options": {
+        "orientation": "horizontal",
+        "displayMode": "gradient",
+        "showUnfilled": true,
+        "text": {
+          "titleSize": 12,
+          "valueSize": 18
         }
       }
     }

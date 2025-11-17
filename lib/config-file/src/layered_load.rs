@@ -422,4 +422,161 @@ mod tests {
         let round_trip: Settings = c.try_deserialize().expect("failed to deserialize");
         assert_eq!(expected, round_trip);
     }
+
+    #[test]
+    fn enum_with_struct_variant() {
+        #[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
+        #[serde(rename_all = "snake_case")]
+        enum AuthConfig {
+            StaticCredentials {
+                access_key: String,
+                secret_key: String,
+            },
+            IamRole,
+        }
+
+        #[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
+        struct TestConfig {
+            name: String,
+            auth: AuthConfig,
+        }
+
+        let test = TestConfig {
+            name: "test-service".to_string(),
+            auth: AuthConfig::StaticCredentials {
+                access_key: "key123".to_string(),
+                secret_key: "secret456".to_string(),
+            },
+        };
+        let expected = test.clone();
+
+        let c = config::Config::builder()
+            .add_source(SerdeSource::new(test))
+            .build()
+            .expect("cannot build config from source");
+
+        let round_trip: TestConfig = c.try_deserialize().expect("failed to deserialize");
+        assert_eq!(expected, round_trip);
+    }
+
+    #[test]
+    fn enum_deserialization_from_toml() {
+        // Test to understand what format config crate expects for enum deserialization
+        #[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
+        #[serde(rename_all = "snake_case")]
+        enum AuthConfig {
+            StaticCredentials {
+                access_key: String,
+                secret_key: String,
+            },
+            IamRole,
+        }
+
+        #[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
+        struct TestConfig {
+            name: String,
+            auth: AuthConfig,
+        }
+
+        // Standard externally-tagged TOML representation
+        let toml_str = r#"
+            name = "test-service"
+
+            [auth.static_credentials]
+            access_key = "key123"
+            secret_key = "secret456"
+        "#;
+
+        let c = config::Config::builder()
+            .add_source(config::File::from_str(toml_str, config::FileFormat::Toml))
+            .build()
+            .expect("cannot build config from TOML");
+
+        let result: TestConfig = c
+            .try_deserialize()
+            .expect("failed to deserialize from TOML");
+        assert_eq!("test-service", result.name);
+        assert_eq!(
+            AuthConfig::StaticCredentials {
+                access_key: "key123".to_string(),
+                secret_key: "secret456".to_string(),
+            },
+            result.auth
+        );
+    }
+
+    #[test]
+    fn enum_with_flat_hashmap() {
+        // Test if we can build the right structure with flat dotted keys
+        #[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
+        #[serde(rename_all = "snake_case")]
+        enum AuthConfig {
+            StaticCredentials {
+                access_key: String,
+                secret_key: String,
+            },
+            IamRole,
+        }
+
+        #[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
+        struct TestConfig {
+            name: String,
+            auth: AuthConfig,
+        }
+
+        // Try building with fully dotted keys
+        let mut builder = config::Config::builder();
+        builder = builder
+            .set_override("name", "test-service")
+            .expect("set name")
+            .set_override("auth.static_credentials.access_key", "key123")
+            .expect("set access_key")
+            .set_override("auth.static_credentials.secret_key", "secret456")
+            .expect("set secret_key");
+
+        let c = builder.build().expect("build config");
+        let result: TestConfig = c.try_deserialize().expect("deserialize");
+
+        assert_eq!("test-service", result.name);
+        assert_eq!(
+            AuthConfig::StaticCredentials {
+                access_key: "key123".to_string(),
+                secret_key: "secret456".to_string(),
+            },
+            result.auth
+        );
+    }
+
+    #[test]
+    fn enum_unit_variant_flat_hashmap() {
+        // Test that unit variants still work with flat keys
+        #[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
+        #[serde(rename_all = "snake_case")]
+        enum AuthConfig {
+            StaticCredentials {
+                access_key: String,
+                secret_key: String,
+            },
+            IamRole,
+        }
+
+        #[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
+        struct TestConfig {
+            name: String,
+            auth: AuthConfig,
+        }
+
+        let mut builder = config::Config::builder();
+        builder = builder
+            .set_override("name", "test-service")
+            .expect("set name")
+            .set_override("auth", "iam_role")
+            .expect("set auth to unit variant");
+
+        let c = builder.build().expect("build config");
+        let result: TestConfig = c.try_deserialize().expect("deserialize");
+
+        assert_eq!("test-service", result.name);
+        assert_eq!(AuthConfig::IamRole, result.auth);
+    }
 }

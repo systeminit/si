@@ -11,11 +11,11 @@ use si_layer_cache::{
     LayerDb,
     activities::ActivityPayloadDiscriminants,
     event::LayeredEventMetadata,
-    hybrid_cache::CacheConfig,
 };
 use tokio_util::sync::CancellationToken;
 
 use crate::integration_test::{
+    make_test_layerdb_config,
     setup_compute_executor,
     setup_nats_client,
     setup_pg_db,
@@ -33,10 +33,10 @@ async fn activities() {
 
     // First, we need a layerdb for slash
     let (ldb_slash, _): (TestLayerDb, _) = LayerDb::from_services(
+        make_test_layerdb_config(),
         db.clone(),
         setup_nats_client(Some("activities".to_string())).await,
         compute_executor.clone(),
-        CacheConfig::default(),
         token.clone(),
     )
     .await
@@ -45,10 +45,10 @@ async fn activities() {
 
     // Then, we need a layerdb for axl
     let (ldb_axl, _): (TestLayerDb, _) = LayerDb::from_services(
+        make_test_layerdb_config(),
         db,
         setup_nats_client(Some("activities".to_string())).await,
         compute_executor,
-        CacheConfig::default(),
         token.clone(),
     )
     .await
@@ -93,10 +93,10 @@ async fn activities_subscribe_partial() {
 
     // First, we need a layerdb for slash
     let (ldb_slash, _): (TestLayerDb, _) = LayerDb::from_services(
+        make_test_layerdb_config(),
         db.clone(),
         setup_nats_client(Some("activities_subscribe_partial".to_string())).await,
         compute_executor.clone(),
-        CacheConfig::default(),
         token.clone(),
     )
     .await
@@ -105,10 +105,10 @@ async fn activities_subscribe_partial() {
 
     // Then, we need a layerdb for axl
     let (ldb_axl, _): (TestLayerDb, _) = LayerDb::from_services(
+        make_test_layerdb_config(),
         db,
         setup_nats_client(Some("activities_subscribe_partial".to_string())).await,
         compute_executor,
-        CacheConfig::default(),
         token.clone(),
     )
     .await

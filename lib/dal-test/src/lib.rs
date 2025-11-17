@@ -173,6 +173,13 @@ const ENV_VAR_KEEP_OLD_DBS: &str = "SI_TEST_KEEP_OLD_DBS";
 const ENV_VAR_LAYER_CACHE_PG_DBNAME: &str = "SI_TEST_LAYER_CACHE_PG_DBNAME";
 const ENV_VAR_AUDIT_PG_DBNAME: &str = "SI_TEST_AUDIT_PG_DBNAME";
 
+const ENV_VAR_S3_ENDPOINT: &str = "SI_TEST_S3_ENDPOINT";
+const ENV_VAR_S3_BUCKET_PREFIX: &str = "SI_TEST_S3_BUCKET_PREFIX";
+const ENV_VAR_S3_REGION: &str = "SI_TEST_S3_REGION";
+const ENV_VAR_S3_ACCESS_KEY: &str = "SI_TEST_S3_ACCESS_KEY";
+const ENV_VAR_S3_SECRET_KEY: &str = "SI_TEST_S3_SECRET_KEY";
+const ENV_VAR_PERSISTER_MODE: &str = "SI_TEST_PERSISTER_MODE";
+
 #[allow(missing_docs)]
 pub static COLOR_EYRE_INIT: Once = Once::new();
 
@@ -249,6 +256,8 @@ pub struct Config {
     layer_cache_pg_pool: PgPoolConfig,
     #[builder(default = "audit_database::default_pg_pool_config()")]
     audit_pg_pool: PgPoolConfig,
+    #[builder(default = "si_layer_cache::ObjectStorageConfig::default()")]
+    object_storage_config: si_layer_cache::ObjectStorageConfig,
 }
 
 impl Config {
@@ -322,6 +331,33 @@ impl Config {
 
         if let Ok(value) = env::var(ENV_VAR_MODULE_INDEX_URL) {
             config.module_index_url = value;
+        }
+
+        if let Ok(value) = env::var(ENV_VAR_S3_ENDPOINT) {
+            config.object_storage_config.endpoint = value;
+        }
+        if let Ok(value) = env::var(ENV_VAR_S3_BUCKET_PREFIX) {
+            config.object_storage_config.bucket_prefix = value;
+        }
+        if let Ok(value) = env::var(ENV_VAR_S3_REGION) {
+            config.object_storage_config.region = value;
+        }
+        // Update S3 auth credentials if environment variables are set
+        if let si_layer_cache::s3::S3AuthConfig::StaticCredentials {
+            access_key,
+            secret_key,
+        } = &config.object_storage_config.auth
+        {
+            let new_access_key =
+                env::var(ENV_VAR_S3_ACCESS_KEY).unwrap_or_else(|_| access_key.clone());
+            let new_secret_key =
+                env::var(ENV_VAR_S3_SECRET_KEY).unwrap_or_else(|_| secret_key.clone());
+
+            config.object_storage_config.auth =
+                si_layer_cache::s3::S3AuthConfig::StaticCredentials {
+                    access_key: new_access_key,
+                    secret_key: new_secret_key,
+                };
         }
 
         debug!(?config, "test config");
@@ -475,7 +511,7 @@ impl TestContext {
     }
 
     /// Creates a new [`ServicesContext`].
-    #[allow(clippy::expect_used, clippy::panic)]
+    #[allow(clippy::expect_used, clippy::panic, clippy::disallowed_methods)]
     pub async fn create_services_context(
         &self,
         token: CancellationToken,
@@ -486,11 +522,24 @@ impl TestContext {
             .expect("failed to create rebaser client");
         let veritech = veritech_client::Client::new(self.nats_conn.clone());
 
+        let persister_mode = env::var(ENV_VAR_PERSISTER_MODE)
+            .ok()
+            .and_then(|s| serde_json::from_str(&format!("\"{s}\"")).ok())
+            .unwrap_or_default();
+
+        let layer_db_config = si_layer_cache::db::LayerDbConfig {
+            pg_pool_config: self.config.layer_cache_pg_pool.clone(),
+            nats_config: self.config.nats.clone(),
+            cache_config: CacheConfig::default().disk_layer(false),
+            object_storage_config: self.config.object_storage_config.clone(),
+            persister_mode,
+        };
+
         let (layer_db, layer_db_graceful_shutdown) = DalLayerDb::from_services(
+            layer_db_config,
             self.layer_db_pg_pool.clone(),
             self.nats_conn.clone(),
             self.compute_executor.clone(),
-            CacheConfig::default().disk_layer(false),
             token,
         )
         .await
@@ -603,6 +652,7 @@ impl TestContextBuilder {
         nats_config.subject_prefix = Some(universal_prefix.clone());
         let mut config = self.config.clone();
         config.nats.subject_prefix = Some(universal_prefix.clone());
+        config.object_storage_config.key_prefix = Some(universal_prefix.clone());
 
         let nats_conn = NatsClient::new(&nats_config)
             .await

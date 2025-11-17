@@ -13,13 +13,13 @@ use si_events::{
 use si_layer_cache::{
     LayerDb,
     db::serialize,
-    hybrid_cache::CacheConfig,
     persister::PersistStatus,
 };
 use tokio::time::Instant;
 use tokio_util::sync::CancellationToken;
 
 use crate::integration_test::{
+    make_test_layerdb_config,
     setup_compute_executor,
     setup_nats_client,
     setup_pg_db,
@@ -32,10 +32,10 @@ async fn write_to_db() {
     let token = CancellationToken::new();
 
     let (ldb, _): (TestLayerDb, _) = LayerDb::from_services(
+        make_test_layerdb_config(),
         setup_pg_db("workspace_snapshot_write_to_db").await,
         setup_nats_client(Some("workspace_snapshot_write_to_db".to_string())).await,
         setup_compute_executor(),
-        CacheConfig::default(),
         token,
     )
     .await
@@ -88,10 +88,10 @@ async fn evict_from_db() {
     let token = CancellationToken::new();
 
     let (ldb, _): (TestLayerDb, _) = LayerDb::from_services(
+        make_test_layerdb_config(),
         setup_pg_db("workspace_snapshot_evict_from_db").await,
         setup_nats_client(Some("workspace_snapshot_evict_from_db".to_string())).await,
         setup_compute_executor(),
-        CacheConfig::default(),
         token,
     )
     .await
@@ -162,13 +162,13 @@ async fn evictions_are_gossiped() {
 
     // First, we need a layerdb for slash
     let (ldb_slash, _): (TestLayerDb, _) = LayerDb::from_services(
+        make_test_layerdb_config(),
         db.clone(),
         setup_nats_client(Some(
             "workspace_snapshot_evictions_are_gossiped".to_string(),
         ))
         .await,
         setup_compute_executor(),
-        CacheConfig::default(),
         token.clone(),
     )
     .await
@@ -177,13 +177,13 @@ async fn evictions_are_gossiped() {
 
     // Then, we need a layerdb for axl
     let (ldb_axl, _): (TestLayerDb, _) = LayerDb::from_services(
+        make_test_layerdb_config(),
         db,
         setup_nats_client(Some(
             "workspace_snapshot_evictions_are_gossiped".to_string(),
         ))
         .await,
         setup_compute_executor(),
-        CacheConfig::default(),
         token,
     )
     .await

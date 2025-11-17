@@ -257,10 +257,15 @@ impl ser::Serializer for &mut Serializer {
         self,
         _name: &'static str,
         _variant_index: u32,
-        _variant: &'static str,
+        variant: &'static str,
         _len: usize,
     ) -> Result<Self::SerializeStructVariant> {
-        todo!()
+        // Append variant name to current key path, just like entering a nested struct
+        if !self.key.is_empty() {
+            self.key.push('.');
+        }
+        self.key.push_str(variant);
+        Ok(self)
     }
 }
 
@@ -383,14 +388,33 @@ impl ser::SerializeStructVariant for &mut Serializer {
 
     fn serialize_field<T: ?Sized + Serialize>(
         &mut self,
-        _key: &'static str,
-        _value: &T,
+        key: &'static str,
+        value: &T,
     ) -> Result<()> {
-        todo!()
+        if !self.key.is_empty() {
+            self.key.push('.');
+        }
+        self.key.push_str(key);
+        value.serialize(&mut **self)?;
+        match self.key.rfind('.') {
+            Some(at) => {
+                let _ = self.key.split_off(at);
+            }
+            _ => self.key.clear(),
+        }
+        Ok(())
     }
 
     fn end(self) -> Result<Self::Ok> {
-        todo!()
+        // Pop the variant name we added in serialize_struct_variant
+        // This restores the key to its state before the variant
+        match self.key.rfind('.') {
+            Some(at) => {
+                let _ = self.key.split_off(at);
+            }
+            _ => self.key.clear(),
+        }
+        Ok(())
     }
 }
 
