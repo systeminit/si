@@ -539,12 +539,7 @@ const defaultSchemas = useQuery({
       makeArgs(EntityKind.CachedDefaultVariant),
     );
 
-    if (ffStore.AZURE_SCHEMAS) return schemas;
-
-    return schemas.filter((s) => {
-      const name = s.displayName.toLocaleLowerCase();
-      return !(name.startsWith("azure") || name.startsWith("microsoft"));
-    });
+    return schemas;
   },
 });
 
@@ -900,6 +895,12 @@ const componentFilters = computed((): AssetFilter[] => {
       color: BRAND_COLOR_FILTER_HEX_CODES.AWS,
     },
     {
+      name: "Microsoft",
+      icon: "logo-azure",
+      count: getCategoriesAndCountForFilterStrings("microsoft").count,
+      color: BRAND_COLOR_FILTER_HEX_CODES.MS,
+    },
+    {
       name: "Hetzner",
       icon: pickBrandIconByString("hetzner"),
       count: getCategoriesAndCountForFilterStrings("hetzner").count,
@@ -917,15 +918,6 @@ const componentFilters = computed((): AssetFilter[] => {
       count: getCategoriesAndCountForFilterStrings("Templates").count,
     },
   ];
-
-  if (ffStore.AZURE_SCHEMAS) {
-    filters.splice(2, 0, {
-      name: "Microsoft",
-      icon: "logo-azure",
-      count: getCategoriesAndCountForFilterStrings("microsoft").count,
-      color: BRAND_COLOR_FILTER_HEX_CODES.MS,
-    });
-  }
 
   if (ffStore.DIGITAL_OCEAN_ONBOARDING) {
     filters.splice(4, 0, {

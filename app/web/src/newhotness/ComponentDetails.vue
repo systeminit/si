@@ -931,12 +931,10 @@ const shortcuts: { [Key in string]: (e: KeyDetails[Key]) => void } = {
       return;
     }
 
-    if (featureFlagsStore.REVIEW_PAGE) {
-      e.preventDefault();
-      router.push({
-        name: "new-hotness-review",
-      });
-    }
+    e.preventDefault();
+    router.push({
+      name: "new-hotness-review",
+    });
   },
   // s: undefined,
   // t: used on the Grid view to open the create template modal

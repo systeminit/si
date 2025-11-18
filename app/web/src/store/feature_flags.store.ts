@@ -12,28 +12,18 @@ const USER_FLAG_MAPPING = {
   // STORE_FLAG_NAME: "posthogFlagName",
   MODULES_TAB: "modules_tab",
   ADMIN_PANEL_ACCESS: "si_admin_panel_access",
-  DIAGRAM_OPTIMIZATION_2: "diagram-optimization-2",
   AUTOCONNECT: "autoconnect-component-input-sockets",
   PRIVATE_SCOPED_MODULES: "private-scoped-modules",
-  DIAGRAM_DRAG_LAYER: "diagram-drag-layer",
-  SOCKET_VALUE: "socket-value",
-  FLOATING_CONNECTION_MENU: "floating-connection-menu",
   SIMPLE_SOCKET_UI: "simple-socket-ui",
   SQLITE_TOOLS: "sqlite-tools",
-  PROPS_TO_PROPS_CONNECTIONS: "props-to-props-connections",
-  ENABLE_NEW_EXPERIENCE: "enable-new-experience",
-  REVIEW_PAGE: "review-page",
   COMPONENT_HISTORY_FUNCS: "component-history-funcs",
   REVERSE_TRUNCATION: "reverse-truncation",
-  AZURE_SCHEMAS: "ms-azure-schemas",
   VIEWS_BUTTON: "views-button-component-details",
   DIGITAL_OCEAN_ONBOARDING: "digital-ocean-onboarding",
 } as const;
-const WORKSPACE_FLAG_MAPPING = {
-  FRONTEND_ARCH_VIEWS: "workspace-frontend-arch-views",
-  BIFROST_ACTIONS: "workspace-bifrost-actions",
-  NEW_HOTNESS: "workspace-new-hotness",
-} as const;
+const WORKSPACE_FLAG_MAPPING: Record<string, string> = {
+  // STORE_FLAG_NAME: "posthogFlagName",
+};
 
 // List of all feature flags
 const FEATURE_FLAGS = Object.keys({

@@ -634,7 +634,6 @@ import ExploreSearchBarSkeleton from "@/newhotness/skeletons/ExploreSearchBarSke
 import ExploreGridSkeleton from "@/newhotness/skeletons/ExploreGridSkeleton.vue";
 import ExploreRightColumnSkeleton from "@/newhotness/skeletons/ExploreRightColumnSkeleton.vue";
 import { ChangeSet } from "@/api/sdf/dal/change_set";
-import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import WelcomeBanner from "@/newhotness/WelcomeBanner.vue";
 import MapComponent from "./Map.vue";
 import {
@@ -678,8 +677,6 @@ import { routes, useApi } from "./api_composables";
 import { ExploreGridRowData } from "./explore_grid/ExploreGridRow.vue";
 import { useDefaultSubscription } from "./logic_composables/default_subscriptions";
 import { useContext } from "./logic_composables/context";
-
-const featureFlagsStore = useFeatureFlagsStore();
 
 const router = useRouter();
 const route = useRoute();
@@ -2464,12 +2461,10 @@ const shortcuts: { [Key in string]: (e: KeyDetails[Key]) => void } = {
       return;
     }
 
-    if (featureFlagsStore.REVIEW_PAGE) {
-      e.preventDefault();
-      router.push({
-        name: "new-hotness-review",
-      });
-    }
+    e.preventDefault();
+    router.push({
+      name: "new-hotness-review",
+    });
   },
   // s: undefined,
   t: (e) => {
