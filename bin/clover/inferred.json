@@ -6085,6 +6085,9 @@
   "Indicates whether IMDSv2 is required.": {
     "enum": null
   },
+  "Indicates whether Metrics are enabled.": {
+    "enum": null
+  },
   "Indicates whether an instance stops or terminates when you initiate shutdown from the instance (using the operating system command for system shutdown).": {
     "enum": null
   },
