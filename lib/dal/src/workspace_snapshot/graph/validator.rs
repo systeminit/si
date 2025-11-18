@@ -19,6 +19,7 @@ use si_id::{
     OutputSocketId,
     PropId,
     SchemaVariantId,
+    ulid::Ulid,
 };
 
 use crate::{
@@ -37,6 +38,8 @@ use crate::{
             AttributePrototypeArgumentNodeWeight,
             AttributeValueNodeWeight,
             NodeWeight,
+            OrderingNodeWeight,
+            PropNodeWeight,
             traits::SiNodeWeight as _,
         },
     },
@@ -88,9 +91,80 @@ impl ValidateNode for NodeWeight {
             Self::AttributePrototypeArgument(node) => {
                 ValidateNode::validate_node(graph, issues, (node, node_index))
             }
+            Self::Ordering(node) => ValidateNode::validate_node(graph, issues, (node, node_index)),
+            Self::Prop(node) => ValidateNode::validate_node(graph, issues, (node, node_index)),
             _ => Ok(()),
         }
     }
+}
+
+impl ValidateNode for AttributePrototypeArgumentNodeWeight {
+    fn validate_node(
+        graph: &WorkspaceSnapshotGraphVCurrent,
+        issues: &mut Vec<ValidationIssue>,
+        (_, apa): (&Self, NodeIndex),
+    ) -> WorkspaceSnapshotGraphResult<()> {
+        // Check that the APA has exactly one value
+        {
+            let mut values = graph
+                .edges_directed(apa, Direction::Outgoing)
+                .filter(|edge| {
+                    &EdgeWeightKind::PrototypeArgumentValue == edge.weight().kind()
+                        || EdgeWeightKindDiscriminants::ValueSubscription
+                            == edge.weight().kind().into()
+                });
+            // If there are no values, report a missing value
+            if values.next().is_none() {
+                issues.push(ValidationIssue::MissingValue {
+                    apa: graph.get_node_weight(apa)?.id().into(),
+                });
+            };
+            // If there are multiple values, report a multiple values issue
+            if values.next().is_some() {
+                issues.push(ValidationIssue::MultipleValues {
+                    apa: graph.get_node_weight(apa)?.id().into(),
+                });
+            }
+        }
+
+        Ok(())
+    }
+}
+
+fn validate_child_ordering(
+    graph: &WorkspaceSnapshotGraphVCurrent,
+    issues: &mut Vec<ValidationIssue>,
+    node: NodeIndex,
+    children: impl IntoIterator<Item = NodeIndex>,
+) -> WorkspaceSnapshotGraphResult<()> {
+    let Some(order) = graph.ordered_children_for_node(node)? else {
+        issues.push(ValidationIssue::MissingOrderingNode {
+            node: graph.get_node_weight(node)?.id(),
+        });
+        return Ok(());
+    };
+
+    let mut only_in_ordering_node: HashSet<_> = order.into_iter().collect();
+    let mut only_in_children = Vec::new();
+    for child in children {
+        if !only_in_ordering_node.remove(&child) {
+            only_in_children.push(graph.get_node_weight(child)?.id());
+        }
+    }
+
+    // Report an error if there is a mismatch
+    if !only_in_ordering_node.is_empty() || !only_in_children.is_empty() {
+        issues.push(ValidationIssue::ChildOrderingMismatch {
+            node: graph.get_node_weight(node)?.id(),
+            only_in_children,
+            only_in_ordering_node: only_in_ordering_node
+                .into_iter()
+                .map(|idx| graph.get_node_weight(idx).map(|nw| nw.id()))
+                .try_collect()?,
+        });
+    }
+
+    Ok(())
 }
 
 impl ValidateNode for AttributeValueNodeWeight {
@@ -99,11 +173,32 @@ impl ValidateNode for AttributeValueNodeWeight {
         issues: &mut Vec<ValidationIssue>,
         (_, attr): (&Self, NodeIndex),
     ) -> WorkspaceSnapshotGraphResult<()> {
-        // If this is an object attribute value, check that it has child attribute values for each child prop
         let Some(prop) = graph.target_opt(attr, EdgeWeightKind::Prop)? else {
             return Ok(());
         };
-        if PropKind::Object == graph.get_node_weight(prop)?.as_prop_node_weight()?.kind() {
+        let prop_kind = graph.get_node_weight(prop)?.as_prop_node_weight()?.kind();
+
+        if prop_kind.is_container() {
+            validate_child_ordering(
+                graph,
+                issues,
+                attr,
+                graph.targets(attr, EdgeWeightKindDiscriminants::Contain),
+            )?;
+        }
+        if prop_kind == PropKind::Object {
+            validate_object_children(graph, issues, attr, prop)?;
+        }
+        return Ok(());
+
+        // If this is an object attribute value, check that it has child attribute values for each child prop
+        // TODO check order as well
+        fn validate_object_children(
+            graph: &WorkspaceSnapshotGraphVCurrent,
+            issues: &mut Vec<ValidationIssue>,
+            attr: NodeIndex,
+            prop: NodeIndex,
+        ) -> WorkspaceSnapshotGraphResult<()> {
             // Check our the children we *do* have against the child props we *should* have
             let child_props: HashSet<_> = graph
                 .targets(prop, EdgeWeightKindDiscriminants::Use)
@@ -157,39 +252,64 @@ impl ValidateNode for AttributeValueNodeWeight {
                     missing_children,
                 });
             }
+
+            Ok(())
+        }
+    }
+}
+
+impl ValidateNode for PropNodeWeight {
+    fn validate_node(
+        graph: &WorkspaceSnapshotGraphVCurrent,
+        issues: &mut Vec<ValidationIssue>,
+        (prop_node, prop): (&Self, NodeIndex),
+    ) -> WorkspaceSnapshotGraphResult<()> {
+        if prop_node.kind().is_container() {
+            validate_child_ordering(
+                graph,
+                issues,
+                prop,
+                graph.targets(prop, EdgeWeightKindDiscriminants::Use),
+            )?;
         }
 
         Ok(())
     }
 }
 
-impl ValidateNode for AttributePrototypeArgumentNodeWeight {
+impl ValidateNode for OrderingNodeWeight {
     fn validate_node(
         graph: &WorkspaceSnapshotGraphVCurrent,
         issues: &mut Vec<ValidationIssue>,
-        (_, apa): (&Self, NodeIndex),
+        (ordering_node, ordering): (&Self, NodeIndex),
     ) -> WorkspaceSnapshotGraphResult<()> {
-        // Check that the APA has exactly one value
-        {
-            let mut values = graph
-                .edges_directed(apa, Direction::Outgoing)
-                .filter(|edge| {
-                    &EdgeWeightKind::PrototypeArgumentValue == edge.weight().kind()
-                        || EdgeWeightKindDiscriminants::ValueSubscription
-                            == edge.weight().kind().into()
-                });
-            // If there are no values, report a missing value
-            if values.next().is_none() {
-                issues.push(ValidationIssue::MissingValue {
-                    apa: graph.get_node_weight(apa)?.id().into(),
-                });
-            };
-            // If there are multiple values, report a multiple values issue
-            if values.next().is_some() {
-                issues.push(ValidationIssue::MultipleValues {
-                    apa: graph.get_node_weight(apa)?.id().into(),
+        // Collect order entries and check for duplicates
+        let mut only_in_order_vec = HashSet::new();
+        for &child_id in ordering_node.order() {
+            if !only_in_order_vec.insert(child_id) {
+                issues.push(ValidationIssue::OrderingDuplicateEntry {
+                    ordering: ordering_node.id(),
+                    entry: child_id,
                 });
             }
+        }
+
+        // Look for extra and missing Ordinal edges that are missing from the ordering vec
+        let mut only_in_ordinal_edges = Vec::new();
+        for ordinal in graph.targets(ordering, EdgeWeightKindDiscriminants::Ordinal) {
+            let ordinal_id = graph.get_node_weight(ordinal)?.id();
+            if !only_in_order_vec.remove(&ordinal_id) {
+                only_in_ordinal_edges.push(ordinal_id);
+            }
+        }
+
+        // Report if there are any differences
+        if !only_in_order_vec.is_empty() || !only_in_ordinal_edges.is_empty() {
+            issues.push(ValidationIssue::OrderingNodeMismatch {
+                ordering: ordering_node.id(),
+                only_in_order_vec: only_in_order_vec.into_iter().collect(),
+                only_in_ordinal_edges,
+            });
         }
 
         Ok(())
@@ -201,6 +321,12 @@ impl ValidateNode for AttributePrototypeArgumentNodeWeight {
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq, strum::EnumDiscriminants)]
 #[serde(tag = "type", rename_all = "camelCase")]
 pub enum ValidationIssue {
+    /// A node's children are not the same as its ordering node
+    ChildOrderingMismatch {
+        node: Ulid,
+        only_in_children: Vec<Ulid>,
+        only_in_ordering_node: Vec<Ulid>,
+    },
     /// A child prop of an object has more than one attribute value
     DuplicateAttributeValue {
         original: AttributeValueId,
@@ -216,10 +342,20 @@ pub enum ValidationIssue {
         object: AttributeValueId,
         missing_children: HashSet<PropId>,
     },
+    /// Node has no ordering node
+    MissingOrderingNode { node: Ulid },
     /// APA has neither a PrototypeArgumentValue or ValueSubscription edge
     MissingValue { apa: AttributePrototypeArgumentId },
     /// APA has multiple PrototypeArgumentValue and ValueSubscription edges
     MultipleValues { apa: AttributePrototypeArgumentId },
+    /// Ordering node has duplicate entries in its ordering vec
+    OrderingDuplicateEntry { ordering: Ulid, entry: Ulid },
+    /// Ordering node has a value in its ordering node that is not in its ordering vec
+    OrderingNodeMismatch {
+        ordering: Ulid,
+        only_in_order_vec: Vec<Ulid>,
+        only_in_ordinal_edges: Vec<Ulid>,
+    },
     /// A child attribute value was found under an object, but it was not associated with any
     /// of the object's child props
     UnknownChildAttributeValue { child: AttributeValueId },
@@ -229,12 +365,46 @@ pub enum ValidationIssue {
 /// etc).
 pub struct WithGraph<'a, T>(pub &'a WorkspaceSnapshotGraphVCurrent, pub T);
 
+impl std::fmt::Display for WithGraph<'_, Ulid> {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        let &WithGraph(graph, id) = self;
+        match graph.get_node_weight_by_id(id) {
+            Ok(NodeWeight::AttributePrototypeArgument(node)) => {
+                write!(
+                    f,
+                    "{}",
+                    WithGraph::<AttributePrototypeArgumentId>(graph, node.id().into())
+                )
+            }
+            Ok(NodeWeight::AttributeValue(node)) => {
+                write!(
+                    f,
+                    "{}",
+                    WithGraph::<AttributeValueId>(graph, node.id().into())
+                )
+            }
+            Ok(NodeWeight::Component(node)) => {
+                write!(f, "{}", WithGraph::<ComponentId>(graph, node.id().into()))
+            }
+            Ok(NodeWeight::Func(node)) => {
+                write!(f, "{}", WithGraph::<FuncId>(graph, node.id().into()))
+            }
+            Ok(NodeWeight::Prop(node)) => {
+                write!(f, "{}", WithGraph::<PropId>(graph, node.id().into()))
+            }
+            Ok(node) => write!(f, "node {}", node.id()),
+            Err(err) => write!(f, "node <error: {err}> ({id})>"),
+        }
+    }
+}
+
 impl std::fmt::Display for WithGraph<'_, AttributeValueId> {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         let &WithGraph(graph, id) = self;
         match av_path_from_root(graph, id) {
-            Ok((_, path)) => write!(f, "{path} ({id})"),
-            Err(err) => write!(f, "{err} ({id})"),
+            Ok((_, path)) if path.is_root() => write!(f, "root av ({id})"),
+            Ok((_, path)) => write!(f, "av {path} ({id})"),
+            Err(err) => write!(f, "av <error: {err}> ({id})"),
         }
     }
 }
@@ -242,14 +412,14 @@ impl std::fmt::Display for WithGraph<'_, AttributeValueId> {
 impl std::fmt::Display for WithGraph<'_, AttributePrototypeArgumentId> {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         let &WithGraph(_, id) = self;
-        write!(f, "{id}")
+        write!(f, "apa {id}")
     }
 }
 
 impl std::fmt::Display for WithGraph<'_, ComponentId> {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         let &WithGraph(_, id) = self;
-        write!(f, "{id}")
+        write!(f, "component {id}")
     }
 }
 
@@ -260,8 +430,8 @@ impl std::fmt::Display for WithGraph<'_, FuncId> {
             .get_node_weight_by_id(id)
             .and_then(|node| node.get_func_node_weight().map_err(Into::into))
         {
-            Ok(node) => write!(f, "{} ({id})", node.name()),
-            Err(err) => write!(f, "{err} ({id})"),
+            Ok(node) => write!(f, "func {} ({id})", node.name()),
+            Err(err) => write!(f, "func <error: {err}> ({id})"),
         }
     }
 }
@@ -270,8 +440,9 @@ impl std::fmt::Display for WithGraph<'_, PropId> {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         let &WithGraph(graph, id) = self;
         match prop_path_from_root(graph, id) {
-            Ok((_, path)) => write!(f, "{path} ({id})"),
-            Err(err) => write!(f, "{err} ({id})"),
+            Ok((_, path)) if path.is_root() => write!(f, "root prop ({id})"),
+            Ok((_, path)) => write!(f, "prop {path} ({id})"),
+            Err(err) => write!(f, "prop <error: {err}> ({id})"),
         }
     }
 }
@@ -294,6 +465,34 @@ impl std::fmt::Display for WithGraph<'_, &'_ ValidationIssue> {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         let &WithGraph(graph, issue) = self;
         match *issue {
+            ValidationIssue::ChildOrderingMismatch {
+                node,
+                ref only_in_children,
+                ref only_in_ordering_node,
+            } => {
+                write!(f, "Child ordering mismatch for {}.", WithGraph(graph, node))?;
+                if !only_in_children.is_empty() {
+                    write!(
+                        f,
+                        " - only in children: {}",
+                        only_in_children
+                            .iter()
+                            .map(|&id| format!("{}", WithGraph(graph, id)))
+                            .join(", ")
+                    )?;
+                }
+                if !only_in_ordering_node.is_empty() {
+                    write!(
+                        f,
+                        " - only in ordering node: {}",
+                        only_in_ordering_node
+                            .iter()
+                            .map(|&id| format!("{}", WithGraph(graph, id)))
+                            .join(", ")
+                    )?;
+                }
+                Ok(())
+            }
             ValidationIssue::DuplicateAttributeValue {
                 original,
                 duplicate,
@@ -322,7 +521,7 @@ impl std::fmt::Display for WithGraph<'_, &'_ ValidationIssue> {
             } => {
                 write!(
                     f,
-                    "Missing child attribute values for object {}: missing {}",
+                    "object {} missing child attribute values for props: {}",
                     WithGraph(graph, object),
                     missing_children
                         .iter()
@@ -330,11 +529,54 @@ impl std::fmt::Display for WithGraph<'_, &'_ ValidationIssue> {
                         .join(", ")
                 )
             }
+            ValidationIssue::MissingOrderingNode { node } => {
+                write!(f, "{} has no ordering node", WithGraph(graph, node))
+            }
             ValidationIssue::MissingValue { apa } => {
-                write!(f, "APA {} has no value", WithGraph(graph, apa))
+                write!(f, "{} has no value", WithGraph(graph, apa))
             }
             ValidationIssue::MultipleValues { apa } => {
-                write!(f, "APA {} has multiple values", WithGraph(graph, apa))
+                write!(f, "{} has multiple values", WithGraph(graph, apa))
+            }
+            ValidationIssue::OrderingDuplicateEntry { ordering, entry } => {
+                write!(
+                    f,
+                    "Ordering {} has duplicate entry {}",
+                    WithGraph(graph, ordering),
+                    WithGraph(graph, entry)
+                )
+            }
+            ValidationIssue::OrderingNodeMismatch {
+                ordering,
+                ref only_in_order_vec,
+                ref only_in_ordinal_edges,
+            } => {
+                write!(
+                    f,
+                    "Ordering {} has mismatched entries.",
+                    WithGraph(graph, ordering)
+                )?;
+                if !only_in_order_vec.is_empty() {
+                    write!(
+                        f,
+                        " - only in order vec: {}",
+                        only_in_order_vec
+                            .iter()
+                            .map(|&id| format!("{}", WithGraph(graph, id)))
+                            .join(", ")
+                    )?;
+                }
+                if !only_in_ordinal_edges.is_empty() {
+                    write!(
+                        f,
+                        " - only in ordinal edges: {}",
+                        only_in_ordinal_edges
+                            .iter()
+                            .map(|&id| format!("{}", WithGraph(graph, id)))
+                            .join(", ")
+                    )?;
+                }
+                Ok(())
             }
             ValidationIssue::UnknownChildAttributeValue { child } => {
                 write!(
@@ -591,7 +833,7 @@ pub fn av_path_from_root(
     id: AttributeValueId,
 ) -> WorkspaceSnapshotGraphResult<(AttributeValueId, jsonptr::PointerBuf)> {
     let mut index = graph.get_node_index_by_id(id)?;
-    let mut path = jsonptr::PointerBuf::new();
+    let mut path = jsonptr::PointerBuf::root();
     while let Some((
         EdgeWeight {
             kind: EdgeWeightKind::Contain(key),
@@ -649,7 +891,7 @@ pub fn prop_path_from_root(
     graph: &WorkspaceSnapshotGraphVCurrent,
     id: PropId,
 ) -> WorkspaceSnapshotGraphResult<(PropId, jsonptr::PointerBuf)> {
-    let mut path = jsonptr::PointerBuf::new();
+    let mut path = jsonptr::PointerBuf::root();
 
     let mut prop = graph.get_node_index_by_id(id)?;
     let mut prop_node = graph.get_node_weight(prop)?.get_prop_node_weight()?;

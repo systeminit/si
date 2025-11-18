@@ -63,10 +63,6 @@ async fn main() -> Result<()> {
         println!("{:#?}", graph.get_node_weight(node_idx)?);
         print_edges(&graph, node_idx)?;
     }
-    // let output_socket =
-    //     graph.get_node_index_by_id(Ulid::from_string("01JP40FPPQBGR31K6K4WT896P4")?)?;
-    // let component = graph.get_node_index_by_id(Ulid::from_string("01JPT6SHX1X43GTM8XHQ6VJRTM")?)?;
-    // print_edges(&graph, output_socket);
 
     // Cleanup and update merkle tree
     graph.cleanup_and_merkle_tree_hash()?;
@@ -120,6 +116,7 @@ fn node_ident(graph: &WorkspaceSnapshotGraph, index: NodeIndex) -> Result<String
             }
             None => None,
         },
+        NodeWeight::Prop(prop) => Some(format!(" ({})", prop.name())),
         _ => None,
     };
     Ok(format!(
