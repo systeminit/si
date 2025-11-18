@@ -16,6 +16,7 @@ use serde::{
 use si_events::{
     ContentHash,
     Timestamp,
+    audit_log::AuditLogKind,
 };
 use si_id::{
     ActionPrototypeId,
@@ -659,7 +660,19 @@ impl Schema {
             let module = CachedModule::find_latest_for_schema_id(ctx, schema_id)
                 .await?
                 .ok_or(SchemaError::UninstalledSchemaNotFound(schema_id))?;
-            Self::install_from_module(ctx, module).await?;
+            Self::install_from_module(ctx, module.clone()).await?;
+
+            let variant_id = Self::default_variant_id(ctx, schema_id).await?;
+
+            ctx.write_audit_log(
+                AuditLogKind::InstallSchemaAndVariant {
+                    schema_id,
+                    schema_variant_id: variant_id,
+                    schema_variant_display_name: module.schema_name.clone(),
+                },
+                module.schema_name,
+            )
+            .await?;
         }
         Ok(())
     }

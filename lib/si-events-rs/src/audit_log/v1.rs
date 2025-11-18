@@ -265,14 +265,17 @@ pub enum AuditLogKindV1 {
         func_name: String,
         component_id: Option<ComponentId>,
     },
-
+    InstallSchemaAndVariant {
+        schema_id: SchemaId,
+        schema_variant_id: SchemaVariantId,
+        schema_variant_display_name: String,
+    },
     InstallWorkspace {
         id: WorkspacePk,
         name: String,
         version: String,
     },
     Login,
-
     ManagementOperationsComplete {
         component_id: ComponentId,
         prototype_id: ManagementPrototypeId,
@@ -758,6 +761,12 @@ pub enum AuditLogMetadataV1 {
     },
 
     #[serde(rename_all = "camelCase")]
+    InstallSchemaAndVariant {
+        schema_id: SchemaId,
+        schema_variant_id: SchemaVariantId,
+        schema_variant_display_name: String,
+    },
+    #[serde(rename_all = "camelCase")]
     InstallWorkspace {
         id: WorkspacePk,
         name: String,
@@ -1071,6 +1080,7 @@ impl AuditLogMetadataV1 {
             MetadataDiscrim::EraseComponent => ("Erased", Some("Component")),
             MetadataDiscrim::ExecuteFunc => ("Executed", Some("Function")),
             MetadataDiscrim::ExportWorkspace => ("Exported", Some("Workspace")),
+            MetadataDiscrim::InstallSchemaAndVariant => ("Installed", Some("Schema")),
             MetadataDiscrim::InstallWorkspace => ("Installed", Some("Workspace")),
             MetadataDiscrim::GenerateTemplate => ("Generated", Some("Template")),
             MetadataDiscrim::HoldAction => ("Held", Some("Action")),
@@ -1483,6 +1493,15 @@ impl From<Kind> for Metadata {
                 func_display_name,
                 func_name,
                 component_id,
+            },
+            Kind::InstallSchemaAndVariant {
+                schema_id,
+                schema_variant_id,
+                schema_variant_display_name,
+            } => Self::InstallSchemaAndVariant {
+                schema_id,
+                schema_variant_id,
+                schema_variant_display_name,
             },
             Kind::InstallWorkspace { id, name, version } => {
                 Self::InstallWorkspace { id, name, version }
