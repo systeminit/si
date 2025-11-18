@@ -22,7 +22,8 @@ Deno.test("executeChanges - should throw error when API config not available", a
   const changes: ComponentChange[] = [];
 
   await assertRejects(
-    async () => await executeChanges(ctx, changes, "test-changeset-id", false),
+    async () =>
+      await executeChanges(ctx, changes, "test-changeset-id", [], false),
     Error,
     "API configuration not available",
   );

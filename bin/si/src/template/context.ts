@@ -258,6 +258,7 @@ export class TemplateContext<TInputSchema extends z.ZodTypeAny = z.ZodTypeAny> {
   private _workingSet: TemplateComponent[] | undefined;
   private _schemaCache: Map<string, GetSchemaV1Response>;
   private _schemaVariantCache: Map<string, GetSchemaVariantV1Response>;
+  private _schemaToVariantCache: Map<string, string>;
   private _searchCache: Map<string, SearchV1Response>;
   private _componentCache: Map<string, GetComponentV1Response>;
   private _headChangeSetId: string | undefined;
@@ -278,6 +279,7 @@ export class TemplateContext<TInputSchema extends z.ZodTypeAny = z.ZodTypeAny> {
     this._workingSet = undefined;
     this._schemaCache = new Map();
     this._schemaVariantCache = new Map();
+    this._schemaToVariantCache = new Map();
     this._searchCache = new Map();
     this._componentCache = new Map();
   }
@@ -888,6 +890,181 @@ export class TemplateContext<TInputSchema extends z.ZodTypeAny = z.ZodTypeAny> {
   }
 
   /**
+   * Resolves the schema variant ID for a component.
+   * For components with schemaVariantId, returns it directly.
+   * For baseline components with only schemaId, fetches the schema from the CURRENT workspace
+   * to get the current defaultVariantId (baseline schema variants may not exist in current workspace).
+   *
+   * @param component - Component to resolve schema variant ID for
+   * @returns Schema variant ID, or null if it cannot be resolved
+   * @private
+   */
+  private async _resolveSchemaVariantId(
+    component: TemplateComponent,
+  ): Promise<string | null> {
+    // Check if component has a schemaVariantId property (for working set components from API)
+    const componentWithVariant = component as TemplateComponent & {
+      schemaVariantId?: string;
+    };
+    if (componentWithVariant.schemaVariantId) {
+      return componentWithVariant.schemaVariantId;
+    }
+
+    // For baseline components, fetch the schema from the CURRENT workspace
+    if (!component.schemaId) {
+      this.logger.debug(
+        "Cannot resolve schema variant ID: component {componentId} has no schemaId",
+        { componentId: component.id },
+      );
+      return null;
+    }
+
+    // Check schema-to-variant cache first
+    const cachedVariantId = this._schemaToVariantCache.get(component.schemaId);
+    if (cachedVariantId) {
+      this.logger.trace(
+        "Schema-to-variant cache hit for schema {schemaId}: {variantId}",
+        { schemaId: component.schemaId, variantId: cachedVariantId },
+      );
+      return cachedVariantId;
+    }
+
+    // Get API config to fetch from current workspace
+    const apiConfig = this.apiConfig();
+    const workspaceId = this.workspaceId();
+
+    if (!apiConfig || !workspaceId) {
+      this.logger.debug(
+        "Cannot resolve schema variant ID: API configuration not available",
+      );
+      return null;
+    }
+
+    try {
+      const changeSetId = await this.getHeadChangeSetId();
+      const schemasApi = new SchemasApi(apiConfig);
+
+      // Fetch schema DIRECTLY from API, bypassing cache
+      // (cache may contain stale baseline data with old variant IDs)
+      this.logger.debug(
+        "Fetching fresh schema {schemaId} from API for variant resolution",
+        { schemaId: component.schemaId },
+      );
+
+      const response = await schemasApi.getSchema({
+        workspaceId,
+        changeSetId,
+        schemaId: component.schemaId,
+      });
+
+      if (!response.data.defaultVariantId) {
+        this.logger.debug(
+          "Cannot resolve schema variant ID: schema {schemaId} has no defaultVariantId",
+          { schemaId: component.schemaId },
+        );
+        return null;
+      }
+
+      this.logger.trace(
+        "Resolved schema variant ID {variantId} from CURRENT workspace schema {schemaId} for component {componentId}",
+        {
+          variantId: response.data.defaultVariantId,
+          schemaId: component.schemaId,
+          componentId: component.id,
+        },
+      );
+
+      // Cache the schema-to-variant mapping for future lookups
+      this._schemaToVariantCache.set(
+        component.schemaId,
+        response.data.defaultVariantId,
+      );
+
+      return response.data.defaultVariantId;
+    } catch (error) {
+      this.logger.debug(
+        "Failed to resolve schema variant ID for schema {schemaId}: {error}",
+        {
+          schemaId: component.schemaId,
+          error: error instanceof Error ? error.message : String(error),
+        },
+      );
+      return null;
+    }
+  }
+
+  /**
+   * Gets a schema variant from cache or fetches it from the API.
+   * Implements caching to avoid repeated API calls for the same schema variant.
+   *
+   * @param schemaId - Schema ID (required for API call)
+   * @param schemaVariantId - Schema variant ID to fetch
+   * @returns PropSchemaV1 domainProps tree, or null if fetch fails
+   * @private
+   */
+  private async _getOrFetchSchemaVariant(
+    schemaId: string,
+    schemaVariantId: string,
+  ): Promise<PropSchemaV1 | null> {
+    // Check cache first
+    const cached = this._schemaVariantCache.get(schemaVariantId);
+    if (cached) {
+      this.logger.trace(
+        "Schema variant cache hit for {variantId}",
+        { variantId: schemaVariantId },
+      );
+      return cached.domainProps ?? null;
+    }
+
+    // Need to fetch from API
+    const apiConfig = this.apiConfig();
+    const workspaceId = this.workspaceId();
+
+    if (!apiConfig || !workspaceId) {
+      this.logger.debug(
+        "Cannot fetch schema variant: API configuration not available",
+      );
+      return null;
+    }
+
+    try {
+      const changeSetId = await this.getHeadChangeSetId();
+      const schemasApi = new SchemasApi(apiConfig);
+
+      this.logger.debug(
+        "Fetching schema variant {variantId} from API",
+        { variantId: schemaVariantId },
+      );
+
+      const response = await schemasApi.getVariant({
+        workspaceId,
+        changeSetId,
+        schemaId,
+        schemaVariantId,
+      });
+
+      // Cache the full response data
+      this._schemaVariantCache.set(schemaVariantId, response.data);
+
+      this.logger.trace(
+        "Cached schema variant {variantId}",
+        { variantId: schemaVariantId },
+      );
+
+      return response.data.domainProps ?? null;
+    } catch (error) {
+      this.logger.debug(
+        "Failed to fetch schema variant {variantId}: {error}",
+        {
+          variantId: schemaVariantId,
+          error: error instanceof Error ? error.message : String(error),
+        },
+      );
+      return null;
+    }
+  }
+
+  /**
    * Validates an attribute path against a set of valid paths from a schema.
    * Handles array indices by normalizing them to index 0 for validation.
    *
@@ -935,6 +1112,122 @@ export class TemplateContext<TInputSchema extends z.ZodTypeAny = z.ZodTypeAny> {
     skipIfMissing: boolean = false,
   ): Promise<boolean> {
     try {
+      // Check if this component is from the baseline (working set)
+      // Baseline components don't exist in the target workspace yet, so skip API validation
+
+      // Debug: log working set state
+      this.logger.debug(
+        "Checking if component {componentId} is in working set. Working set has {count} components",
+        {
+          componentId: component.id,
+          count: this._workingSet?.length ?? 0,
+          workingSetIds: this._workingSet?.map((c) => c.id) ?? [],
+        },
+      );
+
+      const isBaselineComponent = this._workingSet?.some((c) =>
+        c.id === component.id
+      ) ?? false;
+
+      if (isBaselineComponent) {
+        this.logger.debug(
+          "Validating attribute path for baseline component: {componentId} {componentName}",
+          {
+            componentId: component.id,
+            componentName: component.name,
+          },
+        );
+
+        // Resolve schema variant ID from schemaId (baseline components don't have schemaVariantId)
+        const schemaVariantId = await this._resolveSchemaVariantId(component);
+        if (!schemaVariantId) {
+          // Can't validate without schema variant ID, allow it
+          this.logger.debug(
+            "Cannot resolve schema variant ID for baseline component {componentId}, allowing attribute {path}",
+            {
+              componentId: component.id,
+              path,
+            },
+          );
+          return true;
+        }
+
+        // Fetch schema variant (with caching)
+        const domainProps = await this._getOrFetchSchemaVariant(
+          component.schemaId,
+          schemaVariantId,
+        );
+        if (!domainProps) {
+          // Can't validate without schema, allow it
+          this.logger.debug(
+            "Cannot fetch schema variant {variantId} for baseline component {componentId}, allowing attribute {path}",
+            {
+              variantId: schemaVariantId,
+              componentId: component.id,
+              path,
+            },
+          );
+          return true;
+        }
+
+        // Build valid paths from schema
+        const validPaths = this._buildValidPathsFromSchema(
+          domainProps,
+          "/domain",
+        );
+
+        // Also add common /si and /secrets paths that are always valid
+        validPaths.add("/si/name");
+        validPaths.add("/si/type");
+        validPaths.add("/si/color");
+        validPaths.add("/si/tags");
+
+        // Allow /si, /secrets, and /resource_value paths without strict validation
+        if (
+          path.startsWith("/si") ||
+          path.startsWith("/secrets") ||
+          path.startsWith("/resource_value")
+        ) {
+          this.logger.trace(
+            "Path {path} allowed without strict validation (special prefix)",
+            { path },
+          );
+          return true;
+        }
+
+        // Validate the path against schema
+        if (!this._validateAttributePathAgainstSchema(path, validPaths)) {
+          const schemaName = component.schemaName || component.schemaId;
+          const errorMessage =
+            `Attribute path "${path}" does not exist in schema "${schemaName}". ` +
+            `Available paths: ${Array.from(validPaths).sort().join(", ")}`;
+
+          if (skipIfMissing) {
+            this.logger.debug(
+              "Skipping attribute {path} for baseline component {componentName} ({schemaName}) - not supported by schema",
+              {
+                path,
+                componentName: component.name,
+                schemaName,
+              },
+            );
+            return false;
+          } else {
+            throw new Error(errorMessage);
+          }
+        }
+
+        // Path is valid
+        return true;
+      }
+
+      this.logger.debug(
+        "Component {componentId} is NOT in working set, will proceed with API validation",
+        {
+          componentId: component.id,
+        },
+      );
+
       // Get API configuration
       const apiConfig = this.apiConfig();
       const workspaceId = this.workspaceId();
@@ -1893,7 +2186,7 @@ export class TemplateContext<TInputSchema extends z.ZodTypeAny = z.ZodTypeAny> {
 
     // Find matching element
     let matchedIndex: number | undefined;
-    let matchedSubpath: string | undefined;
+    let _matchedSubpath: string | undefined;
 
     for (const [index, subpaths] of elements.entries()) {
       for (
@@ -1908,7 +2201,7 @@ export class TemplateContext<TInputSchema extends z.ZodTypeAny = z.ZodTypeAny> {
           })
         ) {
           matchedIndex = index;
-          matchedSubpath = subpath;
+          _matchedSubpath = subpath;
           break;
         }
       }
@@ -2033,7 +2326,7 @@ export class TemplateContext<TInputSchema extends z.ZodTypeAny = z.ZodTypeAny> {
   async ensureAttributeMissing(
     component: TemplateComponent,
     path: string,
-    options?: { skipIfMissing?: boolean },
+    _options?: { skipIfMissing?: boolean },
   ): Promise<void> {
     const logger = Context.instance().logger;
 
@@ -2120,7 +2413,7 @@ export class TemplateContext<TInputSchema extends z.ZodTypeAny = z.ZodTypeAny> {
       index: number;
     }) => boolean,
     keysToDelete?: string[],
-    options?: { skipIfMissing?: boolean },
+    _options?: { skipIfMissing?: boolean },
   ): Promise<void> {
     const logger = Context.instance().logger;
 

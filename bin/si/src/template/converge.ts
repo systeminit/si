@@ -83,7 +83,7 @@ export async function convergeTemplate(
   const orderedChanges = topologicalSort(ctx, pending);
 
   // Execute (dry run or actual)
-  await executeChanges(ctx, orderedChanges, changeSetId, dryRun);
+  await executeChanges(ctx, orderedChanges, changeSetId, existingSet, dryRun);
 }
 
 /**
