@@ -144,7 +144,7 @@ const workspacesStore = useWorkspacesStore();
 const workspace = computed(() =>
   props.workspaceId
     ? workspacesStore.workspacesById[props.workspaceId]
-    : workspacesStore.defaultWorkspace,
+    : undefined,
 );
 
 function clickHandler(e: MouseEvent) {

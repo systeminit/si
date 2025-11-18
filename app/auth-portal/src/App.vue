@@ -360,7 +360,10 @@ watch([checkAuthReq, route], () => {
   if (!userIsLoggedIn.value || !user.value) {
     if (!["login", "signup", "404", "legal"].includes(currentRouteName)) {
       saveLoginSuccessRedirect();
-      return router.push({ name: "login" });
+      return router.push({
+        name: "login",
+        query: { redirect: router.currentRoute?.value.query.redirect },
+      });
     }
     return;
   }
