@@ -12,7 +12,7 @@ services:
       - "SI_TEST_NATS_URL=nats"
       - "SI_TEST_SPICEDB_URL=http://spicedb:50051"
       - "SI_TEST_LOCALSTACK_URL=http://localstack:4566"
-      - "SI_TEST_S3_ENDPOINT=http://versitygw:9000"
+      - "SI_TEST_S3_ENDPOINT=http://versitygw:9200"
       - "OTEL_EXPORTER_OTLP_ENDPOINT=http://otelcol:4317"
     ulimits:
       nofile:
@@ -95,11 +95,11 @@ services:
       - "-c"
       - |
         /usr/local/bin/init-buckets.sh &&
-        exec /app/versitygw --port :9000 --access siadmin --secret bugbear posix /data
+        exec /app/versitygw --port :9200 --access siadmin --secret bugbear posix /data
     environment:
       - "VGW_DATA_DIR=/data"
     ports:
-      - "9000:9000" # S3 API
+      - "9200:9200" # S3 API
     healthcheck:
       test:
         - "CMD-SHELL"
