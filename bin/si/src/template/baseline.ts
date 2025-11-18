@@ -81,6 +81,13 @@ export async function setBaseline(ctx: TemplateContext): Promise<void> {
 
     const component = componentResult.data.component;
 
+    // Fetch schema name from cache
+    const schemaName = await ctx.getSchemaName(
+      workspaceId,
+      changeSetId,
+      component.schemaId,
+    );
+
     // Log component loading with schema name
     await logComponentWithSchema(
       ctx,
@@ -92,8 +99,8 @@ export async function setBaseline(ctx: TemplateContext): Promise<void> {
       total,
     );
 
-    // Convert to TemplateComponent with filtered attributes
-    components.push(componentViewToTemplateComponent(component));
+    // Convert to TemplateComponent with filtered attributes and schema name
+    components.push(componentViewToTemplateComponent(component, schemaName));
   }
 
   ctx.logger.info(`Built baseline with {count} components from search`, {

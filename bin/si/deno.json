@@ -1,6 +1,6 @@
 {
   "name": "@systeminit/si",
-  "version": "1.0.0",
+  "version": "1.0.5",
   "description": "Unified CLI for System Initiative - schema management and template automation",
   "license": "Apache-2.0",
   "repository": {
@@ -10,12 +10,20 @@
   },
   "homepage": "https://docs.systeminit.com",
   "exports": {
-    ".": "./main.ts"
+    ".": "./src/template.ts"
   },
-  "workspace": [],
+  "publish": {
+    "exclude": [
+      "**/*_test.ts",
+      "**/*.test.ts",
+      "**/test_*.ts",
+      "main.ts",
+      "tmpl/"
+    ]
+  },
   "tasks": {
     "dev": "deno run --allow-net --allow-env --allow-read --env-file=.env.local --allow-write --watch main.ts",
-    "build": "deno compile --allow-net --allow-env --allow-read --allow-write main.ts",
+    "build": "deno compile --allow-net --allow-env --allow-read --allow-write --allow-import main.ts",
     "lint": "deno lint",
     "test": "deno test --allow-env --allow-read --allow-write"
   },

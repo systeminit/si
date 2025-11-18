@@ -14,18 +14,15 @@ import {
   type ComponentSearchResult,
   type GetComponentV1Response,
   type GetSchemaV1Response,
-  SearchApi,
   SchemasApi,
+  SearchApi,
 } from "@systeminit/api-client";
 import { stringify as stringifyYaml } from "@std/yaml";
 import { Context } from "../context.ts";
 import { apiConfig, getHeadChangeSetId, WORKSPACE_ID } from "../si_client.ts";
 import { resolveChangeSet } from "../change_set_utils.ts";
 import { cleanForYaml, type ComponentGetCache } from "./cache.ts";
-import {
-  displayAttributes,
-  displayComponentInfo,
-} from "./get.ts";
+import { displayAttributes, displayComponentInfo } from "./get.ts";
 import { cachedGetComponent, cachedGetSchema } from "../cache.ts";
 import { isSubscription } from "../template/attribute_diff.ts";
 import { filterAttributes } from "./attribute_utils.ts";
@@ -413,7 +410,10 @@ export async function componentSearch(
         changeSetId,
       });
       const actions = actionsResponse.data.actions as ActionViewV1[];
-      const componentActions = filterActionsByComponent(actions, fullComponent.id);
+      const componentActions = filterActionsByComponent(
+        actions,
+        fullComponent.id,
+      );
 
       // Filter attributes to relevant paths
       const filteredAttrs = filterAttributes(fullComponent.attributes);

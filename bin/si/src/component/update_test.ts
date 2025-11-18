@@ -103,7 +103,10 @@ Deno.test("computeAttributeDiff - handles subscriptions", () => {
 
   assertEquals(diff.set.size, 0);
   assertEquals(diff.subscriptions.size, 1);
-  assertEquals(diff.subscriptions.get("/domain/connection")?.component, "comp-123");
+  assertEquals(
+    diff.subscriptions.get("/domain/connection")?.component,
+    "comp-123",
+  );
 });
 
 Deno.test("computeAttributeDiff - handles nested objects", () => {

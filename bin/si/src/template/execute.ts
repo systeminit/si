@@ -107,10 +107,14 @@ export async function executeChanges(
       }
     } catch (error) {
       failCount++;
-      const errorDetails = extractErrorDetails(error);
+      const errorDetails = extractErrorDetails(error, false);
       ctx.logger.error("Failed to execute change: {error}", {
         error: errorDetails,
       });
+      // Log stack trace separately for proper formatting
+      if (error instanceof Error && error.stack) {
+        console.error(error.stack);
+      }
       // Continue with remaining changes
     }
   }

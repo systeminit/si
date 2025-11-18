@@ -22,7 +22,7 @@
 
 import { SCHEMA_FILE_FORMAT_VERSION } from "./config.ts";
 import * as materialize from "./materialize.ts";
-import { Project } from "./project.ts";
+import type { Project } from "./project.ts";
 import type { AbsoluteFilePath } from "./project.ts";
 import { MaterializableEntity } from "./materialize.ts";
 

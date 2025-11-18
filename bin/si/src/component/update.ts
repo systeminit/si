@@ -11,8 +11,8 @@
 import {
   ComponentsApi,
   type GetComponentV1Response,
-  SearchApi,
   SchemasApi,
+  SearchApi,
 } from "@systeminit/api-client";
 import { parse as parseYaml } from "@std/yaml";
 import { extname } from "@std/path";

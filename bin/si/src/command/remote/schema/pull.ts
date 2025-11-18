@@ -1,12 +1,12 @@
 import {
   FuncsApi,
   SchemasApi,
-  SchemaVariantFunc,
+  type SchemaVariantFunc,
 } from "@systeminit/api-client";
-import { ApiContext } from "../../../api.ts";
+import type { ApiContext } from "../../../api.ts";
 import { SCHEMA_FILE_FORMAT_VERSION } from "../../../config.ts";
-import { Context } from "../../../context.ts";
-import { FunctionMetadata, SchemaMetadata } from "../../../generators.ts";
+import type { Context } from "../../../context.ts";
+import type { FunctionMetadata, SchemaMetadata } from "../../../generators.ts";
 import * as materialize from "../../../materialize.ts";
 import {
   functionKindToMaterializableEntity,
@@ -14,11 +14,11 @@ import {
 } from "../../../materialize.ts";
 import { getLogger } from "../../../logger.ts";
 import {
-  AbsoluteDirectoryPath,
-  AbsoluteFilePath,
+  type AbsoluteDirectoryPath,
+  type AbsoluteFilePath,
   FunctionKind,
   normalizeFsName,
-  Project,
+  type Project,
 } from "../../../project.ts";
 
 const logger = getLogger();
@@ -230,7 +230,7 @@ async function pullSchemaByName(
     if (!includeBuiltins) {
       throw new Error(
         `Cannot pull builtin schema "${schemaName}" without --builtins flag. ` +
-        `Builtin schemas are schemas you don't own. Use --builtins to pull them.`,
+          `Builtin schemas are schemas you don't own. Use --builtins to pull them.`,
       );
     }
 

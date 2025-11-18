@@ -7,8 +7,8 @@
  * @module
  */
 
-import { Context } from "../../context.ts";
-import { getComponent, type ComponentGetOptions } from "../../component/get.ts";
+import type { Context } from "../../context.ts";
+import { type ComponentGetOptions, getComponent } from "../../component/get.ts";
 
 /**
  * Executes the component get command.

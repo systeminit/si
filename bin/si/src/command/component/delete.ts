@@ -7,10 +7,10 @@
  * @module
  */
 
-import { Context } from "../../context.ts";
+import type { Context } from "../../context.ts";
 import {
-  deleteComponent,
   type ComponentDeleteOptions,
+  deleteComponent,
 } from "../../component/delete.ts";
 
 /**

@@ -17,12 +17,12 @@ export const noDenoEnvGet = {
         // Allow Deno.env.get() in specific bootstrap/initialization files
         const filename = context.getFilename();
         const allowedFiles = [
-          'context.ts',
-          'config.ts',
-          'si_client.ts',
+          "context.ts",
+          "config.ts",
+          "si_client.ts",
         ];
 
-        const isAllowed = allowedFiles.some(file => filename.endsWith(file));
+        const isAllowed = allowedFiles.some((file) => filename.endsWith(file));
 
         if (!isAllowed) {
           context.report({

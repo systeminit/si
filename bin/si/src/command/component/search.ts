@@ -7,7 +7,7 @@
  * @module
  */
 
-import { Context } from "../../context.ts";
+import type { Context } from "../../context.ts";
 import {
   componentSearch,
   type ComponentSearchOptions,

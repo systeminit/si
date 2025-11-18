@@ -56,16 +56,15 @@ export function logAllFunctions(obj: unknown) {
  * }
  * ```
  */
-export function extractErrorDetails(error: unknown): string {
+export function extractErrorDetails(
+  error: unknown,
+  includeStack = false,
+): string {
   if (error instanceof AxiosError) {
     const details: string[] = [
       `Status: ${error.response?.status || "unknown"}`,
       `Message: ${error.message}`,
     ];
-
-    if (error.response?.data) {
-      details.push(`Response: ${JSON.stringify(error.response.data, null, 2)}`);
-    }
 
     if (error.config?.url) {
       details.push(
@@ -73,10 +72,31 @@ export function extractErrorDetails(error: unknown): string {
       );
     }
 
+    if (error.config?.data) {
+      details.push(
+        `Request Body: ${JSON.stringify(error.config.data, null, 2)}`,
+      );
+    }
+
+    if (error.response?.data) {
+      details.push(`Response: ${JSON.stringify(error.response.data, null, 2)}`);
+    }
+
+    if (includeStack && error.stack) {
+      details.push(`Stack: ${error.stack}`);
+    }
+
     return details.join("\n");
   }
 
-  return error instanceof Error ? error.message : String(error);
+  if (error instanceof Error) {
+    if (includeStack && error.stack) {
+      return `${error.message}\n${error.stack}`;
+    }
+    return error.message;
+  }
+
+  return String(error);
 }
 
 /**

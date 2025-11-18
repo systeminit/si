@@ -26,7 +26,11 @@
  */
 
 import { getLogger } from "./logger.ts";
-import { AbsoluteDirectoryPath, FunctionKind, Project } from "./project.ts";
+import {
+  type AbsoluteDirectoryPath,
+  FunctionKind,
+  type Project,
+} from "./project.ts";
 import type { AbsoluteFilePath } from "./project.ts";
 
 const logger = getLogger();

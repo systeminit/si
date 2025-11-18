@@ -2202,3 +2202,690 @@ Deno.test("copyComponent - works in transform function with loop", () => {
     assertEquals(workingSet[i].attributes["/domain/instance_type"], "t2.micro");
   }
 });
+
+// ===== ensureAttribute Tests =====
+
+Deno.test("ensureAttribute - sets new attribute", async () => {
+  const ctx = new TemplateContext("/path/to/template.ts", { key: "test" });
+
+  const component: TemplateComponent = {
+    id: "comp-1",
+    schemaId: "schema-1",
+    name: "Test Component",
+    resourceId: "resource-1",
+    attributes: {},
+  };
+
+  await await ctx.ensureAttribute(
+    component,
+    "/domain/CidrBlock",
+    "10.0.1.0/24",
+  );
+
+  assertEquals(component.attributes["/domain/CidrBlock"], "10.0.1.0/24");
+});
+
+Deno.test("ensureAttribute - updates existing attribute with different value", async () => {
+  const ctx = new TemplateContext("/path/to/template.ts", { key: "test" });
+
+  const component: TemplateComponent = {
+    id: "comp-1",
+    schemaId: "schema-1",
+    name: "Test Component",
+    resourceId: "resource-1",
+    attributes: {
+      "/domain/CidrBlock": "10.0.0.0/24",
+    },
+  };
+
+  await await ctx.ensureAttribute(
+    component,
+    "/domain/CidrBlock",
+    "10.0.1.0/24",
+  );
+
+  assertEquals(component.attributes["/domain/CidrBlock"], "10.0.1.0/24");
+});
+
+Deno.test("ensureAttribute - idempotent when value matches", async () => {
+  const ctx = new TemplateContext("/path/to/template.ts", { key: "test" });
+
+  const component: TemplateComponent = {
+    id: "comp-1",
+    schemaId: "schema-1",
+    name: "Test Component",
+    resourceId: "resource-1",
+    attributes: {
+      "/domain/CidrBlock": "10.0.1.0/24",
+    },
+  };
+
+  const originalRef = component.attributes["/domain/CidrBlock"];
+  await ctx.ensureAttribute(component, "/domain/CidrBlock", "10.0.1.0/24");
+
+  assertEquals(component.attributes["/domain/CidrBlock"], originalRef);
+  assertEquals(component.attributes["/domain/CidrBlock"], "10.0.1.0/24");
+});
+
+Deno.test("ensureAttribute - sets subscription value", async () => {
+  const ctx = new TemplateContext("/path/to/template.ts", { key: "test" });
+
+  const component: TemplateComponent = {
+    id: "comp-1",
+    schemaId: "schema-1",
+    name: "Test Component",
+    resourceId: "resource-1",
+    attributes: {},
+  };
+
+  await ctx.ensureAttribute(component, "/domain/VpcId", {
+    $source: {
+      component: "01K2YVY4WE8KBM01H05R74RKX8",
+      path: "/resource_value/VpcId",
+    },
+  });
+
+  assertEquals(component.attributes["/domain/VpcId"], {
+    $source: {
+      component: "01K2YVY4WE8KBM01H05R74RKX8",
+      path: "/resource_value/VpcId",
+    },
+  });
+});
+
+Deno.test("ensureAttribute - idempotent with subscription", async () => {
+  const ctx = new TemplateContext("/path/to/template.ts", { key: "test" });
+
+  const subscription = {
+    $source: {
+      component: "01K2YVY4WE8KBM01H05R74RKX8",
+      path: "/resource_value/VpcId",
+    },
+  };
+
+  const component: TemplateComponent = {
+    id: "comp-1",
+    schemaId: "schema-1",
+    name: "Test Component",
+    resourceId: "resource-1",
+    attributes: {
+      "/domain/VpcId": subscription,
+    },
+  };
+
+  await ctx.ensureAttribute(component, "/domain/VpcId", subscription);
+
+  assertEquals(component.attributes["/domain/VpcId"], subscription);
+});
+
+Deno.test("ensureAttribute - case sensitive paths", async () => {
+  const ctx = new TemplateContext("/path/to/template.ts", { key: "test" });
+
+  const component: TemplateComponent = {
+    id: "comp-1",
+    schemaId: "schema-1",
+    name: "Test Component",
+    resourceId: "resource-1",
+    attributes: {
+      "/domain/CidrBlock": "10.0.0.0/24",
+    },
+  };
+
+  await ctx.ensureAttribute(component, "/Domain/CidrBlock", "10.0.1.0/24");
+
+  // Both should exist since paths are case-sensitive
+  assertEquals(component.attributes["/domain/CidrBlock"], "10.0.0.0/24");
+  assertEquals(component.attributes["/Domain/CidrBlock"], "10.0.1.0/24");
+});
+
+Deno.test("ensureAttribute - supports various value types", async () => {
+  const ctx = new TemplateContext("/path/to/template.ts", { key: "test" });
+
+  const component: TemplateComponent = {
+    id: "comp-1",
+    schemaId: "schema-1",
+    name: "Test Component",
+    resourceId: "resource-1",
+    attributes: {},
+  };
+
+  await ctx.ensureAttribute(component, "/domain/string", "value");
+  await ctx.ensureAttribute(component, "/domain/number", 42);
+  await ctx.ensureAttribute(component, "/domain/boolean", true);
+  await ctx.ensureAttribute(component, "/domain/object", { nested: "value" });
+  await ctx.ensureAttribute(component, "/domain/array", [1, 2, 3]);
+  await ctx.ensureAttribute(component, "/domain/null", null);
+
+  assertEquals(component.attributes["/domain/string"], "value");
+  assertEquals(component.attributes["/domain/number"], 42);
+  assertEquals(component.attributes["/domain/boolean"], true);
+  assertEquals(component.attributes["/domain/object"], { nested: "value" });
+  assertEquals(component.attributes["/domain/array"], [1, 2, 3]);
+  assertEquals(component.attributes["/domain/null"], null);
+});
+
+// ===== ensureArrayAttribute Tests =====
+
+Deno.test("ensureArrayAttribute - updates existing object array element", async () => {
+  const ctx = new TemplateContext("/path/to/template.ts", { key: "test" });
+
+  const component: TemplateComponent = {
+    id: "comp-1",
+    schemaId: "schema-1",
+    name: "Test Component",
+    resourceId: "resource-1",
+    attributes: {
+      "/domain/Tags/0/Key": "Name",
+      "/domain/Tags/0/Value": "old-value",
+    },
+  };
+
+  await ctx.ensureArrayAttribute(
+    component,
+    "/domain/Tags",
+    (e) => e.subpath === "Key" && e.value === "Name",
+    { Value: "demo-subnet-awesome" },
+  );
+
+  assertEquals(component.attributes["/domain/Tags/0/Key"], "Name");
+  assertEquals(
+    component.attributes["/domain/Tags/0/Value"],
+    "demo-subnet-awesome",
+  );
+});
+
+Deno.test("ensureArrayAttribute - creates new object array element when no match", async () => {
+  const ctx = new TemplateContext("/path/to/template.ts", { key: "test" });
+
+  const component: TemplateComponent = {
+    id: "comp-1",
+    schemaId: "schema-1",
+    name: "Test Component",
+    resourceId: "resource-1",
+    attributes: {
+      "/domain/Tags/0/Key": "Environment",
+      "/domain/Tags/0/Value": "prod",
+    },
+  };
+
+  await ctx.ensureArrayAttribute(
+    component,
+    "/domain/Tags",
+    (e) => e.subpath === "Key" && e.value === "Name",
+    { Key: "Name", Value: "new-value" },
+  );
+
+  // Original element unchanged
+  assertEquals(component.attributes["/domain/Tags/0/Key"], "Environment");
+  assertEquals(component.attributes["/domain/Tags/0/Value"], "prod");
+
+  // New element created at index 1
+  assertEquals(component.attributes["/domain/Tags/1/Key"], "Name");
+  assertEquals(component.attributes["/domain/Tags/1/Value"], "new-value");
+});
+
+Deno.test("ensureArrayAttribute - updates scalar array element", async () => {
+  const ctx = new TemplateContext("/path/to/template.ts", { key: "test" });
+
+  const component: TemplateComponent = {
+    id: "comp-1",
+    schemaId: "schema-1",
+    name: "Test Component",
+    resourceId: "resource-1",
+    attributes: {
+      "/domain/Foo/0": "poop",
+      "/domain/Foo/1": "canoe",
+    },
+  };
+
+  await ctx.ensureArrayAttribute(
+    component,
+    "/domain/Foo",
+    (e) => e.subpath === undefined && e.value === "poop",
+    "foobar",
+  );
+
+  assertEquals(component.attributes["/domain/Foo/0"], "foobar");
+  assertEquals(component.attributes["/domain/Foo/1"], "canoe");
+});
+
+Deno.test("ensureArrayAttribute - creates new scalar array element when no match", async () => {
+  const ctx = new TemplateContext("/path/to/template.ts", { key: "test" });
+
+  const component: TemplateComponent = {
+    id: "comp-1",
+    schemaId: "schema-1",
+    name: "Test Component",
+    resourceId: "resource-1",
+    attributes: {
+      "/domain/Foo/0": "alpha",
+      "/domain/Foo/1": "beta",
+    },
+  };
+
+  await ctx.ensureArrayAttribute(
+    component,
+    "/domain/Foo",
+    (e) => e.subpath === undefined && e.value === "gamma",
+    "gamma",
+  );
+
+  // Original elements unchanged
+  assertEquals(component.attributes["/domain/Foo/0"], "alpha");
+  assertEquals(component.attributes["/domain/Foo/1"], "beta");
+
+  // New element created at index 2
+  assertEquals(component.attributes["/domain/Foo/2"], "gamma");
+});
+
+Deno.test("ensureArrayAttribute - merges siblings without replacing other properties", async () => {
+  const ctx = new TemplateContext("/path/to/template.ts", { key: "test" });
+
+  const component: TemplateComponent = {
+    id: "comp-1",
+    schemaId: "schema-1",
+    name: "Test Component",
+    resourceId: "resource-1",
+    attributes: {
+      "/domain/Tags/0/Key": "Name",
+      "/domain/Tags/0/Value": "old-value",
+      "/domain/Tags/0/Description": "existing-description",
+    },
+  };
+
+  await ctx.ensureArrayAttribute(
+    component,
+    "/domain/Tags",
+    (e) => e.subpath === "Key" && e.value === "Name",
+    { Value: "new-value" },
+  );
+
+  // Only Value updated
+  assertEquals(component.attributes["/domain/Tags/0/Key"], "Name");
+  assertEquals(component.attributes["/domain/Tags/0/Value"], "new-value");
+  assertEquals(
+    component.attributes["/domain/Tags/0/Description"],
+    "existing-description",
+  );
+});
+
+Deno.test("ensureArrayAttribute - idempotent when values match", async () => {
+  const ctx = new TemplateContext("/path/to/template.ts", { key: "test" });
+
+  const component: TemplateComponent = {
+    id: "comp-1",
+    schemaId: "schema-1",
+    name: "Test Component",
+    resourceId: "resource-1",
+    attributes: {
+      "/domain/Tags/0/Key": "Name",
+      "/domain/Tags/0/Value": "current-value",
+    },
+  };
+
+  await ctx.ensureArrayAttribute(
+    component,
+    "/domain/Tags",
+    (e) => e.subpath === "Key" && e.value === "Name",
+    { Value: "current-value" },
+  );
+
+  // No change
+  assertEquals(component.attributes["/domain/Tags/0/Value"], "current-value");
+  assertEquals(Object.keys(component.attributes).length, 2);
+});
+
+Deno.test("ensureArrayAttribute - matcher receives fullPath and index", async () => {
+  const ctx = new TemplateContext("/path/to/template.ts", { key: "test" });
+
+  const component: TemplateComponent = {
+    id: "comp-1",
+    schemaId: "schema-1",
+    name: "Test Component",
+    resourceId: "resource-1",
+    attributes: {
+      "/domain/Tags/0/Key": "Name",
+      "/domain/Tags/1/Key": "Environment",
+    },
+  };
+
+  let capturedMatcher: {
+    fullPath: string;
+    index: number;
+    subpath: string | undefined;
+    value: unknown;
+  } | undefined;
+
+  await ctx.ensureArrayAttribute(
+    component,
+    "/domain/Tags",
+    (e) => {
+      if (e.index === 1) {
+        capturedMatcher = e;
+        return true;
+      }
+      return false;
+    },
+    { Value: "test" },
+  );
+
+  assertEquals(capturedMatcher?.fullPath, "/domain/Tags/1/Key");
+  assertEquals(capturedMatcher?.index, 1);
+  assertEquals(capturedMatcher?.subpath, "Key");
+  assertEquals(capturedMatcher?.value, "Environment");
+});
+
+Deno.test("ensureArrayAttribute - creates first array element when array is empty", async () => {
+  const ctx = new TemplateContext("/path/to/template.ts", { key: "test" });
+
+  const component: TemplateComponent = {
+    id: "comp-1",
+    schemaId: "schema-1",
+    name: "Test Component",
+    resourceId: "resource-1",
+    attributes: {},
+  };
+
+  await ctx.ensureArrayAttribute(
+    component,
+    "/domain/Tags",
+    (e) => e.subpath === "Key" && e.value === "Name",
+    { Key: "Name", Value: "first-tag" },
+  );
+
+  assertEquals(component.attributes["/domain/Tags/0/Key"], "Name");
+  assertEquals(component.attributes["/domain/Tags/0/Value"], "first-tag");
+});
+
+Deno.test("ensureArrayAttribute - handles sparse indices correctly", async () => {
+  const ctx = new TemplateContext("/path/to/template.ts", { key: "test" });
+
+  const component: TemplateComponent = {
+    id: "comp-1",
+    schemaId: "schema-1",
+    name: "Test Component",
+    resourceId: "resource-1",
+    attributes: {
+      "/domain/Tags/0/Key": "First",
+      "/domain/Tags/5/Key": "Sixth", // Sparse array
+    },
+  };
+
+  await ctx.ensureArrayAttribute(
+    component,
+    "/domain/Tags",
+    (e) => e.subpath === "Key" && e.value === "New",
+    { Key: "New", Value: "appended" },
+  );
+
+  // Should append after highest index (5)
+  assertEquals(component.attributes["/domain/Tags/6/Key"], "New");
+  assertEquals(component.attributes["/domain/Tags/6/Value"], "appended");
+});
+
+// ===== ensureAttributeMissing Tests =====
+
+Deno.test("ensureAttributeMissing - deletes existing attribute", async () => {
+  const ctx = new TemplateContext("/path/to/template.ts", { key: "test" });
+
+  const component: TemplateComponent = {
+    id: "comp-1",
+    schemaId: "schema-1",
+    name: "Test Component",
+    resourceId: "resource-1",
+    attributes: {
+      "/domain/CidrBlock": "10.0.1.0/24",
+      "/domain/Other": "value",
+    },
+  };
+
+  await ctx.ensureAttributeMissing(component, "/domain/CidrBlock");
+
+  assertEquals(component.attributes["/domain/CidrBlock"], undefined);
+  assertEquals(component.attributes["/domain/Other"], "value");
+});
+
+Deno.test("ensureAttributeMissing - idempotent when attribute already missing", async () => {
+  const ctx = new TemplateContext("/path/to/template.ts", { key: "test" });
+
+  const component: TemplateComponent = {
+    id: "comp-1",
+    schemaId: "schema-1",
+    name: "Test Component",
+    resourceId: "resource-1",
+    attributes: {
+      "/domain/Other": "value",
+    },
+  };
+
+  await ctx.ensureAttributeMissing(component, "/domain/CidrBlock");
+
+  assertEquals(component.attributes["/domain/CidrBlock"], undefined);
+  assertEquals(component.attributes["/domain/Other"], "value");
+});
+
+Deno.test("ensureAttributeMissing - case sensitive", async () => {
+  const ctx = new TemplateContext("/path/to/template.ts", { key: "test" });
+
+  const component: TemplateComponent = {
+    id: "comp-1",
+    schemaId: "schema-1",
+    name: "Test Component",
+    resourceId: "resource-1",
+    attributes: {
+      "/domain/CidrBlock": "10.0.1.0/24",
+      "/Domain/CidrBlock": "10.0.2.0/24",
+    },
+  };
+
+  await ctx.ensureAttributeMissing(component, "/domain/CidrBlock");
+
+  // Only lowercase deleted
+  assertEquals(component.attributes["/domain/CidrBlock"], undefined);
+  assertEquals(component.attributes["/Domain/CidrBlock"], "10.0.2.0/24");
+});
+
+// ===== ensureArrayAttributeMissing Tests =====
+
+Deno.test("ensureArrayAttributeMissing - deletes entire matching scalar array element", async () => {
+  const ctx = new TemplateContext("/path/to/template.ts", { key: "test" });
+
+  const component: TemplateComponent = {
+    id: "comp-1",
+    schemaId: "schema-1",
+    name: "Test Component",
+    resourceId: "resource-1",
+    attributes: {
+      "/domain/Foo/0": "poop",
+      "/domain/Foo/1": "canoe",
+      "/domain/Foo/2": "boat",
+    },
+  };
+
+  await ctx.ensureArrayAttributeMissing(
+    component,
+    "/domain/Foo",
+    (e) => e.value === "poop",
+  );
+
+  // Element at index 0 deleted, others reindexed
+  assertEquals(component.attributes["/domain/Foo/0"], "canoe");
+  assertEquals(component.attributes["/domain/Foo/1"], "boat");
+  assertEquals(component.attributes["/domain/Foo/2"], undefined);
+});
+
+Deno.test("ensureArrayAttributeMissing - deletes entire matching object array element", async () => {
+  const ctx = new TemplateContext("/path/to/template.ts", { key: "test" });
+
+  const component: TemplateComponent = {
+    id: "comp-1",
+    schemaId: "schema-1",
+    name: "Test Component",
+    resourceId: "resource-1",
+    attributes: {
+      "/domain/Tags/0/Key": "Name",
+      "/domain/Tags/0/Value": "test",
+      "/domain/Tags/1/Key": "Environment",
+      "/domain/Tags/1/Value": "prod",
+    },
+  };
+
+  await ctx.ensureArrayAttributeMissing(
+    component,
+    "/domain/Tags",
+    (e) => e.subpath === "Key" && e.value === "Name",
+  );
+
+  // First element deleted, second reindexed to 0
+  assertEquals(component.attributes["/domain/Tags/0/Key"], "Environment");
+  assertEquals(component.attributes["/domain/Tags/0/Value"], "prod");
+  assertEquals(component.attributes["/domain/Tags/1/Key"], undefined);
+  assertEquals(component.attributes["/domain/Tags/1/Value"], undefined);
+});
+
+Deno.test("ensureArrayAttributeMissing - deletes specific keys from matching element", async () => {
+  const ctx = new TemplateContext("/path/to/template.ts", { key: "test" });
+
+  const component: TemplateComponent = {
+    id: "comp-1",
+    schemaId: "schema-1",
+    name: "Test Component",
+    resourceId: "resource-1",
+    attributes: {
+      "/domain/Tags/0/Key": "Name",
+      "/domain/Tags/0/Value": "test",
+      "/domain/Tags/0/Description": "desc",
+    },
+  };
+
+  await ctx.ensureArrayAttributeMissing(
+    component,
+    "/domain/Tags",
+    (e) => e.subpath === "Key",
+    ["Key", "Value"],
+  );
+
+  // Only specified keys deleted
+  assertEquals(component.attributes["/domain/Tags/0/Key"], undefined);
+  assertEquals(component.attributes["/domain/Tags/0/Value"], undefined);
+  assertEquals(component.attributes["/domain/Tags/0/Description"], "desc");
+});
+
+Deno.test("ensureArrayAttributeMissing - reindexes array to avoid sparse arrays", async () => {
+  const ctx = new TemplateContext("/path/to/template.ts", { key: "test" });
+
+  const component: TemplateComponent = {
+    id: "comp-1",
+    schemaId: "schema-1",
+    name: "Test Component",
+    resourceId: "resource-1",
+    attributes: {
+      "/domain/Foo/0": "alpha",
+      "/domain/Foo/1": "beta",
+      "/domain/Foo/2": "gamma",
+      "/domain/Foo/3": "delta",
+    },
+  };
+
+  await ctx.ensureArrayAttributeMissing(
+    component,
+    "/domain/Foo",
+    (e) => e.value === "beta",
+  );
+
+  // Element at index 1 deleted, subsequent elements shifted down
+  assertEquals(component.attributes["/domain/Foo/0"], "alpha");
+  assertEquals(component.attributes["/domain/Foo/1"], "gamma");
+  assertEquals(component.attributes["/domain/Foo/2"], "delta");
+  assertEquals(component.attributes["/domain/Foo/3"], undefined);
+});
+
+Deno.test("ensureArrayAttributeMissing - idempotent when no match found", async () => {
+  const ctx = new TemplateContext("/path/to/template.ts", { key: "test" });
+
+  const component: TemplateComponent = {
+    id: "comp-1",
+    schemaId: "schema-1",
+    name: "Test Component",
+    resourceId: "resource-1",
+    attributes: {
+      "/domain/Foo/0": "alpha",
+      "/domain/Foo/1": "beta",
+    },
+  };
+
+  await ctx.ensureArrayAttributeMissing(
+    component,
+    "/domain/Foo",
+    (e) => e.value === "nonexistent",
+  );
+
+  // No changes
+  assertEquals(component.attributes["/domain/Foo/0"], "alpha");
+  assertEquals(component.attributes["/domain/Foo/1"], "beta");
+  assertEquals(Object.keys(component.attributes).length, 2);
+});
+
+Deno.test("ensureArrayAttributeMissing - deletes multiple matching elements", async () => {
+  const ctx = new TemplateContext("/path/to/template.ts", { key: "test" });
+
+  const component: TemplateComponent = {
+    id: "comp-1",
+    schemaId: "schema-1",
+    name: "Test Component",
+    resourceId: "resource-1",
+    attributes: {
+      "/domain/Tags/0/Key": "temp",
+      "/domain/Tags/0/Value": "v0",
+      "/domain/Tags/1/Key": "Name",
+      "/domain/Tags/1/Value": "v1",
+      "/domain/Tags/2/Key": "temp",
+      "/domain/Tags/2/Value": "v2",
+    },
+  };
+
+  await ctx.ensureArrayAttributeMissing(
+    component,
+    "/domain/Tags",
+    (e) => e.subpath === "Key" && e.value === "temp",
+  );
+
+  // Elements at indices 0 and 2 deleted, element at 1 reindexed to 0
+  assertEquals(component.attributes["/domain/Tags/0/Key"], "Name");
+  assertEquals(component.attributes["/domain/Tags/0/Value"], "v1");
+  assertEquals(component.attributes["/domain/Tags/1/Key"], undefined);
+  assertEquals(component.attributes["/domain/Tags/2/Key"], undefined);
+});
+
+Deno.test("ensureArrayAttributeMissing - handles complex reindexing", async () => {
+  const ctx = new TemplateContext("/path/to/template.ts", { key: "test" });
+
+  const component: TemplateComponent = {
+    id: "comp-1",
+    schemaId: "schema-1",
+    name: "Test Component",
+    resourceId: "resource-1",
+    attributes: {
+      "/domain/Items/0/Type": "A",
+      "/domain/Items/0/Value": "v0",
+      "/domain/Items/2/Type": "B",
+      "/domain/Items/2/Value": "v2",
+      "/domain/Items/5/Type": "C",
+      "/domain/Items/5/Value": "v5",
+    },
+  };
+
+  await ctx.ensureArrayAttributeMissing(
+    component,
+    "/domain/Items",
+    (e) => e.subpath === "Type" && e.value === "B",
+  );
+
+  // Element at index 2 deleted, array reindexed to be contiguous
+  assertEquals(component.attributes["/domain/Items/0/Type"], "A");
+  assertEquals(component.attributes["/domain/Items/0/Value"], "v0");
+  assertEquals(component.attributes["/domain/Items/1/Type"], "C");
+  assertEquals(component.attributes["/domain/Items/1/Value"], "v5");
+  assertEquals(component.attributes["/domain/Items/2/Type"], undefined);
+  assertEquals(component.attributes["/domain/Items/5/Type"], undefined);
+});

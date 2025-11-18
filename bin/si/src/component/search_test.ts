@@ -30,7 +30,9 @@ Deno.test("formatAttributesInline logic - formats boolean attribute", () => {
 });
 
 Deno.test("formatAttributesInline logic - formats object attribute as JSON", () => {
-  const attributes = { "/domain/config": { key: "value", nested: { deep: 123 } } };
+  const attributes = {
+    "/domain/config": { key: "value", nested: { deep: 123 } },
+  };
   const result = formatTestAttributes(attributes);
   assertStringIncludes(result, "  /domain/config:");
   assertStringIncludes(result, '"key":"value"');
@@ -126,7 +128,10 @@ Deno.test("SearchResultOutput - structure with attributes", () => {
   assertEquals(output.count, 2);
   assertEquals(output.components.length, 2);
   assertEquals(output.components[0].name, "component-1");
-  assertEquals(output.components[1].attributes?.["/domain/region"], "us-east-1");
+  assertEquals(
+    output.components[1].attributes?.["/domain/region"],
+    "us-east-1",
+  );
   assertEquals(
     output.components[1].attributes?.["/domain/instanceType"],
     "t3.micro",

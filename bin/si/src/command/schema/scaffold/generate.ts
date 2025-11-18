@@ -1,4 +1,4 @@
-import { Context } from "../../../context.ts";
+import type { Context } from "../../../context.ts";
 import * as generator from "../../../generators.ts";
 import { MaterializableEntity } from "../../../materialize.ts";
 import { getLogger } from "../../../logger.ts";

@@ -12,6 +12,8 @@ export interface ExistingSetComponent {
   id: string;
   /** Schema ID defining the component type */
   schemaId: string;
+  /** Schema name (human-readable) */
+  schemaName?: string;
   /** Display name of the component */
   name: string;
   /** Resource ID if the component has been materialized to a real infrastructure resource */

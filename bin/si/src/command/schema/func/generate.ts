@@ -1,10 +1,8 @@
-import { Context } from "../../../context.ts";
+import type { Context } from "../../../context.ts";
 import * as generator from "../../../generators.ts";
-import {
-  functionKindToMaterializableEntity,
-} from "../../../materialize.ts";
+import { functionKindToMaterializableEntity } from "../../../materialize.ts";
 import { getLogger } from "../../../logger.ts";
-import { FunctionKind, Project } from "../../../project.ts";
+import type { FunctionKind, Project } from "../../../project.ts";
 import type { AbsoluteFilePath } from "../../../project.ts";
 
 const logger = getLogger();

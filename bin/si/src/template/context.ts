@@ -2,13 +2,15 @@ import type { Logger } from "@logtape/logtape";
 import { Context } from "../context.ts";
 import { basename } from "@std/path";
 import { z } from "zod";
-import type { SubscriptionInputType } from "../template.ts";
+import { SubscriptionInput, type SubscriptionInputType } from "../template.ts";
 import {
   ComponentsApi,
   type ComponentViewV1,
   type Configuration,
   type GetComponentV1Response,
   type GetSchemaV1Response,
+  type GetSchemaVariantV1Response,
+  type PropSchemaV1,
   SchemasApi,
   SearchApi,
   type SearchV1Response,
@@ -80,6 +82,7 @@ export interface NamePattern {
 export interface TemplateComponent {
   id: string;
   schemaId: string;
+  schemaName?: string;
   name: string;
   resourceId: string;
   /** Only attributes with paths starting with /si, /domain, or /secrets */
@@ -195,14 +198,17 @@ export function filterComponentAttributes(
  * essential properties and filtered attributes.
  *
  * @param component - Full component from API
+ * @param schemaName - Optional schema name to include in the TemplateComponent
  * @returns Filtered TemplateComponent
  */
 export function componentViewToTemplateComponent(
   component: ComponentViewV1,
+  schemaName?: string,
 ): TemplateComponent {
   return {
     id: component.id,
     schemaId: component.schemaId,
+    schemaName: schemaName,
     name: component.name,
     resourceId: component.resourceId,
     attributes: filterComponentAttributes(component.attributes || {}),
@@ -251,6 +257,7 @@ export class TemplateContext<TInputSchema extends z.ZodTypeAny = z.ZodTypeAny> {
   private _baseline: TemplateComponent[] | undefined;
   private _workingSet: TemplateComponent[] | undefined;
   private _schemaCache: Map<string, GetSchemaV1Response>;
+  private _schemaVariantCache: Map<string, GetSchemaVariantV1Response>;
   private _searchCache: Map<string, SearchV1Response>;
   private _componentCache: Map<string, GetComponentV1Response>;
   private _headChangeSetId: string | undefined;
@@ -270,6 +277,7 @@ export class TemplateContext<TInputSchema extends z.ZodTypeAny = z.ZodTypeAny> {
     this._baseline = undefined;
     this._workingSet = undefined;
     this._schemaCache = new Map();
+    this._schemaVariantCache = new Map();
     this._searchCache = new Map();
     this._componentCache = new Map();
   }
@@ -637,6 +645,81 @@ export class TemplateContext<TInputSchema extends z.ZodTypeAny = z.ZodTypeAny> {
   }
 
   /**
+   * Get schema variant with attribute definitions, with caching.
+   *
+   * Schema variants contain the full attribute structure (PropSchemaV1 tree)
+   * for a given component schema. This is used for attribute validation.
+   *
+   * @param workspaceId - Workspace ID
+   * @param changeSetId - Change set ID
+   * @param schemaId - Schema ID
+   * @param schemaVariantId - Schema variant ID
+   * @returns The schema variant response with attribute definitions
+   * @throws Error if API call fails
+   */
+  async getSchemaVariant(
+    workspaceId: string,
+    changeSetId: string,
+    schemaId: string,
+    schemaVariantId: string,
+  ): Promise<GetSchemaVariantV1Response> {
+    const cacheKey = `${schemaId}:${schemaVariantId}`;
+    const cached = this._schemaVariantCache.get(cacheKey);
+    if (cached) {
+      this.logger.debug(
+        "Cache hit for schema variant {schemaId}:{schemaVariantId}",
+        { schemaId, schemaVariantId },
+      );
+      return cached;
+    }
+
+    try {
+      const apiConfig = this.apiConfig();
+      if (!apiConfig) {
+        throw new Error(
+          "Cannot fetch schema variant: API configuration not available",
+        );
+      }
+
+      this.logger.debug(
+        "Fetching schema variant {schemaId}:{schemaVariantId}",
+        { schemaId, schemaVariantId },
+      );
+
+      const schemasApi = new SchemasApi(apiConfig);
+      const response = await schemasApi.getVariant({
+        workspaceId,
+        changeSetId,
+        schemaId,
+        schemaVariantId,
+      });
+
+      // Trace log the full schema variant response
+      this.logger.trace(
+        "Schema variant API response for {schemaId}:{schemaVariantId}: {response}",
+        {
+          schemaId,
+          schemaVariantId,
+          response: response.data,
+        },
+      );
+
+      this._schemaVariantCache.set(cacheKey, response.data);
+      return response.data;
+    } catch (error) {
+      this.logger.error(
+        "Failed to fetch schema variant {schemaId}:{schemaVariantId}: {error}",
+        {
+          schemaId,
+          schemaVariantId,
+          error: error instanceof Error ? error.message : String(error),
+        },
+      );
+      throw error;
+    }
+  }
+
+  /**
    * Cached search that performs API search only once per unique query string.
    * Subsequent calls with the same query return the cached result.
    *
@@ -720,6 +803,385 @@ export class TemplateContext<TInputSchema extends z.ZodTypeAny = z.ZodTypeAny> {
   }
 
   /**
+   * Recursively builds a set of valid attribute paths from a PropSchemaV1 tree.
+   *
+   * @param prop - The prop schema node to traverse
+   * @param currentPath - Current path being built (e.g., "/domain")
+   * @returns Set of valid attribute paths
+   * @private
+   */
+  private _buildValidPathsFromSchema(
+    prop: PropSchemaV1 | null | undefined,
+    currentPath: string = "",
+  ): Set<string> {
+    const paths = new Set<string>();
+
+    if (!prop) return paths;
+
+    // Trace log the prop being processed
+    this.logger.trace(
+      "Building paths from prop at {currentPath}",
+      {
+        currentPath: currentPath || "(root)",
+        propName: prop.name,
+        propType: prop.propType,
+        hasChildren: prop.children && Array.isArray(prop.children)
+          ? prop.children.length
+          : 0,
+      },
+    );
+
+    // Add current path if not empty
+    if (currentPath) {
+      paths.add(currentPath);
+      this.logger.trace("Added path: {path}", { path: currentPath });
+    }
+
+    // Recursively process children
+    if (
+      prop.children && Array.isArray(prop.children) && prop.children.length > 0
+    ) {
+      for (const child of prop.children) {
+        const childPath = currentPath
+          ? `${currentPath}/${child.name}`
+          : `/${child.name}`;
+
+        this.logger.trace(
+          "Processing child {childName} (type: {propType}) at path {childPath}",
+          {
+            childName: child.name,
+            propType: child.propType,
+            childPath,
+          },
+        );
+
+        const childPaths = this._buildValidPathsFromSchema(child, childPath);
+        childPaths.forEach((p) => paths.add(p));
+
+        // For arrays, also consider indexed paths
+        if (
+          child.propType === "array" && child.children &&
+          Array.isArray(child.children)
+        ) {
+          this.logger.trace(
+            "Processing array children for {childPath}",
+            { childPath, arrayChildrenCount: child.children.length },
+          );
+          // Add a placeholder for array element validation
+          for (const arrayChild of child.children) {
+            const arrayChildPath = `${childPath}/0/${arrayChild.name}`;
+            this.logger.trace(
+              "Adding array indexed path: {arrayChildPath}",
+              { arrayChildPath },
+            );
+            const arrayChildPaths = this._buildValidPathsFromSchema(
+              arrayChild,
+              arrayChildPath,
+            );
+            arrayChildPaths.forEach((p) => paths.add(p));
+          }
+        }
+      }
+    }
+
+    return paths;
+  }
+
+  /**
+   * Validates an attribute path against a set of valid paths from a schema.
+   * Handles array indices by normalizing them to index 0 for validation.
+   *
+   * @param path - Attribute path like "/domain/CidrBlock" or "/domain/Tags/2/Key"
+   * @param validPaths - Set of valid paths from schema
+   * @returns true if path is valid
+   * @private
+   */
+  private _validateAttributePathAgainstSchema(
+    path: string,
+    validPaths: Set<string>,
+  ): boolean {
+    // Exact match
+    if (validPaths.has(path)) return true;
+
+    // Handle array indices: /domain/Tags/2/Key → check /domain/Tags/0/Key
+    const arrayIndexPattern = /^(.*?)\/(\d+)(\/.*)?$/;
+    const match = path.match(arrayIndexPattern);
+    if (match) {
+      const [, basePath, _index, subPath] = match;
+      // Try with index 0
+      const normalizedPath = `${basePath}/0${subPath || ""}`;
+      if (validPaths.has(normalizedPath)) return true;
+      // Also check if just the base path exists (for simple array access)
+      if (validPaths.has(basePath)) return true;
+    }
+
+    return false;
+  }
+
+  /**
+   * Validates an attribute path against the component's schema.
+   * Fetches schema variant, builds valid paths, and checks if the given path is valid.
+   *
+   * @param component - Component to validate against
+   * @param path - Attribute path to validate
+   * @param skipIfMissing - If true, returns false when path is invalid instead of throwing
+   * @returns true if path is valid, false if invalid and skipIfMissing is true
+   * @throws Error if path is invalid and skipIfMissing is false
+   * @private
+   */
+  private async _validateAttributePath(
+    component: TemplateComponent,
+    path: string,
+    skipIfMissing: boolean = false,
+  ): Promise<boolean> {
+    try {
+      // Get API configuration
+      const apiConfig = this.apiConfig();
+      const workspaceId = this.workspaceId();
+
+      if (!apiConfig || !workspaceId) {
+        // No API available - skip validation silently
+        this.logger.debug(
+          "Skipping attribute validation: API configuration not available",
+        );
+        return true;
+      }
+
+      const changeSetId = await this.getHeadChangeSetId();
+
+      // Fetch full component to get schemaVariantId
+      const fullComponent = await cachedGetComponent(
+        this._componentCache,
+        new ComponentsApi(apiConfig),
+        this.logger,
+        workspaceId,
+        changeSetId,
+        component.id,
+      );
+
+      // Get schema variant with attribute definitions
+      const schemaVariant = await this.getSchemaVariant(
+        workspaceId,
+        changeSetId,
+        component.schemaId,
+        fullComponent.component.schemaVariantId,
+      );
+
+      // Trace log the schema variant domainProps structure
+      this.logger.trace(
+        "Schema variant domainProps for component {componentName}: {domainProps}",
+        {
+          componentName: component.name,
+          schemaId: component.schemaId,
+          schemaVariantId: fullComponent.component.schemaVariantId,
+          domainProps: schemaVariant.domainProps,
+        },
+      );
+
+      // Build valid paths from schema
+      // Start with "/domain" since domainProps represents the domain-level properties
+      const validPaths = this._buildValidPathsFromSchema(
+        schemaVariant.domainProps,
+        "/domain",
+      );
+
+      // Trace log the built valid paths
+      this.logger.trace(
+        "Built valid paths from schema for component {componentName}",
+        {
+          componentName: component.name,
+          pathCount: validPaths.size,
+          paths: Array.from(validPaths).sort(),
+        },
+      );
+
+      // Also add common /si and /secrets paths that are always valid
+      validPaths.add("/si/name");
+      validPaths.add("/si/type");
+      validPaths.add("/si/color");
+      validPaths.add("/si/tags");
+      // /secrets paths are schema-specific but always valid
+      // /resource_value paths are dynamic and always valid
+
+      // Allow /si, /secrets, and /resource_value paths without strict validation
+      if (
+        path.startsWith("/si") ||
+        path.startsWith("/secrets") ||
+        path.startsWith("/resource_value")
+      ) {
+        this.logger.trace(
+          "Path {path} allowed without strict validation (special prefix)",
+          { path },
+        );
+        return true;
+      }
+
+      // Trace log the validation attempt
+      this.logger.trace(
+        "Validating path {path} against schema for component {componentName}",
+        {
+          path,
+          componentName: component.name,
+          validPathsCount: validPaths.size,
+        },
+      );
+
+      // Validate the path
+      if (!this._validateAttributePathAgainstSchema(path, validPaths)) {
+        const schemaName = await this.getSchemaName(
+          workspaceId,
+          changeSetId,
+          component.schemaId,
+        );
+        const errorMessage =
+          `Attribute path "${path}" does not exist in schema "${schemaName}". ` +
+          `Available paths: ${Array.from(validPaths).sort().join(", ")}`;
+
+        if (skipIfMissing) {
+          this.logger.debug(
+            "Skipping attribute update: {errorMessage}",
+            { errorMessage },
+          );
+          return false;
+        } else {
+          throw new Error(errorMessage);
+        }
+      }
+
+      return true;
+    } catch (error) {
+      // If skipIfMissing is true and we got an error, treat it as "not found"
+      if (skipIfMissing) {
+        this.logger.debug(
+          "Skipping attribute validation due to error: {error} {stack}",
+          {
+            error: error instanceof Error ? error.message : String(error),
+            stack: error instanceof Error ? error.stack : undefined,
+          },
+        );
+        return false;
+      }
+      // Otherwise, re-throw the error
+      throw error;
+    }
+  }
+
+  /**
+   * Resolves a SubscriptionInputType into a subscription object with resolved component ID.
+   * Handles both "search" and "$source" subscription kinds.
+   *
+   * @param subscription - The subscription specification to resolve
+   * @returns Resolved subscription object in $source format
+   * @throws Error if API configuration not available, search fails, or attribute validation fails
+   * @private
+   */
+  private async _resolveSubscriptionInput(
+    subscription: SubscriptionInputType,
+  ): Promise<{ $source: { component: string; path: string; func?: string } }> {
+    let componentId: string;
+
+    if (subscription.kind === "$source") {
+      // For ULIDs, we can skip API calls entirely
+      const isUlid = /^[0-9A-HJKMNP-TV-Z]{26}$/i.test(subscription.component);
+
+      if (isUlid) {
+        componentId = subscription.component;
+      } else {
+        // Component is a name - need API access to resolve it
+        const apiConfig = this.apiConfig();
+        const workspaceId = this.workspaceId();
+
+        if (!apiConfig || !workspaceId) {
+          throw new Error(
+            "Cannot resolve subscription: API configuration not available",
+          );
+        }
+
+        const changeSetId = await this.getHeadChangeSetId();
+
+        // Create search function wrapper that uses cached search
+        const searchFn: SearchFunction = (
+          workspaceId: string,
+          changeSetId: string,
+          query: string,
+        ) => this._cachedSearch(workspaceId, changeSetId, query);
+
+        // Direct $source subscription - resolve component name to ID
+        componentId = await resolveComponentReference(
+          subscription.component,
+          workspaceId,
+          changeSetId,
+          searchFn,
+          this.logger,
+        );
+      }
+    } else {
+      // Search subscription - need API access
+      const apiConfig = this.apiConfig();
+      const workspaceId = this.workspaceId();
+
+      if (!apiConfig || !workspaceId) {
+        throw new Error(
+          "Cannot resolve subscription: API configuration not available",
+        );
+      }
+
+      const changeSetId = await this.getHeadChangeSetId();
+
+      // Create search function wrapper that uses cached search
+      const searchFn: SearchFunction = (
+        workspaceId: string,
+        changeSetId: string,
+        query: string,
+      ) => this._cachedSearch(workspaceId, changeSetId, query);
+
+      // Search subscription - resolve query to component ID
+      componentId = await resolveSearchQuery(
+        subscription.query,
+        workspaceId,
+        changeSetId,
+        searchFn,
+        this.logger,
+        this._cachedGetComponent.bind(this),
+        this.getSchemaName.bind(this),
+      );
+
+      // Fetch full component data and verify attribute exists
+      const componentResult = await this._cachedGetComponent(
+        workspaceId,
+        changeSetId,
+        componentId,
+      );
+
+      const fullComponent = componentResult.component;
+
+      // Check if the attribute path exists (skip for secrets as they may not be in attributes)
+      if (
+        !subscription.path.startsWith("/secrets") &&
+        !(subscription.path in (fullComponent.attributes || {}))
+      ) {
+        const schemaName = await this.getSchemaName(
+          workspaceId,
+          changeSetId,
+          fullComponent.schemaId,
+        );
+        throw new Error(
+          `Attribute "${subscription.path}" not found on component "${fullComponent.name}" (schema: ${schemaName})`,
+        );
+      }
+    }
+
+    // Return the resolved subscription in $source format
+    return {
+      $source: {
+        component: componentId,
+        path: subscription.path,
+        ...(subscription.func && { func: subscription.func }),
+      },
+    };
+  }
+
+  /**
    * Set a subscription on a component's attribute path.
    *
    * Subscriptions allow one component to receive values from another component's attributes.
@@ -768,183 +1230,39 @@ export class TemplateContext<TInputSchema extends z.ZodTypeAny = z.ZodTypeAny> {
     attributePath: string,
     subscription: SubscriptionInputType,
   ): Promise<void> {
-    let componentId: string;
+    // Resolve the subscription to get the final $source format
+    const resolvedSubscription = await this._resolveSubscriptionInput(
+      subscription,
+    );
 
-    if (subscription.kind === "$source") {
-      // For ULIDs, we can skip API calls entirely
-      const isUlid = /^[0-9A-HJKMNP-TV-Z]{26}$/i.test(subscription.component);
+    // Check if subscription already matches
+    const existingValue = component.attributes[attributePath];
+    if (isSubscription(existingValue)) {
+      const existingSub = extractSubscription(existingValue);
+      const newSub = extractSubscription(resolvedSubscription);
 
-      if (isUlid) {
-        componentId = subscription.component;
-      } else {
-        // Component is a name - need API access to resolve it
-        const apiConfig = this.apiConfig();
-        const workspaceId = this.workspaceId();
-
-        if (!apiConfig || !workspaceId) {
-          throw new Error(
-            "Cannot set subscription: API configuration not available",
-          );
-        }
-
-        const changeSetId = await this.getHeadChangeSetId();
-
-        // Create search function wrapper that uses cached search
-        const searchFn: SearchFunction = (
-          workspaceId: string,
-          changeSetId: string,
-          query: string,
-        ) => this._cachedSearch(workspaceId, changeSetId, query);
-
-        // Direct $source subscription - resolve component name to ID
-        componentId = await resolveComponentReference(
-          subscription.component,
-          workspaceId,
-          changeSetId,
-          searchFn,
-          this.logger,
+      if (deepEqual(existingSub, newSub)) {
+        this.logger.trace(
+          `Subscription already set on {componentName} at {attributePath}, skipping`,
+          {
+            componentName: component.name,
+            attributePath,
+          },
         );
+        return; // Skip update, subscription is already correct
       }
-
-      // Check if subscription already matches
-      const existingValue = component.attributes[attributePath];
-      if (isSubscription(existingValue)) {
-        const existingSub = extractSubscription(existingValue);
-        const newSub = {
-          component: componentId,
-          path: subscription.path,
-          func: subscription.func,
-        };
-
-        if (deepEqual(existingSub, newSub)) {
-          this.logger.trace(
-            `Subscription already set on {componentName} at {attributePath} -> {targetComponent}:{targetPath}, skipping`,
-            {
-              componentName: component.name,
-              attributePath,
-              targetComponent: componentId,
-              targetPath: subscription.path,
-            },
-          );
-          return; // Skip update, subscription is already correct
-        }
-      }
-
-      // Set the subscription using the resolved component ID
-      component.attributes[attributePath] = {
-        $source: {
-          component: componentId,
-          path: subscription.path,
-          ...(subscription.func && { func: subscription.func }),
-        },
-      };
-      this.logger.debug(
-        `Set $source subscription on {componentName} at {attributePath} -> {targetComponent}:{targetPath}`,
-        {
-          componentName: component.name,
-          attributePath,
-          targetComponent: componentId,
-          targetPath: subscription.path,
-        },
-      );
-    } else {
-      // Search subscription - need API access
-      const apiConfig = this.apiConfig();
-      const workspaceId = this.workspaceId();
-
-      if (!apiConfig || !workspaceId) {
-        throw new Error(
-          "Cannot set subscription: API configuration not available",
-        );
-      }
-
-      const changeSetId = await this.getHeadChangeSetId();
-
-      // Create search function wrapper that uses cached search
-      const searchFn: SearchFunction = (
-        workspaceId: string,
-        changeSetId: string,
-        query: string,
-      ) => this._cachedSearch(workspaceId, changeSetId, query);
-
-      // Search subscription - resolve query to component ID
-      componentId = await resolveSearchQuery(
-        subscription.query,
-        workspaceId,
-        changeSetId,
-        searchFn,
-        this.logger,
-        this._cachedGetComponent.bind(this),
-        this.getSchemaName.bind(this),
-      );
-
-      // Fetch full component data and verify attribute exists
-      const componentResult = await this._cachedGetComponent(
-        workspaceId,
-        changeSetId,
-        componentId,
-      );
-
-      const fullComponent = componentResult.component;
-
-      // Check if the attribute path exists (skip for secrets as they may not be in attributes)
-      if (
-        !subscription.path.startsWith("/secrets") &&
-        !(subscription.path in (fullComponent.attributes || {}))
-      ) {
-        const schemaName = await this.getSchemaName(
-          workspaceId,
-          changeSetId,
-          fullComponent.schemaId,
-        );
-        throw new Error(
-          `Attribute "${subscription.path}" not found on component "${fullComponent.name}" (schema: ${schemaName})`,
-        );
-      }
-
-      // Check if subscription already exists with the same values
-      const existingValue = component.attributes[attributePath];
-      if (isSubscription(existingValue)) {
-        const existingSub = extractSubscription(existingValue);
-        const newSub = {
-          component: componentId,
-          path: subscription.path,
-          func: subscription.func,
-        };
-
-        if (deepEqual(existingSub, newSub)) {
-          this.logger.trace(
-            `Subscription already set on {componentName} at {attributePath} -> {targetName}:{targetPath}, skipping`,
-            {
-              componentName: component.name,
-              attributePath,
-              targetName: fullComponent.name,
-              targetPath: subscription.path,
-            },
-          );
-          return; // Skip update, subscription is already correct
-        }
-      }
-
-      // Set the subscription using the found component's ID
-      component.attributes[attributePath] = {
-        $source: {
-          component: componentId,
-          path: subscription.path,
-          ...(subscription.func && { func: subscription.func }),
-        },
-      };
-
-      this.logger.info(
-        `Set subscription on {componentName} at {attributePath} -> {targetName}:{targetPath}`,
-        {
-          componentName: component.name,
-          attributePath,
-          targetName: fullComponent.name,
-          targetPath: subscription.path,
-        },
-      );
     }
+
+    // Set the subscription
+    component.attributes[attributePath] = resolvedSubscription;
+
+    this.logger.debug(
+      `Set subscription on {componentName} at {attributePath}`,
+      {
+        componentName: component.name,
+        attributePath,
+      },
+    );
   }
 
   /**
@@ -1042,6 +1360,11 @@ export class TemplateContext<TInputSchema extends z.ZodTypeAny = z.ZodTypeAny> {
       // Exact path match - just set the value directly
       component.attributes[matcher] = value;
       updatedPaths.push(matcher);
+
+      // Special case: sync /si/name with component.name
+      if (matcher === "/si/name" && typeof value === "string") {
+        component.name = value;
+      }
     } else {
       // For RegExp and predicate, iterate through existing attributes
       for (
@@ -1060,6 +1383,11 @@ export class TemplateContext<TInputSchema extends z.ZodTypeAny = z.ZodTypeAny> {
         if (shouldSet) {
           component.attributes[path] = value;
           updatedPaths.push(path);
+
+          // Special case: sync /si/name with component.name
+          if (path === "/si/name" && typeof value === "string") {
+            component.name = value;
+          }
         }
       }
     }
@@ -1324,5 +1652,656 @@ export class TemplateContext<TInputSchema extends z.ZodTypeAny = z.ZodTypeAny> {
     );
 
     return component;
+  }
+
+  /**
+   * Ensures an attribute is set to the specified value on a component.
+   * Only updates the attribute if it differs from the current value (idempotent).
+   * Supports both direct values and subscription syntax.
+   * Validates that the attribute path exists in the component's schema.
+   *
+   * @param component - The component to modify
+   * @param path - The exact attribute path (case-sensitive)
+   * @param value - The value to set (can be scalar, object, subscription with $source, or SubscriptionInputType)
+   * @param options - Optional configuration object
+   * @param options.skipIfMissing - If true, skips the operation if the attribute path doesn't exist in the schema
+   *
+   * @example
+   * // Set a direct value
+   * c.ensureAttribute(w, "/domain/CidrBlock", "10.0.1.0/24");
+   *
+   * @example
+   * // Set a subscription using $source format
+   * c.ensureAttribute(w, "/domain/VpcId", {
+   *   $source: {
+   *     component: "01K2YVY4WE8KBM01H05R74RKX8",
+   *     path: "/resource_value/VpcId"
+   *   }
+   * });
+   *
+   * @example
+   * // Set a subscription using SubscriptionInputType (resolves automatically)
+   * await c.ensureAttribute(w, "/secrets/AWS Credential", {
+   *   kind: "$source",
+   *   component: "credential-component",
+   *   path: "/secrets/AWS Credential"
+   * });
+   *
+   * @example
+   * // Skip if attribute doesn't exist in schema
+   * await c.ensureAttribute(w, "/domain/OptionalField", "value", { skipIfMissing: true });
+   */
+  async ensureAttribute(
+    component: TemplateComponent,
+    path: string,
+    value: unknown,
+    options?: { skipIfMissing?: boolean },
+  ): Promise<void> {
+    const logger = Context.instance().logger;
+
+    // Validate attribute path against schema
+    const isValid = await this._validateAttributePath(
+      component,
+      path,
+      options?.skipIfMissing ?? false,
+    );
+    if (!isValid) {
+      // Path doesn't exist and skipIfMissing is true - skip operation
+      return;
+    }
+
+    // Check if value is a SubscriptionInputType and resolve it
+    let finalValue = value;
+    const subscriptionParse = SubscriptionInput.safeParse(value);
+    if (subscriptionParse.success) {
+      // Value is a SubscriptionInputType - resolve it to $source format
+      finalValue = await this._resolveSubscriptionInput(subscriptionParse.data);
+    }
+
+    // Log the ensure operation
+    const schemaName = component.schemaName ?? component.schemaId;
+    logger.info(
+      `Ensuring {schemaName} {componentName} {path} has {value}`,
+      {
+        schemaName,
+        componentName: component.name,
+        path,
+        value: finalValue,
+      },
+    );
+
+    // Check if current value equals desired value
+    const currentValue = component.attributes[path];
+
+    if (deepEqual(currentValue, finalValue)) {
+      logger.trace(
+        `Attribute at {path} on component "{componentName}" already has desired value, skipping`,
+        { path, componentName: component.name },
+      );
+      return;
+    }
+
+    // Set the value
+    component.attributes[path] = finalValue;
+
+    // Special case: sync /si/name with component.name
+    if (path === "/si/name" && typeof finalValue === "string") {
+      component.name = finalValue;
+    }
+
+    logger.debug(
+      `Ensured attribute on component "{componentName}": {path} = {value}`,
+      {
+        componentName: component.name,
+        path,
+        value: finalValue,
+      },
+    );
+  }
+
+  /**
+   * Ensures an array attribute element exists matching the given criteria, or creates it.
+   * This method supports both scalar arrays (/domain/Foo/0) and object arrays (/domain/Tags/0/Key).
+   * Only updates if values differ (idempotent).
+   * Automatically resolves SubscriptionInputType values.
+   * Validates that the attribute path exists in the component's schema.
+   *
+   * @param component - The component to modify
+   * @param basePath - The base path of the array (e.g., "/domain/Tags")
+   * @param matcher - Predicate function that receives array element info and returns true for matches
+   * @param value - For object arrays: object with keys to merge as siblings (e.g., {Value: "x"}).
+   *                For scalar arrays: the value to set directly.
+   *                Can be SubscriptionInputType which will be resolved automatically.
+   * @param options - Optional configuration object
+   * @param options.skipIfMissing - If true, skips the operation if the attribute path doesn't exist in the schema
+   *
+   * @example
+   * // Object array - find tag with Key="Name" and set its Value
+   * await c.ensureArrayAttribute(
+   *   w,
+   *   "/domain/Tags",
+   *   (e) => e.subpath === "Key" && e.value === "Name",
+   *   { Value: "demo-subnet-awesome" }
+   * );
+   *
+   * @example
+   * // Scalar array - find element with value "poop" and change to "foobar"
+   * await c.ensureArrayAttribute(
+   *   w,
+   *   "/domain/Foo",
+   *   (e) => e.subpath === undefined && e.value === "poop",
+   *   "foobar"
+   * );
+   *
+   * @example
+   * // Skip if array attribute doesn't exist in schema
+   * await c.ensureArrayAttribute(
+   *   w,
+   *   "/domain/OptionalArray",
+   *   (e) => e.value === "foo",
+   *   "bar",
+   *   { skipIfMissing: true }
+   * );
+   */
+  async ensureArrayAttribute(
+    component: TemplateComponent,
+    basePath: string,
+    matcher: (e: {
+      subpath: string | undefined;
+      value: unknown;
+      fullPath: string;
+      index: number;
+    }) => boolean,
+    value: unknown,
+    options?: { skipIfMissing?: boolean },
+  ): Promise<void> {
+    const logger = Context.instance().logger;
+
+    // Validate base array path against schema
+    const isValid = await this._validateAttributePath(
+      component,
+      basePath,
+      options?.skipIfMissing ?? false,
+    );
+    if (!isValid) {
+      // Path doesn't exist and skipIfMissing is true - skip operation
+      return;
+    }
+
+    // Resolve SubscriptionInputType values
+    let finalValue = value;
+    const subscriptionParse = SubscriptionInput.safeParse(value);
+    if (subscriptionParse.success) {
+      // Value is a SubscriptionInputType - resolve it to $source format
+      finalValue = await this._resolveSubscriptionInput(subscriptionParse.data);
+    } else if (
+      typeof value === "object" && value !== null && !isSubscription(value) &&
+      !Array.isArray(value)
+    ) {
+      // Value is an object - check each property for SubscriptionInputType
+      const resolvedObject: Record<string, unknown> = {};
+      for (
+        const [key, val] of Object.entries(value as Record<string, unknown>)
+      ) {
+        const propSubParse = SubscriptionInput.safeParse(val);
+        if (propSubParse.success) {
+          resolvedObject[key] = await this._resolveSubscriptionInput(
+            propSubParse.data,
+          );
+        } else {
+          resolvedObject[key] = val;
+        }
+      }
+      finalValue = resolvedObject;
+    }
+
+    // Log the ensure operation
+    const schemaName = component.schemaName ?? component.schemaId;
+    logger.info(
+      `Ensuring {schemaName} {componentName} {basePath} array element has {value}`,
+      {
+        schemaName,
+        componentName: component.name,
+        basePath,
+        value: finalValue,
+      },
+    );
+
+    // Pattern to match array elements: /basePath/INDEX or /basePath/INDEX/subpath
+    const arrayElementPattern = new RegExp(
+      `^${basePath.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}/(\\d+)(?:/(.+))?$`,
+    );
+
+    // Collect all array elements
+    const elements = new Map<
+      number,
+      Map<string | undefined, { value: unknown; fullPath: string }>
+    >();
+
+    for (const [path, attrValue] of Object.entries(component.attributes)) {
+      const match = path.match(arrayElementPattern);
+      if (match) {
+        const index = parseInt(match[1], 10);
+        const subpath = match[2]; // undefined for scalar arrays
+
+        if (!elements.has(index)) {
+          elements.set(index, new Map());
+        }
+        elements.get(index)!.set(subpath, { value: attrValue, fullPath: path });
+      }
+    }
+
+    // Find matching element
+    let matchedIndex: number | undefined;
+    let matchedSubpath: string | undefined;
+
+    for (const [index, subpaths] of elements.entries()) {
+      for (
+        const [subpath, { value: attrValue, fullPath }] of subpaths.entries()
+      ) {
+        if (
+          matcher({
+            subpath,
+            value: attrValue,
+            fullPath,
+            index,
+          })
+        ) {
+          matchedIndex = index;
+          matchedSubpath = subpath;
+          break;
+        }
+      }
+      if (matchedIndex !== undefined) break;
+    }
+
+    if (matchedIndex !== undefined) {
+      // Match found - update the element
+      const elementPath = `${basePath}/${matchedIndex}`;
+
+      if (
+        typeof finalValue === "object" && finalValue !== null &&
+        !isSubscription(finalValue) && !Array.isArray(finalValue)
+      ) {
+        // Object array - merge siblings
+        const updates: string[] = [];
+        for (
+          const [key, val] of Object.entries(
+            finalValue as Record<string, unknown>,
+          )
+        ) {
+          const siblingPath = `${elementPath}/${key}`;
+          const currentValue = component.attributes[siblingPath];
+
+          if (!deepEqual(currentValue, val)) {
+            component.attributes[siblingPath] = val;
+            updates.push(siblingPath);
+          }
+        }
+
+        if (updates.length > 0) {
+          logger.debug(
+            `Updated {count} sibling(s) in array element at {elementPath} on component "{componentName}": {paths}`,
+            {
+              count: updates.length,
+              elementPath,
+              componentName: component.name,
+              paths: updates.join(", "),
+            },
+          );
+        } else {
+          logger.trace(
+            `Array element at {elementPath} on component "{componentName}" already has desired values, skipping`,
+            { elementPath, componentName: component.name },
+          );
+        }
+      } else {
+        // Scalar array or subscription - update the value directly
+        const scalarPath = `${elementPath}`;
+        const currentValue = component.attributes[scalarPath];
+
+        if (!deepEqual(currentValue, finalValue)) {
+          component.attributes[scalarPath] = finalValue;
+          logger.debug(
+            `Updated scalar array element at {scalarPath} on component "{componentName}"`,
+            { scalarPath, componentName: component.name },
+          );
+        } else {
+          logger.trace(
+            `Scalar array element at {scalarPath} on component "{componentName}" already has desired value, skipping`,
+            { scalarPath, componentName: component.name },
+          );
+        }
+      }
+    } else {
+      // No match - append new element at the end
+      const maxIndex = elements.size > 0 ? Math.max(...elements.keys()) : -1;
+      const newIndex = maxIndex + 1;
+      const elementPath = `${basePath}/${newIndex}`;
+
+      if (
+        typeof finalValue === "object" && finalValue !== null &&
+        !isSubscription(finalValue) && !Array.isArray(finalValue)
+      ) {
+        // Object array - create new element with properties
+        for (
+          const [key, val] of Object.entries(
+            finalValue as Record<string, unknown>,
+          )
+        ) {
+          const newPath = `${elementPath}/${key}`;
+          component.attributes[newPath] = val;
+        }
+
+        logger.debug(
+          `Created new array element at {elementPath} on component "{componentName}" with {count} properties`,
+          {
+            elementPath,
+            componentName: component.name,
+            count: Object.keys(finalValue as Record<string, unknown>).length,
+          },
+        );
+      } else {
+        // Scalar array or subscription - set value directly
+        component.attributes[elementPath] = finalValue;
+
+        logger.debug(
+          `Created new scalar array element at {elementPath} on component "{componentName}"`,
+          { elementPath, componentName: component.name },
+        );
+      }
+    }
+  }
+
+  /**
+   * Ensures an attribute is missing (deleted) from a component.
+   * Idempotent - skips if already missing.
+   * Validates that the attribute path exists in the component's schema.
+   *
+   * @param component - The component to modify
+   * @param path - The exact attribute path to delete (case-sensitive)
+   * @param options - Optional configuration object
+   * @param options.skipIfMissing - If true, skips validation if the attribute path doesn't exist in the schema
+   *
+   * @example
+   * c.ensureAttributeMissing(w, "/domain/CidrBlock");
+   *
+   * @example
+   * // Skip validation if path doesn't exist in schema
+   * await c.ensureAttributeMissing(w, "/domain/OptionalField", { skipIfMissing: true });
+   */
+  async ensureAttributeMissing(
+    component: TemplateComponent,
+    path: string,
+    options?: { skipIfMissing?: boolean },
+  ): Promise<void> {
+    const logger = Context.instance().logger;
+
+    // Validate attribute path against schema
+    // Always skip if missing for "ensure missing" operations - if path doesn't
+    // exist in schema, attribute is already missing (success/no-op)
+    const isValid = await this._validateAttributePath(
+      component,
+      path,
+      true,
+    );
+    if (!isValid) {
+      // Path doesn't exist in schema - already missing, return success
+      return;
+    }
+
+    // Log the ensure operation
+    const schemaName = component.schemaName ?? component.schemaId;
+    logger.info(
+      `Ensuring {schemaName} {componentName} {path} is missing`,
+      {
+        schemaName,
+        componentName: component.name,
+        path,
+      },
+    );
+
+    if (path in component.attributes) {
+      delete component.attributes[path];
+      logger.debug(
+        `Ensured attribute missing on component "{componentName}": {path}`,
+        { componentName: component.name, path },
+      );
+    } else {
+      logger.trace(
+        `Attribute at {path} on component "{componentName}" already missing, skipping`,
+        { path, componentName: component.name },
+      );
+    }
+  }
+
+  /**
+   * Ensures array attribute element(s) matching the given criteria are deleted.
+   * Can delete specific properties or entire elements. Reindexes array to avoid sparse arrays.
+   * Validates that the attribute path exists in the component's schema.
+   *
+   * @param component - The component to modify
+   * @param basePath - The base path of the array (e.g., "/domain/Tags")
+   * @param matcher - Predicate function that receives array element info and returns true for matches
+   * @param keysToDelete - Optional array of property keys to delete. If not provided, deletes entire matching elements.
+   * @param options - Optional configuration object
+   * @param options.skipIfMissing - If true, skips the operation if the attribute path doesn't exist in the schema
+   *
+   * @example
+   * // Delete entire array element where value equals "poop"
+   * c.ensureArrayAttributeMissing(w, "/domain/Foo", (e) => e.value === "poop");
+   *
+   * @example
+   * // Delete specific properties of matching array elements
+   * c.ensureArrayAttributeMissing(
+   *   w,
+   *   "/domain/Tags",
+   *   (e) => e.subpath === "Key",
+   *   ["Key", "Value"]
+   * );
+   *
+   * @example
+   * // Skip validation if path doesn't exist in schema
+   * await c.ensureArrayAttributeMissing(
+   *   w,
+   *   "/domain/OptionalArray",
+   *   (e) => e.value === "foo",
+   *   undefined,
+   *   { skipIfMissing: true }
+   * );
+   */
+  async ensureArrayAttributeMissing(
+    component: TemplateComponent,
+    basePath: string,
+    matcher: (e: {
+      subpath: string | undefined;
+      value: unknown;
+      fullPath: string;
+      index: number;
+    }) => boolean,
+    keysToDelete?: string[],
+    options?: { skipIfMissing?: boolean },
+  ): Promise<void> {
+    const logger = Context.instance().logger;
+
+    // Validate base array path against schema
+    // Always skip if missing for "ensure missing" operations - if path doesn't
+    // exist in schema, attribute is already missing (success/no-op)
+    const isValid = await this._validateAttributePath(
+      component,
+      basePath,
+      true,
+    );
+    if (!isValid) {
+      // Path doesn't exist in schema - already missing, return success
+      return;
+    }
+
+    // Log the ensure operation
+    const schemaName = component.schemaName ?? component.schemaId;
+    logger.info(
+      `Ensuring {schemaName} {componentName} {basePath} array element is missing`,
+      {
+        schemaName,
+        componentName: component.name,
+        basePath,
+      },
+    );
+
+    // Pattern to match array elements: /basePath/INDEX or /basePath/INDEX/subpath
+    const arrayElementPattern = new RegExp(
+      `^${basePath.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}/(\\d+)(?:/(.+))?$`,
+    );
+
+    // Collect all array elements
+    const elements = new Map<
+      number,
+      Map<string | undefined, { value: unknown; fullPath: string }>
+    >();
+
+    for (const [path, attrValue] of Object.entries(component.attributes)) {
+      const match = path.match(arrayElementPattern);
+      if (match) {
+        const index = parseInt(match[1], 10);
+        const subpath = match[2]; // undefined for scalar arrays
+
+        if (!elements.has(index)) {
+          elements.set(index, new Map());
+        }
+        elements.get(index)!.set(subpath, { value: attrValue, fullPath: path });
+      }
+    }
+
+    // Find matching elements
+    const indicesToDelete = new Set<number>();
+
+    for (const [index, subpaths] of elements.entries()) {
+      for (
+        const [subpath, { value: attrValue, fullPath }] of subpaths.entries()
+      ) {
+        if (
+          matcher({
+            subpath,
+            value: attrValue,
+            fullPath,
+            index,
+          })
+        ) {
+          indicesToDelete.add(index);
+          break; // Found a match in this element, mark for deletion
+        }
+      }
+    }
+
+    if (indicesToDelete.size === 0) {
+      logger.trace(
+        `No array elements matched for deletion at {basePath} on component "{componentName}"`,
+        { basePath, componentName: component.name },
+      );
+      return;
+    }
+
+    // Delete specified keys or entire elements
+    const deletedPaths: string[] = [];
+
+    for (const index of indicesToDelete) {
+      const elementPath = `${basePath}/${index}`;
+
+      if (keysToDelete && keysToDelete.length > 0) {
+        // Delete only specified keys
+        for (const key of keysToDelete) {
+          const keyPath = `${elementPath}/${key}`;
+          if (keyPath in component.attributes) {
+            delete component.attributes[keyPath];
+            deletedPaths.push(keyPath);
+          }
+        }
+      } else {
+        // Delete entire element
+        const subpaths = elements.get(index);
+        if (subpaths) {
+          for (const [, { fullPath }] of subpaths.entries()) {
+            delete component.attributes[fullPath];
+            deletedPaths.push(fullPath);
+          }
+        }
+      }
+    }
+
+    // Reindex array to avoid sparse arrays
+    const remainingElements = new Map<
+      number,
+      Map<string | undefined, unknown>
+    >();
+
+    for (const [path, attrValue] of Object.entries(component.attributes)) {
+      const match = path.match(arrayElementPattern);
+      if (match) {
+        const index = parseInt(match[1], 10);
+        const subpath = match[2];
+
+        if (!remainingElements.has(index)) {
+          remainingElements.set(index, new Map());
+        }
+        remainingElements.get(index)!.set(subpath, attrValue);
+      }
+    }
+
+    // Sort indices and reindex
+    const sortedIndices = Array.from(remainingElements.keys()).sort((a, b) =>
+      a - b
+    );
+    const reindexMap = new Map<number, number>();
+
+    for (let i = 0; i < sortedIndices.length; i++) {
+      reindexMap.set(sortedIndices[i], i);
+    }
+
+    // Apply reindexing if needed
+    if (sortedIndices.some((idx, i) => idx !== i)) {
+      // Need to reindex
+      const pathsToUpdate: Array<{ oldPath: string; newPath: string }> = [];
+
+      for (const [path] of Object.entries(component.attributes)) {
+        const match = path.match(arrayElementPattern);
+        if (match) {
+          const oldIndex = parseInt(match[1], 10);
+          const newIndex = reindexMap.get(oldIndex);
+          const subpath = match[2];
+
+          if (newIndex !== undefined && newIndex !== oldIndex) {
+            const newPath = subpath
+              ? `${basePath}/${newIndex}/${subpath}`
+              : `${basePath}/${newIndex}`;
+            pathsToUpdate.push({ oldPath: path, newPath });
+          }
+        }
+      }
+
+      // Delete old paths and create new ones
+      for (const { oldPath, newPath } of pathsToUpdate) {
+        const value = component.attributes[oldPath];
+        delete component.attributes[oldPath];
+        component.attributes[newPath] = value;
+      }
+
+      logger.debug(
+        `Reindexed {count} array element(s) at {basePath} after deletion on component "{componentName}"`,
+        {
+          count: pathsToUpdate.length,
+          basePath,
+          componentName: component.name,
+        },
+      );
+    }
+
+    logger.debug(
+      `Ensured {count} array element path(s) missing at {basePath} on component "{componentName}"`,
+      {
+        count: deletedPaths.length,
+        basePath,
+        componentName: component.name,
+      },
+    );
   }
 }

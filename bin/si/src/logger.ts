@@ -12,7 +12,7 @@ import {
   configure,
   getConsoleSink,
   getLogger as logtapeGetLogger,
-  Logger,
+  type Logger,
   type LogLevel,
   type LogRecord,
 } from "@logtape/logtape";

@@ -28,6 +28,23 @@ export async function applyTransform(ctx: TemplateContext): Promise<void> {
   const inputData = ctx.inputData();
   const transformedWorkingSet = await transformFn(workingSet, inputData);
 
+  // If transform function doesn't return anything, use original working set
+  if (!transformedWorkingSet) {
+    ctx.logger.warn(
+      "Transform function did not return a working set - using original working set. " +
+        "Make sure your transform function returns the working set at the end.",
+    );
+    ctx.workingSet(workingSet);
+    return;
+  }
+
+  // Validate that the returned value is an array
+  if (!Array.isArray(transformedWorkingSet)) {
+    throw new Error(
+      `Transform function must return an array of components, but returned ${typeof transformedWorkingSet}`,
+    );
+  }
+
   ctx.logger.debug(`Transform function returned {count} components`, {
     count: transformedWorkingSet.length,
   });
