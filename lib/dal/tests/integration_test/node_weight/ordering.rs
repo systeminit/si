@@ -1,8 +1,18 @@
-use dal::DalContext;
+use dal::{
+    ChangeSet,
+    Component,
+    DalContext,
+    WorkspaceSnapshot,
+};
 use dal_test::{
+    Result,
     expected::{
         self,
         ExpectComponent,
+    },
+    prelude::{
+        ChangeSetTestHelpers,
+        OptionExt,
     },
     test,
 };
@@ -215,4 +225,68 @@ async fn correct_transforms_attribute_value_duplicate_map_keys(ctx: &mut DalCont
             .await
             .len()
     );
+}
+
+#[test]
+async fn multiple_new_component_batches(ctx: &mut DalContext) -> Result<()> {
+    ChangeSetTestHelpers::fork_from_head_change_set(ctx).await?;
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
+
+    // Create a component and cache relevant values.
+    let component = ExpectComponent::create(ctx, "pirate").await;
+    let root_av_id = Component::root_attribute_value_id(ctx, component.id()).await?;
+    let ordering_node_id = ctx
+        .workspace_snapshot()?
+        .all_outgoing_targets(root_av_id)
+        .await?
+        .into_iter()
+        .filter_map(|weight| match weight {
+            dal::workspace_snapshot::node_weight::NodeWeight::Ordering(ordering_node_weight) => {
+                Some(ordering_node_weight.id())
+            }
+            _ => None,
+        })
+        .next()
+        .ok_or_eyre("no ordering node found")?;
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
+
+    // Cache the change set and its updates.
+    let cs = ctx.change_set()?;
+    let updates = cs
+        .detect_updates_that_will_be_applied_legacy(ctx)
+        .await?
+        .ok_or_eyre("no updates found")?;
+
+    // Cache the base change set and its snapshot (i.e. the "HEAD" change set).
+    let base_change_set = ChangeSet::get_by_id(
+        ctx,
+        cs.base_change_set_id.ok_or_eyre("no base change set id")?,
+    )
+    .await?;
+    let base_workspace_snapshot =
+        WorkspaceSnapshot::find(ctx, base_change_set.workspace_snapshot_address).await?;
+
+    // Perform multiple update sets after correct transforms.
+    for i in 0..5 {
+        let corrected_updates = base_workspace_snapshot
+            .correct_transforms(updates.updates().to_vec(), false)
+            .await?;
+        base_workspace_snapshot
+            .perform_updates(&corrected_updates)
+            .await?;
+
+        let ordering_node = base_workspace_snapshot
+            .get_node_weight_opt(ordering_node_id)
+            .await
+            .ok_or_eyre("ordering node should exist")?;
+
+        let order_node_weight_inner = ordering_node.get_ordering_node_weight()?;
+        let order = order_node_weight_inner.order();
+        assert!(
+            !order.is_empty(),
+            "multiple applies should not empty the ordering node (iteration {i})"
+        );
+    }
+
+    Ok(())
 }

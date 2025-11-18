@@ -168,8 +168,10 @@ impl CorrectTransforms for ComponentNodeWeight {
         let is_self = |node: &NodeInformation| node.id == self.id.into();
 
         let mut component_will_be_deleted = false;
-        let mut schema_variant_changed = false;
+        let mut schema_variant_new_edge = false;
+        let mut schema_variant_remove_edge = false;
         let mut remove_edges = vec![];
+
         for update in &updates {
             match update {
                 // If the component is being deleted, the RemoveEdges may be stale (from an old
@@ -200,10 +202,7 @@ impl CorrectTransforms for ComponentNodeWeight {
                     component_will_be_deleted = false;
                 }
 
-                // If SchemaVariant gets set, we are upgrading a component, which disconnects
-                // and reconnects prop and socket values and connections. The disconnects may
-                // be stale (based on an old snapshot), so when we detect schema upgrade, we
-                // redo the disconnects.
+                // Determine the conditions for whether or not a schema variant upgrade is occuring.
                 Update::NewEdge {
                     source,
                     edge_weight,
@@ -212,19 +211,33 @@ impl CorrectTransforms for ComponentNodeWeight {
                     && is_self(source)
                     && destination.node_weight_kind == NodeWeightDiscriminants::SchemaVariant =>
                 {
-                    // Root props and sockets get all new AttributeValues during upgrade, but
-                    // the RemoveEdges for the old ones may be stale; RemoveEdge the real ones
-                    // just in case.
-                    remove_edges
-                        .extend(graph.outgoing_edges(component_node_idx, EdgeWeightKind::Root));
-                    schema_variant_changed = true;
-                    remove_edges.extend(
-                        graph.outgoing_edges(component_node_idx, EdgeWeightKind::SocketValue),
-                    );
+                    schema_variant_new_edge = true;
+                }
+                Update::RemoveEdge {
+                    source,
+                    destination,
+                    edge_kind,
+                } if EdgeWeightKindDiscriminants::Use == *edge_kind
+                    && is_self(source)
+                    && destination.node_weight_kind == NodeWeightDiscriminants::SchemaVariant =>
+                {
+                    schema_variant_remove_edge = true;
                 }
 
                 _ => {}
             }
+        }
+
+        // For us to know that a schema variant upgrade is occurring, we need to confirm that there
+        // is both a new edge and a remove edge update from the component to a schema variant node.
+        let is_schema_variant_upgrade = schema_variant_new_edge && schema_variant_remove_edge;
+        if is_schema_variant_upgrade {
+            // Root props and sockets get all new AttributeValues during upgrade, but
+            // the RemoveEdges for the old ones may be stale; RemoveEdge the real ones
+            // just in case.
+            remove_edges.extend(graph.outgoing_edges(component_node_idx, EdgeWeightKind::Root));
+            remove_edges
+                .extend(graph.outgoing_edges(component_node_idx, EdgeWeightKind::SocketValue));
         }
 
         if component_will_be_deleted {
@@ -233,7 +246,7 @@ impl CorrectTransforms for ComponentNodeWeight {
             remove_edges.extend(graph.edges_directed(component_node_idx, Incoming));
         }
 
-        if component_will_be_deleted || schema_variant_changed {
+        if component_will_be_deleted || is_schema_variant_upgrade {
             // All edges incoming to the root attribute value node (for example, ValueSubscription edges)
             // must be deleted, so that the attribute value tree disappears from the graph on cleanup.
             if let Some((_, _, root_av_idx)) = graph
