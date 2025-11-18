@@ -1,4 +1,5 @@
 import {
+  ChangeSetsApi,
   FuncsApi,
   SchemasApi,
   type SchemaVariantFunc,
@@ -92,6 +93,7 @@ export async function callRemoteSchemaPull(
   const api = {
     schemas: new SchemasApi(apiCtx.config),
     funcs: new FuncsApi(apiCtx.config),
+    changeSets: new ChangeSetsApi(apiCtx.config),
   };
 
   const changeSetCoord = {
@@ -119,6 +121,57 @@ export async function callRemoteSchemaPull(
     return [];
   }
 
+  // Create a new changeset for installing schemas
+  logger.info("Creating changeset for schema installation...");
+  const { data: createResponse } = await api.changeSets.createChangeSet({
+    workspaceId: changeSetCoord.workspaceId,
+    createChangeSetV1Request: {
+      changeSetName: `Install schemas: ${expandedSchemaNames.join(", ")}`,
+    },
+  });
+
+  const pullChangeSetId = createResponse.changeSet.id;
+  const pullChangeSetCoord = {
+    workspaceId: changeSetCoord.workspaceId,
+    changeSetId: pullChangeSetId,
+  };
+
+  logger.info(`Created changeset ${pullChangeSetId}`);
+  logger.info("");
+
+  // Install all schemas in the changeset (idempotent operation)
+  logger.info("Installing schemas in changeset...");
+  for (const schemaName of expandedSchemaNames) {
+    try {
+      // First, find the schema to get its ID
+      const { data: schema } = await api.schemas.findSchema({
+        workspaceId: pullChangeSetCoord.workspaceId,
+        changeSetId: pullChangeSetCoord.changeSetId,
+        schema: schemaName,
+      });
+
+      if (schema) {
+        logger.info(`  Installing ${schemaName}...`);
+        await api.schemas.installSchema({
+          workspaceId: pullChangeSetCoord.workspaceId,
+          changeSetId: pullChangeSetCoord.changeSetId,
+          schemaId: schema.schemaId,
+        });
+      } else {
+        logger.warn(`  Schema ${schemaName} not found in available schemas`);
+      }
+    } catch (error) {
+      logger.warn(`  Failed to install ${schemaName}: ${error}`);
+    }
+  }
+
+  logger.info("Merging changeset...");
+  await api.changeSets.forceApply({
+    workspaceId: pullChangeSetCoord.workspaceId,
+    changeSetId: pullChangeSetCoord.changeSetId,
+  });
+
+  logger.info("Changeset merged successfully");
   logger.info("");
   logger.info(`Pulling ${expandedSchemaNames.length} schema(s)...`);
   logger.info("");
@@ -130,7 +183,7 @@ export async function callRemoteSchemaPull(
     const result = await pullSchemaByName(
       project,
       api,
-      changeSetCoord,
+      changeSetCoord, // Use HEAD changeset for pulling
       schemaName,
       includeBuiltins,
     );
@@ -163,6 +216,7 @@ export async function callRemoteSchemaPull(
 type Api = {
   schemas: SchemasApi;
   funcs: FuncsApi;
+  changeSets: ChangeSetsApi;
 };
 
 type SchemaAndVariantData = {
