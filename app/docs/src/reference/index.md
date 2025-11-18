@@ -14,4 +14,4 @@ of System Initiative.
 - [System Initiative Architecture](./architecture/index.md) - learn about the
   architecture that powers System Initiative.
 - [Provider Support](./providers.md) - learn about the providers that System
-  Initiative currently supports
+  Initiative currently supports.
