@@ -6,7 +6,7 @@
       v-bind="dynamicAttrs"
       :class="
         clsx(
-          'z-100 fixed text-sm shadow-[0_4px_8px_0_rgba(0,0,0,0.75)] empty:hidden',
+          'z-[1001] fixed text-sm shadow-[0_4px_8px_0_rgba(0,0,0,0.75)] empty:hidden',
           'flex flex-col',
           {
             editor: 'rounded border border-neutral-600 min-w-[164px]',

@@ -8,6 +8,7 @@
       class="ml-2xs mr-xs"
       loadingText="Applying Changes"
       :loading="applyInFlight"
+      :disabled="!ctx.queriesEnabled.value"
       @click="openApplyChangeSetModal"
     />
     <ApplyChangeSetModal

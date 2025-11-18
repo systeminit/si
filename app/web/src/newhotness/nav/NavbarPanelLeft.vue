@@ -30,7 +30,7 @@
       </DropdownMenuButton>
     </label>
 
-    <template v-if="!invalidWorkspace">
+    <template v-if="!invalidWorkspace && ctx?.queriesEnabled.value">
       <Icon
         name="chevron--right"
         size="xs"
@@ -61,9 +61,10 @@ import {
 import { computed, inject, ref, watch } from "vue";
 import StatusPanel from "@/newhotness/StatusPanel.vue";
 import ChangeSetPanel from "./ChangeSetPanel.vue";
-import { Workspaces } from "../types";
+import { Context, Workspaces } from "../types";
 
 const workspaces = inject<Workspaces>("WORKSPACES");
+const ctx = inject<Context>("CONTEXT");
 
 const props = defineProps<{
   workspaceId: string;
