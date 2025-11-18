@@ -11,9 +11,9 @@ System Initiative currently has support for the following providers:
 
 - [AWS](./providers/aws)
 - [Azure (beta)](./providers/azure)
-- [Digital Ocean (beta)](./providers/digital-ocean)
+- [DigitalOcean (beta)](./providers/digital-ocean)
 - [Hetzner (beta)](./providers/hetzner)
 
-Need a provider not in this list? Talk to us and
-[let us know](https://calendly.com/d/cw8r-6rq-b3n/share-your-use-case-with-system-initiative)
-your usecase.
+Need an additional provider? Talk to us and
+[share your use case](https://calendly.com/d/cw8r-6rq-b3n/share-your-use-case-with-system-initiative)
+or send an email to <help@systeminit.com>.
