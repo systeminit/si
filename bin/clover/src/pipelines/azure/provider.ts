@@ -1,10 +1,7 @@
-import assert from "node:assert";
 import {
   FetchSchemaOptions,
-  PropOverrideFn,
   PROVIDER_REGISTRY,
   ProviderConfig,
-  SchemaOverrideFn,
   SuperSchema,
 } from "../types.ts";
 import { ExpandedPropSpecFor } from "../../spec/props.ts";
@@ -21,7 +18,7 @@ import {
   initAzureRestApiSpecsRepo,
 } from "./schema.ts";
 import { JSONSchema } from "../draft_07.ts";
-import { fixNames, suggest } from "../generic/overrides.ts";
+import { AZURE_PROP_OVERRIDES, AZURE_SCHEMA_OVERRIDES } from "./overrides.ts";
 
 async function azureFetchSchema(options: FetchSchemaOptions) {
   const specsRepo = initAzureRestApiSpecsRepo(options);
@@ -64,62 +61,6 @@ function azureIsChildRequired(
   }
   return schema.requiredProperties.has(childName);
 }
-
-// NOTE(nick,jkeiser): here is an example of what overrides look like...
-const AZURE_PROP_OVERRIDES: Record<
-  string,
-  Record<string, PropOverrideFn | PropOverrideFn[]>
-> = {
-  // "Microsoft.Network/loadBalancers": {
-  //   "properties/frontendIPConfigurations/frontendIPConfigurationsItem/properties/publicIPAddress/id": suggest("Microsoft.Network/publicIPAddresses", "id"),
-  // }
-};
-
-const AZURE_SCHEMA_OVERRIDES: ProviderConfig["overrides"]["schemaOverrides"] =
-  new Map([
-    [
-      "Microsoft.Aad/domainServices/ouContainer",
-      fixNames({
-        categoryName: "Microsoft.AAD",
-        schemaName: "Microsoft.AAD/domainServices/ouContainer",
-      }),
-    ],
-    [
-      "microsoft.insights/guestDiagnosticSettings",
-      fixNames({
-        categoryName: "Microsoft.Insights",
-        schemaName: "Microsoft.Insights/guestDiagnosticSettings",
-      }),
-    ],
-    [
-      "microsoft.insights/components/linkedStorageAccounts",
-      fixNames({
-        categoryName: "Microsoft.Insights",
-        schemaName: "Microsoft.Insights/components/linkedStorageAccounts",
-      }),
-    ],
-    [
-      "microsoft.alertsManagement/smartDetectorAlertRules",
-      fixNames({
-        categoryName: "Microsoft.AlertsManagement",
-        schemaName: "Microsoft.AlertsManagement/smartDetectorAlertRules",
-      }),
-    ],
-    [
-      "Microsoft.DBForMySql/flexibleServers/keys",
-      fixNames({
-        categoryName: "Microsoft.DBforMySQL",
-        schemaName: "Microsoft.DBforMySQL/flexibleServers/keys",
-      }),
-    ],
-    [
-      "Microsoft.DBForPostgreSql/flexibleServers/keys",
-      fixNames({
-        categoryName: "Microsoft.DBforPostgreSQL",
-        schemaName: "Microsoft.DBforPostgreSQL/flexibleServers/keys",
-      })
-    ],
-  ]);
 
 export const AZURE_PROVIDER_CONFIG: ProviderConfig = {
   name: "azure",

@@ -1,5 +1,6 @@
 import { ExpandedPkgSpec } from "../../spec/pkgs.ts";
 import { PipelineOptions } from "../types.ts";
+import { AZURE_PROVIDER_CONFIG } from "./provider.ts";
 import { generateDefaultFuncsFromConfig } from "../generic/index.ts";
 import { getExistingSpecs } from "../../specUpdates.ts";
 import { generateIntrinsicFuncs } from "../generic/generateIntrinsicFuncs.ts";
@@ -20,20 +21,18 @@ import { removeUnneededAssets } from "./pipeline-steps/removeUnneededAssets.ts";
 export async function generateAzureSpecs(
   options: PipelineOptions,
 ): Promise<ExpandedPkgSpec[]> {
-  const azureConfig = (await import("./provider.ts")).AZURE_PROVIDER_CONFIG;
-
   const existingSpecs = await getExistingSpecs(options);
   let specs = await getLatestAzureSpecs(options);
 
   // Apply pipeline steps
   specs = removeUnneededAssets(specs);
   specs = addDefaultProps(specs);
-  specs = generateDefaultFuncsFromConfig(specs, azureConfig);
+  specs = generateDefaultFuncsFromConfig(specs, AZURE_PROVIDER_CONFIG);
   specs = generateIntrinsicFuncs(specs);
   specs = createSuggestionsForIds(specs);
 
   // Apply provider-specific overrides
-  specs = applyAssetOverrides(specs, azureConfig);
+  specs = applyAssetOverrides(specs, AZURE_PROVIDER_CONFIG);
 
   specs = reorderProps(specs);
   specs = generateAssetFuncs(specs);
