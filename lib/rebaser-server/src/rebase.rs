@@ -295,6 +295,14 @@ async fn rebase_split(
     // Before replying to the requester or sending the Edda request, we must commit.
     ctx.commit_no_rebase().await?;
 
+    log_rebase_completion(
+        to_rebase_workspace_snapshot_address,
+        new_snapshot_address,
+        request.updates_address,
+        request.workspace_id,
+        request.change_set_id,
+    );
+
     // ---
     // The rebase operation has comitted to the changes:
     // - a snapshot is written to layer db
@@ -415,6 +423,14 @@ async fn rebase_legacy(
 
     // Before replying to the requester or sending the Edda request, we must commit.
     ctx.commit_no_rebase().await?;
+
+    log_rebase_completion(
+        to_rebase_workspace_snapshot_address,
+        to_rebase_workspace_snapshot.id().await,
+        request.updates_address,
+        request.workspace_id,
+        request.change_set_id,
+    );
 
     // ---
     // The rebase operation has comitted to the changes:
@@ -550,4 +566,21 @@ async fn get_workspace(ctx: &DalContext) -> RebaseResult<Workspace> {
         .ok_or(RebaseError::WorkspacePkExpected)?;
 
     Ok(Workspace::get_by_pk(ctx, workspace_pk).await?)
+}
+
+fn log_rebase_completion(
+    from_snapshot_address: WorkspaceSnapshotAddress,
+    to_snapshot_address: WorkspaceSnapshotAddress,
+    batch_address: RebaseBatchAddressKind,
+    workspace_id: WorkspacePk,
+    change_set_id: ChangeSetId,
+) {
+    info!(
+        si.snapshot.from_address = %from_snapshot_address,
+        si.snapshot.to_address = %to_snapshot_address,
+        si.rebase.batch_address = ?batch_address,
+        si.workspace.id = %workspace_id,
+        si.change_set.id = %change_set_id,
+        "rebase completed successfully"
+    );
 }
