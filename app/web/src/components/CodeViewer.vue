@@ -44,7 +44,6 @@
       @click="copyCodeToClipboard"
     />
     <div
-      v-if="numberOfLinesInCode > 1 || forceLineNumbers"
       :class="
         clsx(
           'w-full h-full overflow-auto scrollable',
@@ -59,22 +58,6 @@
         @keyup.stop
         @keydown.stop
       ></div>
-    </div>
-    <div
-      v-else
-      :class="
-        clsx(
-          'w-full h-full',
-          border && 'border',
-          'flex font-mono break-all text-wrap overflow-hidden p-2xs rounded',
-          themeClasses(
-            'bg-neutral-100 border-neutral-300',
-            'bg-neutral-800 border-neutral-600',
-          ),
-        )
-      "
-    >
-      <div class="overflow-auto scrollable">{{ code }}</div>
     </div>
   </div>
 </template>
@@ -133,7 +116,6 @@ const props = defineProps({
   border: { type: Boolean, default: false },
   disableScroll: { type: Boolean },
   copyTooltip: { type: String, default: "Copy code to clipboard" },
-  forceLineNumbers: { type: Boolean }, // forces line numbers even for a one line string
 });
 
 const numberOfLinesInCode = computed(() => {
@@ -204,10 +186,8 @@ const editorExtensionList = computed<Extension[]>(() => {
 function initCodeMirrorEditor() {
   editorView = new EditorView({
     state: EditorState.create({
-      doc:
-        numberOfLinesInCode.value === 1 && props.forceLineNumbers
-          ? `${props.code}\n`
-          : props.code,
+      // CodeMirror breaks with only one line of code
+      doc: numberOfLinesInCode.value === 1 ? `${props.code}\n` : props.code,
       extensions: editorExtensionList.value,
     }),
     parent: editorMountRef.value,

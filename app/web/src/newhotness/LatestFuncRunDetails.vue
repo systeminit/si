@@ -41,7 +41,6 @@
           :code="functionCode"
           language="javascript"
           allowCopy
-          forceLineNumbers
         />
         <div v-else class="text-neutral-400 italic text-xs p-xs">
           No code available
@@ -59,7 +58,6 @@
           :code="argsJson"
           language="json"
           allowCopy
-          forceLineNumbers
         />
         <div v-else class="text-neutral-400 italic text-xs p-xs">
           No arguments available

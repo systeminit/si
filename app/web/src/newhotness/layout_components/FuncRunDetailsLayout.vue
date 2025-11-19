@@ -90,7 +90,6 @@
             :code="logText"
             language="log"
             allowCopy
-            forceLineNumbers
           />
         </template>
         <div v-else class="text-neutral-400 italic text-xs p-xs">
