@@ -77,20 +77,24 @@ async fn get_validation_issues(
 }
 
 async fn fix_issue(ctx: &DalContext, issue: &ValidationIssue) -> AdminAPIResult<bool> {
-    Ok(match issue {
-        &ValidationIssue::MissingValue { .. } => {
+    Ok(match *issue {
+        ValidationIssue::MissingValue { .. } => {
             // We can only remove this if it is a connection from an input socket, meaning it has
             // targets and is hanging off an input socket.
             false
         }
-        &ValidationIssue::DuplicateAttributeValue { duplicate, .. }
-        | &ValidationIssue::DuplicateAttributeValueWithDifferentValues { duplicate, .. } => {
+        ValidationIssue::DuplicateAttributeValue { duplicate, .. }
+        | ValidationIssue::DuplicateAttributeValueWithDifferentValues { duplicate, .. } => {
             // These are extra, so we remove them (which will also enqueue subscribers to DVU!)
             AttributeValue::remove(ctx, duplicate).await?;
             true
         }
-        ValidationIssue::MissingChildAttributeValues { .. }
+        ValidationIssue::ChildOrderingMismatch { .. }
+        | ValidationIssue::MissingChildAttributeValues { .. }
+        | ValidationIssue::MissingOrderingNode { .. }
         | ValidationIssue::MultipleValues { .. }
+        | ValidationIssue::OrderingDuplicateEntry { .. }
+        | ValidationIssue::OrderingNodeMismatch { .. }
         | ValidationIssue::UnknownChildAttributeValue { .. } => false,
     })
 }

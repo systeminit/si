@@ -47,6 +47,7 @@ async fn main() -> Result<()> {
     // let node_id = "01JTXGMYKFFPY7H2ZNV7SKFQ9X";
     // remove_node_by_id(&mut graph, node_id)?;
 
+    let now = Instant::now();
     for issue in validate_graph(&graph)? {
         println!("{}", WithGraph(&graph, &issue));
         // Only fix ConnectionToUnknownSocket issues for now
@@ -54,6 +55,7 @@ async fn main() -> Result<()> {
         //     issue.fix(&mut graph)?
         // }
     }
+    println!("validation took: {:?}", now.elapsed());
     // for issue in validate_graph(graph)? {
     //     // println!("{}", issue.with_graph(&graph));
     //     // Only fix ConnectionToUnknownSocket issues for now
