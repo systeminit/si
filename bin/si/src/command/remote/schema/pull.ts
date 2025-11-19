@@ -231,6 +231,7 @@ type SchemaAndVariantData = {
     description?: string | null;
     category: string;
     link?: string | null;
+    color: string;
   };
   func: {
     schemaId: string;
@@ -536,6 +537,7 @@ async function getSchemaAndVariantBySchemaName(
       description: variant.description,
       category: variant.category,
       link: variant.link,
+      color: variant.color,
     },
     func: {
       schemaId: variant.assetFuncId,
@@ -721,6 +723,7 @@ function schemaMetadata(data: SchemaAndVariantData): SchemaMetadata {
     category: data.variant.category,
     description: data.variant.description,
     documentation: data.variant.link,
+    color: data.variant.color,
   };
 }
 

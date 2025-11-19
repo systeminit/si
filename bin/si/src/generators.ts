@@ -159,6 +159,8 @@ export interface SchemaMetadata {
   description?: string | null;
   /** Optional documentation link for the schema */
   documentation?: string | null;
+  /** Color that represents the schema */
+  color: string;
 }
 
 export interface FunctionMetadata {
@@ -175,7 +177,8 @@ function schemaMetadata(schemaName: string): SchemaMetadata {
     name: schemaName,
     category: "",
     description: "optional",
-    documentation: null, // "optional, should be a link",
+    documentation: null, // optional, should be a link,
+    color: "#000000",
   };
 }
 
