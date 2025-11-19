@@ -37,8 +37,13 @@ jobs:
               return '';
             }
             // Extract everything after '/diff '
-            const name = commentBody.substring('/diff '.length).trim();
+            let name = commentBody.substring('/diff '.length).trim();
             console.log(`Extracted: ${name}`);
+
+            // Transform Azure resource names (e.g., Microsoft.Web/sites -> microsoft.web.sites)
+            // Replace / with . and convert to lowercase
+            name = name.toLowerCase().replace(/\//g, '.');
+            console.log(`Transformed to filename: ${name}`);
             return name;
           result-encoding: string
 
