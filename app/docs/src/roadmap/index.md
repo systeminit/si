@@ -3,7 +3,7 @@ outline:
   level: [2, 3, 4]
 ---
 
-# Road map
+# Roadmap
 
 Updated October 27, 2025.
 
@@ -15,8 +15,9 @@ Want to influence the road map?
 We are expanding our list of supported providers, starting with Azure and Google
 Cloud. These new providers will be available in Q4 2025.
 
+- Azure (in public beta)
 - Hetzner Cloud (in public beta)
-- Azure (in testing)
+- DigitalOcean (in public beta)
 
 ## Local Schema Authoring (In development)
 
