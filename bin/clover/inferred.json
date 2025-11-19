@@ -2086,6 +2086,12 @@
       "ZIP"
     ]
   },
+  "The format for Service Connect access log output. Choose TEXT for human-readable logs or JSON for structured data that integrates well with log analysis tools.": {
+    "enum": [
+      "TEXT",
+      "JSON"
+    ]
+  },
   "Specifies the log group class for this log group. There are two classes:\n  +  The ``Standard`` log class supports all CWL features.\n  +  The ``Infrequent Access`` log class supports a subset of CWL features and incurs lower costs.\n  \n For details about the features supported by each class, see [Log classes](https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/CloudWatch_Logs_Log_Classes.html)": {
     "enum": [
       "Standard",
@@ -7717,6 +7723,9 @@
   "Specifies the file format to use when exporting Amazon S3 Storage Lens metrics export.": {
     "enum": null
   },
+  "Specifies the frequency at which CDC (Change Data Capture) pulls or incremental loads should occur.": {
+    "enum": null
+  },
   "Specifies the identifier for a DB cluster snapshot. Must match the identifier of an existing snapshot.\n\nAfter you restore a DB cluster using a SnapshotIdentifier, you must specify the same SnapshotIdentifier for any future updates to the DB cluster. When you specify this property for an update, the DB cluster is not restored from the snapshot again, and the data in the database is not changed.\n\nHowever, if you don't specify the SnapshotIdentifier, an empty DB cluster is created, and the original DB cluster is deleted. If you specify a property that is different from the previous snapshot restore property, the DB cluster is restored from the snapshot specified by the SnapshotIdentifier, and the original DB cluster is deleted.": {
     "enum": null
   },
@@ -7949,6 +7958,9 @@
     "enum": null
   },
   "Specifies whether to enforce an AS2 message is signed for this agreement.": {
+    "enum": null
+  },
+  "Specifies whether to include query parameters in Service Connect access logs.\n When enabled, query parameters from HTTP requests are included in the access logs. Consider security and privacy implications when enabling this feature, as query parameters may contain sensitive information such as request IDs and tokens. By default, this parameter is ``DISABLED``.": {
     "enum": null
   },
   "Specifies whether to preserve the filename received for this agreement.": {
@@ -8342,6 +8354,9 @@
     "enum": null
   },
   "The ARN of the KMS key that the customer can optionally specify to use to encrypt RepositoryLink properties. If not specified, a default key will be used.": {
+    "enum": null
+  },
+  "The ARN of the KMS key to encrypt the collection with": {
     "enum": null
   },
   "The ARN of the KMS key to use for encryption.": {
@@ -9005,6 +9020,9 @@
     "enum": null
   },
   "The Amazon Resource Name (ARN) of the EventBridge API destinations IAM role that you created.": {
+    "enum": null
+  },
+  "The Amazon Resource Name (ARN) of the Glue data warehouse to use as the target for replication": {
     "enum": null
   },
   "The Amazon Resource Name (ARN) of the IAM execution role to use to register the type. If your resource type calls AWS APIs in any of its handlers, you must create an IAM execution role that includes the necessary permissions to call those AWS APIs, and provision that execution role in your account. CloudFormation then assumes that execution role to provide your resource type with the appropriate credentials.": {
@@ -11093,6 +11111,12 @@
     "enum": null
   },
   "The amount of time after which you want sessions to cease if no requests are received. Allowed values are 300–3600 seconds (5–60 minutes).": {
+    "enum": null
+  },
+  "The amount of time in minutes to wait between each traffic shifting step during a linear deployment. Valid values are 0 to 1440 minutes (24 hours). The default value is 6. This bake time is not applied after reaching 100 percent traffic.": {
+    "enum": null
+  },
+  "The amount of time in minutes to wait during the canary phase before shifting the remaining production traffic to the new service revision. Valid values are 0 to 1440 minutes (24 hours). The default value is 10.": {
     "enum": null
   },
   "The amount of time of the specified unit.": {
@@ -14254,6 +14278,9 @@
   "The name of the collection": {
     "enum": null
   },
+  "The name of the collection group.\n\nThe name must meet the following criteria:\nUnique to your account and AWS Region\nStarts with a lowercase letter\nContains only lowercase letters a-z, the numbers 0-9 and the hyphen (-)\nContains between 3 and 32 characters\n": {
+    "enum": null
+  },
   "The name of the collection to consume within the database. If you do not specify a collection, Lambda consumes all collections.": {
     "enum": null
   },
@@ -15854,6 +15881,12 @@
     "enum": null
   },
   "The percentage of overlap between adjacent chunks of a data source.": {
+    "enum": null
+  },
+  "The percentage of production traffic to shift in each step during a linear deployment. Valid values are multiples of 0.1 from 3.0 to 100.0. The default value is 10.0.": {
+    "enum": null
+  },
+  "The percentage of production traffic to shift to the new service revision during the canary phase. Valid values are multiples of 0.1 from 0.1 to 100.0. The default value is 5.0.": {
     "enum": null
   },
   "The percentage of remaining budget over total budget that you want to get warnings for. If you omit this parameter, the default of 50.0 is used.": {
