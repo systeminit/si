@@ -691,6 +691,15 @@
           "expr": "rate(layer_cache_persister_write_failed_permanent{exported_job=~\"$service\", cache_name=~\"$cache\"}[1m])",
           "legendFormat": "{{exported_job}}/{{cache_name}} - permanent",
           "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "rate(layer_cache_persister_write_failed_retryable{exported_job=~\"$service\", cache_name=~\"$cache\", backend=\"s3\", error_kind!=\"\"}[1m])",
+          "legendFormat": "{{exported_job}}/{{cache_name}}/S3 - {{error_kind}}",
+          "refId": "C"
         }
       ],
       "fieldConfig": {
@@ -723,10 +732,159 @@
       }
     },
     {
-      "id": 21,
+      "id": 12,
       "gridPos": {
         "x": 0,
         "y": 48,
+        "w": 24,
+        "h": 8
+      },
+      "type": "timeseries",
+      "title": "S3 Write Failures by Error Category",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "rate(layer_cache_persister_write_failed_retryable{exported_job=~\"$service\", cache_name=~\"$cache\", backend=\"s3\", error_kind!=\"\"}[1m])",
+          "legendFormat": "{{exported_job}}/{{cache_name}} - {{error_kind}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "stacking": {
+              "mode": "normal"
+            }
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/.*authentication.*/"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "red"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/.*throttling.*/"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "orange"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/.*network.*/"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "yellow"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/.*not_found.*/"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "blue"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/.*configuration.*/"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "purple"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/.*other.*/"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "gray"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        },
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max",
+            "mean"
+          ]
+        }
+      }
+    },
+    {
+      "id": 21,
+      "gridPos": {
+        "x": 0,
+        "y": 56,
         "w": 12,
         "h": 8
       },
@@ -781,7 +939,7 @@
       "id": 23,
       "gridPos": {
         "x": 12,
-        "y": 48,
+        "y": 56,
         "w": 12,
         "h": 8
       },
@@ -836,7 +994,7 @@
       "id": 14,
       "gridPos": {
         "x": 0,
-        "y": 56,
+        "y": 64,
         "w": 12,
         "h": 8
       },
@@ -908,7 +1066,7 @@
       "id": 15,
       "gridPos": {
         "x": 12,
-        "y": 56,
+        "y": 64,
         "w": 12,
         "h": 8
       },
@@ -980,7 +1138,7 @@
       "id": 16,
       "gridPos": {
         "x": 0,
-        "y": 64,
+        "y": 72,
         "w": 24,
         "h": 8
       },
@@ -1034,7 +1192,7 @@
       "id": 17,
       "gridPos": {
         "x": 0,
-        "y": 72,
+        "y": 80,
         "w": 24,
         "h": 8
       },
@@ -1088,7 +1246,7 @@
       "id": 25,
       "gridPos": {
         "x": 0,
-        "y": 80,
+        "y": 88,
         "w": 24,
         "h": 8
       },
@@ -1143,7 +1301,7 @@
       "id": 26,
       "gridPos": {
         "x": 0,
-        "y": 88,
+        "y": 96,
         "w": 24,
         "h": 8
       },
@@ -1216,7 +1374,7 @@
       "id": 19,
       "gridPos": {
         "x": 0,
-        "y": 96,
+        "y": 104,
         "w": 12,
         "h": 8
       },
@@ -1279,7 +1437,7 @@
       "id": 20,
       "gridPos": {
         "x": 12,
-        "y": 96,
+        "y": 104,
         "w": 12,
         "h": 8
       },
@@ -1342,7 +1500,7 @@
       "id": null,
       "gridPos": {
         "x": 0,
-        "y": 104,
+        "y": 112,
         "w": 24,
         "h": 1
       },
@@ -1354,7 +1512,7 @@
       "id": null,
       "gridPos": {
         "x": 0,
-        "y": 105,
+        "y": 113,
         "w": 8,
         "h": 8
       },
@@ -1393,7 +1551,7 @@
       "id": null,
       "gridPos": {
         "x": 0,
-        "y": 113,
+        "y": 121,
         "w": 24,
         "h": 8
       },
@@ -1462,7 +1620,7 @@
       "id": null,
       "gridPos": {
         "x": 0,
-        "y": 121,
+        "y": 129,
         "w": 8,
         "h": 8
       },
