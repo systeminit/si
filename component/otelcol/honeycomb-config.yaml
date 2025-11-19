@@ -137,7 +137,7 @@ processors:
   filter:
     error_mode: ignore
     traces:
-      span: 
+      span:
         # temporarily ignore these
          - name == "pinga.jobs.:workspace_id.:change_set_id.DependentValuesUpdate receive"
          - name == "pinga.jobs.:workspace_id.:change_set_id.ComputeValidation receive"
@@ -203,8 +203,6 @@ processors:
           "@opentelemetry/instrumentation-fetch"
 
 exporters:
-  logging:
-    verbosity: normal
   otlp:
     endpoint: "api.honeycomb.io:443"
     headers:
@@ -213,7 +211,6 @@ exporters:
     endpoint: 0.0.0.0:9090
 
 extensions:
-  zpages:
   health_check:
 
 service:
@@ -221,7 +218,7 @@ service:
     logs:
       receivers: [otlp]
       processors: [batch]
-      exporters: [logging, otlp]
+      exporters: [otlp]
     traces:
       receivers: [otlp]
       processors:
@@ -229,9 +226,9 @@ service:
         - transform
         - filter
         - batch
-      exporters: [logging, otlp]
+      exporters: [otlp]
     metrics:
       receivers: [otlp]
       processors: [batch]
       exporters: [prometheus]
-  extensions: [zpages, health_check]
+  extensions: [health_check]
