@@ -16,9 +16,9 @@ We support authentication through:
 
 - [API Tokens](https://docs.hetzner.cloud/reference/cloud#authentication)
 
-If this does not cover your use cases, please
+If this does not cover a use case you need, please
 [contact us](https://calendly.com/d/cw8r-6rq-b3n/share-your-use-case-with-system-initiative)
-so we can extend support as needed.
+or send an email to <help@systeminit.com> so we can extend support as needed.
 
 ## Connecting System Initiative to your Hetzner Cloud Account
 
