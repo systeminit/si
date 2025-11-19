@@ -1,5 +1,0 @@
-# For devs - Don't add the conduit project folders that get created when you run the commands on this folder.
-schemas/
-overlays/
-.conduitroot
-si-conduit
