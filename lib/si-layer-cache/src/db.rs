@@ -179,50 +179,82 @@ where
         // Validate configuration
         validate_config(&config)?;
 
-        // Initialize S3 layers if mode requires it
-        let s3_layers = if config.persister_mode != PersisterMode::PostgresOnly {
-            use crate::s3::KeyTransformStrategy;
+        // Always create S3 layers for health check validation
+        use telemetry::prelude::*;
 
-            let mut layers = HashMap::new();
+        use crate::s3::KeyTransformStrategy;
 
-            // Define cache configurations with their strategies
-            let cache_configs = [
-                (cas::CACHE_NAME, KeyTransformStrategy::Passthrough),
-                (change_batch::CACHE_NAME, KeyTransformStrategy::Passthrough),
-                (
-                    workspace_snapshot::CACHE_NAME,
-                    KeyTransformStrategy::Passthrough,
-                ),
-                (rebase_batch::CACHE_NAME, KeyTransformStrategy::Passthrough),
-                (
-                    encrypted_secret::CACHE_NAME,
-                    KeyTransformStrategy::Passthrough,
-                ),
-                (func_run::CACHE_NAME, KeyTransformStrategy::ReverseKey), // ULID-based
-                (func_run_log::CACHE_NAME, KeyTransformStrategy::ReverseKey), // ULID-based
-                (
-                    split_snapshot_subgraph::CACHE_NAME,
-                    KeyTransformStrategy::Passthrough,
-                ),
-                (
-                    split_snapshot_supergraph::CACHE_NAME,
-                    KeyTransformStrategy::Passthrough,
-                ),
-                (
-                    split_snapshot_rebase_batch::CACHE_NAME,
-                    KeyTransformStrategy::Passthrough,
-                ),
-            ];
+        let mut layers = HashMap::new();
 
-            for (cache_name, strategy) in cache_configs {
-                let cache_config = config.object_storage_config.for_cache(cache_name);
-                let s3_layer = S3Layer::new(cache_config, strategy)?;
-                layers.insert(cache_name, s3_layer);
+        // Define cache configurations with their strategies
+        let cache_configs = [
+            (cas::CACHE_NAME, KeyTransformStrategy::Passthrough),
+            (change_batch::CACHE_NAME, KeyTransformStrategy::Passthrough),
+            (
+                workspace_snapshot::CACHE_NAME,
+                KeyTransformStrategy::Passthrough,
+            ),
+            (rebase_batch::CACHE_NAME, KeyTransformStrategy::Passthrough),
+            (
+                encrypted_secret::CACHE_NAME,
+                KeyTransformStrategy::Passthrough,
+            ),
+            (func_run::CACHE_NAME, KeyTransformStrategy::ReverseKey), // ULID-based
+            (func_run_log::CACHE_NAME, KeyTransformStrategy::ReverseKey), // ULID-based
+            (
+                split_snapshot_subgraph::CACHE_NAME,
+                KeyTransformStrategy::Passthrough,
+            ),
+            (
+                split_snapshot_supergraph::CACHE_NAME,
+                KeyTransformStrategy::Passthrough,
+            ),
+            (
+                split_snapshot_rebase_batch::CACHE_NAME,
+                KeyTransformStrategy::Passthrough,
+            ),
+        ];
+
+        for (cache_name, strategy) in cache_configs {
+            let cache_config = config.object_storage_config.for_cache(cache_name);
+            let s3_layer = S3Layer::new(cache_config, strategy)?;
+            layers.insert(cache_name, s3_layer);
+        }
+
+        // In PostgresOnly mode, run health check then drop layers
+        // In other modes, keep layers for actual S3 operations
+        let s3_layers = if config.persister_mode == PersisterMode::PostgresOnly {
+            // Health check: validate S3 connectivity before enabling DualWrite
+            for (cache_name, s3_layer) in layers.iter() {
+                match s3_layer.migrate().await {
+                    Ok(_) => {
+                        info!(
+                            cache_name = cache_name,
+                            "S3 connectivity validated in PostgresOnly mode"
+                        );
+                    }
+                    Err(e) => {
+                        // Extract error details for structured logging
+                        let error_kind = match &e {
+                            crate::LayerDbError::S3(s3_err) => s3_err.kind(),
+                            _ => "unknown",
+                        };
+
+                        warn!(
+                            error = ?e,
+                            error_kind = error_kind,
+                            cache_name = cache_name,
+                            mode = "PostgresOnly",
+                            "S3 connectivity check failed"
+                        );
+                    }
+                }
             }
-
-            Some(Arc::new(layers))
-        } else {
+            // Drop layers and return None for PostgresOnly mode
             None
+        } else {
+            // Keep layers for DualWrite/S3Primary/S3Only modes
+            Some(Arc::new(layers))
         };
 
         let cache_config = config.cache_config.clone();

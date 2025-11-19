@@ -282,6 +282,7 @@ impl S3Layer {
             error::SdkError,
             operation::get_object::GetObjectError,
         };
+
         use crate::error::AwsSdkError;
 
         let s3_key = self.transform_and_prefix_key(key);
@@ -432,7 +433,10 @@ impl S3Layer {
         cache_name: String,
         key: String,
     ) -> crate::error::S3Error {
-        use crate::error::{AwsSdkError, S3Error};
+        use crate::error::{
+            AwsSdkError,
+            S3Error,
+        };
 
         // Extract message from AWS error for display
         let message = aws_error.to_string();
