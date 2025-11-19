@@ -11,6 +11,7 @@ use serde::{
     Serialize,
 };
 use si_data_nats::NatsConfig;
+use si_service_endpoints::ServiceEndpointsConfig;
 pub(crate) use si_settings::StandardConfig;
 pub use si_settings::StandardConfigFile;
 use si_std::CanonicalFileError;
@@ -45,7 +46,7 @@ impl ConfigError {
 type Result<T> = std::result::Result<T, ConfigError>;
 
 /// The config for the forklift server.
-#[derive(Debug, Builder)]
+#[derive(Debug, Builder, Serialize)]
 pub struct Config {
     #[builder(default = "random_instance_id()")]
     instance_id: String,
@@ -67,6 +68,9 @@ pub struct Config {
 
     #[builder(default)]
     snapshot_eviction: SnapshotEvictionConfig,
+
+    #[builder(default = "default_service_endpoints_config()")]
+    service_endpoints: ServiceEndpointsConfig,
 }
 
 impl StandardConfig for Config {
@@ -114,6 +118,12 @@ impl Config {
     pub fn snapshot_eviction(&self) -> &SnapshotEvictionConfig {
         &self.snapshot_eviction
     }
+
+    /// Gets a reference to the config's service endpoints configuration.
+    #[must_use]
+    pub fn service_endpoints(&self) -> &ServiceEndpointsConfig {
+        &self.service_endpoints
+    }
 }
 
 #[allow(missing_docs)]
@@ -133,6 +143,8 @@ pub struct ConfigFile {
     pub audit: AuditDatabaseConfig,
     #[serde(default)]
     pub snapshot_eviction: SnapshotEvictionConfig,
+    #[serde(default = "default_service_endpoints_config")]
+    service_endpoints: ServiceEndpointsConfig,
 }
 
 impl Default for ConfigFile {
@@ -145,6 +157,7 @@ impl Default for ConfigFile {
             enable_audit_logs_app: default_enable_audit_logs_app(),
             audit: Default::default(),
             snapshot_eviction: Default::default(),
+            service_endpoints: default_service_endpoints_config(),
         }
     }
 }
@@ -167,6 +180,7 @@ impl TryFrom<ConfigFile> for Config {
             enable_audit_logs_app: value.enable_audit_logs_app,
             audit: value.audit,
             snapshot_eviction: value.snapshot_eviction,
+            service_endpoints: value.service_endpoints,
         })
     }
 }
@@ -185,6 +199,10 @@ fn default_data_warehouse_stream_name() -> Option<String> {
 
 fn default_enable_audit_logs_app() -> bool {
     false
+}
+
+fn default_service_endpoints_config() -> ServiceEndpointsConfig {
+    ServiceEndpointsConfig::new(0)
 }
 
 #[allow(clippy::disallowed_methods)] // Used to determine if running in development

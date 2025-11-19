@@ -17,6 +17,11 @@ pub use si_pool_noodle::{
     Instance,
     instance::cyclone::LocalUdsInstance,
 };
+pub use si_service_endpoints::{
+    DefaultServiceEndpoints,
+    ServiceEndpointsConfig,
+    server::EndpointsServer,
+};
 pub use si_settings::{
     ConfigMap,
     ParameterProvider,

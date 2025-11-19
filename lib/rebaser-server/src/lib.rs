@@ -38,6 +38,11 @@ mod serial_dvu_task;
 mod server;
 mod subject;
 
+pub use si_service_endpoints::{
+    DefaultServiceEndpoints,
+    ServiceEndpointsConfig,
+    server::EndpointsServer,
+};
 pub use si_settings::{
     ConfigMap,
     ParameterProvider,

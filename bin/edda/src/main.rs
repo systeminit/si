@@ -28,6 +28,8 @@ fn main() -> Result<()> {
 async fn async_main() -> Result<()> {
     let main_tracker = TaskTracker::new();
     let main_token = CancellationToken::new();
+    let endpoints_tracker = TaskTracker::new();
+    let endpoints_token = CancellationToken::new();
     let layer_db_tracker = TaskTracker::new();
     let layer_db_token = CancellationToken::new();
     let telemetry_tracker = TaskTracker::new();
@@ -70,6 +72,17 @@ async fn async_main() -> Result<()> {
     let config = load_config_with_provider(args, provider).await?;
     debug!(?config, "computed configuration");
 
+    let endpoints_server = if config.service_endpoints().enabled {
+        let endpoints = edda_server::DefaultServiceEndpoints::from_config("edda", &config)?;
+        Some(edda_server::EndpointsServer::new(
+            std::sync::Arc::new(endpoints),
+            config.service_endpoints().clone(),
+            endpoints_token.clone(),
+        ))
+    } else {
+        None
+    };
+
     let server = Server::from_config(
         config,
         main_token.clone(),
@@ -83,8 +96,17 @@ async fn async_main() -> Result<()> {
         server.run().await
     });
 
+    if let Some(endpoints_server) = endpoints_server {
+        endpoints_tracker.spawn(async move {
+            if let Err(err) = endpoints_server.run().await {
+                error!(error = ?err, "error running edda endpoints server");
+            }
+        });
+    }
+
     shutdown::graceful()
         .group(main_tracker, main_token)
+        .group(endpoints_tracker, endpoints_token)
         .group(layer_db_tracker, layer_db_token)
         .group(telemetry_tracker, telemetry_token)
         .telemetry_guard(telemetry_shutdown.into_future())

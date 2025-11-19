@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use telemetry::prelude::*;
 use tokio_util::sync::CancellationToken;
 
 use crate::{
@@ -32,9 +33,21 @@ impl EndpointsServer {
             return Ok(());
         }
 
-        let app = crate::axum_integration::create_router(self.service, &self.config);
+        let app = crate::axum_integration::create_router(self.service.clone(), &self.config);
 
-        axum::Server::bind(&self.config.bind_address)
+        let listener = tokio::net::TcpListener::bind(&self.config.bind_address).await?;
+        let actual_addr = listener.local_addr()?;
+
+        info!(
+            service = self.service.service_name(),
+            address = %actual_addr,
+            health_endpoint = self.config.health_endpoint,
+            config_endpoint = self.config.config_endpoint,
+            "service endpoints listening"
+        );
+
+        axum::Server::from_tcp(listener.into_std()?)
+            .map_err(std::io::Error::other)?
             .serve(app.into_make_service())
             .with_graceful_shutdown(async move {
                 self.shutdown_token.cancelled().await;
@@ -44,4 +57,3 @@ impl EndpointsServer {
         Ok(())
     }
 }
-

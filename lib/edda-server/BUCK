@@ -19,6 +19,7 @@ rust_library(
         "//lib/si-frontend-mv-types-rs:si-frontend-mv-types",
         "//lib/si-id:si-id",
         "//lib/si-layer-cache:si-layer-cache",
+        "//lib/si-service-endpoints:si-service-endpoints",
         "//lib/si-settings:si-settings",
         "//lib/si-std:si-std",
         "//lib/si-tls:si-tls",

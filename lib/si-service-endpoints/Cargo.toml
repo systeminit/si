@@ -12,8 +12,9 @@ publish.workspace = true
 axum = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
+telemetry = { workspace = true }
 thiserror = { workspace = true }
-tokio = { workspace = true, features = ["net", "rt", "macros"] }
+tokio = { workspace = true, features = ["macros", "net", "rt"] }
 tokio-util = { workspace = true }
 tower = { workspace = true }
 tower-http = { workspace = true }

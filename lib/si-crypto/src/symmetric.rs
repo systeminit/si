@@ -80,10 +80,13 @@ pub struct SymmetricCryptoService {
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct SymmetricCryptoServiceConfig {
     /// The path to the active key file which will be used for all encryption.
+    #[serde(skip_serializing)]
     pub active_key: Option<CanonicalFile>,
     /// The base64 representation of the active key file which will be used for all encryption.
+    #[serde(skip_serializing)]
     pub active_key_base64: Option<String>,
     /// Extra keys which can be used when decrypting data.
+    #[serde(skip_serializing)]
     pub extra_keys: Vec<CanonicalFile>,
 }
 
