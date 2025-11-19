@@ -1,4 +1,7 @@
-use std::collections::HashMap;
+use std::{
+    collections::HashMap,
+    fmt,
+};
 
 use aws_config::Region;
 use aws_credential_types::Credentials;
@@ -7,6 +10,9 @@ use serde::{
     Deserialize,
     Serialize,
 };
+use si_std::SensitiveString;
+use strum::AsRefStr;
+use telemetry::prelude::*;
 
 use crate::error::{
     LayerDbError,
@@ -42,17 +48,23 @@ impl Default for KeyTransformStrategy {
 }
 
 /// S3 authentication configuration
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Clone, AsRefStr, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum S3AuthConfig {
     /// Static credentials (for local dev, MinIO, etc.)
     StaticCredentials {
-        access_key: String,
-        secret_key: String,
+        access_key: SensitiveString,
+        secret_key: SensitiveString,
     },
     /// IAM role-based authentication (for production AWS)
     /// Uses AWS SDK's default credential provider chain
     IamRole,
+}
+
+impl fmt::Debug for S3AuthConfig {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.as_ref())
+    }
 }
 
 /// Resolved S3 configuration for a specific cache
@@ -114,8 +126,8 @@ impl Default for ObjectStorageConfig {
             bucket_suffix: None,
             region: "us-east-1".to_string(),
             auth: S3AuthConfig::StaticCredentials {
-                access_key: "siadmin".to_string(),
-                secret_key: "bugbear".to_string(),
+                access_key: "siadmin".into(),
+                secret_key: "bugbear".into(),
             },
             key_prefix: None,
         }
@@ -158,6 +170,11 @@ pub struct S3Layer {
 impl S3Layer {
     /// Create a new S3Layer from configuration and strategy
     pub fn new(config: S3CacheConfig, strategy: KeyTransformStrategy) -> LayerDbResult<Self> {
+        info!(
+            layer_db.s3.auth_mode = config.auth.as_ref(),
+            layer_db.s3.bucket_name = config.bucket_name,
+            "Creating S3 layer",
+        );
         let sdk_config = match &config.auth {
             S3AuthConfig::StaticCredentials {
                 access_key,
@@ -165,8 +182,8 @@ impl S3Layer {
             } => {
                 // Static credential flow for dev/MinIO
                 let credentials = Credentials::new(
-                    access_key.clone(),
-                    secret_key.clone(),
+                    access_key.as_str(),
+                    secret_key.as_str(),
                     None,     // session token
                     None,     // expiration
                     "static", // provider name
@@ -260,11 +277,12 @@ impl S3Layer {
     }
 
     /// Get a value by key from S3
-    pub async fn get(&self, key: &str, _cache_name: &str) -> LayerDbResult<Option<Vec<u8>>> {
+    pub async fn get(&self, key: &str, cache_name: &str) -> LayerDbResult<Option<Vec<u8>>> {
         use aws_sdk_s3::{
             error::SdkError,
             operation::get_object::GetObjectError,
         };
+        use crate::error::AwsSdkError;
 
         let s3_key = self.transform_and_prefix_key(key);
 
@@ -281,30 +299,44 @@ impl S3Layer {
                     .body
                     .collect()
                     .await
-                    .map_err(|e| LayerDbError::S3(e.to_string()))?
+                    .map_err(|e| {
+                        // TODO: Body collection errors could be structured in the future
+                        // For now, these are rare (occur after successful HTTP response) and
+                        // ByteStreamError is not an SDK operation error, so we use a simple format
+                        LayerDbError::ContentConversion(format!(
+                            "Failed to collect S3 response body for key '{key}' in cache '{cache_name}': {e}"
+                        ))
+                    })?
                     .to_vec();
 
                 Ok(Some(bytes))
             }
-            Err(e) => {
-                // Check for NoSuchKey error - the specific way to check depends on the error type
-                if let SdkError::ServiceError(err) = &e {
-                    // Check if this is a NoSuchKey error
+            Err(sdk_err) => {
+                // Check for NoSuchKey error - return None instead of error
+                if let SdkError::ServiceError(err) = &sdk_err {
                     if matches!(err.err(), GetObjectError::NoSuchKey(_)) {
                         return Ok(None);
                     }
                 }
 
                 // Also check error string for compatibility with different S3 implementations
-                let error_str = e.to_string();
+                let error_str = sdk_err.to_string();
                 if error_str.contains("NoSuchKey")
                     || error_str.contains("404")
                     || error_str.contains("Not Found")
                 {
-                    Ok(None)
-                } else {
-                    Err(LayerDbError::from(e))
+                    return Ok(None);
                 }
+
+                // Not a "not found" error - wrap with context
+                let aws_error = AwsSdkError::GetObject(sdk_err);
+                let s3_error = Self::categorize_error(
+                    aws_error,
+                    crate::error::S3Operation::Get,
+                    cache_name.to_string(),
+                    key.to_string(),
+                );
+                Err(LayerDbError::S3(Box::new(s3_error)))
             }
         }
     }
@@ -315,19 +347,33 @@ impl S3Layer {
         key: &str,
         _sort_key: &str,
         value: &[u8],
-        _cache_name: &str,
+        cache_name: &str,
     ) -> LayerDbResult<()> {
+        use crate::error::AwsSdkError;
+
         let s3_key = self.transform_and_prefix_key(key);
 
-        self.client
+        match self
+            .client
             .put_object()
             .bucket(&self.bucket_name)
             .key(s3_key)
             .body(value.to_vec().into())
             .send()
-            .await?;
-
-        Ok(())
+            .await
+        {
+            Ok(_) => Ok(()),
+            Err(sdk_err) => {
+                let aws_error = AwsSdkError::PutObject(sdk_err);
+                let s3_error = Self::categorize_error(
+                    aws_error,
+                    crate::error::S3Operation::Put,
+                    cache_name.to_string(),
+                    key.to_string(),
+                );
+                Err(LayerDbError::S3(Box::new(s3_error)))
+            }
+        }
     }
 
     /// Get multiple values in parallel
@@ -353,17 +399,154 @@ impl S3Layer {
 
     /// Ensure bucket exists (no schema migrations needed for S3)
     pub async fn migrate(&self) -> LayerDbResult<()> {
+        use crate::error::AwsSdkError;
+
         // Check if bucket exists - buckets should be pre-created by infrastructure
         // If bucket doesn't exist, this will return an error which should be treated as retryable
-        self.client
+        match self
+            .client
             .head_bucket()
             .bucket(&self.bucket_name)
             .send()
             .await
-            .map(|_| ())
-            .map_err(|e| {
-                LayerDbError::S3(format!("Bucket {} does not exist: {}", self.bucket_name, e))
-            })
+        {
+            Ok(_) => Ok(()),
+            Err(sdk_err) => {
+                let aws_error = AwsSdkError::HeadBucket(sdk_err);
+                let s3_error = Self::categorize_error(
+                    aws_error,
+                    crate::error::S3Operation::HeadBucket,
+                    // Use bucket name as cache name for head_bucket operations
+                    self.bucket_name.clone(),
+                    String::new(), // No specific key for head_bucket
+                );
+                Err(LayerDbError::S3(Box::new(s3_error)))
+            }
+        }
+    }
+
+    /// Categorize AWS SDK error into appropriate S3Error variant with context
+    fn categorize_error(
+        aws_error: crate::error::AwsSdkError,
+        operation: crate::error::S3Operation,
+        cache_name: String,
+        key: String,
+    ) -> crate::error::S3Error {
+        use crate::error::{AwsSdkError, S3Error};
+
+        // Extract message from AWS error for display
+        let message = aws_error.to_string();
+
+        // Helper to determine error category from status and message
+        let determine_category = |status: u16, error_msg: &str| -> &'static str {
+            if status == 403
+                || error_msg.contains("AccessDenied")
+                || error_msg.contains("InvalidAccessKeyId")
+                || error_msg.contains("SignatureDoesNotMatch")
+            {
+                "authentication"
+            } else if status == 404
+                || error_msg.contains("NoSuchBucket")
+                || error_msg.contains("NoSuchKey")
+            {
+                "not_found"
+            } else if status == 503
+                || error_msg.contains("SlowDown")
+                || error_msg.contains("RequestLimitExceeded")
+                || error_msg.contains("ServiceUnavailable")
+            {
+                "throttling"
+            } else {
+                "other"
+            }
+        };
+
+        // Determine error category based on AWS SDK error type
+        // Note: Can't use match arm `|` patterns because each variant has different inner types
+        let category = match &aws_error {
+            AwsSdkError::PutObject(sdk_err) => match sdk_err {
+                aws_sdk_s3::error::SdkError::ServiceError(err) => {
+                    let status = err.raw().status().as_u16();
+                    let error_msg = format!("{:?}", err.err());
+                    determine_category(status, &error_msg)
+                }
+                aws_sdk_s3::error::SdkError::TimeoutError(_)
+                | aws_sdk_s3::error::SdkError::DispatchFailure(_)
+                | aws_sdk_s3::error::SdkError::ResponseError(_) => "network",
+                aws_sdk_s3::error::SdkError::ConstructionFailure(_) => "configuration",
+                _ => "other",
+            },
+            AwsSdkError::GetObject(sdk_err) => match sdk_err {
+                aws_sdk_s3::error::SdkError::ServiceError(err) => {
+                    let status = err.raw().status().as_u16();
+                    let error_msg = format!("{:?}", err.err());
+                    determine_category(status, &error_msg)
+                }
+                aws_sdk_s3::error::SdkError::TimeoutError(_)
+                | aws_sdk_s3::error::SdkError::DispatchFailure(_)
+                | aws_sdk_s3::error::SdkError::ResponseError(_) => "network",
+                aws_sdk_s3::error::SdkError::ConstructionFailure(_) => "configuration",
+                _ => "other",
+            },
+            AwsSdkError::HeadBucket(sdk_err) => match sdk_err {
+                aws_sdk_s3::error::SdkError::ServiceError(err) => {
+                    let status = err.raw().status().as_u16();
+                    let error_msg = format!("{:?}", err.err());
+                    determine_category(status, &error_msg)
+                }
+                aws_sdk_s3::error::SdkError::TimeoutError(_)
+                | aws_sdk_s3::error::SdkError::DispatchFailure(_)
+                | aws_sdk_s3::error::SdkError::ResponseError(_) => "network",
+                aws_sdk_s3::error::SdkError::ConstructionFailure(_) => "configuration",
+                _ => "other",
+            },
+        };
+
+        // Build appropriate S3Error variant based on category
+        match category {
+            "authentication" => S3Error::Authentication {
+                operation,
+                cache_name,
+                key,
+                message,
+                source: aws_error,
+            },
+            "not_found" => S3Error::NotFound {
+                operation,
+                cache_name,
+                key,
+                message,
+                source: aws_error,
+            },
+            "throttling" => S3Error::Throttling {
+                operation,
+                cache_name,
+                key,
+                message,
+                source: aws_error,
+            },
+            "network" => S3Error::Network {
+                operation,
+                cache_name,
+                key,
+                message,
+                source: aws_error,
+            },
+            "configuration" => S3Error::Configuration {
+                operation,
+                cache_name,
+                key,
+                message,
+                source: aws_error,
+            },
+            _ => S3Error::Other {
+                operation,
+                cache_name,
+                key,
+                message,
+                source: aws_error,
+            },
+        }
     }
 }
 
@@ -378,8 +561,8 @@ mod tests {
             bucket_suffix: None,
             region: "us-east-1".to_string(),
             auth: S3AuthConfig::StaticCredentials {
-                access_key: "key".to_string(),
-                secret_key: "secret".to_string(),
+                access_key: "key".into(),
+                secret_key: "secret".into(),
             },
             key_prefix,
         };
@@ -449,8 +632,8 @@ mod tests {
             bucket_suffix: Some("production".to_string()),
             region: "us-east-1".to_string(),
             auth: S3AuthConfig::StaticCredentials {
-                access_key: "key".to_string(),
-                secret_key: "secret".to_string(),
+                access_key: "key".into(),
+                secret_key: "secret".into(),
             },
             key_prefix: None,
         };
