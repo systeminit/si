@@ -5,12 +5,14 @@
       clsx(
         'collapsing-flex-item', // identifying class
         'flex flex-col items-stretch',
-        'border overflow-hidden basis-0 mb-[-1px]', // basis-0 makes items take equal size when multiple are open
+        'border overflow-hidden mb-[-1px]',
         showOpen ? 'grow' : 'shrink',
         maxHeightContent && 'max-h-fit',
         themeClasses('border-neutral-400', 'border-neutral-600'),
-        variant === 'standard' &&
+        variant === 'standard' && [
           themeClasses('border-neutral-400', 'border-neutral-600'),
+          'basis-0', // makes each item in a group take the same amount of space
+        ],
         variant === 'onboarding' && 'min-h-fit rounded-sm bg-[#00000033]',
       )
     "

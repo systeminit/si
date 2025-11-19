@@ -22,10 +22,6 @@ export const DEBUG_MODE = false;
 export const DEBUG_ONBOARDING_SHOW_DISABLED = false;
 export const DEBUG_ONBOARDING_START = OnboardingStep.PICK_PROVIDER;
 export const DEBUG_PROVIDER_CHOICE = undefined;
-
-// Toggle this to turn onboarding on but not in debug mode
-// Allows full functional testing of the onboarding flow
-export const FORCE_ONBOARDING_TO_SHOW = false;
 </script>
 
 <!-- eslint-disable vue/component-tags-order,import/first -->
@@ -1133,9 +1129,16 @@ export const FORCE_ONBOARDING_TO_SHOW = false;
             </div>
 
             <!-- Right side -->
-            <div>
+            <div class="flex flex-row items-center gap-xs">
+              <!-- THESE BUTTONS SHOULD ONLY SHOW TO THE SI TEAM -->
               <NewButton
-                v-if="DEBUG_MODE || FORCE_ONBOARDING_TO_SHOW"
+                v-if="featureFlagsStore.ADMIN_PANEL_ACCESS && !DEBUG_MODE"
+                icon="cat"
+                label="Skip Onboarding"
+                @click="emit('completed')"
+              />
+              <NewButton
+                v-if="DEBUG_MODE || featureFlagsStore.ADMIN_PANEL_ACCESS"
                 :icon="theme === 'dark' ? 'moon' : 'sun'"
                 @click="toggleTheme"
               />

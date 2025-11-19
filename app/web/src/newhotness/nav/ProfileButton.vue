@@ -45,6 +45,12 @@
         label="Admin Dashboard"
         linkToNamedRoute="workspace-admin-dashboard"
       />
+      <DropdownMenuItem
+        v-if="featureFlagsStore.ADMIN_PANEL_ACCESS"
+        icon="logo-si"
+        label="Open Onboarding"
+        @click="ctx.reopenOnboarding"
+      />
       <template v-if="showTopLevelMenuItems">
         <DropdownMenuItem
           icon="question-circle"
@@ -119,6 +125,7 @@ import WorkspaceIntegrationsModal from "@/components/WorkspaceIntegrationsModal.
 import NavbarButton from "@/components/layout/navbar/NavbarButton.vue";
 import UserIcon from "@/components/layout/navbar/UserIcon.vue";
 import WorkspaceSettingsMenuItems from "@/components/layout/navbar/WorkspaceSettingsMenuItems.vue";
+import { useContext } from "../logic_composables/context";
 
 const importModalRef = ref<InstanceType<typeof WorkspaceImportModal>>();
 const exportModalRef = ref<InstanceType<typeof WorkspaceExportModal>>();
@@ -130,6 +137,7 @@ defineProps({
 });
 
 const featureFlagsStore = useFeatureFlagsStore();
+const ctx = useContext();
 
 const AUTH_PORTAL_URL = import.meta.env.VITE_AUTH_PORTAL_URL;
 const authStore = useAuthStore();
