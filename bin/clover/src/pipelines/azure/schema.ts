@@ -107,9 +107,14 @@ export function isAzureArrayProperty(o: unknown): o is AzureArrayProperty {
 }
 
 export async function initAzureRestApiSpecsRepo(options: CommonCommandOptions) {
+  // Find the git repository root (where .gitmodules is located)
+  // We need to go up from provider-schemas to find the SI repo root
+  const repoRoot = path.resolve(options.providerSchemasPath, "../../../..");
+
   // Update the bin/clover/src/provider-schemas/azure-rest-api-specs submodule
   const command = new Deno.Command("git", {
-    args: ["submodule", "update", "--init"],
+    args: ["submodule", "update", "--init", "--recursive", "bin/clover/src/provider-schemas/azure-rest-api-specs"],
+    cwd: repoRoot,
   });
   const { code, stderr } = await command.output();
   if (code !== 0) {

@@ -21,22 +21,8 @@ import { JSONSchema } from "../draft_07.ts";
 import { AZURE_PROP_OVERRIDES, AZURE_SCHEMA_OVERRIDES } from "./overrides.ts";
 
 async function azureFetchSchema(options: FetchSchemaOptions) {
-  const specsRepo = initAzureRestApiSpecsRepo(options);
-  console.log(`Updating Azure specs in ${specsRepo} ...`);
-
-  // Update the bin/clover/src/provider-schemas/azure-rest-api-specs submodule
-  const command = new Deno.Command("git", {
-    args: ["submodule", "update", "--init", "--recursive"],
-  });
-
-  const { code, stderr } = await command.output();
-
-  if (code !== 0) {
-    const errorText = new TextDecoder().decode(stderr);
-    throw new Error(`Failed to update Azure specs: ${errorText}`);
-  }
-
-  console.log("Update complete");
+  const specsRepo = await initAzureRestApiSpecsRepo(options);
+  console.log(`Azure specs initialized at ${specsRepo}`);
 }
 
 function createDocLink(
