@@ -169,7 +169,7 @@ pub struct S3Layer {
 
 impl S3Layer {
     /// Create a new S3Layer from configuration and strategy
-    pub fn new(config: S3CacheConfig, strategy: KeyTransformStrategy) -> LayerDbResult<Self> {
+    pub async fn new(config: S3CacheConfig, strategy: KeyTransformStrategy) -> LayerDbResult<Self> {
         info!(
             layer_db.s3.auth_mode = config.auth.as_ref(),
             layer_db.s3.bucket_name = config.bucket_name,
@@ -199,13 +199,10 @@ impl S3Layer {
                     .build()
             }
             S3AuthConfig::IamRole => {
-                // Use AWS SDK's default credential provider chain
-                // This will try: IAM role, env vars, credentials file, ECS task role, etc.
-                aws_config::SdkConfig::builder()
-                    .endpoint_url(&config.endpoint)
-                    .region(Region::new(config.region.clone()))
-                    .behavior_version(aws_config::BehaviorVersion::latest())
-                    .build()
+                // Use si-aws-config which properly loads credentials, adds retry config, and validates via STS
+                si_aws_config::AwsConfig::from_env()
+                    .await
+                    .map_err(LayerDbError::AwsConfig)?
             }
         };
 
