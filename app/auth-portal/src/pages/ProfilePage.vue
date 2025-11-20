@@ -163,7 +163,6 @@ import {
 import { useHead } from "@vueuse/head";
 import { useAuthStore, User } from "@/store/auth.store";
 import { tracker } from "@/lib/posthog";
-import { API_HTTP_URL } from "@/store/api";
 import { useWorkspacesStore } from "@/store/workspaces.store";
 import { ALLOWED_INPUT_REGEX } from "@/lib/validations";
 
@@ -268,15 +267,8 @@ const saveHandler = async () => {
     const completeProfileReq = await authStore.COMPLETE_PROFILE({});
 
     if (completeProfileReq.result.success) {
-      if (workspacesStore.defaultWorkspace) {
-        // all new users should hit here and go to their first workspace
-        tracker.trackEvent("workspace_launcher_widget_click");
-        window.location.href = `${API_HTTP_URL}/workspaces/${workspacesStore.defaultWorkspace.id}/go`;
-      } else {
-        // last resort if the new user doesn't have a default workspace
-        // eslint-disable-next-line @typescript-eslint/no-floating-promises
-        router.push({ name: "workspaces" });
-      }
+      // eslint-disable-next-line @typescript-eslint/no-floating-promises
+      router.push({ name: "workspaces" });
     }
   } else {
     // eslint-disable-next-line @typescript-eslint/no-floating-promises

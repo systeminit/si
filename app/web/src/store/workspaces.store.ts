@@ -2,7 +2,6 @@ import { defineStore } from "pinia";
 import * as _ from "lodash-es";
 import { watch } from "vue";
 import { addStoreHooks, ApiRequest } from "@si/vue-lib/pinia";
-import storage from "local-storage-fallback";
 import { useRealtimeStore } from "@/store/realtime/realtime.store";
 import router from "@/router";
 import { ModuleId } from "@/api/sdf/dal/module";
@@ -45,8 +44,6 @@ export type WorkspaceIntegration = {
   slackWebhookUrl?: string;
 };
 
-const LOCAL_STORAGE_LAST_WORKSPACE_PK = "si-last-workspace-pk";
-
 // Note(victor): The workspace import exists outside a change set context
 // (since change sets exists inside tenancies) - So no endpoints in this store
 // should use a visibility. If one seems like it should, then it belongs
@@ -74,7 +71,6 @@ export const useWorkspacesStore = () => {
         allWorkspaces: (state) => _.values(state.workspacesByPk),
         selectedWorkspacePk(): WorkspacePk | null {
           const pk = this.selectedWorkspace?.pk || null;
-          if (pk) storage.setItem(LOCAL_STORAGE_LAST_WORKSPACE_PK, pk);
           return pk;
         },
         urlSelectedWorkspaceId: () => {
@@ -104,12 +100,6 @@ export const useWorkspacesStore = () => {
       },
 
       actions: {
-        getAutoSelectedWorkspacePk() {
-          const lastSelected = storage.getItem(LOCAL_STORAGE_LAST_WORKSPACE_PK);
-          // here we can inject extra logic for auto selection...
-          return lastSelected || this.allWorkspaces[0]?.pk;
-        },
-
         async FETCH_USER_WORKSPACES() {
           return new AuthApiRequest<AuthApiWorkspace[]>({
             url: "/workspaces",

@@ -46,7 +46,15 @@ onBeforeMount(async () => {
 
 onMounted(() => {
   if (!authStore.userIsLoggedIn) {
-    window.location.replace(AUTHORIZE_URL);
+    const queryString = window.location.search;
+    const urlParams = new URLSearchParams(queryString);
+    const redirect = urlParams.get("redirect");
+    let url = AUTHORIZE_URL;
+    if (redirect) {
+      const separator = AUTHORIZE_URL.indexOf("?") === -1 ? "?" : "&";
+      url = `${url}${separator}redirect=${redirect}`;
+    }
+    window.location.replace(url);
   }
   // setInterval(() => {
   //   // in case redirecting fails or takes longer, dont want the timer to go negative

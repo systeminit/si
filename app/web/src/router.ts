@@ -313,7 +313,7 @@ router.beforeEach((to, _from) => {
     const authStore = useAuthStore();
 
     if (!authStore.userIsLoggedIn) {
-      const workspaceId = to.fullPath.match(/^\/w\/(?<workspaceId>\w*)\//)
+      const workspaceId = to.fullPath.match(/^\/(n|w)\/(?<workspaceId>\w*)\//)
         ?.groups?.workspaceId;
 
       return {

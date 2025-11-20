@@ -14,7 +14,6 @@ import NotFoundPage from "./pages/NotFoundPage.vue";
 import WorkspacesPage from "./pages/WorkspacesPage.vue";
 import BillingPage from "./pages/BillingPage.vue";
 import ProfilePage from "./pages/ProfilePage.vue";
-import DefaultWorkspacePage from "./pages/DefaultWorkspacePage.vue";
 import WorkspaceGoPage from "./pages/WorkspaceGoPage.vue";
 import WorkspaceAdmin from "./pages/WorkspaceAdmin.vue";
 import WorkspaceAuthTokensPage from "./pages/WorkspaceAuthTokensPage.vue";
@@ -76,7 +75,9 @@ export const routerOptions: RouterOptions = {
     {
       path: "/default_workspace",
       name: "default-workspace",
-      component: DefaultWorkspacePage,
+      redirect() {
+        return { name: "workspaces" };
+      },
     },
     {
       path: "/workspace/:workspaceId",
@@ -114,7 +115,7 @@ export const routerOptions: RouterOptions = {
         // see App.vue for logic saving this redirect location
         const savedPath = storage.getItem("SI-LOGIN-REDIRECT");
         storage.removeItem("SI-LOGIN-REDIRECT");
-        return savedPath || { name: "default-workspace" };
+        return savedPath || { name: "workspaces" };
       },
     },
     {
