@@ -1,4 +1,4 @@
-import { assertEquals } from "jsr:@std/assert";
+import { assertEquals } from "@std/assert";
 import plugin from "../lint/mod.ts";
 
 Deno.test("no-deno-env-get rule - detects Deno.env.get() calls", () => {

@@ -45,7 +45,7 @@ import {
 const ANALYTICS_EVENT_PREFIX = "si";
 
 /** Logger category for all application logs. */
-const APP_CATEGORY = "si";
+const _APP_CATEGORY = "si";
 
 /**
  * Options for initializing the application context.

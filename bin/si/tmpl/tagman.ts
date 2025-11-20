@@ -1,11 +1,11 @@
 import type { TemplateContext } from "../src/template/context.ts";
-import type { SubscriptionInputType } from "../src/template.ts";
+import type { SubscriptionInputType as _SubscriptionInputType } from "../src/template.ts";
 import type { z } from "zod";
 
 export default function (c: TemplateContext) {
   c.search(["schema:*"]);
   type Inputs = z.infer<typeof inputSchema>;
-  c.transform(async (workingSet, inputs) => {
+  c.transform(async (workingSet, _inputs) => {
     for (const w of workingSet) {
       await c.ensureArrayAttribute(
         w,

@@ -475,20 +475,6 @@ export async function componentSearch(
     // Info mode: display results
     ctx.logger.info("Found {count} components", { count });
 
-    // Create API instances and caches for full component display
-    const schemasApi = new SchemasApi(apiConfig);
-    const actionsApi = new ActionsApi(apiConfig);
-    let allActions: ActionViewV1[] | undefined;
-
-    // Fetch all actions once if full component display is requested
-    if (options.fullComponent) {
-      const actionsResponse = await actionsApi.getActions({
-        workspaceId: WORKSPACE_ID,
-        changeSetId,
-      });
-      allActions = actionsResponse.data.actions as ActionViewV1[];
-    }
-
     for (let i = 0; i < output.components.length; i++) {
       const componentData = output.components[i];
       const index = i + 1;

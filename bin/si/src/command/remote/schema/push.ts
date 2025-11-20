@@ -1453,6 +1453,6 @@ async function readRawInput() {
     console.log(input);
   } finally {
     Deno.stdin.setRaw(false);
-    return input;
   }
+  return input;
 }
