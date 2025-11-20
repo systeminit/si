@@ -25,7 +25,8 @@ async function main(component: Input): Promise<Output> {
 
   const createPayload = cleanPayload(domain);
 
-  console.log(`PUT ${url} with payload:\n${JSON.stringify(createPayload, null, 2)}`);
+  console.log(`[CREATE] Starting create operation for resource type: ${domain?.extra?.AzureResourceType}, resourceId: ${resourceId}`);
+  console.log(`[CREATE] PUT ${url}`);
 
   const response = await fetch(url, {
     method: "PUT",
@@ -36,15 +37,49 @@ async function main(component: Input): Promise<Output> {
     body: JSON.stringify(createPayload),
   });
 
+  console.log(`[CREATE] Response status: ${response.status}`);
+
   if (!response.ok) {
     const errorText = await response.text();
+    console.error(`[CREATE] Failed with status ${response.status}:`, errorText);
     throw new Error(
       `Azure API Error: ${response.status} ${response.statusText} - ${errorText}`,
     );
   }
 
-  const result = await response.json();
+  // Handle Azure Long-Running Operations (LRO) - status 201/202
+  if (response.status === 201 || response.status === 202) {
+    console.log(`[CREATE] LRO detected (${response.status}), polling for completion...`);
 
+    // Get the polling URL - prefer Azure-AsyncOperation over Location
+    const asyncOpUrl = response.headers.get("Azure-AsyncOperation");
+    const locationUrl = response.headers.get("Location");
+
+    if (!asyncOpUrl && !locationUrl) {
+      throw new Error("LRO response missing polling URL headers");
+    }
+
+    // Azure-AsyncOperation returns status in body, Location returns 200 when done
+    const isAsyncOpPattern = !!asyncOpUrl;
+    const pollingUrl = asyncOpUrl || locationUrl;
+
+    console.log(`[CREATE] Using ${isAsyncOpPattern ? 'Azure-AsyncOperation' : 'Location'} polling pattern`);
+
+    // Poll until the operation completes
+    const finalResource = await pollLRO(pollingUrl, token, resourceId, apiVersion, isAsyncOpPattern);
+
+    console.log(`[CREATE] Returning success with resourceId: ${finalResource.id}`);
+    return {
+      payload: finalResource,
+      resourceId: finalResource.id,
+      status: "ok",
+    };
+  }
+
+  // Handle synchronous 200 response
+  const result = await parseJsonResponse(response, "CREATE");
+
+  console.log(`[CREATE] Synchronous create successful, resourceId: ${result.id}`);
   return {
     payload: result,
     resourceId: result.id,
@@ -176,6 +211,146 @@ function createResourceId(domain: Input["properties"]["domain"]): string {
     delete domain[paramName];
     return value;
   });
+}
+
+// Helper to safely parse JSON responses
+async function parseJsonResponse(response: Response, context: string): Promise<any> {
+  const responseText = await response.text();
+
+  if (!responseText || responseText.trim() === "") {
+    console.log(`[${context}] Empty response body, returning empty object`);
+    return {};
+  }
+
+  try {
+    return JSON.parse(responseText);
+  } catch (parseError) {
+    console.error(`[${context}] Failed to parse JSON response`);
+    console.error(`[${context}] Response text: ${responseText}`);
+    throw new Error(`Failed to parse ${context} response: ${parseError.message}`);
+  }
+}
+
+async function pollLRO(
+  pollingUrl: string,
+  token: string,
+  resourceId: string,
+  apiVersion: string,
+  isAsyncOpPattern: boolean,
+): Promise<any> {
+  const delay = (time: number) => {
+    return new Promise((res) => {
+      setTimeout(res, time);
+    });
+  };
+
+  let finished = false;
+  let success = false;
+  let attempt = 0;
+  const baseDelay = 1000;
+  const maxDelay = 90000;
+  let message = "";
+  let finalResource = null;
+
+  console.log(`[LRO] Starting status polling for operation: ${pollingUrl}`);
+
+  while (!finished) {
+    console.log(`[LRO] Status poll attempt ${attempt + 1}`);
+
+    const statusResponse = await fetch(pollingUrl, {
+      method: "GET",
+      headers: {
+        "Authorization": `Bearer ${token}`,
+      },
+    });
+
+    // Location pattern: 202 means still running, 200 means done
+    if (!isAsyncOpPattern) {
+      if (statusResponse.status === 200) {
+        console.log(`[LRO] Location polling complete with 200 OK`);
+        finished = true;
+        success = true;
+
+        // Response body contains the final resource
+        finalResource = await parseJsonResponse(statusResponse, "LRO-Location");
+        console.log(`[LRO] Got final resource from Location polling with ID: ${finalResource.id}`);
+      } else if (statusResponse.status === 202) {
+        console.log(`[LRO] Location polling: operation still in progress (202)`);
+        // Continue polling
+      } else {
+        console.error(`[LRO] Location poll failed: ${statusResponse.status} ${statusResponse.statusText}`);
+        throw new Error(
+          `LRO Location polling failed: ${statusResponse.status} ${statusResponse.statusText}`,
+        );
+      }
+    } else {
+      // Azure-AsyncOperation pattern: check status field in body
+      if (!statusResponse.ok) {
+        console.error(`[LRO] Status poll ${attempt + 1} failed: ${statusResponse.status} ${statusResponse.statusText}`);
+        throw new Error(
+          `LRO polling failed: ${statusResponse.status} ${statusResponse.statusText}`,
+        );
+      }
+
+      const statusResult = await parseJsonResponse(statusResponse, "LRO-AsyncOp");
+      const status = statusResult.status?.toLowerCase();
+
+      console.log(`[LRO] Status poll ${attempt + 1} response: ${status}`);
+
+      if (status === "succeeded") {
+        console.log(`[LRO] Operation SUCCEEDED! Fetching final resource...`);
+        finished = true;
+        success = true;
+
+        // Fetch the final resource to get the complete payload
+        const resourceUrl = `https://management.azure.com${resourceId}?api-version=${apiVersion}`;
+
+        const resourceResponse = await fetch(resourceUrl, {
+          method: "GET",
+          headers: {
+            "Authorization": `Bearer ${token}`,
+          },
+        });
+
+        if (!resourceResponse.ok) {
+          throw new Error(
+            `Failed to fetch created resource: ${resourceResponse.status} ${resourceResponse.statusText}`,
+          );
+        }
+
+        finalResource = await parseJsonResponse(resourceResponse, "LRO-FinalResource");
+        console.log(`[LRO] Successfully fetched final resource with ID: ${finalResource.id}`);
+      } else if (status === "failed") {
+        console.log(`[LRO] Operation FAILED: ${JSON.stringify(statusResult.error || statusResult)}`);
+        finished = true;
+        success = false;
+        message = JSON.stringify(statusResult.error || statusResult);
+      } else if (status === "canceled") {
+        console.log(`[LRO] Operation CANCELLED`);
+        finished = true;
+        success = false;
+        message = "Operation cancelled by Azure";
+      }
+    }
+
+    if (!finished) {
+      attempt++;
+      const exponentialDelay = Math.min(baseDelay * Math.pow(2, attempt - 1), maxDelay);
+      const jitter = Math.random() * 0.3 * exponentialDelay;
+      const finalDelay = exponentialDelay + jitter;
+
+      console.log(`[LRO] Waiting ${Math.round(finalDelay)}ms before status poll attempt ${attempt + 1}`);
+      await delay(finalDelay);
+    }
+  }
+
+  console.log(`[LRO] Final result: success=${success}`);
+
+  if (success) {
+    return finalResource;
+  } else {
+    throw new Error(`LRO ${message}`);
+  }
 }
 
 async function getAzureToken(
