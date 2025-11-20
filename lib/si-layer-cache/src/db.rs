@@ -217,43 +217,40 @@ where
 
         for (cache_name, strategy) in cache_configs {
             let cache_config = config.object_storage_config.for_cache(cache_name);
-            let s3_layer = S3Layer::new(cache_config, strategy)?;
+            let s3_layer = S3Layer::new(cache_config, strategy).await?;
             layers.insert(cache_name, s3_layer);
         }
 
-        // In PostgresOnly mode, run health check then drop layers
-        // In other modes, keep layers for actual S3 operations
-        let s3_layers = if config.persister_mode == PersisterMode::PostgresOnly {
-            // Health check: validate S3 connectivity before enabling DualWrite
-            for (cache_name, s3_layer) in layers.iter() {
-                match s3_layer.migrate().await {
-                    Ok(_) => {
-                        info!(
-                            cache_name = cache_name,
-                            "S3 connectivity validated in PostgresOnly mode"
-                        );
-                    }
-                    Err(e) => {
-                        // Extract error details for structured logging
-                        let error_kind = match &e {
-                            crate::LayerDbError::S3(s3_err) => s3_err.kind(),
-                            _ => "unknown",
-                        };
+        // Health check: validate S3 connectivity for ALL modes
+        for (cache_name, s3_layer) in layers.iter() {
+            match s3_layer.migrate().await {
+                Ok(_) => {
+                    info!(cache_name = cache_name, "S3 connectivity validated");
+                }
+                Err(e) => {
+                    // Extract error details for structured logging
+                    let error_kind = match &e {
+                        crate::LayerDbError::S3(s3_err) => s3_err.kind(),
+                        _ => "unknown",
+                    };
 
-                        warn!(
-                            error = ?e,
-                            error_kind = error_kind,
-                            cache_name = cache_name,
-                            mode = "PostgresOnly",
-                            "S3 connectivity check failed"
-                        );
-                    }
+                    warn!(
+                        error = ?e,
+                        error_kind = error_kind,
+                        cache_name = cache_name,
+                        mode = ?config.persister_mode,
+                        "S3 connectivity check failed"
+                    );
                 }
             }
-            // Drop layers and return None for PostgresOnly mode
+        }
+
+        // Mode-specific layer retention
+        let s3_layers = if config.persister_mode == PersisterMode::PostgresOnly {
+            // Drop layers - we just validated config, don't need them for operations
             None
         } else {
-            // Keep layers for DualWrite/S3Primary/S3Only modes
+            // Keep validated layers for S3 operations
             Some(Arc::new(layers))
         };
 

@@ -169,7 +169,7 @@ pub struct S3Layer {
 
 impl S3Layer {
     /// Create a new S3Layer from configuration and strategy
-    pub fn new(config: S3CacheConfig, strategy: KeyTransformStrategy) -> LayerDbResult<Self> {
+    pub async fn new(config: S3CacheConfig, strategy: KeyTransformStrategy) -> LayerDbResult<Self> {
         info!(
             layer_db.s3.auth_mode = config.auth.as_ref(),
             layer_db.s3.bucket_name = config.bucket_name,
@@ -199,13 +199,10 @@ impl S3Layer {
                     .build()
             }
             S3AuthConfig::IamRole => {
-                // Use AWS SDK's default credential provider chain
-                // This will try: IAM role, env vars, credentials file, ECS task role, etc.
-                aws_config::SdkConfig::builder()
-                    .endpoint_url(&config.endpoint)
-                    .region(Region::new(config.region.clone()))
-                    .behavior_version(aws_config::BehaviorVersion::latest())
-                    .build()
+                // Use si-aws-config which properly loads credentials, adds retry config, and validates via STS
+                si_aws_config::AwsConfig::from_env()
+                    .await
+                    .map_err(LayerDbError::AwsConfig)?
             }
         };
 
@@ -573,11 +570,12 @@ mod tests {
         base_config.for_cache("test-cache")
     }
 
-    #[test]
-    fn test_transform_and_prefix_key_with_test_prefix_passthrough() {
+    #[tokio::test]
+    async fn test_transform_and_prefix_key_with_test_prefix_passthrough() {
         let config = test_cache_config(Some("test-uuid-1234".to_string()));
 
         let layer = S3Layer::new(config, KeyTransformStrategy::Passthrough)
+            .await
             .expect("Failed to create S3Layer");
 
         // Test with 6+ character key
@@ -593,22 +591,24 @@ mod tests {
         assert_eq!(result, "test-uuid-1234/ab/ab");
     }
 
-    #[test]
-    fn test_transform_and_prefix_key_without_test_prefix_passthrough() {
+    #[tokio::test]
+    async fn test_transform_and_prefix_key_without_test_prefix_passthrough() {
         let config = test_cache_config(None);
 
         let layer = S3Layer::new(config, KeyTransformStrategy::Passthrough)
+            .await
             .expect("Failed to create S3Layer");
 
         let result = layer.transform_and_prefix_key("abc123def456");
         assert_eq!(result, "ab/c1/23/abc123def456");
     }
 
-    #[test]
-    fn test_transform_and_prefix_key_with_test_prefix_reverse() {
+    #[tokio::test]
+    async fn test_transform_and_prefix_key_with_test_prefix_reverse() {
         let config = test_cache_config(Some("test-uuid-5678".to_string()));
 
         let layer = S3Layer::new(config, KeyTransformStrategy::ReverseKey)
+            .await
             .expect("Failed to create S3Layer");
 
         // "abc123" reversed is "321cba"
@@ -616,11 +616,12 @@ mod tests {
         assert_eq!(result, "test-uuid-5678/32/1c/ba/321cba");
     }
 
-    #[test]
-    fn test_transform_and_prefix_key_without_test_prefix_reverse() {
+    #[tokio::test]
+    async fn test_transform_and_prefix_key_without_test_prefix_reverse() {
         let config = test_cache_config(None);
 
         let layer = S3Layer::new(config, KeyTransformStrategy::ReverseKey)
+            .await
             .expect("Failed to create S3Layer");
 
         // "abc123" reversed is "321cba"
@@ -664,8 +665,8 @@ mod tests {
         assert_eq!(cache_config3.bucket_name, "si-layer-cache-cas-objects");
     }
 
-    #[test]
-    fn test_iam_auth_config_construction() {
+    #[tokio::test]
+    async fn test_iam_auth_config_construction() {
         let config = ObjectStorageConfig {
             endpoint: "https://s3.us-west-2.amazonaws.com".to_string(),
             bucket_prefix: "si-layer-cache".to_string(),
@@ -686,7 +687,7 @@ mod tests {
 
         // Note: We can't easily test actual IAM credential resolution without AWS credentials
         // That would be an integration test requiring AWS setup
-        let layer = S3Layer::new(cache_config, KeyTransformStrategy::Passthrough);
+        let layer = S3Layer::new(cache_config, KeyTransformStrategy::Passthrough).await;
         assert!(layer.is_ok(), "Should create S3Layer with IAM config");
     }
 }
