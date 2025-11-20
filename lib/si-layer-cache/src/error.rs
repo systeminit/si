@@ -228,6 +228,8 @@ pub enum LayerDbError {
     ActivityWaitLagged(ActivityId),
     #[error("Timed out waiting for activity id {0} after {1}")]
     ActivityWaitTimeout(ActivityId, Elapsed),
+    #[error("AWS config error: {0}")]
+    AwsConfig(#[from] si_aws_config::AwsConfigError),
     #[error("cache update message with bad headers: {0}")]
     CacheUpdateBadHeaders(String),
     #[error("cache update message had no headers")]
