@@ -570,11 +570,12 @@ mod tests {
         base_config.for_cache("test-cache")
     }
 
-    #[test]
-    fn test_transform_and_prefix_key_with_test_prefix_passthrough() {
+    #[tokio::test]
+    async fn test_transform_and_prefix_key_with_test_prefix_passthrough() {
         let config = test_cache_config(Some("test-uuid-1234".to_string()));
 
         let layer = S3Layer::new(config, KeyTransformStrategy::Passthrough)
+            .await
             .expect("Failed to create S3Layer");
 
         // Test with 6+ character key
@@ -590,22 +591,24 @@ mod tests {
         assert_eq!(result, "test-uuid-1234/ab/ab");
     }
 
-    #[test]
-    fn test_transform_and_prefix_key_without_test_prefix_passthrough() {
+    #[tokio::test]
+    async fn test_transform_and_prefix_key_without_test_prefix_passthrough() {
         let config = test_cache_config(None);
 
         let layer = S3Layer::new(config, KeyTransformStrategy::Passthrough)
+            .await
             .expect("Failed to create S3Layer");
 
         let result = layer.transform_and_prefix_key("abc123def456");
         assert_eq!(result, "ab/c1/23/abc123def456");
     }
 
-    #[test]
-    fn test_transform_and_prefix_key_with_test_prefix_reverse() {
+    #[tokio::test]
+    async fn test_transform_and_prefix_key_with_test_prefix_reverse() {
         let config = test_cache_config(Some("test-uuid-5678".to_string()));
 
         let layer = S3Layer::new(config, KeyTransformStrategy::ReverseKey)
+            .await
             .expect("Failed to create S3Layer");
 
         // "abc123" reversed is "321cba"
@@ -613,11 +616,12 @@ mod tests {
         assert_eq!(result, "test-uuid-5678/32/1c/ba/321cba");
     }
 
-    #[test]
-    fn test_transform_and_prefix_key_without_test_prefix_reverse() {
+    #[tokio::test]
+    async fn test_transform_and_prefix_key_without_test_prefix_reverse() {
         let config = test_cache_config(None);
 
         let layer = S3Layer::new(config, KeyTransformStrategy::ReverseKey)
+            .await
             .expect("Failed to create S3Layer");
 
         // "abc123" reversed is "321cba"
@@ -661,8 +665,8 @@ mod tests {
         assert_eq!(cache_config3.bucket_name, "si-layer-cache-cas-objects");
     }
 
-    #[test]
-    fn test_iam_auth_config_construction() {
+    #[tokio::test]
+    async fn test_iam_auth_config_construction() {
         let config = ObjectStorageConfig {
             endpoint: "https://s3.us-west-2.amazonaws.com".to_string(),
             bucket_prefix: "si-layer-cache".to_string(),
@@ -683,7 +687,7 @@ mod tests {
 
         // Note: We can't easily test actual IAM credential resolution without AWS credentials
         // That would be an integration test requiring AWS setup
-        let layer = S3Layer::new(cache_config, KeyTransformStrategy::Passthrough);
+        let layer = S3Layer::new(cache_config, KeyTransformStrategy::Passthrough).await;
         assert!(layer.is_ok(), "Should create S3Layer with IAM config");
     }
 }
