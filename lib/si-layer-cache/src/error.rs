@@ -3,6 +3,14 @@ use std::{
     num::TryFromIntError,
 };
 
+use aws_sdk_s3::{
+    error::SdkError,
+    operation::{
+        get_object::GetObjectError,
+        head_bucket::HeadBucketError,
+        put_object::PutObjectError,
+    },
+};
 use si_data_nats::async_nats::jetstream;
 use si_data_pg::{
     PgError,
@@ -28,6 +36,180 @@ use crate::{
         PersisterTaskError,
     },
 };
+
+/// S3 operation that failed
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum S3Operation {
+    /// Read operation (get_object)
+    Get,
+    /// Write operation (put_object)
+    Put,
+    /// Bucket existence check (head_bucket)
+    HeadBucket,
+}
+
+impl std::fmt::Display for S3Operation {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            S3Operation::Get => write!(f, "Get"),
+            S3Operation::Put => write!(f, "Put"),
+            S3Operation::HeadBucket => write!(f, "HeadBucket"),
+        }
+    }
+}
+
+/// Wrapper for concrete AWS SDK error types
+#[derive(Debug)]
+pub enum AwsSdkError {
+    /// Error from put_object operation
+    PutObject(SdkError<PutObjectError>),
+    /// Error from get_object operation
+    GetObject(SdkError<GetObjectError>),
+    /// Error from head_bucket operation
+    HeadBucket(SdkError<HeadBucketError>),
+}
+
+impl std::fmt::Display for AwsSdkError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            AwsSdkError::PutObject(e) => write!(f, "{e}"),
+            AwsSdkError::GetObject(e) => write!(f, "{e}"),
+            AwsSdkError::HeadBucket(e) => write!(f, "{e}"),
+        }
+    }
+}
+
+impl std::error::Error for AwsSdkError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            AwsSdkError::PutObject(e) => Some(e),
+            AwsSdkError::GetObject(e) => Some(e),
+            AwsSdkError::HeadBucket(e) => Some(e),
+        }
+    }
+}
+
+/// Structured S3 error with categorization and context
+#[derive(Error, Debug)]
+pub enum S3Error {
+    /// Authentication or authorization failure (403, AccessDenied, InvalidAccessKeyId)
+    #[error(
+        "S3 authentication failed for {operation} (cache: {cache_name}, key: {key}): {message}"
+    )]
+    Authentication {
+        operation: S3Operation,
+        cache_name: String,
+        key: String,
+        message: String,
+        #[source]
+        source: AwsSdkError,
+    },
+
+    /// Resource not found (404, NoSuchBucket, NoSuchKey)
+    #[error("S3 resource not found for {operation} (cache: {cache_name}, key: {key}): {message}")]
+    NotFound {
+        operation: S3Operation,
+        cache_name: String,
+        key: String,
+        message: String,
+        #[source]
+        source: AwsSdkError,
+    },
+
+    /// Rate limiting or throttling (503, SlowDown, RequestLimitExceeded)
+    #[error("S3 throttled for {operation} (cache: {cache_name}, key: {key}): {message}")]
+    Throttling {
+        operation: S3Operation,
+        cache_name: String,
+        key: String,
+        message: String,
+        #[source]
+        source: AwsSdkError,
+    },
+
+    /// Network or connection errors (timeout, dispatch failure)
+    #[error("S3 network error for {operation} (cache: {cache_name}, key: {key}): {message}")]
+    Network {
+        operation: S3Operation,
+        cache_name: String,
+        key: String,
+        message: String,
+        #[source]
+        source: AwsSdkError,
+    },
+
+    /// Configuration errors (construction failure, invalid parameters)
+    #[error("S3 configuration error for {operation} (cache: {cache_name}, key: {key}): {message}")]
+    Configuration {
+        operation: S3Operation,
+        cache_name: String,
+        key: String,
+        message: String,
+        #[source]
+        source: AwsSdkError,
+    },
+
+    /// Uncategorized errors
+    #[error("S3 error for {operation} (cache: {cache_name}, key: {key}): {message}")]
+    Other {
+        operation: S3Operation,
+        cache_name: String,
+        key: String,
+        message: String,
+        #[source]
+        source: AwsSdkError,
+    },
+}
+
+impl S3Error {
+    /// Get the error kind as a string for metrics/logging
+    pub fn kind(&self) -> &'static str {
+        match self {
+            S3Error::Authentication { .. } => "authentication",
+            S3Error::NotFound { .. } => "not_found",
+            S3Error::Throttling { .. } => "throttling",
+            S3Error::Network { .. } => "network",
+            S3Error::Configuration { .. } => "configuration",
+            S3Error::Other { .. } => "other",
+        }
+    }
+
+    /// Get the key from any error variant
+    pub fn key(&self) -> &str {
+        match self {
+            S3Error::Authentication { key, .. }
+            | S3Error::NotFound { key, .. }
+            | S3Error::Throttling { key, .. }
+            | S3Error::Network { key, .. }
+            | S3Error::Configuration { key, .. }
+            | S3Error::Other { key, .. } => key,
+        }
+    }
+
+    /// Get the cache name from any error variant
+    pub fn cache_name(&self) -> &str {
+        match self {
+            S3Error::Authentication { cache_name, .. }
+            | S3Error::NotFound { cache_name, .. }
+            | S3Error::Throttling { cache_name, .. }
+            | S3Error::Network { cache_name, .. }
+            | S3Error::Configuration { cache_name, .. }
+            | S3Error::Other { cache_name, .. } => cache_name,
+        }
+    }
+
+    /// Get the operation from any error variant
+    pub fn operation(&self) -> S3Operation {
+        match self {
+            S3Error::Authentication { operation, .. }
+            | S3Error::NotFound { operation, .. }
+            | S3Error::Throttling { operation, .. }
+            | S3Error::Network { operation, .. }
+            | S3Error::Configuration { operation, .. }
+            | S3Error::Other { operation, .. } => *operation,
+        }
+    }
+}
 
 #[remain::sorted]
 #[derive(Error, Debug)]
@@ -125,7 +307,7 @@ pub enum LayerDbError {
     #[error("retry queue send error: {0}")]
     RetryQueueSend(String),
     #[error("S3 error: {0}")]
-    S3(String),
+    S3(Box<S3Error>),
     #[error("S3 not configured")]
     S3NotConfigured,
     #[error("serde json error: {0}")]
@@ -142,15 +324,6 @@ impl LayerDbError {
         E: error::Error + Send + Sync + 'static,
     {
         Self::NatsHeaderParse(Box::new(err))
-    }
-}
-
-impl<E> From<aws_sdk_s3::error::SdkError<E>> for LayerDbError
-where
-    E: std::error::Error + Send + Sync + 'static,
-{
-    fn from(err: aws_sdk_s3::error::SdkError<E>) -> Self {
-        LayerDbError::S3(err.to_string())
     }
 }
 

@@ -259,12 +259,21 @@ impl PersisterTask {
 
                 // Handle S3 result
                 if let Err(e) = s3_result {
+                    // Extract error_kind for structured logging/metrics
+                    let (error_kind, error_key) = match &e {
+                        LayerDbError::S3(s3_err) => (s3_err.kind(), s3_err.key()),
+                        _ => ("unknown", ""),
+                    };
+
                     error!(
                         error = ?e,
                         backend = "s3",
                         cache_name = cache_name,
+                        error_kind = error_kind,
+                        key = error_key,  // Only in logs, not metrics
                         "dual write failed for s3 backend"
                     );
+
                     if Self::do_is_retryable(&e, BackendType::S3) {
                         retry_queue_command_tx
                             .send(crate::retry_queue::RetryQueueMessage::Enqueue {
@@ -277,7 +286,8 @@ impl PersisterTask {
                             layer_cache_persister_write_failed_retryable = 1,
                             cache_name = cache_name,
                             backend = BackendType::S3.as_ref(),
-                            event_kind = event.event_kind.as_ref()
+                            event_kind = event.event_kind.as_ref(),
+                            error_kind = error_kind // New: bounded cardinality (6 values)
                         );
                     }
                 } else {
@@ -317,6 +327,21 @@ impl PersisterTask {
 
                 // Handle S3 result
                 if let Err(e) = s3_result {
+                    // Extract error_kind for structured logging/metrics
+                    let (error_kind, error_key) = match &e {
+                        LayerDbError::S3(s3_err) => (s3_err.kind(), s3_err.key()),
+                        _ => ("unknown", ""),
+                    };
+
+                    error!(
+                        error = ?e,
+                        backend = "s3",
+                        cache_name = cache_name,
+                        error_kind = error_kind,
+                        key = error_key,
+                        "s3 primary write failed for s3 backend"
+                    );
+
                     if Self::do_is_retryable(&e, BackendType::S3) {
                         retry_queue_command_tx
                             .send(crate::retry_queue::RetryQueueMessage::Enqueue {
@@ -324,6 +349,14 @@ impl PersisterTask {
                                 backend: BackendType::S3,
                             })
                             .map_err(|e| LayerDbError::RetryQueueSend(e.to_string()))?;
+
+                        monotonic!(
+                            layer_cache_persister_write_failed_retryable = 1,
+                            cache_name = cache_name,
+                            backend = BackendType::S3.as_ref(),
+                            event_kind = event.event_kind.as_ref(),
+                            error_kind = error_kind
+                        );
                     }
                 } else {
                     monotonic!(
@@ -339,6 +372,21 @@ impl PersisterTask {
                 if let Err(e) =
                     Self::do_write_to_backend(event, BackendType::S3, pg_pool, s3_layers).await
                 {
+                    // Extract error_kind for structured logging/metrics
+                    let (error_kind, error_key) = match &e {
+                        LayerDbError::S3(s3_err) => (s3_err.kind(), s3_err.key()),
+                        _ => ("unknown", ""),
+                    };
+
+                    error!(
+                        error = ?e,
+                        backend = "s3",
+                        cache_name = cache_name,
+                        error_kind = error_kind,
+                        key = error_key,
+                        "s3 only write failed"
+                    );
+
                     if Self::do_is_retryable(&e, BackendType::S3) {
                         retry_queue_command_tx
                             .send(crate::retry_queue::RetryQueueMessage::Enqueue {
@@ -346,6 +394,14 @@ impl PersisterTask {
                                 backend: BackendType::S3,
                             })
                             .map_err(|e| LayerDbError::RetryQueueSend(e.to_string()))?;
+
+                        monotonic!(
+                            layer_cache_persister_write_failed_retryable = 1,
+                            cache_name = cache_name,
+                            backend = BackendType::S3.as_ref(),
+                            event_kind = event.event_kind.as_ref(),
+                            error_kind = error_kind
+                        );
                     }
                     return Err(e);
                 }

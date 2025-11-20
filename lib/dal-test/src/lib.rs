@@ -349,14 +349,14 @@ impl Config {
         } = &config.object_storage_config.auth
         {
             let new_access_key =
-                env::var(ENV_VAR_S3_ACCESS_KEY).unwrap_or_else(|_| access_key.clone());
+                env::var(ENV_VAR_S3_ACCESS_KEY).unwrap_or_else(|_| access_key.to_string());
             let new_secret_key =
-                env::var(ENV_VAR_S3_SECRET_KEY).unwrap_or_else(|_| secret_key.clone());
+                env::var(ENV_VAR_S3_SECRET_KEY).unwrap_or_else(|_| secret_key.to_string());
 
             config.object_storage_config.auth =
                 si_layer_cache::s3::S3AuthConfig::StaticCredentials {
-                    access_key: new_access_key,
-                    secret_key: new_secret_key,
+                    access_key: new_access_key.into(),
+                    secret_key: new_secret_key.into(),
                 };
         }
 
