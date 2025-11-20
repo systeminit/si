@@ -5434,6 +5434,9 @@
   "Determine how will parsed content be stored.": {
     "enum": null
   },
+  "Determines how your Lambda function isolates execution environments between tenants.": {
+    "enum": null
+  },
   "Determines the percentage of traces indexed from CloudWatch Logs to X-Ray": {
     "enum": null
   },
@@ -10415,6 +10418,9 @@
     "enum": null
   },
   "The ID of the tenant application with the device-identity provider.": {
+    "enum": null
+  },
+  "The ID of the transit gateway": {
     "enum": null
   },
   "The ID of the transit gateway associated with the VPN connection.\n You must specify either ``TransitGatewayId`` or ``VpnGatewayId``, but not both.": {
@@ -16033,6 +16039,9 @@
   "The port that the flow will be listening on for incoming content.": {
     "enum": null
   },
+  "The port that the target control agent uses to communicate the available capacity of targets to the load balancer.": {
+    "enum": null
+  },
   "The port that your self-managed server accepts inbound network traffic on.": {
     "enum": null
   },
@@ -17257,6 +17266,9 @@
   "The type of S3SubPrefix.": {
     "enum": null
   },
+  "The type of VPN concentrator": {
+    "enum": null
+  },
   "The type of VPN connection the virtual private gateway supports.": {
     "enum": null
   },
@@ -18047,6 +18059,9 @@
     "enum": null
   },
   "This is the schema S3 object key, which includes the full path of \"folders\" from the bucket root to the schema.": {
+    "enum": null
+  },
+  "This parameter defines the number of seconds Amazon ECS Managed Instances waits before optimizing EC2 instances that have become idle or underutilized. A longer delay increases the likelihood of placing new tasks on idle instances, reducing startup time. A shorter delay helps reduce infrastructure costs by optimizing idle instances more quickly. Valid values are: Not set (null) - Uses the default optimization behavior, `-1` - Disables automatic infrastructure optimization, `0` to `3600` (inclusive) - Specifies the number of seconds to wait before optimizing instances.": {
     "enum": null
   },
   "This parameter enables or disables the HTTP metadata endpoint on your instances.": {
