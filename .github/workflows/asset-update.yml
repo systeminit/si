@@ -23,6 +23,11 @@ jobs:
           LOG_LEVEL=debug deno task run fetch-schema --provider=aws
           LOG_LEVEL=debug deno task run infer-ai --provider=aws
           LOG_LEVEL=debug deno task run fetch-schema --provider=hetzner
+          # Update Azure submodule to latest and fetch schema
+          cd ../..
+          git submodule update --remote bin/clover/src/provider-schemas/azure-rest-api-specs
+          cd bin/clover
+          LOG_LEVEL=debug deno task run fetch-schema --provider=azure
 
       - name: Create Pull Request
         uses: peter-evans/create-pull-request@v7
