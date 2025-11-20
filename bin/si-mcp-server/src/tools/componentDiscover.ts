@@ -104,7 +104,7 @@ export function componentDiscoverTool(server: McpServer) {
           });
           const schemaId = findSchemaResponse.data.schemaId;
 
-          const discoverTemplateresponse = await siApi.createComponent({
+          const discoverTemplateResponse = await siApi.createComponent({
             workspaceId: WORKSPACE_ID,
             changeSetId: changeSetId,
             createComponentV1Request: {
@@ -114,17 +114,45 @@ export function componentDiscoverTool(server: McpServer) {
             },
           });
           const discoverTemplateResult: Record<string, string> = {
-            componentId: discoverTemplateresponse.data.component.id,
-            componentName: discoverTemplateresponse.data.component.name,
+            componentId: discoverTemplateResponse.data.component.id,
+            componentName: discoverTemplateResponse.data.component.name,
             schemaName: schemaName,
           };
 
           // Now get the variantFuncs so we can decide on the discovery function
-          const defaultVariantResponse = await siSchemasApi.getDefaultVariant({
+          let defaultVariantResponse = await siSchemasApi.getDefaultVariant({
             workspaceId: WORKSPACE_ID,
             changeSetId: changeSetId,
             schemaId,
           });
+
+          if (!defaultVariantResponse.data.variantFuncs) {
+            // Variant data is still building, try again in a moment
+            let attempts = 1;
+            while (defaultVariantResponse.status === 202 && attempts < 6) {
+              // Wait three seconds
+              await new Promise(r => setTimeout(r, attempts * 1000));
+
+              // Try again
+              attempts++;
+              defaultVariantResponse = await siSchemasApi.getDefaultVariant({
+                workspaceId: WORKSPACE_ID,
+                changeSetId: changeSetId,
+                schemaId,
+              });
+            }
+
+            // Make sure we have the proper data before moving on!
+            if (defaultVariantResponse.status === 202) {
+              return errorResponse({
+                message: "After 5 attempts, the workspace graph is still generating default variant data.",
+              });
+            } else if (!defaultVariantResponse.data.variantFuncs) {
+              return errorResponse({
+                message: "Error getting default variant function data",
+              });
+            }
+          }
 
           const variantFunctions = defaultVariantResponse.data.variantFuncs;
 
