@@ -90,11 +90,15 @@ pub async fn create_variant_attribute(
         ));
     }
 
+    let skip_overlay = payload.skip_overlay.unwrap_or(false);
+
     let is_builtin = CachedModule::find_latest_for_schema_id(ctx, schema_id)
         .await?
         .is_some();
 
-    if !is_builtin {
+    let create_overlay = is_builtin && !skip_overlay;
+
+    if !create_overlay {
         let schema_variant = SchemaVariant::get_by_id(ctx, schema_variant_id).await?;
         if schema_variant.is_locked() {
             return Err(SchemaError::LockedVariant(schema_variant_id));
@@ -106,7 +110,7 @@ pub async fn create_variant_attribute(
 
     let eventual_parent = if let Some(component_id) = payload.component_id {
         Some(EventualParent::Component(component_id))
-    } else if is_builtin {
+    } else if create_overlay {
         Some(EventualParent::Schemas(vec![schema_id]))
     } else {
         Some(EventualParent::SchemaVariant(schema_variant_id))
@@ -283,6 +287,10 @@ pub struct CreateVariantAttributeFuncV1Request {
     /// Function arguments with their bindings (input sources). Each argument defines its type and where its value comes from.
     #[schema(value_type = Vec<AttributeArgumentBindingRequest>)]
     pub argument_bindings: Vec<AttributeArgumentBindingRequest>,
+
+    #[serde(default)]
+    #[schema(value_type = Option<bool>, example = false)]
+    pub skip_overlay: Option<bool>,
 }
 
 #[derive(Deserialize, Serialize, Debug, ToSchema, Clone)]

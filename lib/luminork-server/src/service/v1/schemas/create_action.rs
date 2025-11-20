@@ -76,11 +76,13 @@ pub async fn create_variant_action(
         ));
     }
 
+    let skip_overlay = payload.skip_overlay.unwrap_or(false);
+
     let is_builtin = CachedModule::find_latest_for_schema_id(ctx, schema_id)
         .await?
         .is_some();
 
-    let func = if is_builtin {
+    let func = if is_builtin && !skip_overlay {
         FuncAuthoringClient::create_new_action_func_overlay(
             ctx,
             Some(payload.name),
@@ -156,6 +158,9 @@ pub struct CreateVariantActionFuncV1Request {
     pub kind: ActionKind,
     #[schema(value_type = String, example = "<!-- String escaped Typescript code here -->")]
     pub code: String,
+    #[serde(default)]
+    #[schema(value_type = Option<bool>, example = false)]
+    pub skip_overlay: Option<bool>,
 }
 
 #[derive(Deserialize, Serialize, Debug, ToSchema)]

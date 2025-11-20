@@ -89,13 +89,15 @@ pub async fn create_variant_qualification(
         LeafInputLocation::Secrets,
     ];
 
+    let skip_overlay = payload.skip_overlay.unwrap_or(false);
+
     let is_builtin = CachedModule::find_latest_for_schema_id(ctx, schema_id)
         .await?
         .is_some();
 
     let schema_variant = SchemaVariant::get_by_id(ctx, schema_variant_id).await?;
 
-    let func = if is_builtin {
+    let func = if is_builtin && !skip_overlay {
         FuncAuthoringClient::create_new_leaf_overlay_func(
             ctx,
             Some(payload.name),
@@ -172,6 +174,9 @@ pub struct CreateVariantQualificationFuncV1Request {
     pub description: Option<String>,
     #[schema(value_type = String, example = "<!-- String escaped Typescript code here -->")]
     pub code: String,
+    #[serde(default)]
+    #[schema(value_type = Option<bool>, example = false)]
+    pub skip_overlay: Option<bool>,
 }
 
 #[derive(Deserialize, Serialize, Debug, ToSchema)]
