@@ -3,4 +3,5 @@ schemas/
 overlays/
 .siroot
 si
+.env.local
 tmpl/**/*transpile*

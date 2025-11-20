@@ -238,6 +238,7 @@ interface Schema {
   category: string;
   description: string;
   link?: string;
+  color: string;
   actions: ActionArray;
   qualifications: SimpleFuncArray;
   codeGenerators: SimpleFuncArray;
@@ -345,6 +346,7 @@ export async function callRemoteSchemaPush(
         let category: string;
         let description: string;
         let link: string;
+        let color: string;
 
         const schemaMetadataPath = project.schemas.schemaMetadataPath(
           schemaDirName,
@@ -372,6 +374,7 @@ export async function callRemoteSchemaPush(
           category = metadata.category || "";
           description = metadata.description || "";
           link = metadata.documentation ?? null;
+          color = metadata.color ?? "#000000";
         } catch (error) {
           const msg = error instanceof Deno.errors.NotFound
             ? `metadata.json file not found on the ${schemaDirName} directory`
@@ -456,6 +459,7 @@ export async function callRemoteSchemaPush(
           category,
           description,
           link,
+          color,
           qualifications,
           actions,
           codeGenerators,
@@ -551,7 +555,7 @@ export async function callRemoteSchemaPush(
 
     if (existingVariant.installedFromUpstream) {
       logger.warn(
-        "{schemaName}: schema is a builtin. You can only push TEMP_NAME funcs for it. skipping...",
+        "{schemaName}: schema is a builtin. You can only push overlay funcs for it. skipping...",
         { schemaName: filesystemSchema.name },
       );
       continue;
@@ -568,6 +572,7 @@ export async function callRemoteSchemaPush(
       category: existingVariant.category,
       description: existingVariant.description,
       link: existingVariant.link,
+      color: existingVariant.color,
       code: existingVariantCode,
     });
 
@@ -770,7 +775,7 @@ export async function callRemoteSchemaPush(
       let pushedSchemas = 0;
 
       for (const schemaData of schemasToPush) {
-        const { code, name, category, description, link } =
+        const { code, name, category, description, link, color } =
           schemaData.schemaPayload;
 
         const existingSchemaData = schemaData.existingSchemaData;
@@ -809,6 +814,7 @@ export async function callRemoteSchemaPush(
                 category,
                 description,
                 link,
+                color,
               },
             });
           }
@@ -822,7 +828,7 @@ export async function callRemoteSchemaPush(
               name,
               code,
               category,
-              color: "#000000",
+              color,
               description,
               link,
             },
@@ -1281,21 +1287,18 @@ async function tryFindSchema(
 
     return response.data;
   } catch (error) {
-    // Swallow error if it's a schema not found error
-    if (!(error instanceof AxiosError)) {
-      throw error;
-    }
-
-    // TypeScript does not believe the typecheck above
-    const axiosError = error as AxiosError;
-
-    if (axiosError.status !== 404) {
+    if (
+      typeof error === 'object' &&
+      error !== null &&
+      'status' in error &&
+      error.status === 404
+    ) {
+      // Swallow error if it's a schema not found error
+      return undefined;
+    } else {
       throw error;
     }
   }
-
-  // If we got here, the error is an axios 404
-  return undefined;
 }
 
 interface SchemaData {
@@ -1303,6 +1306,7 @@ interface SchemaData {
   category: string;
   description?: string | null;
   link?: string | null;
+  color: string;
   code: string;
 }
 const schemaContentsMatch = (schemaA: SchemaData, schemaB: SchemaData) =>
@@ -1311,6 +1315,7 @@ const schemaContentsMatch = (schemaA: SchemaData, schemaB: SchemaData) =>
   // Since the API allows these to be undefined or null, we normalize both to undefined
   (schemaA.description ?? undefined) === (schemaB.description ?? undefined) &&
   (schemaA.link ?? undefined) === (schemaB.link ?? undefined) &&
+  (schemaA.color) === (schemaB.color) &&
   schemaA.code === schemaB.code;
 
 interface BaseVariantPayload {
