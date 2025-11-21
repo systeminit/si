@@ -16,6 +16,9 @@ import {
   type LogLevel,
   type LogRecord,
 } from "@logtape/logtape";
+
+// Re-export Logger type for use in other modules
+export type { Logger };
 import { getPrettyFormatter } from "@logtape/pretty";
 import {
   DEFAULT_REDACT_FIELDS,

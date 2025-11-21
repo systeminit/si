@@ -7,6 +7,8 @@ and components.
 
 The `si` CLI provides comprehensive tooling for:
 
+- **AI Agent Integration**: Seamlessly integrate with AI coding tools (Claude
+  Code, Cursor, Windsurf)
 - **Schema Management**: Author and manage System Initiative schemas locally
 - **Template Execution**: Run infrastructure-as-code templates with convergence
 - **Component Operations**: Get, update, delete, and search components
@@ -40,6 +42,10 @@ key components:
 
 ```
 si
+├── ai-agent               - Manage the SI AI Agent (MCP server)
+│   ├── init               - Initialize AI agent configuration
+│   ├── start              - Launch Claude Code
+│   └── config             - Update configuration
 ├── completion              - Generate shell completions
 ├── component              - Component-related operations
 │   ├── get                - Get component data by name or ID
@@ -158,6 +164,116 @@ sudo mv si /usr/local/bin/
 
 ## Usage
 
+### AI Agent Integration
+
+The `si` CLI includes an AI Agent that integrates System Initiative with Claude
+Code through the Model Context Protocol (MCP). Support for other AI tools
+(Cursor, Windsurf) is planned for future releases.
+
+#### Quick Start
+
+```bash
+# One-time setup
+cd /path/to/your/project
+si ai-agent init
+
+# Daily use - just one command!
+si ai-agent start
+# → Launches Claude Code
+# → Claude reads .mcp.json and starts bundled MCP server
+# → Exit Claude when done (everything stops automatically)
+```
+
+#### How It Works
+
+The AI agent is incredibly simple:
+
+1. **Bundled MCP Server**: The MCP server is compiled directly into the `si` binary
+2. **Launch Claude**: `si ai-agent start` just launches Claude Code
+3. **Claude Manages Everything**: Claude reads `.mcp.json` and spawns the bundled MCP server automatically
+4. **Auto-Cleanup**: Exit Claude = MCP server stops automatically
+
+**Single binary. Zero downloads. No process management. Just works.**
+
+#### Initialize the AI Agent
+
+Set up the AI agent for your project:
+
+```bash
+si ai-agent init
+```
+
+This command:
+
+- Prompts for your System Initiative API token (get one at
+  https://auth.systeminit.com/workspaces)
+- Saves configuration to `~/.si/ai-agent.json`
+- Creates `.mcp.json` in your project (MCP server configuration)
+- Creates `.claude/settings.local.json` if using Claude Code
+
+**To get your API token:**
+
+1. Visit https://auth.systeminit.com/workspaces
+2. Click the gear icon for your workspace
+3. Select "API Tokens"
+4. Generate a new token (recommended: 1 year expiration)
+5. Copy and paste when prompted
+
+**Options:**
+
+```bash
+# Use Claude Code (default, no flag needed)
+si ai-agent init
+
+# Provide token via flag (skip prompt)
+si ai-agent init --api-token eyJhbGc...
+
+# Specify target directory for config files
+si ai-agent init --target-dir /path/to/project
+
+# Future: Other tools (when they support MCP)
+# si ai-agent init --tool cursor
+# si ai-agent init --tool windsurf
+```
+
+#### Start the AI Agent
+
+Launch Claude Code (which automatically starts the bundled MCP server):
+
+```bash
+si ai-agent start
+```
+
+**What happens:**
+```
+Starting SI AI Agent...
+
+🚀 Launching Claude Code...
+The MCP server will start automatically via .mcp.json
+
+# Claude opens and you start coding...
+# Exit Claude when done (Cmd+Q or /exit)
+# Everything stops automatically!
+```
+
+#### Update Configuration
+
+Change your API token if needed:
+
+```bash
+si ai-agent config --update-token
+```
+
+#### File Locations
+
+| File                          | Location          | Purpose                                |
+| ----------------------------- | ----------------- | -------------------------------------- |
+| `ai-agent.json`               | `~/.si/`          | Configuration (token, tool preference) |
+| `.mcp.json`                   | Project directory | MCP configuration for Claude Code      |
+| `.claude/settings.local.json` | Project directory | Claude-specific settings               |
+
+**Note:** The MCP server is bundled directly in the `si` binary - no separate downloads or binaries needed!
+
 ### Schema Management
 
 #### Initialize a Project
@@ -275,10 +391,12 @@ export default async function (ctx: TemplateContext) {
   ctx.search(["schema:AWS EC2 Instance", "tag:production"]);
 
   // Define input schema with defaults
-  ctx.inputs(z.object({
-    environment: z.string().default("production"),
-    replicas: z.number().default(3),
-  }));
+  ctx.inputs(
+    z.object({
+      environment: z.string().default("production"),
+      replicas: z.number().default(3),
+    }),
+  );
 
   // Transform the working set
   ctx.transform((workingSet) => {
@@ -509,11 +627,13 @@ buck2 run //bin/si:fix-format
 If you encounter authentication errors:
 
 1. Verify your `SI_API_TOKEN` is set correctly:
+
    ```bash
    echo $SI_API_TOKEN
    ```
 
 2. Check token validity:
+
    ```bash
    si whoami
    ```

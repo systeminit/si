@@ -10,6 +10,15 @@ load(
     "export_file",
 )
 
+# Export MCP server source for standalone binary builds
+filegroup(
+    name = "mcp-server-src",
+    srcs = glob([
+        "src/mcp-server/**/*.ts",
+    ]),
+    visibility = ["PUBLIC"],
+)
+
 deno_compile(
     name = "si",
     main = "main.ts",
@@ -23,6 +32,7 @@ deno_compile(
         "allow-env",
         "allow-net",
         "allow-read",
+        "allow-run",
         "allow-write",
     ],
     visibility = ["PUBLIC"],
