@@ -27,6 +27,7 @@ deno_compile(
         "src/**/*.ts",
         "lint/**/*.ts",
         "main.ts",
+        "data/**/*.tmpl",
     ]),
     permissions = [
         "allow-env",

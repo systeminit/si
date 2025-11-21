@@ -259,6 +259,30 @@ export async function createClaudeSettings(targetDir: string): Promise<string> {
 }
 
 /**
+ * Create the CLAUDE.md file with System Initiative context
+ * This provides Claude Code with context about working with SI infrastructure
+ */
+export async function createClaudeMd(targetDir: string): Promise<string> {
+  const claudeMdPath = join(targetDir, "CLAUDE.md");
+
+  // Get the path to the bundled CLAUDE.md template file
+  // When running from source: bin/si/data/templates/Claude.md.tmpl
+  // When compiled: the file is included via --include flag and accessible via import.meta.url
+  const templatePath = new URL(
+    "../data/templates/Claude.md.tmpl",
+    import.meta.url,
+  ).pathname;
+
+  // Read the template content
+  const content = await Deno.readTextFile(templatePath);
+
+  // Write to target directory
+  await Deno.writeTextFile(claudeMdPath, content);
+
+  return claudeMdPath;
+}
+
+/**
  * Local process status information
  */
 export interface LocalProcessStatus {
