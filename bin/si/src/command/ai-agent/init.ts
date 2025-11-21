@@ -14,6 +14,7 @@
 import { Input, Secret } from "@cliffy/prompt";
 import type { Context } from "../../context.ts";
 import {
+  createClaudeMd,
   createClaudeSettings,
   createMcpConfig,
   DEFAULT_CONFIG,
@@ -124,6 +125,10 @@ export async function callAiAgentInit(
     logger.info("📄 Creating Claude settings configuration...");
     const settingsPath = await createClaudeSettings(targetDir);
     logger.info(`✅ Created Claude settings: ${settingsPath}\n`);
+
+    logger.info("📄 Creating CLAUDE.md context file...");
+    const claudeMdPath = await createClaudeMd(targetDir);
+    logger.info(`✅ Created CLAUDE.md: ${claudeMdPath}\n`);
   }
 
   // Success message
