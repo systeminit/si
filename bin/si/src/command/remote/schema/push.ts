@@ -5,7 +5,6 @@ import {
   type GetFuncV1Response,
   SchemasApi,
 } from "@systeminit/api-client";
-import { AxiosError } from "axios";
 import type { Context } from "../../../context.ts";
 import type { AuthenticatedCliContext } from "../../../cli/helpers.ts";
 import { unknownValueToErrorMessage } from "../../../helpers.ts";
@@ -17,6 +16,7 @@ import {
   type Project,
 } from "../../../project.ts";
 import type { Logger } from "@logtape/logtape";
+import { wrapInChangeSet } from "../../../change_set_utils.ts";
 
 async function parseActions(
   ctx: Context,
@@ -267,6 +267,7 @@ export async function callRemoteSchemaPush(
   project: Project,
   filterSchemaNames: string[],
   skipConfirmation?: boolean,
+  updateBuiltins: boolean,
 ) {
   const { apiConfiguration, workspace, ctx } = cliContext;
   const logger = ctx.logger;
@@ -283,7 +284,8 @@ export async function callRemoteSchemaPush(
   // Read schemas from the local folder
   // ==================================
   logger.info("reading schemas from filesystem...");
-  let readSchemas = 0; // This is the total number of read schema directories, including failures
+  let readSchemas = 0;
+  let skippedSchemas = 0;
   try {
     const schemasBasePath = project.schemas.moduleBasePath().toString();
 
@@ -365,6 +367,7 @@ export async function callRemoteSchemaPush(
             filterSchemaNames.length > 0 &&
             !filterSchemaNames.includes(schemaName)
           ) {
+            skippedSchemas += 1;
             logger.debug("skipping filtered schema: {schemaName}", {
               schemaName,
             });
@@ -497,7 +500,7 @@ export async function callRemoteSchemaPush(
       `Error reading assets directory: ${unknownValueToErrorMessage(error)}`,
     );
   }
-  const failedSchemaDirectories = readSchemas - schemasFromFilesystem.length;
+  const failedSchemaDirectories = readSchemas - schemasFromFilesystem.length - skippedSchemas;
 
   // ==================================
   // Pre check: Compare schema and funcs to head
@@ -553,7 +556,7 @@ export async function callRemoteSchemaPush(
       schemaId: existingSchema.schemaId,
     })).data;
 
-    if (existingVariant.installedFromUpstream) {
+    if (!updateBuiltins && existingVariant.installedFromUpstream) {
       logger.warn(
         "{schemaName}: schema is a builtin. You can only push overlay funcs for it. skipping...",
         { schemaName: filesystemSchema.name },
@@ -736,8 +739,12 @@ export async function callRemoteSchemaPush(
       ? ` Failed to read ${failedSchemaDirectories} asset description(s).`
       : "";
 
+    const skipsMsg = skippedSchemas > 0
+      ? ` ${skippedSchemas} asset(s) filtered out.`
+      : "";
+
     console.log(
-      `Found ${schemasToPush.length} asset(s) to push.${failureMsg}`,
+      `Found ${schemasToPush.length} asset(s) to push.${failureMsg}${skipsMsg}`,
     );
 
     let confirmed = false;
@@ -896,6 +903,7 @@ export async function callRemoteSchemaPush(
               baseVariantPayload,
               filesystemFuncKind,
               filesystemFunc,
+              updateBuiltins,
             );
           }
         }
@@ -1223,6 +1231,7 @@ export async function callRemoteSchemaOverlaysPush(
             baseVariantPayload,
             kind,
             funcData,
+            false,
           );
         }
 
@@ -1315,7 +1324,7 @@ const schemaContentsMatch = (schemaA: SchemaData, schemaB: SchemaData) =>
   // Since the API allows these to be undefined or null, we normalize both to undefined
   (schemaA.description ?? undefined) === (schemaB.description ?? undefined) &&
   (schemaA.link ?? undefined) === (schemaB.link ?? undefined) &&
-  (schemaA.color) === (schemaB.color) &&
+  schemaA.color === schemaB.color &&
   schemaA.code === schemaB.code;
 
 interface BaseVariantPayload {
@@ -1331,48 +1340,54 @@ async function createFunc(
   baseVariantPayload: BaseVariantPayload,
   kind: string,
   funcData: Action | SimpleFunc,
+  updateBuiltins: boolean,
 ) {
+  const payload = {
+    ...funcData,
+    skipOverlay: updateBuiltins,
+  }
+
   switch (kind) {
     case "Action":
-      if (!("kind" in funcData)) {
+      if (!("kind" in payload)) {
         logger.error(
-          `Action must have a 'kind' field, ${funcData.name} is missing it`,
+          `Action must have a 'kind' field, ${payload.name} is missing it`,
         );
         break;
       }
 
       await api.createVariantAction({
         ...baseVariantPayload,
-        createVariantActionFuncV1Request: funcData,
+        createVariantActionFuncV1Request: payload,
       });
       break;
     case "Qualification":
       await api.createVariantQualification({
         ...baseVariantPayload,
-        createVariantQualificationFuncV1Request: funcData,
+        createVariantQualificationFuncV1Request: payload,
       });
       break;
     case "CodeGeneration":
       await api.createVariantCodegen({
         ...baseVariantPayload,
-        createVariantCodegenFuncV1Request: funcData,
+        createVariantCodegenFuncV1Request: payload,
       });
       break;
     case "Management":
       await api.createVariantManagement({
         ...baseVariantPayload,
-        createVariantManagementFuncV1Request: funcData,
+        createVariantManagementFuncV1Request: payload,
       });
       break;
     case "Authentication":
       await api.createVariantAuthentication({
         ...baseVariantPayload,
-        createVariantAuthenticationFuncV1Request: funcData,
+        createVariantAuthenticationFuncV1Request: payload,
       });
       break;
     default:
       throw new Error(
-        `Unknown func kind for func "${funcData.name}": ${kind}`,
+        `Unknown func kind for func "${payload.name}": ${kind}`,
       );
   }
 }
@@ -1405,44 +1420,6 @@ async function unbindFunc(
       break;
     default:
       throw new Error(`Unknown func kind for func ${funcId}: ${kind}`);
-  }
-}
-
-// runs callback with a changeSetId, abandoning it if anything throws
-async function wrapInChangeSet(
-  api: ChangeSetsApi,
-  logger: Logger,
-  workspaceId: string,
-  changeSetNamePrefix: string,
-  callback: (changeSetId: string) => Promise<void>,
-) {
-  const changeSetName = changeSetNamePrefix + " " + new Date().toISOString();
-
-  const createChangeSetResponse = await api.createChangeSet({
-    workspaceId,
-    createChangeSetV1Request: { changeSetName },
-  });
-
-  const changeSetId = createChangeSetResponse.data.changeSet.id;
-
-  try {
-    await callback(changeSetId);
-  } catch (error) {
-    if (error instanceof AxiosError) {
-      logger.error(
-        `API error on: (${error.status}) ${error.response?.data.message}`,
-      );
-      logger.error(`Request: ${error.request.method} ${error.request.path}`);
-    } else {
-      logger.error(
-        `Error creating schemas: ${unknownValueToErrorMessage(error)}`,
-      );
-    }
-    logger.info("Deleting change set...");
-    api.abandonChangeSet({
-      workspaceId,
-      changeSetId,
-    });
   }
 }
 
