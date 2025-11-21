@@ -181,7 +181,7 @@ function buildCommand() {
     // deno-lint-ignore no-explicit-any
     .command("ai-agent", buildAiAgentCommand() as any)
     // deno-lint-ignore no-explicit-any
-    .command("mcp-server", buildMcpServerCommand() as any)
+    .command("mcp-server", buildMcpServerCommand().hidden() as any)
     // deno-lint-ignore no-explicit-any
     .command("component", buildComponentCommand() as any)
     // deno-lint-ignore no-explicit-any
