@@ -239,6 +239,27 @@
       "sqlserver-web"
     ]
   },
+  "Specifies the type of KMS key to create. The default value, ``SYMMETRIC_DEFAULT``, creates a KMS key with a 256-bit symmetric key for encryption and decryption. In China Regions, ``SYMMETRIC_DEFAULT`` creates a 128-bit symmetric key that uses SM4 encryption. You can't change the ``KeySpec`` value after the KMS key is created. For help choosing a key spec for your KMS key, see [Choosing a KMS key type](https://docs.aws.amazon.com/kms/latest/developerguide/symm-asymm-choose.html) in the *Developer Guide*.\n The ``KeySpec`` property determines the type of key material in the KMS key and the algorithms that the KMS key supports. To further restrict the algorithms that can be used with the KMS key, use a condition key in its key policy or IAM policy. For more information, see [condition keys](https://docs.aws.amazon.com/kms/latest/developerguide/policy-conditions.html#conditions-kms) in the *Developer Guide*.\n  If you change the value of the ``KeySpec`` property on an existing KMS key, the update request fails, regardless of the value of the [UpdateReplacePolicy attribute](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-attribute-updatereplacepolicy.html). This prevents you from accidentally deleting a KMS key by changing an immutable property value.\n   [services that are integrated with](https://docs.aws.amazon.com/kms/features/#AWS_Service_Integration) use symmetric encryption KMS keys to protect your data. These services do not support encryption with asymmetric KMS keys. For help determining whether a KMS key is asymmetric, see [Identifying asymmetric KMS keys](https://docs.aws.amazon.com/kms/latest/developerguide/find-symm-asymm.html) in the *Developer Guide*.\n  KMS supports the following key specs for KMS keys:\n  +  Symmetric encryption key (default)\n  +  ``SYMMETRIC_DEFAULT`` (AES-256-GCM)\n  \n  +  HMAC keys (symmetric)\n  +   ``HMAC_224`` \n  +   ``HMAC_256`` \n  +   ``HMAC_384`` \n  +   ``HMAC_512`` \n  \n  +  Asymmetric RSA key pairs (encryption and decryption *or* signing and verification)\n  +   ``RSA_2048`` \n  +   ``RSA_3072`` \n  +   ``RSA_4096`` \n  \n  +  Asymmetric NIST-recommended elliptic curve key pairs (signing and verification *or* deriving shared secrets)\n  +  ``ECC_NIST_P256`` (secp256r1)\n  +  ``ECC_NIST_P384`` (secp384r1)\n  +  ``ECC_NIST_P521`` (secp521r1)\n  +  ``ECC_NIST_EDWARDS25519`` (ed25519) - signing and verification only\n  +  *Note:* For ECC_NIST_EDWARDS25519 KMS keys, the ED25519_SHA_512 signing algorithm requires [MessageType:RAW](https://docs.aws.amazon.com/kms/latest/APIReference/API_Sign.html#KMS-Sign-request-MessageType), while ED25519_PH_SHA_512 requires [MessageType:DIGEST](https://docs.aws.amazon.com/kms/latest/APIReference/API_Sign.html#KMS-Sign-request-MessageType). These message types cannot be used interchangeably.\n  \n  \n  +  Other asymmetric elliptic curve key pairs (signing and verification)\n  +  ``ECC_SECG_P256K1`` (secp256k1), commonly used for cryptocurrencies.\n  \n  +  Asymmetric ML-DSA key pairs (signing and verification)\n  +   ``ML_DSA_44`` \n  +   ``ML_DSA_65`` \n  +   ``ML_DSA_87`` \n  \n  +  SM2 key pairs (encryption and decryption *or* signing and verification *or* deriving shared secrets)\n  +  ``SM2`` (China Regions only)": {
+    "enum": [
+      "SYMMETRIC_DEFAULT",
+      "HMAC_224",
+      "HMAC_256",
+      "HMAC_384",
+      "HMAC_512",
+      "RSA_2048",
+      "RSA_3072",
+      "RSA_4096",
+      "ECC_NIST_P256",
+      "ECC_NIST_P384",
+      "ECC_NIST_P521",
+      "ECC_NIST_EDWARDS25519",
+      "ECC_SECG_P256K1",
+      "ML_DSA_44",
+      "ML_DSA_65",
+      "ML_DSA_87",
+      "SM2"
+    ]
+  },
   "The resource type of the resources in the resource set. Enter one of the following values for resource type: \n\nAWS: :AutoScaling: :AutoScalingGroup, AWS: :CloudWatch: :Alarm, AWS: :EC2: :CustomerGateway, AWS: :DynamoDB: :Table, AWS: :EC2: :Volume, AWS: :ElasticLoadBalancing: :LoadBalancer, AWS: :ElasticLoadBalancingV2: :LoadBalancer, AWS: :MSK: :Cluster, AWS: :RDS: :DBCluster, AWS: :Route53: :HealthCheck, AWS: :SQS: :Queue, AWS: :SNS: :Topic, AWS: :SNS: :Subscription, AWS: :EC2: :VPC, AWS: :EC2: :VPNConnection, AWS: :EC2: :VPNGateway, AWS::Route53RecoveryReadiness::DNSTargetResource": {
     "enum": [
       "AWS::AutoScaling::AutoScalingGroup",
@@ -3875,6 +3896,9 @@
     "enum": null
   },
   "A long integer interpreted according to the value of ``Type``, below.": {
+    "enum": null
+  },
+  "A message describing the current progress.": {
     "enum": null
   },
   "A message to be included in the email invitation sent to the invited account. Updating this field has no effect.": {
@@ -13357,6 +13381,9 @@
   "The maximum number of event pollers this event source can scale up to.": {
     "enum": null
   },
+  "The maximum number of event pollers this event source can scale up to. For Amazon SQS events source mappings, default is 200, and minimum value allowed is 2. For Amazon MSK and self-managed Apache Kafka event source mappings, default is 200, and minimum value allowed is 1.": {
+    "enum": null
+  },
   "The maximum number of game sessions that an individual can create during the policy period.": {
     "enum": null
   },
@@ -13586,6 +13613,9 @@
     "enum": null
   },
   "The minimum number of event pollers this event source can scale down to.": {
+    "enum": null
+  },
+  "The minimum number of event pollers this event source can scale down to. For Amazon SQS events source mappings, default is 2, and minimum 2 required. For Amazon MSK and self-managed Apache Kafka event source mappings, default is 1.": {
     "enum": null
   },
   "The minimum number of instances allowed in the EC2 Auto Scaling group. Updating this game server group property will not take effect for the created EC2 Auto Scaling group, please update the EC2 Auto Scaling group directly after creating the resource.": {
@@ -15895,6 +15925,9 @@
   "The percentage of production traffic to shift to the new service revision during the canary phase. Valid values are multiples of 0.1 from 0.1 to 100.0. The default value is 5.0.": {
     "enum": null
   },
+  "The percentage of progress completed.": {
+    "enum": null
+  },
   "The percentage of remaining budget over total budget that you want to get warnings for. If you omit this parameter, the default of 50.0 is used.": {
     "enum": null
   },
@@ -17879,6 +17912,9 @@
     "enum": null
   },
   "The version of the EC2 launch template to use.": {
+    "enum": null
+  },
+  "The version of the PartnerApp.": {
     "enum": null
   },
   "The version of the S3 bucket that contains the CA certificate bundle.": {

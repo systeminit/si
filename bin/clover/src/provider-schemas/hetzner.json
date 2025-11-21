@@ -21373,13 +21373,16 @@
             "description": "Type of metrics to get.",
             "required": true,
             "schema": {
-              "type": "string",
-              "enum": [
-                "open_connections",
-                "connections_per_second",
-                "requests_per_second",
-                "bandwidth"
-              ]
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "open_connections",
+                  "connections_per_second",
+                  "requests_per_second",
+                  "bandwidth"
+                ]
+              }
             }
           },
           {
@@ -41706,12 +41709,15 @@
             "description": "Type of metrics to get.",
             "required": true,
             "schema": {
-              "type": "string",
-              "enum": [
-                "cpu",
-                "disk",
-                "network"
-              ]
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "cpu",
+                  "disk",
+                  "network"
+                ]
+              }
             }
           },
           {
@@ -46318,7 +46324,7 @@
                           "example": 3600
                         },
                         "records": {
-                          "description": "Records of the [RRSet](#zone-rrsets).\n\nMust not be empty and must only contain distinct record values.\n",
+                          "description": "Records of the [RRSet](#zone-rrsets).\n\nMust not be empty and must only contain distinct record values.\nThe order of records returned in responses is not guaranteed to be consistent.\n",
                           "type": "array",
                           "items": {
                             "title": "Record",
@@ -49631,7 +49637,7 @@
                             ]
                           },
                           "records": {
-                            "description": "Records of the [RRSet](#zone-rrsets).\n\nMust not be empty and must only contain distinct record values.\n",
+                            "description": "Records of the [RRSet](#zone-rrsets).\n\nMust not be empty and must only contain distinct record values.\nThe order of records returned in responses is not guaranteed to be consistent.\n",
                             "type": "array",
                             "items": {
                               "title": "Record",
@@ -49833,7 +49839,7 @@
                     "example": 3600
                   },
                   "records": {
-                    "description": "Records of the [RRSet](#zone-rrsets).\n\nMust not be empty and must only contain distinct record values.\n",
+                    "description": "Records of the [RRSet](#zone-rrsets).\n\nMust not be empty and must only contain distinct record values.\nThe order of records returned in responses is not guaranteed to be consistent.\n",
                     "type": "array",
                     "items": {
                       "title": "Record",
@@ -49957,7 +49963,7 @@
                           ]
                         },
                         "records": {
-                          "description": "Records of the [RRSet](#zone-rrsets).\n\nMust not be empty and must only contain distinct record values.\n",
+                          "description": "Records of the [RRSet](#zone-rrsets).\n\nMust not be empty and must only contain distinct record values.\nThe order of records returned in responses is not guaranteed to be consistent.\n",
                           "type": "array",
                           "items": {
                             "title": "Record",
@@ -50306,7 +50312,7 @@
                           ]
                         },
                         "records": {
-                          "description": "Records of the [RRSet](#zone-rrsets).\n\nMust not be empty and must only contain distinct record values.\n",
+                          "description": "Records of the [RRSet](#zone-rrsets).\n\nMust not be empty and must only contain distinct record values.\nThe order of records returned in responses is not guaranteed to be consistent.\n",
                           "type": "array",
                           "items": {
                             "title": "Record",
@@ -50540,7 +50546,7 @@
                           ]
                         },
                         "records": {
-                          "description": "Records of the [RRSet](#zone-rrsets).\n\nMust not be empty and must only contain distinct record values.\n",
+                          "description": "Records of the [RRSet](#zone-rrsets).\n\nMust not be empty and must only contain distinct record values.\nThe order of records returned in responses is not guaranteed to be consistent.\n",
                           "type": "array",
                           "items": {
                             "title": "Record",
@@ -52114,6 +52120,248 @@
             "lang": "Shell",
             "label": "CLI",
             "source": "hcloud zone rrset remove-records $ZONE $RR_NAME $RR_TYPE --record 198.51.100.1"
+          }
+        ]
+      }
+    },
+    "/zones/{id_or_name}/rrsets/{rr_name}/{rr_type}/actions/update_records": {
+      "post": {
+        "operationId": "update_zone_rrset_records",
+        "summary": "Update Records of an RRSet",
+        "description": "Updates resource records' (RRs) comments of an existing [RRSet](#zone-rrsets) in the [Zone](#zones).\n\nOnly applicable for [Zones](#zones) in primary mode.\n\n#### Call specific error codes\n\n| Code                  | Description                      |\n|-----------------------|----------------------------------|\n| `incorrect_zone_mode` | The zone is not in primary mode. |\n",
+        "tags": [
+          "Zone RRSet Actions"
+        ],
+        "parameters": [
+          {
+            "description": "ID or Name of the Zone.",
+            "name": "id_or_name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "description": "ID or Name of the [Zone](#zones).",
+              "type": "string"
+            }
+          },
+          {
+            "name": "rr_name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "description": "Name of the [RRSet](#zone-rrsets).\n\nThe name must be in lower case, and must not end with a dot or the [Zone](#zones)\nname. Names containing non-ASCII characters must be transcribed to\n[Punycode](https://wikipedia.org/wiki/Punycode) representation with ACE prefix, e.g.\n`xn--4bi` (✉️).\n\nFor the [Zone](#zones) apex, use `@`.\n",
+              "type": "string",
+              "example": "www"
+            }
+          },
+          {
+            "name": "rr_type",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "description": "Type of the [RRSet](#zone-rrsets).\n",
+              "type": "string",
+              "enum": [
+                "A",
+                "AAAA",
+                "CAA",
+                "CNAME",
+                "DS",
+                "HINFO",
+                "HTTPS",
+                "MX",
+                "NS",
+                "PTR",
+                "RP",
+                "SOA",
+                "SRV",
+                "SVCB",
+                "TLSA",
+                "TXT"
+              ],
+              "example": "A"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "records": {
+                    "description": "Records to update in the [RRSet](#zone-rrsets).\n\nMust not be empty and must only contain distinct record values.\n",
+                    "minItems": 1,
+                    "maxItems": 50,
+                    "type": "array",
+                    "items": {
+                      "title": "Record",
+                      "description": "Record of a [RRSet](#zone-rrsets).\n\nThe `value` is used to identify the record in an [RRSet](#zone-rrsets).\n",
+                      "type": "object",
+                      "properties": {
+                        "value": {
+                          "description": "Value of the record.\n\nFor details about accepted values, see the [DNS record types documentation](https://docs.hetzner.com/networking/dns/record-types/overview/).\n",
+                          "type": "string",
+                          "example": "198.51.100.1"
+                        },
+                        "comment": {
+                          "description": "Comment of the record.",
+                          "type": "string",
+                          "example": "My web server at Hetzner Cloud."
+                        }
+                      },
+                      "required": [
+                        "value"
+                      ]
+                    }
+                  }
+                },
+                "required": [
+                  "records"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Request succeeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "ActionResponse",
+                  "description": "Response for a created [Action](#actions).\n\nMake sure to wait for the [Action](#actions) completion to ensure your changes are applied.\n",
+                  "type": "object",
+                  "properties": {
+                    "action": {
+                      "title": "Action",
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "description": "ID of the [Action](#actions).",
+                          "type": "integer",
+                          "format": "int64",
+                          "maximum": 9007199254740991,
+                          "example": 42
+                        },
+                        "command": {
+                          "description": "Command executed in the Action.",
+                          "type": "string",
+                          "example": "start_resource"
+                        },
+                        "status": {
+                          "description": "Status of the Action.",
+                          "type": "string",
+                          "enum": [
+                            "running",
+                            "success",
+                            "error"
+                          ]
+                        },
+                        "started": {
+                          "description": "Point in time when the Action was started (in ISO-8601 format).",
+                          "type": "string",
+                          "example": "2016-01-30T23:55:00+00:00"
+                        },
+                        "finished": {
+                          "description": "Point in time when the Action was finished (in ISO-8601 format). Only set if the Action is finished otherwise null.",
+                          "type": "string",
+                          "example": "2016-01-30T23:55:00+00:00",
+                          "nullable": true
+                        },
+                        "progress": {
+                          "description": "Progress of the Action in percent.",
+                          "type": "integer",
+                          "format": "int32",
+                          "example": 100
+                        },
+                        "resources": {
+                          "description": "Resources the Action relates to.",
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "description": "ID of the Resource.",
+                                "type": "integer",
+                                "format": "int64",
+                                "maximum": 9007199254740991,
+                                "example": 42
+                              },
+                              "type": {
+                                "description": "Type of the Resource.",
+                                "type": "string",
+                                "example": "server"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "type"
+                            ]
+                          }
+                        },
+                        "error": {
+                          "description": "Error message for the Action if an error occurred, otherwise null.",
+                          "type": "object",
+                          "nullable": true,
+                          "properties": {
+                            "code": {
+                              "description": "Fixed error code for machines.",
+                              "type": "string",
+                              "example": "action_failed"
+                            },
+                            "message": {
+                              "description": "Error message for humans.",
+                              "type": "string",
+                              "example": "Action failed"
+                            }
+                          },
+                          "required": [
+                            "code",
+                            "message"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "command",
+                        "status",
+                        "progress",
+                        "started",
+                        "finished",
+                        "resources",
+                        "error"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "action"
+                  ]
+                },
+                "example": {
+                  "action": {
+                    "id": 1,
+                    "command": "update_rrset_records",
+                    "status": "running",
+                    "progress": 50,
+                    "started": "2016-01-30T23:55:00+00:00",
+                    "finished": null,
+                    "resources": [
+                      {
+                        "id": 42,
+                        "type": "zone"
+                      }
+                    ],
+                    "error": null
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "APIToken": []
           }
         ]
       }
