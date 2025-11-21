@@ -47,11 +47,19 @@ export type WorkspaceLookup = {
   instanceUrl: string | null;
 };
 
+export type RumReportEntry = {
+  ownerPk: string;
+  ownerEmail: string;
+  ownerName: string;
+  totalRum: number;
+};
+
 export const useWorkspacesStore = defineStore("workspaces", {
   state: () => ({
     workspacesById: {} as Record<WorkspaceId, Workspace>,
     selectedWorkspaceMembersById: {} as Record<UserId, WorkspaceMember>,
     workspaceForOwner: null as WorkspaceLookup | null,
+    rumReport: [] as RumReportEntry[],
   }),
   getters: {
     workspaces: (state) => _.values(state.workspacesById),
@@ -290,6 +298,16 @@ export const useWorkspacesStore = defineStore("workspaces", {
             response,
             (u) => u.userId,
           );
+        },
+      });
+    },
+    async GET_RUM_REPORT(month?: string) {
+      return new ApiRequest<RumReportEntry[]>({
+        method: "get",
+        url: "/rum-report",
+        params: month ? { month } : undefined,
+        onSuccess: (response) => {
+          this.rumReport = response;
         },
       });
     },
