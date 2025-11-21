@@ -40,6 +40,13 @@ class TestSchemasApi(unittest.TestCase):
         """
         pass
 
+    def test_create_variant_attribute(self) -> None:
+        """Test case for create_variant_attribute
+
+        Create an attribute function and attach to a schema variant
+        """
+        pass
+
     def test_create_variant_authentication(self) -> None:
         """Test case for create_variant_authentication
 
@@ -72,6 +79,13 @@ class TestSchemasApi(unittest.TestCase):
         """Test case for detach_action_func_binding
 
         Delete the binding between an action func and the schema variant
+        """
+        pass
+
+    def test_detach_attribute_func_binding(self) -> None:
+        """Test case for detach_attribute_func_binding
+
+        Delete the binding between an attribute func and the schema variant
         """
         pass
 

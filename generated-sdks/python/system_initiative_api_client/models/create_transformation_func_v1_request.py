@@ -17,30 +17,20 @@ import pprint
 import re  # noqa: F401
 import json
 
-from pydantic import BaseModel, ConfigDict, Field, StrictBool, StrictStr, field_validator
+from pydantic import BaseModel, ConfigDict, Field, StrictStr
 from typing import Any, ClassVar, Dict, List, Optional
-from typing_extensions import Annotated
 from typing import Optional, Set
 from typing_extensions import Self
 
-class CreateVariantActionFuncV1Request(BaseModel):
+class CreateTransformationFuncV1Request(BaseModel):
     """
-    CreateVariantActionFuncV1Request
+    CreateTransformationFuncV1Request
     """ # noqa: E501
     code: StrictStr
     description: Optional[StrictStr] = None
     display_name: Optional[StrictStr] = Field(default=None, alias="displayName")
-    kind: Annotated[str, Field(strict=True)]
     name: StrictStr
-    skip_overlay: Optional[StrictBool] = Field(default=None, alias="skipOverlay")
-    __properties: ClassVar[List[str]] = ["code", "description", "displayName", "kind", "name", "skipOverlay"]
-
-    @field_validator('kind')
-    def kind_validate_regular_expression(cls, value):
-        """Validates the regular expression"""
-        if not re.match(r"^(Create|Destroy|Manual|Refresh|Update)$", value):
-            raise ValueError(r"must validate the regular expression /^(Create|Destroy|Manual|Refresh|Update)$/")
-        return value
+    __properties: ClassVar[List[str]] = ["code", "description", "displayName", "name"]
 
     model_config = ConfigDict(
         populate_by_name=True,
@@ -60,7 +50,7 @@ class CreateVariantActionFuncV1Request(BaseModel):
 
     @classmethod
     def from_json(cls, json_str: str) -> Optional[Self]:
-        """Create an instance of CreateVariantActionFuncV1Request from a JSON string"""
+        """Create an instance of CreateTransformationFuncV1Request from a JSON string"""
         return cls.from_dict(json.loads(json_str))
 
     def to_dict(self) -> Dict[str, Any]:
@@ -91,16 +81,11 @@ class CreateVariantActionFuncV1Request(BaseModel):
         if self.display_name is None and "display_name" in self.model_fields_set:
             _dict['displayName'] = None
 
-        # set to None if skip_overlay (nullable) is None
-        # and model_fields_set contains the field
-        if self.skip_overlay is None and "skip_overlay" in self.model_fields_set:
-            _dict['skipOverlay'] = None
-
         return _dict
 
     @classmethod
     def from_dict(cls, obj: Optional[Dict[str, Any]]) -> Optional[Self]:
-        """Create an instance of CreateVariantActionFuncV1Request from a dict"""
+        """Create an instance of CreateTransformationFuncV1Request from a dict"""
         if obj is None:
             return None
 
@@ -111,9 +96,7 @@ class CreateVariantActionFuncV1Request(BaseModel):
             "code": obj.get("code"),
             "description": obj.get("description"),
             "displayName": obj.get("displayName"),
-            "kind": obj.get("kind"),
-            "name": obj.get("name"),
-            "skipOverlay": obj.get("skipOverlay")
+            "name": obj.get("name")
         })
         return _obj
 

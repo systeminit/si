@@ -38,7 +38,8 @@ class TestCreateVariantQualificationFuncV1Request(unittest.TestCase):
                 code = '<!-- String escaped Typescript code here -->',
                 description = 'Creates an EC2 Instance',
                 display_name = 'Create EC2 Instance',
-                name = 'awsEC2InstanceCreate'
+                name = 'awsEC2InstanceCreate',
+                skip_overlay = False
             )
         else:
             return CreateVariantQualificationFuncV1Request(

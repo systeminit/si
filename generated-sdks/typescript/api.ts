@@ -216,6 +216,43 @@ export interface ApiSuccessString {
 /**
  * 
  * @export
+ * @interface AttributeArgumentBindingRequest
+ */
+export interface AttributeArgumentBindingRequest {
+    /**
+     * Element type for Array arguments. Required when kind is \'Array\'. Specifies the type of array elements.
+     * @type {string}
+     * @memberof AttributeArgumentBindingRequest
+     */
+    'elementKind'?: string | null;
+    /**
+     * Type of the argument. Valid values: \"Any\", \"Array\", \"Boolean\", \"Float\", \"Integer\", \"Json\", \"Map\", \"Object\", \"String\". Use \'Array\' with element_kind for typed arrays.
+     * @type {string}
+     * @memberof AttributeArgumentBindingRequest
+     */
+    'kind': string;
+    /**
+     * Name of the function argument (e.g., \"instanceType\", \"region\", \"tags\")
+     * @type {string}
+     * @memberof AttributeArgumentBindingRequest
+     */
+    'name': string;
+    /**
+     * Prop ID to bind this argument to. Either prop_id or static_value must be provided.
+     * @type {string}
+     * @memberof AttributeArgumentBindingRequest
+     */
+    'propId'?: string | null;
+    /**
+     * 
+     * @type {any}
+     * @memberof AttributeArgumentBindingRequest
+     */
+    'staticValue'?: any;
+}
+/**
+ * 
+ * @export
  * @interface BuildingResponseV1
  */
 export interface BuildingResponseV1 {
@@ -728,6 +765,50 @@ export interface CreateSecretV1Response {
 /**
  * 
  * @export
+ * @interface CreateTransformationFuncV1Request
+ */
+export interface CreateTransformationFuncV1Request {
+    /**
+     * 
+     * @type {string}
+     * @memberof CreateTransformationFuncV1Request
+     */
+    'code': string;
+    /**
+     * 
+     * @type {string}
+     * @memberof CreateTransformationFuncV1Request
+     */
+    'description'?: string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof CreateTransformationFuncV1Request
+     */
+    'displayName'?: string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof CreateTransformationFuncV1Request
+     */
+    'name': string;
+}
+/**
+ * 
+ * @export
+ * @interface CreateTransformationFuncV1Response
+ */
+export interface CreateTransformationFuncV1Response {
+    /**
+     * 
+     * @type {string}
+     * @memberof CreateTransformationFuncV1Response
+     */
+    'funcId': string;
+}
+/**
+ * 
+ * @export
  * @interface CreateVariantActionFuncV1Request
  */
 export interface CreateVariantActionFuncV1Request {
@@ -761,6 +842,12 @@ export interface CreateVariantActionFuncV1Request {
      * @memberof CreateVariantActionFuncV1Request
      */
     'name': string;
+    /**
+     * 
+     * @type {boolean}
+     * @memberof CreateVariantActionFuncV1Request
+     */
+    'skipOverlay'?: boolean | null;
 }
 /**
  * 
@@ -772,6 +859,80 @@ export interface CreateVariantActionFuncV1Response {
      * 
      * @type {string}
      * @memberof CreateVariantActionFuncV1Response
+     */
+    'funcId': string;
+}
+/**
+ * 
+ * @export
+ * @interface CreateVariantAttributeFuncV1Request
+ */
+export interface CreateVariantAttributeFuncV1Request {
+    /**
+     * Function arguments with their bindings (input sources). Each argument defines its type and where its value comes from.
+     * @type {Array<AttributeArgumentBindingRequest>}
+     * @memberof CreateVariantAttributeFuncV1Request
+     */
+    'argumentBindings': Array<AttributeArgumentBindingRequest>;
+    /**
+     * TypeScript code for the function. Should export a main function that takes arguments and returns a value.
+     * @type {string}
+     * @memberof CreateVariantAttributeFuncV1Request
+     */
+    'code': string;
+    /**
+     * Optional component ID for component-level bindings. If not provided, creates a schema variant-level binding.
+     * @type {string}
+     * @memberof CreateVariantAttributeFuncV1Request
+     */
+    'componentId'?: string | null;
+    /**
+     * Description of what the function does
+     * @type {string}
+     * @memberof CreateVariantAttributeFuncV1Request
+     */
+    'description'?: string | null;
+    /**
+     * Human-readable display name
+     * @type {string}
+     * @memberof CreateVariantAttributeFuncV1Request
+     */
+    'displayName'?: string | null;
+    /**
+     * Unique name for the function (e.g., \"awsEC2SetInstanceType\")
+     * @type {string}
+     * @memberof CreateVariantAttributeFuncV1Request
+     */
+    'name': string;
+    /**
+     * Prop ID where the function output will be written (required)
+     * @type {string}
+     * @memberof CreateVariantAttributeFuncV1Request
+     */
+    'propId': string;
+    /**
+     * 
+     * @type {boolean}
+     * @memberof CreateVariantAttributeFuncV1Request
+     */
+    'skipOverlay'?: boolean | null;
+}
+/**
+ * 
+ * @export
+ * @interface CreateVariantAttributeFuncV1Response
+ */
+export interface CreateVariantAttributeFuncV1Response {
+    /**
+     * 
+     * @type {string}
+     * @memberof CreateVariantAttributeFuncV1Response
+     */
+    'attributePrototypeId': string;
+    /**
+     * 
+     * @type {string}
+     * @memberof CreateVariantAttributeFuncV1Response
      */
     'funcId': string;
 }
@@ -849,6 +1010,12 @@ export interface CreateVariantCodegenFuncV1Request {
      * @memberof CreateVariantCodegenFuncV1Request
      */
     'name': string;
+    /**
+     * 
+     * @type {boolean}
+     * @memberof CreateVariantCodegenFuncV1Request
+     */
+    'skipOverlay'?: boolean | null;
 }
 /**
  * 
@@ -893,6 +1060,12 @@ export interface CreateVariantManagementFuncV1Request {
      * @memberof CreateVariantManagementFuncV1Request
      */
     'name': string;
+    /**
+     * 
+     * @type {boolean}
+     * @memberof CreateVariantManagementFuncV1Request
+     */
+    'skipOverlay'?: boolean | null;
 }
 /**
  * 
@@ -937,6 +1110,12 @@ export interface CreateVariantQualificationFuncV1Request {
      * @memberof CreateVariantQualificationFuncV1Request
      */
     'name': string;
+    /**
+     * 
+     * @type {boolean}
+     * @memberof CreateVariantQualificationFuncV1Request
+     */
+    'skipOverlay'?: boolean | null;
 }
 /**
  * 
@@ -7069,6 +7248,50 @@ export const FuncsApiAxiosParamCreator = function (configuration?: Configuration
     return {
         /**
          * 
+         * @summary Create a transformation function
+         * @param {string} workspaceId Workspace identifier
+         * @param {string} changeSetId Change Set identifier
+         * @param {CreateTransformationFuncV1Request} createTransformationFuncV1Request 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        createTransformation: async (workspaceId: string, changeSetId: string, createTransformationFuncV1Request: CreateTransformationFuncV1Request, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'workspaceId' is not null or undefined
+            assertParamExists('createTransformation', 'workspaceId', workspaceId)
+            // verify required parameter 'changeSetId' is not null or undefined
+            assertParamExists('createTransformation', 'changeSetId', changeSetId)
+            // verify required parameter 'createTransformationFuncV1Request' is not null or undefined
+            assertParamExists('createTransformation', 'createTransformationFuncV1Request', createTransformationFuncV1Request)
+            const localVarPath = `/v1/w/{workspace_id}/change-sets/{change_set_id}/funcs/transformation`
+                .replace(`{${"workspace_id"}}`, encodeURIComponent(String(workspaceId)))
+                .replace(`{${"change_set_id"}}`, encodeURIComponent(String(changeSetId)));
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'POST', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+
+    
+            localVarHeaderParameter['Content-Type'] = 'application/json';
+
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+            localVarRequestOptions.data = serializeDataIfNeeded(createTransformationFuncV1Request, localVarRequestOptions, configuration)
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         * 
          * @summary Get function details
          * @param {string} workspaceId Workspace identifier
          * @param {string} changeSetId Change Set identifier
@@ -7259,6 +7482,21 @@ export const FuncsApiFp = function(configuration?: Configuration) {
     return {
         /**
          * 
+         * @summary Create a transformation function
+         * @param {string} workspaceId Workspace identifier
+         * @param {string} changeSetId Change Set identifier
+         * @param {CreateTransformationFuncV1Request} createTransformationFuncV1Request 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async createTransformation(workspaceId: string, changeSetId: string, createTransformationFuncV1Request: CreateTransformationFuncV1Request, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<CreateTransformationFuncV1Response>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.createTransformation(workspaceId, changeSetId, createTransformationFuncV1Request, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['FuncsApi.createTransformation']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         * 
          * @summary Get function details
          * @param {string} workspaceId Workspace identifier
          * @param {string} changeSetId Change Set identifier
@@ -7331,6 +7569,16 @@ export const FuncsApiFactory = function (configuration?: Configuration, basePath
     return {
         /**
          * 
+         * @summary Create a transformation function
+         * @param {FuncsApiCreateTransformationRequest} requestParameters Request parameters.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        createTransformation(requestParameters: FuncsApiCreateTransformationRequest, options?: RawAxiosRequestConfig): AxiosPromise<CreateTransformationFuncV1Response> {
+            return localVarFp.createTransformation(requestParameters.workspaceId, requestParameters.changeSetId, requestParameters.createTransformationFuncV1Request, options).then((request) => request(axios, basePath));
+        },
+        /**
+         * 
          * @summary Get function details
          * @param {FuncsApiGetFuncRequest} requestParameters Request parameters.
          * @param {*} [options] Override http request option.
@@ -7380,6 +7628,16 @@ export const FuncsApiFactory = function (configuration?: Configuration, basePath
 export interface FuncsApiInterface {
     /**
      * 
+     * @summary Create a transformation function
+     * @param {FuncsApiCreateTransformationRequest} requestParameters Request parameters.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof FuncsApiInterface
+     */
+    createTransformation(requestParameters: FuncsApiCreateTransformationRequest, options?: RawAxiosRequestConfig): AxiosPromise<CreateTransformationFuncV1Response>;
+
+    /**
+     * 
      * @summary Get function details
      * @param {FuncsApiGetFuncRequest} requestParameters Request parameters.
      * @param {*} [options] Override http request option.
@@ -7418,6 +7676,34 @@ export interface FuncsApiInterface {
      */
     updateFunc(requestParameters: FuncsApiUpdateFuncRequest, options?: RawAxiosRequestConfig): AxiosPromise<UpdateFuncV1Response>;
 
+}
+
+/**
+ * Request parameters for createTransformation operation in FuncsApi.
+ * @export
+ * @interface FuncsApiCreateTransformationRequest
+ */
+export interface FuncsApiCreateTransformationRequest {
+    /**
+     * Workspace identifier
+     * @type {string}
+     * @memberof FuncsApiCreateTransformation
+     */
+    readonly workspaceId: string
+
+    /**
+     * Change Set identifier
+     * @type {string}
+     * @memberof FuncsApiCreateTransformation
+     */
+    readonly changeSetId: string
+
+    /**
+     * 
+     * @type {CreateTransformationFuncV1Request}
+     * @memberof FuncsApiCreateTransformation
+     */
+    readonly createTransformationFuncV1Request: CreateTransformationFuncV1Request
 }
 
 /**
@@ -7553,6 +7839,18 @@ export interface FuncsApiUpdateFuncRequest {
  * @extends {BaseAPI}
  */
 export class FuncsApi extends BaseAPI implements FuncsApiInterface {
+    /**
+     * 
+     * @summary Create a transformation function
+     * @param {FuncsApiCreateTransformationRequest} requestParameters Request parameters.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof FuncsApi
+     */
+    public createTransformation(requestParameters: FuncsApiCreateTransformationRequest, options?: RawAxiosRequestConfig) {
+        return FuncsApiFp(this.configuration).createTransformation(requestParameters.workspaceId, requestParameters.changeSetId, requestParameters.createTransformationFuncV1Request, options).then((request) => request(this.axios, this.basePath));
+    }
+
     /**
      * 
      * @summary Get function details
@@ -7985,6 +8283,58 @@ export const SchemasApiAxiosParamCreator = function (configuration?: Configurati
         },
         /**
          * 
+         * @summary Create an attribute function and attach to a schema variant
+         * @param {string} workspaceId Workspace identifier
+         * @param {string} changeSetId Change Set identifier
+         * @param {string} schemaId Schema identifier
+         * @param {string} schemaVariantId Schema variant identifier
+         * @param {CreateVariantAttributeFuncV1Request} createVariantAttributeFuncV1Request 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        createVariantAttribute: async (workspaceId: string, changeSetId: string, schemaId: string, schemaVariantId: string, createVariantAttributeFuncV1Request: CreateVariantAttributeFuncV1Request, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'workspaceId' is not null or undefined
+            assertParamExists('createVariantAttribute', 'workspaceId', workspaceId)
+            // verify required parameter 'changeSetId' is not null or undefined
+            assertParamExists('createVariantAttribute', 'changeSetId', changeSetId)
+            // verify required parameter 'schemaId' is not null or undefined
+            assertParamExists('createVariantAttribute', 'schemaId', schemaId)
+            // verify required parameter 'schemaVariantId' is not null or undefined
+            assertParamExists('createVariantAttribute', 'schemaVariantId', schemaVariantId)
+            // verify required parameter 'createVariantAttributeFuncV1Request' is not null or undefined
+            assertParamExists('createVariantAttribute', 'createVariantAttributeFuncV1Request', createVariantAttributeFuncV1Request)
+            const localVarPath = `/v1/w/{workspace_id}/change-sets/{change_set_id}/schemas/{schema_id}/variant/{schema_variant_id}/funcs/attribute`
+                .replace(`{${"workspace_id"}}`, encodeURIComponent(String(workspaceId)))
+                .replace(`{${"change_set_id"}}`, encodeURIComponent(String(changeSetId)))
+                .replace(`{${"schema_id"}}`, encodeURIComponent(String(schemaId)))
+                .replace(`{${"schema_variant_id"}}`, encodeURIComponent(String(schemaVariantId)));
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'POST', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+
+    
+            localVarHeaderParameter['Content-Type'] = 'application/json';
+
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+            localVarRequestOptions.data = serializeDataIfNeeded(createVariantAttributeFuncV1Request, localVarRequestOptions, configuration)
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         * 
          * @summary Create an authentication function and attach to a schema variant
          * @param {string} workspaceId Workspace identifier
          * @param {string} changeSetId Change Set identifier
@@ -8214,6 +8564,56 @@ export const SchemasApiAxiosParamCreator = function (configuration?: Configurati
             // verify required parameter 'funcId' is not null or undefined
             assertParamExists('detachActionFuncBinding', 'funcId', funcId)
             const localVarPath = `/v1/w/{workspace_id}/change-sets/{change_set_id}/schemas/{schema_id}/variant/{schema_variant_id}/funcs/action/{func_id}`
+                .replace(`{${"workspace_id"}}`, encodeURIComponent(String(workspaceId)))
+                .replace(`{${"change_set_id"}}`, encodeURIComponent(String(changeSetId)))
+                .replace(`{${"schema_id"}}`, encodeURIComponent(String(schemaId)))
+                .replace(`{${"schema_variant_id"}}`, encodeURIComponent(String(schemaVariantId)))
+                .replace(`{${"func_id"}}`, encodeURIComponent(String(funcId)));
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'DELETE', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+
+    
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         * 
+         * @summary Delete the binding between an attribute func and the schema variant
+         * @param {string} workspaceId Workspace identifier
+         * @param {string} changeSetId Change Set identifier
+         * @param {string} schemaId Schema identifier
+         * @param {string} schemaVariantId Schema variant identifier
+         * @param {string} funcId Func identifier
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        detachAttributeFuncBinding: async (workspaceId: string, changeSetId: string, schemaId: string, schemaVariantId: string, funcId: string, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'workspaceId' is not null or undefined
+            assertParamExists('detachAttributeFuncBinding', 'workspaceId', workspaceId)
+            // verify required parameter 'changeSetId' is not null or undefined
+            assertParamExists('detachAttributeFuncBinding', 'changeSetId', changeSetId)
+            // verify required parameter 'schemaId' is not null or undefined
+            assertParamExists('detachAttributeFuncBinding', 'schemaId', schemaId)
+            // verify required parameter 'schemaVariantId' is not null or undefined
+            assertParamExists('detachAttributeFuncBinding', 'schemaVariantId', schemaVariantId)
+            // verify required parameter 'funcId' is not null or undefined
+            assertParamExists('detachAttributeFuncBinding', 'funcId', funcId)
+            const localVarPath = `/v1/w/{workspace_id}/change-sets/{change_set_id}/schemas/{schema_id}/variant/{schema_variant_id}/funcs/attribute/{func_id}`
                 .replace(`{${"workspace_id"}}`, encodeURIComponent(String(workspaceId)))
                 .replace(`{${"change_set_id"}}`, encodeURIComponent(String(changeSetId)))
                 .replace(`{${"schema_id"}}`, encodeURIComponent(String(schemaId)))
@@ -8891,6 +9291,23 @@ export const SchemasApiFp = function(configuration?: Configuration) {
         },
         /**
          * 
+         * @summary Create an attribute function and attach to a schema variant
+         * @param {string} workspaceId Workspace identifier
+         * @param {string} changeSetId Change Set identifier
+         * @param {string} schemaId Schema identifier
+         * @param {string} schemaVariantId Schema variant identifier
+         * @param {CreateVariantAttributeFuncV1Request} createVariantAttributeFuncV1Request 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async createVariantAttribute(workspaceId: string, changeSetId: string, schemaId: string, schemaVariantId: string, createVariantAttributeFuncV1Request: CreateVariantAttributeFuncV1Request, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<CreateVariantAttributeFuncV1Response>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.createVariantAttribute(workspaceId, changeSetId, schemaId, schemaVariantId, createVariantAttributeFuncV1Request, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['SchemasApi.createVariantAttribute']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         * 
          * @summary Create an authentication function and attach to a schema variant
          * @param {string} workspaceId Workspace identifier
          * @param {string} changeSetId Change Set identifier
@@ -8972,6 +9389,23 @@ export const SchemasApiFp = function(configuration?: Configuration) {
             const localVarAxiosArgs = await localVarAxiosParamCreator.detachActionFuncBinding(workspaceId, changeSetId, schemaId, schemaVariantId, funcId, options);
             const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
             const localVarOperationServerBasePath = operationServerMap['SchemasApi.detachActionFuncBinding']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         * 
+         * @summary Delete the binding between an attribute func and the schema variant
+         * @param {string} workspaceId Workspace identifier
+         * @param {string} changeSetId Change Set identifier
+         * @param {string} schemaId Schema identifier
+         * @param {string} schemaVariantId Schema variant identifier
+         * @param {string} funcId Func identifier
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async detachAttributeFuncBinding(workspaceId: string, changeSetId: string, schemaId: string, schemaVariantId: string, funcId: string, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<DetachFuncBindingV1Response>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.detachAttributeFuncBinding(workspaceId, changeSetId, schemaId, schemaVariantId, funcId, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['SchemasApi.detachAttributeFuncBinding']?.[localVarOperationServerIndex]?.url;
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
         },
         /**
@@ -9214,6 +9648,16 @@ export const SchemasApiFactory = function (configuration?: Configuration, basePa
         },
         /**
          * 
+         * @summary Create an attribute function and attach to a schema variant
+         * @param {SchemasApiCreateVariantAttributeRequest} requestParameters Request parameters.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        createVariantAttribute(requestParameters: SchemasApiCreateVariantAttributeRequest, options?: RawAxiosRequestConfig): AxiosPromise<CreateVariantAttributeFuncV1Response> {
+            return localVarFp.createVariantAttribute(requestParameters.workspaceId, requestParameters.changeSetId, requestParameters.schemaId, requestParameters.schemaVariantId, requestParameters.createVariantAttributeFuncV1Request, options).then((request) => request(axios, basePath));
+        },
+        /**
+         * 
          * @summary Create an authentication function and attach to a schema variant
          * @param {SchemasApiCreateVariantAuthenticationRequest} requestParameters Request parameters.
          * @param {*} [options] Override http request option.
@@ -9261,6 +9705,16 @@ export const SchemasApiFactory = function (configuration?: Configuration, basePa
          */
         detachActionFuncBinding(requestParameters: SchemasApiDetachActionFuncBindingRequest, options?: RawAxiosRequestConfig): AxiosPromise<DetachFuncBindingV1Response> {
             return localVarFp.detachActionFuncBinding(requestParameters.workspaceId, requestParameters.changeSetId, requestParameters.schemaId, requestParameters.schemaVariantId, requestParameters.funcId, options).then((request) => request(axios, basePath));
+        },
+        /**
+         * 
+         * @summary Delete the binding between an attribute func and the schema variant
+         * @param {SchemasApiDetachAttributeFuncBindingRequest} requestParameters Request parameters.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        detachAttributeFuncBinding(requestParameters: SchemasApiDetachAttributeFuncBindingRequest, options?: RawAxiosRequestConfig): AxiosPromise<DetachFuncBindingV1Response> {
+            return localVarFp.detachAttributeFuncBinding(requestParameters.workspaceId, requestParameters.changeSetId, requestParameters.schemaId, requestParameters.schemaVariantId, requestParameters.funcId, options).then((request) => request(axios, basePath));
         },
         /**
          * 
@@ -9423,6 +9877,16 @@ export interface SchemasApiInterface {
 
     /**
      * 
+     * @summary Create an attribute function and attach to a schema variant
+     * @param {SchemasApiCreateVariantAttributeRequest} requestParameters Request parameters.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof SchemasApiInterface
+     */
+    createVariantAttribute(requestParameters: SchemasApiCreateVariantAttributeRequest, options?: RawAxiosRequestConfig): AxiosPromise<CreateVariantAttributeFuncV1Response>;
+
+    /**
+     * 
      * @summary Create an authentication function and attach to a schema variant
      * @param {SchemasApiCreateVariantAuthenticationRequest} requestParameters Request parameters.
      * @param {*} [options] Override http request option.
@@ -9470,6 +9934,16 @@ export interface SchemasApiInterface {
      * @memberof SchemasApiInterface
      */
     detachActionFuncBinding(requestParameters: SchemasApiDetachActionFuncBindingRequest, options?: RawAxiosRequestConfig): AxiosPromise<DetachFuncBindingV1Response>;
+
+    /**
+     * 
+     * @summary Delete the binding between an attribute func and the schema variant
+     * @param {SchemasApiDetachAttributeFuncBindingRequest} requestParameters Request parameters.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof SchemasApiInterface
+     */
+    detachAttributeFuncBinding(requestParameters: SchemasApiDetachAttributeFuncBindingRequest, options?: RawAxiosRequestConfig): AxiosPromise<DetachFuncBindingV1Response>;
 
     /**
      * 
@@ -9671,6 +10145,48 @@ export interface SchemasApiCreateVariantActionRequest {
      * @memberof SchemasApiCreateVariantAction
      */
     readonly createVariantActionFuncV1Request: CreateVariantActionFuncV1Request
+}
+
+/**
+ * Request parameters for createVariantAttribute operation in SchemasApi.
+ * @export
+ * @interface SchemasApiCreateVariantAttributeRequest
+ */
+export interface SchemasApiCreateVariantAttributeRequest {
+    /**
+     * Workspace identifier
+     * @type {string}
+     * @memberof SchemasApiCreateVariantAttribute
+     */
+    readonly workspaceId: string
+
+    /**
+     * Change Set identifier
+     * @type {string}
+     * @memberof SchemasApiCreateVariantAttribute
+     */
+    readonly changeSetId: string
+
+    /**
+     * Schema identifier
+     * @type {string}
+     * @memberof SchemasApiCreateVariantAttribute
+     */
+    readonly schemaId: string
+
+    /**
+     * Schema variant identifier
+     * @type {string}
+     * @memberof SchemasApiCreateVariantAttribute
+     */
+    readonly schemaVariantId: string
+
+    /**
+     * 
+     * @type {CreateVariantAttributeFuncV1Request}
+     * @memberof SchemasApiCreateVariantAttribute
+     */
+    readonly createVariantAttributeFuncV1Request: CreateVariantAttributeFuncV1Request
 }
 
 /**
@@ -9879,6 +10395,48 @@ export interface SchemasApiDetachActionFuncBindingRequest {
      * Func identifier
      * @type {string}
      * @memberof SchemasApiDetachActionFuncBinding
+     */
+    readonly funcId: string
+}
+
+/**
+ * Request parameters for detachAttributeFuncBinding operation in SchemasApi.
+ * @export
+ * @interface SchemasApiDetachAttributeFuncBindingRequest
+ */
+export interface SchemasApiDetachAttributeFuncBindingRequest {
+    /**
+     * Workspace identifier
+     * @type {string}
+     * @memberof SchemasApiDetachAttributeFuncBinding
+     */
+    readonly workspaceId: string
+
+    /**
+     * Change Set identifier
+     * @type {string}
+     * @memberof SchemasApiDetachAttributeFuncBinding
+     */
+    readonly changeSetId: string
+
+    /**
+     * Schema identifier
+     * @type {string}
+     * @memberof SchemasApiDetachAttributeFuncBinding
+     */
+    readonly schemaId: string
+
+    /**
+     * Schema variant identifier
+     * @type {string}
+     * @memberof SchemasApiDetachAttributeFuncBinding
+     */
+    readonly schemaVariantId: string
+
+    /**
+     * Func identifier
+     * @type {string}
+     * @memberof SchemasApiDetachAttributeFuncBinding
      */
     readonly funcId: string
 }
@@ -10371,6 +10929,18 @@ export class SchemasApi extends BaseAPI implements SchemasApiInterface {
 
     /**
      * 
+     * @summary Create an attribute function and attach to a schema variant
+     * @param {SchemasApiCreateVariantAttributeRequest} requestParameters Request parameters.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof SchemasApi
+     */
+    public createVariantAttribute(requestParameters: SchemasApiCreateVariantAttributeRequest, options?: RawAxiosRequestConfig) {
+        return SchemasApiFp(this.configuration).createVariantAttribute(requestParameters.workspaceId, requestParameters.changeSetId, requestParameters.schemaId, requestParameters.schemaVariantId, requestParameters.createVariantAttributeFuncV1Request, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * 
      * @summary Create an authentication function and attach to a schema variant
      * @param {SchemasApiCreateVariantAuthenticationRequest} requestParameters Request parameters.
      * @param {*} [options] Override http request option.
@@ -10427,6 +10997,18 @@ export class SchemasApi extends BaseAPI implements SchemasApiInterface {
      */
     public detachActionFuncBinding(requestParameters: SchemasApiDetachActionFuncBindingRequest, options?: RawAxiosRequestConfig) {
         return SchemasApiFp(this.configuration).detachActionFuncBinding(requestParameters.workspaceId, requestParameters.changeSetId, requestParameters.schemaId, requestParameters.schemaVariantId, requestParameters.funcId, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * 
+     * @summary Delete the binding between an attribute func and the schema variant
+     * @param {SchemasApiDetachAttributeFuncBindingRequest} requestParameters Request parameters.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof SchemasApi
+     */
+    public detachAttributeFuncBinding(requestParameters: SchemasApiDetachAttributeFuncBindingRequest, options?: RawAxiosRequestConfig) {
+        return SchemasApiFp(this.configuration).detachAttributeFuncBinding(requestParameters.workspaceId, requestParameters.changeSetId, requestParameters.schemaId, requestParameters.schemaVariantId, requestParameters.funcId, options).then((request) => request(this.axios, this.basePath));
     }
 
     /**

@@ -2032,7 +2032,8 @@ Schemas management endpoints
   "description": "Creates an EC2 Instance",
   "displayName": "Create EC2 Instance",
   "kind": "Create",
-  "name": "awsEC2InstanceCreate"
+  "name": "awsEC2InstanceCreate",
+  "skipOverlay": false
 }
 ```
 
@@ -2099,6 +2100,106 @@ Schemas management endpoints
 |Status|Meaning|Description|Schema|
 |---|---|---|---|
 |200|[OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)|Action function successfully deteched from the variant|[DetachFuncBindingV1Response](#schemadetachfuncbindingv1response)|
+|401|[Unauthorized](https://tools.ietf.org/html/rfc7235#section-3.1)|Unauthorized - Invalid or missing token|None|
+|404|[Not Found](https://tools.ietf.org/html/rfc7231#section-6.5.4)|Func not found|None|
+|412|[Precondition Failed](https://tools.ietf.org/html/rfc7232#section-4.2)|Schema variant not found for schema|None|
+|500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
+
+## Create an attribute function and attach to a schema variant
+
+<a id="opIdcreate_variant_attribute"></a>
+
+> Request format
+
+`POST /v1/w/{workspace_id}/change-sets/{change_set_id}/schemas/{schema_id}/variant/{schema_variant_id}/funcs/attribute`
+
+> Body parameter
+
+```json
+{
+  "argumentBindings": [
+    {
+      "elementKind": "String",
+      "kind": "String",
+      "name": "instanceType",
+      "propId": "01H9ZQD35JPMBGHH69BT0Q79VZ",
+      "staticValue": null
+    }
+  ],
+  "code": "async function main(instanceType: Input): Promise<Output> { return instanceType; }",
+  "componentId": "01H9ZQD35JPMBGHH69BT0Q79VZ",
+  "description": "Sets the instance type for an EC2 Instance",
+  "displayName": "Set Instance Type",
+  "name": "awsEC2SetInstanceType",
+  "propId": "01H9ZQD35JPMBGHH69BT0Q79VZ",
+  "skipOverlay": false
+}
+```
+
+<h3 id="create-an-attribute-function-and-attach-to-a-schema-variant-parameters">Parameters</h3>
+
+|Name|In|Type|Required|Description|
+|---|---|---|---|---|
+|workspace_id|path|string|true|Workspace identifier|
+|change_set_id|path|string|true|Change Set identifier|
+|schema_id|path|string|true|Schema identifier|
+|schema_variant_id|path|string|true|Schema variant identifier|
+|body|body|[CreateVariantAttributeFuncV1Request](#schemacreatevariantattributefuncv1request)|true|none|
+
+> Example responses
+
+> 200 Response
+
+```json
+{
+  "attributePrototypeId": "01H9ZQD35JPMBGHH69BT0Q79VZ",
+  "funcId": "01H9ZQD35JPMBGHH69BT0Q79VZ"
+}
+```
+
+<h3 id="create-an-attribute-function-and-attach-to-a-schema-variant-responses">Responses</h3>
+
+|Status|Meaning|Description|Schema|
+|---|---|---|---|
+|200|[OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)|Attribute function successfully created and attached to the variant|[CreateVariantAttributeFuncV1Response](#schemacreatevariantattributefuncv1response)|
+|401|[Unauthorized](https://tools.ietf.org/html/rfc7235#section-3.1)|Unauthorized - Invalid or missing token|None|
+|404|[Not Found](https://tools.ietf.org/html/rfc7231#section-6.5.4)|Schema variant not found|None|
+|412|[Precondition Failed](https://tools.ietf.org/html/rfc7232#section-4.2)|Schema variant not found for schema|None|
+|500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
+
+## Delete the binding between an attribute func and the schema variant
+
+<a id="opIddetach_attribute_func_binding"></a>
+
+> Request format
+
+`DELETE /v1/w/{workspace_id}/change-sets/{change_set_id}/schemas/{schema_id}/variant/{schema_variant_id}/funcs/attribute/{func_id}`
+
+<h3 id="delete-the-binding-between-an-attribute-func-and-the-schema-variant-parameters">Parameters</h3>
+
+|Name|In|Type|Required|Description|
+|---|---|---|---|---|
+|workspace_id|path|string|true|Workspace identifier|
+|change_set_id|path|string|true|Change Set identifier|
+|schema_id|path|string|true|Schema identifier|
+|schema_variant_id|path|string|true|Schema variant identifier|
+|func_id|path|string|true|Func identifier|
+
+> Example responses
+
+> 200 Response
+
+```json
+{
+  "success": true
+}
+```
+
+<h3 id="delete-the-binding-between-an-attribute-func-and-the-schema-variant-responses">Responses</h3>
+
+|Status|Meaning|Description|Schema|
+|---|---|---|---|
+|200|[OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)|Attribute function successfully detached from the variant|[DetachFuncBindingV1Response](#schemadetachfuncbindingv1response)|
 |401|[Unauthorized](https://tools.ietf.org/html/rfc7235#section-3.1)|Unauthorized - Invalid or missing token|None|
 |404|[Not Found](https://tools.ietf.org/html/rfc7231#section-6.5.4)|Func not found|None|
 |412|[Precondition Failed](https://tools.ietf.org/html/rfc7232#section-4.2)|Schema variant not found for schema|None|
@@ -2206,7 +2307,8 @@ Schemas management endpoints
   "code": "<!-- String escaped Typescript code here -->",
   "description": "Generates the payload required for creating an EC2 instance",
   "displayName": "Generate EC2 Instance Create Payload",
-  "name": "awsEC2InstanceGenerateCode"
+  "name": "awsEC2InstanceGenerateCode",
+  "skipOverlay": false
 }
 ```
 
@@ -2293,7 +2395,8 @@ Schemas management endpoints
   "code": "<!-- String escaped Typescript code here -->",
   "description": "Manages a collection of VPC components and their relationships",
   "displayName": "Manage my VPC Components",
-  "name": "awsCreateMyVpc"
+  "name": "awsCreateMyVpc",
+  "skipOverlay": false
 }
 ```
 
@@ -2380,7 +2483,8 @@ Schemas management endpoints
   "code": "<!-- String escaped Typescript code here -->",
   "description": "Creates an EC2 Instance",
   "displayName": "Create EC2 Instance",
-  "name": "awsEC2InstanceCreate"
+  "name": "awsEC2InstanceCreate",
+  "skipOverlay": false
 }
 ```
 
@@ -2987,6 +3091,51 @@ Functions management endpoints
 |200|[OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)|Func Run retrieved successfully|[GetFuncRunV1Response](#schemagetfuncrunv1response)|
 |401|[Unauthorized](https://tools.ietf.org/html/rfc7235#section-3.1)|Unauthorized - Invalid or missing token|None|
 |404|[Not Found](https://tools.ietf.org/html/rfc7231#section-6.5.4)|Func run not found|None|
+|500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
+
+## Create a transformation function
+
+<a id="opIdcreate_transformation"></a>
+
+> Request format
+
+`POST /v1/w/{workspace_id}/change-sets/{change_set_id}/funcs/transformation`
+
+> Body parameter
+
+```json
+{
+  "code": "<!-- String escaped Typescript code here -->",
+  "description": "A custom transformation function",
+  "displayName": "My Transformation",
+  "name": "myTransformation"
+}
+```
+
+<h3 id="create-a-transformation-function-parameters">Parameters</h3>
+
+|Name|In|Type|Required|Description|
+|---|---|---|---|---|
+|workspace_id|path|string|true|Workspace identifier|
+|change_set_id|path|string|true|Change Set identifier|
+|body|body|[CreateTransformationFuncV1Request](#schemacreatetransformationfuncv1request)|true|none|
+
+> Example responses
+
+> 200 Response
+
+```json
+{
+  "funcId": "01H9ZQD35JPMBGHH69BT0Q79VZ"
+}
+```
+
+<h3 id="create-a-transformation-function-responses">Responses</h3>
+
+|Status|Meaning|Description|Schema|
+|---|---|---|---|
+|200|[OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)|Transformation function successfully created|[CreateTransformationFuncV1Response](#schemacreatetransformationfuncv1response)|
+|401|[Unauthorized](https://tools.ietf.org/html/rfc7235#section-3.1)|Unauthorized - Invalid or missing token|None|
 |500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
 
 ## Get function details
@@ -4053,6 +4202,34 @@ Standard success response format for v1 API
 |---|---|---|---|---|
 |data|string|true|none|none|
 
+## [AttributeArgumentBindingRequest](#tocS_AttributeArgumentBindingRequest)
+
+<a id="schemaattributeargumentbindingrequest"></a>
+<a id="schema_AttributeArgumentBindingRequest"></a>
+<a id="tocSattributeargumentbindingrequest"></a>
+<a id="tocsattributeargumentbindingrequest"></a>
+
+```json
+{
+  "elementKind": "String",
+  "kind": "String",
+  "name": "instanceType",
+  "propId": "01H9ZQD35JPMBGHH69BT0Q79VZ",
+  "staticValue": null
+}
+
+```
+
+### [Properties](#attributeargumentbindingrequest-properties)
+
+|Name|Type|Required|Restrictions|Description|
+|---|---|---|---|---|
+|elementKind|string,null|false|none|Element type for Array arguments. Required when kind is 'Array'. Specifies the type of array elements.|
+|kind|string|true|none|Type of the argument. Valid values: "Any", "Array", "Boolean", "Float", "Integer", "Json", "Map", "Object", "String". Use 'Array' with element_kind for typed arrays.|
+|name|string|true|none|Name of the function argument (e.g., "instanceType", "region", "tags")|
+|propId|string,null|false|none|Prop ID to bind this argument to. Either prop_id or static_value must be provided.|
+|staticValue|any|false|none|Static value for this argument. Can be string, number, boolean, array, or object. Either prop_id or static_value must be provided.|
+
 ## [BuildingResponseV1](#tocS_BuildingResponseV1)
 
 <a id="schemabuildingresponsev1"></a>
@@ -4665,6 +4842,52 @@ xor
 |---|---|---|---|---|
 |secret|[SecretV1](#schemasecretv1)|true|none|none|
 
+## [CreateTransformationFuncV1Request](#tocS_CreateTransformationFuncV1Request)
+
+<a id="schemacreatetransformationfuncv1request"></a>
+<a id="schema_CreateTransformationFuncV1Request"></a>
+<a id="tocScreatetransformationfuncv1request"></a>
+<a id="tocscreatetransformationfuncv1request"></a>
+
+```json
+{
+  "code": "<!-- String escaped Typescript code here -->",
+  "description": "A custom transformation function",
+  "displayName": "My Transformation",
+  "name": "myTransformation"
+}
+
+```
+
+### [Properties](#createtransformationfuncv1request-properties)
+
+|Name|Type|Required|Restrictions|Description|
+|---|---|---|---|---|
+|code|string|true|none|none|
+|description|string,null|false|none|none|
+|displayName|string,null|false|none|none|
+|name|string|true|none|none|
+
+## [CreateTransformationFuncV1Response](#tocS_CreateTransformationFuncV1Response)
+
+<a id="schemacreatetransformationfuncv1response"></a>
+<a id="schema_CreateTransformationFuncV1Response"></a>
+<a id="tocScreatetransformationfuncv1response"></a>
+<a id="tocscreatetransformationfuncv1response"></a>
+
+```json
+{
+  "funcId": "01H9ZQD35JPMBGHH69BT0Q79VZ"
+}
+
+```
+
+### [Properties](#createtransformationfuncv1response-properties)
+
+|Name|Type|Required|Restrictions|Description|
+|---|---|---|---|---|
+|funcId|string|true|none|none|
+
 ## [CreateVariantActionFuncV1Request](#tocS_CreateVariantActionFuncV1Request)
 
 <a id="schemacreatevariantactionfuncv1request"></a>
@@ -4678,7 +4901,8 @@ xor
   "description": "Creates an EC2 Instance",
   "displayName": "Create EC2 Instance",
   "kind": "Create",
-  "name": "awsEC2InstanceCreate"
+  "name": "awsEC2InstanceCreate",
+  "skipOverlay": false
 }
 
 ```
@@ -4692,6 +4916,7 @@ xor
 |displayName|string,null|false|none|none|
 |kind|string|true|none|none|
 |name|string|true|none|none|
+|skipOverlay|boolean,null|false|none|none|
 
 ## [CreateVariantActionFuncV1Response](#tocS_CreateVariantActionFuncV1Response)
 
@@ -4711,6 +4936,70 @@ xor
 
 |Name|Type|Required|Restrictions|Description|
 |---|---|---|---|---|
+|funcId|string|true|none|none|
+
+## [CreateVariantAttributeFuncV1Request](#tocS_CreateVariantAttributeFuncV1Request)
+
+<a id="schemacreatevariantattributefuncv1request"></a>
+<a id="schema_CreateVariantAttributeFuncV1Request"></a>
+<a id="tocScreatevariantattributefuncv1request"></a>
+<a id="tocscreatevariantattributefuncv1request"></a>
+
+```json
+{
+  "argumentBindings": [
+    {
+      "elementKind": "String",
+      "kind": "String",
+      "name": "instanceType",
+      "propId": "01H9ZQD35JPMBGHH69BT0Q79VZ",
+      "staticValue": null
+    }
+  ],
+  "code": "async function main(instanceType: Input): Promise<Output> { return instanceType; }",
+  "componentId": "01H9ZQD35JPMBGHH69BT0Q79VZ",
+  "description": "Sets the instance type for an EC2 Instance",
+  "displayName": "Set Instance Type",
+  "name": "awsEC2SetInstanceType",
+  "propId": "01H9ZQD35JPMBGHH69BT0Q79VZ",
+  "skipOverlay": false
+}
+
+```
+
+### [Properties](#createvariantattributefuncv1request-properties)
+
+|Name|Type|Required|Restrictions|Description|
+|---|---|---|---|---|
+|argumentBindings|[[AttributeArgumentBindingRequest](#schemaattributeargumentbindingrequest)]|true|none|Function arguments with their bindings (input sources). Each argument defines its type and where its value comes from.|
+|code|string|true|none|TypeScript code for the function. Should export a main function that takes arguments and returns a value.|
+|componentId|string,null|false|none|Optional component ID for component-level bindings. If not provided, creates a schema variant-level binding.|
+|description|string,null|false|none|Description of what the function does|
+|displayName|string,null|false|none|Human-readable display name|
+|name|string|true|none|Unique name for the function (e.g., "awsEC2SetInstanceType")|
+|propId|string|true|none|Prop ID where the function output will be written (required)|
+|skipOverlay|boolean,null|false|none|none|
+
+## [CreateVariantAttributeFuncV1Response](#tocS_CreateVariantAttributeFuncV1Response)
+
+<a id="schemacreatevariantattributefuncv1response"></a>
+<a id="schema_CreateVariantAttributeFuncV1Response"></a>
+<a id="tocScreatevariantattributefuncv1response"></a>
+<a id="tocscreatevariantattributefuncv1response"></a>
+
+```json
+{
+  "attributePrototypeId": "01H9ZQD35JPMBGHH69BT0Q79VZ",
+  "funcId": "01H9ZQD35JPMBGHH69BT0Q79VZ"
+}
+
+```
+
+### [Properties](#createvariantattributefuncv1response-properties)
+
+|Name|Type|Required|Restrictions|Description|
+|---|---|---|---|---|
+|attributePrototypeId|string|true|none|none|
 |funcId|string|true|none|none|
 
 ## [CreateVariantAuthenticationFuncV1Request](#tocS_CreateVariantAuthenticationFuncV1Request)
@@ -4771,7 +5060,8 @@ xor
   "code": "<!-- String escaped Typescript code here -->",
   "description": "Generates the payload required for creating an EC2 instance",
   "displayName": "Generate EC2 Instance Create Payload",
-  "name": "awsEC2InstanceGenerateCode"
+  "name": "awsEC2InstanceGenerateCode",
+  "skipOverlay": false
 }
 
 ```
@@ -4784,6 +5074,7 @@ xor
 |description|string,null|false|none|none|
 |displayName|string,null|false|none|none|
 |name|string|true|none|none|
+|skipOverlay|boolean,null|false|none|none|
 
 ## [CreateVariantCodegenFuncV1Response](#tocS_CreateVariantCodegenFuncV1Response)
 
@@ -4817,7 +5108,8 @@ xor
   "code": "<!-- String escaped Typescript code here -->",
   "description": "Manages a collection of VPC components and their relationships",
   "displayName": "Manage my VPC Components",
-  "name": "awsCreateMyVpc"
+  "name": "awsCreateMyVpc",
+  "skipOverlay": false
 }
 
 ```
@@ -4830,6 +5122,7 @@ xor
 |description|string,null|false|none|none|
 |displayName|string,null|false|none|none|
 |name|string|true|none|none|
+|skipOverlay|boolean,null|false|none|none|
 
 ## [CreateVariantManagementFuncV1Response](#tocS_CreateVariantManagementFuncV1Response)
 
@@ -4863,7 +5156,8 @@ xor
   "code": "<!-- String escaped Typescript code here -->",
   "description": "Creates an EC2 Instance",
   "displayName": "Create EC2 Instance",
-  "name": "awsEC2InstanceCreate"
+  "name": "awsEC2InstanceCreate",
+  "skipOverlay": false
 }
 
 ```
@@ -4876,6 +5170,7 @@ xor
 |description|string,null|false|none|none|
 |displayName|string,null|false|none|none|
 |name|string|true|none|none|
+|skipOverlay|boolean,null|false|none|none|
 
 ## [CreateVariantQualificationFuncV1Response](#tocS_CreateVariantQualificationFuncV1Response)
 

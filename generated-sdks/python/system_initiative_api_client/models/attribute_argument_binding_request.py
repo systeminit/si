@@ -17,30 +17,21 @@ import pprint
 import re  # noqa: F401
 import json
 
-from pydantic import BaseModel, ConfigDict, Field, StrictBool, StrictStr, field_validator
+from pydantic import BaseModel, ConfigDict, Field, StrictStr
 from typing import Any, ClassVar, Dict, List, Optional
-from typing_extensions import Annotated
 from typing import Optional, Set
 from typing_extensions import Self
 
-class CreateVariantActionFuncV1Request(BaseModel):
+class AttributeArgumentBindingRequest(BaseModel):
     """
-    CreateVariantActionFuncV1Request
+    AttributeArgumentBindingRequest
     """ # noqa: E501
-    code: StrictStr
-    description: Optional[StrictStr] = None
-    display_name: Optional[StrictStr] = Field(default=None, alias="displayName")
-    kind: Annotated[str, Field(strict=True)]
-    name: StrictStr
-    skip_overlay: Optional[StrictBool] = Field(default=None, alias="skipOverlay")
-    __properties: ClassVar[List[str]] = ["code", "description", "displayName", "kind", "name", "skipOverlay"]
-
-    @field_validator('kind')
-    def kind_validate_regular_expression(cls, value):
-        """Validates the regular expression"""
-        if not re.match(r"^(Create|Destroy|Manual|Refresh|Update)$", value):
-            raise ValueError(r"must validate the regular expression /^(Create|Destroy|Manual|Refresh|Update)$/")
-        return value
+    element_kind: Optional[StrictStr] = Field(default=None, description="Element type for Array arguments. Required when kind is 'Array'. Specifies the type of array elements.", alias="elementKind")
+    kind: StrictStr = Field(description="Type of the argument. Valid values: \"Any\", \"Array\", \"Boolean\", \"Float\", \"Integer\", \"Json\", \"Map\", \"Object\", \"String\". Use 'Array' with element_kind for typed arrays.")
+    name: StrictStr = Field(description="Name of the function argument (e.g., \"instanceType\", \"region\", \"tags\")")
+    prop_id: Optional[StrictStr] = Field(default=None, description="Prop ID to bind this argument to. Either prop_id or static_value must be provided.", alias="propId")
+    static_value: Optional[Any] = Field(default=None, alias="staticValue")
+    __properties: ClassVar[List[str]] = ["elementKind", "kind", "name", "propId", "staticValue"]
 
     model_config = ConfigDict(
         populate_by_name=True,
@@ -60,7 +51,7 @@ class CreateVariantActionFuncV1Request(BaseModel):
 
     @classmethod
     def from_json(cls, json_str: str) -> Optional[Self]:
-        """Create an instance of CreateVariantActionFuncV1Request from a JSON string"""
+        """Create an instance of AttributeArgumentBindingRequest from a JSON string"""
         return cls.from_dict(json.loads(json_str))
 
     def to_dict(self) -> Dict[str, Any]:
@@ -81,26 +72,26 @@ class CreateVariantActionFuncV1Request(BaseModel):
             exclude=excluded_fields,
             exclude_none=True,
         )
-        # set to None if description (nullable) is None
+        # set to None if element_kind (nullable) is None
         # and model_fields_set contains the field
-        if self.description is None and "description" in self.model_fields_set:
-            _dict['description'] = None
+        if self.element_kind is None and "element_kind" in self.model_fields_set:
+            _dict['elementKind'] = None
 
-        # set to None if display_name (nullable) is None
+        # set to None if prop_id (nullable) is None
         # and model_fields_set contains the field
-        if self.display_name is None and "display_name" in self.model_fields_set:
-            _dict['displayName'] = None
+        if self.prop_id is None and "prop_id" in self.model_fields_set:
+            _dict['propId'] = None
 
-        # set to None if skip_overlay (nullable) is None
+        # set to None if static_value (nullable) is None
         # and model_fields_set contains the field
-        if self.skip_overlay is None and "skip_overlay" in self.model_fields_set:
-            _dict['skipOverlay'] = None
+        if self.static_value is None and "static_value" in self.model_fields_set:
+            _dict['staticValue'] = None
 
         return _dict
 
     @classmethod
     def from_dict(cls, obj: Optional[Dict[str, Any]]) -> Optional[Self]:
-        """Create an instance of CreateVariantActionFuncV1Request from a dict"""
+        """Create an instance of AttributeArgumentBindingRequest from a dict"""
         if obj is None:
             return None
 
@@ -108,12 +99,11 @@ class CreateVariantActionFuncV1Request(BaseModel):
             return cls.model_validate(obj)
 
         _obj = cls.model_validate({
-            "code": obj.get("code"),
-            "description": obj.get("description"),
-            "displayName": obj.get("displayName"),
+            "elementKind": obj.get("elementKind"),
             "kind": obj.get("kind"),
             "name": obj.get("name"),
-            "skipOverlay": obj.get("skipOverlay")
+            "propId": obj.get("propId"),
+            "staticValue": obj.get("staticValue")
         })
         return _obj
 
