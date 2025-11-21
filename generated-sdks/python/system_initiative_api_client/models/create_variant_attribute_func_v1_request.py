@@ -17,30 +17,25 @@ import pprint
 import re  # noqa: F401
 import json
 
-from pydantic import BaseModel, ConfigDict, Field, StrictBool, StrictStr, field_validator
+from pydantic import BaseModel, ConfigDict, Field, StrictBool, StrictStr
 from typing import Any, ClassVar, Dict, List, Optional
-from typing_extensions import Annotated
+from system_initiative_api_client.models.attribute_argument_binding_request import AttributeArgumentBindingRequest
 from typing import Optional, Set
 from typing_extensions import Self
 
-class CreateVariantActionFuncV1Request(BaseModel):
+class CreateVariantAttributeFuncV1Request(BaseModel):
     """
-    CreateVariantActionFuncV1Request
+    CreateVariantAttributeFuncV1Request
     """ # noqa: E501
-    code: StrictStr
-    description: Optional[StrictStr] = None
-    display_name: Optional[StrictStr] = Field(default=None, alias="displayName")
-    kind: Annotated[str, Field(strict=True)]
-    name: StrictStr
+    argument_bindings: List[AttributeArgumentBindingRequest] = Field(description="Function arguments with their bindings (input sources). Each argument defines its type and where its value comes from.", alias="argumentBindings")
+    code: StrictStr = Field(description="TypeScript code for the function. Should export a main function that takes arguments and returns a value.")
+    component_id: Optional[StrictStr] = Field(default=None, description="Optional component ID for component-level bindings. If not provided, creates a schema variant-level binding.", alias="componentId")
+    description: Optional[StrictStr] = Field(default=None, description="Description of what the function does")
+    display_name: Optional[StrictStr] = Field(default=None, description="Human-readable display name", alias="displayName")
+    name: StrictStr = Field(description="Unique name for the function (e.g., \"awsEC2SetInstanceType\")")
+    prop_id: StrictStr = Field(description="Prop ID where the function output will be written (required)", alias="propId")
     skip_overlay: Optional[StrictBool] = Field(default=None, alias="skipOverlay")
-    __properties: ClassVar[List[str]] = ["code", "description", "displayName", "kind", "name", "skipOverlay"]
-
-    @field_validator('kind')
-    def kind_validate_regular_expression(cls, value):
-        """Validates the regular expression"""
-        if not re.match(r"^(Create|Destroy|Manual|Refresh|Update)$", value):
-            raise ValueError(r"must validate the regular expression /^(Create|Destroy|Manual|Refresh|Update)$/")
-        return value
+    __properties: ClassVar[List[str]] = ["argumentBindings", "code", "componentId", "description", "displayName", "name", "propId", "skipOverlay"]
 
     model_config = ConfigDict(
         populate_by_name=True,
@@ -60,7 +55,7 @@ class CreateVariantActionFuncV1Request(BaseModel):
 
     @classmethod
     def from_json(cls, json_str: str) -> Optional[Self]:
-        """Create an instance of CreateVariantActionFuncV1Request from a JSON string"""
+        """Create an instance of CreateVariantAttributeFuncV1Request from a JSON string"""
         return cls.from_dict(json.loads(json_str))
 
     def to_dict(self) -> Dict[str, Any]:
@@ -81,6 +76,18 @@ class CreateVariantActionFuncV1Request(BaseModel):
             exclude=excluded_fields,
             exclude_none=True,
         )
+        # override the default output from pydantic by calling `to_dict()` of each item in argument_bindings (list)
+        _items = []
+        if self.argument_bindings:
+            for _item_argument_bindings in self.argument_bindings:
+                if _item_argument_bindings:
+                    _items.append(_item_argument_bindings.to_dict())
+            _dict['argumentBindings'] = _items
+        # set to None if component_id (nullable) is None
+        # and model_fields_set contains the field
+        if self.component_id is None and "component_id" in self.model_fields_set:
+            _dict['componentId'] = None
+
         # set to None if description (nullable) is None
         # and model_fields_set contains the field
         if self.description is None and "description" in self.model_fields_set:
@@ -100,7 +107,7 @@ class CreateVariantActionFuncV1Request(BaseModel):
 
     @classmethod
     def from_dict(cls, obj: Optional[Dict[str, Any]]) -> Optional[Self]:
-        """Create an instance of CreateVariantActionFuncV1Request from a dict"""
+        """Create an instance of CreateVariantAttributeFuncV1Request from a dict"""
         if obj is None:
             return None
 
@@ -108,11 +115,13 @@ class CreateVariantActionFuncV1Request(BaseModel):
             return cls.model_validate(obj)
 
         _obj = cls.model_validate({
+            "argumentBindings": [AttributeArgumentBindingRequest.from_dict(_item) for _item in obj["argumentBindings"]] if obj.get("argumentBindings") is not None else None,
             "code": obj.get("code"),
+            "componentId": obj.get("componentId"),
             "description": obj.get("description"),
             "displayName": obj.get("displayName"),
-            "kind": obj.get("kind"),
             "name": obj.get("name"),
+            "propId": obj.get("propId"),
             "skipOverlay": obj.get("skipOverlay")
         })
         return _obj

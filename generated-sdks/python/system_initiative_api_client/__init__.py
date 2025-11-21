@@ -49,6 +49,7 @@ __all__ = [
     "AddToViewV1Request",
     "ApiError",
     "ApiSuccessString",
+    "AttributeArgumentBindingRequest",
     "BuildingResponseV1",
     "CancelActionV1Response",
     "ChangeSetViewV1",
@@ -72,8 +73,12 @@ __all__ = [
     "CreateSchemaV1Request",
     "CreateSecretV1Request",
     "CreateSecretV1Response",
+    "CreateTransformationFuncV1Request",
+    "CreateTransformationFuncV1Response",
     "CreateVariantActionFuncV1Request",
     "CreateVariantActionFuncV1Response",
+    "CreateVariantAttributeFuncV1Request",
+    "CreateVariantAttributeFuncV1Response",
     "CreateVariantAuthenticationFuncV1Request",
     "CreateVariantAuthenticationFuncV1Response",
     "CreateVariantCodegenFuncV1Request",
@@ -219,6 +224,7 @@ from system_initiative_api_client.models.add_action_v1_response import AddAction
 from system_initiative_api_client.models.add_to_view_v1_request import AddToViewV1Request as AddToViewV1Request
 from system_initiative_api_client.models.api_error import ApiError as ApiError
 from system_initiative_api_client.models.api_success_string import ApiSuccessString as ApiSuccessString
+from system_initiative_api_client.models.attribute_argument_binding_request import AttributeArgumentBindingRequest as AttributeArgumentBindingRequest
 from system_initiative_api_client.models.building_response_v1 import BuildingResponseV1 as BuildingResponseV1
 from system_initiative_api_client.models.cancel_action_v1_response import CancelActionV1Response as CancelActionV1Response
 from system_initiative_api_client.models.change_set_view_v1 import ChangeSetViewV1 as ChangeSetViewV1
@@ -242,8 +248,12 @@ from system_initiative_api_client.models.create_component_v1_response import Cre
 from system_initiative_api_client.models.create_schema_v1_request import CreateSchemaV1Request as CreateSchemaV1Request
 from system_initiative_api_client.models.create_secret_v1_request import CreateSecretV1Request as CreateSecretV1Request
 from system_initiative_api_client.models.create_secret_v1_response import CreateSecretV1Response as CreateSecretV1Response
+from system_initiative_api_client.models.create_transformation_func_v1_request import CreateTransformationFuncV1Request as CreateTransformationFuncV1Request
+from system_initiative_api_client.models.create_transformation_func_v1_response import CreateTransformationFuncV1Response as CreateTransformationFuncV1Response
 from system_initiative_api_client.models.create_variant_action_func_v1_request import CreateVariantActionFuncV1Request as CreateVariantActionFuncV1Request
 from system_initiative_api_client.models.create_variant_action_func_v1_response import CreateVariantActionFuncV1Response as CreateVariantActionFuncV1Response
+from system_initiative_api_client.models.create_variant_attribute_func_v1_request import CreateVariantAttributeFuncV1Request as CreateVariantAttributeFuncV1Request
+from system_initiative_api_client.models.create_variant_attribute_func_v1_response import CreateVariantAttributeFuncV1Response as CreateVariantAttributeFuncV1Response
 from system_initiative_api_client.models.create_variant_authentication_func_v1_request import CreateVariantAuthenticationFuncV1Request as CreateVariantAuthenticationFuncV1Request
 from system_initiative_api_client.models.create_variant_authentication_func_v1_response import CreateVariantAuthenticationFuncV1Response as CreateVariantAuthenticationFuncV1Response
 from system_initiative_api_client.models.create_variant_codegen_func_v1_request import CreateVariantCodegenFuncV1Request as CreateVariantCodegenFuncV1Request

@@ -39,7 +39,8 @@ class TestCreateVariantActionFuncV1Request(unittest.TestCase):
                 description = 'Creates an EC2 Instance',
                 display_name = 'Create EC2 Instance',
                 kind = 'Create',
-                name = 'awsEC2InstanceCreate'
+                name = 'awsEC2InstanceCreate',
+                skip_overlay = False
             )
         else:
             return CreateVariantActionFuncV1Request(

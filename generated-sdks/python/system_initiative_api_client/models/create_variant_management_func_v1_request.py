@@ -17,7 +17,7 @@ import pprint
 import re  # noqa: F401
 import json
 
-from pydantic import BaseModel, ConfigDict, Field, StrictStr
+from pydantic import BaseModel, ConfigDict, Field, StrictBool, StrictStr
 from typing import Any, ClassVar, Dict, List, Optional
 from typing import Optional, Set
 from typing_extensions import Self
@@ -30,7 +30,8 @@ class CreateVariantManagementFuncV1Request(BaseModel):
     description: Optional[StrictStr] = None
     display_name: Optional[StrictStr] = Field(default=None, alias="displayName")
     name: StrictStr
-    __properties: ClassVar[List[str]] = ["code", "description", "displayName", "name"]
+    skip_overlay: Optional[StrictBool] = Field(default=None, alias="skipOverlay")
+    __properties: ClassVar[List[str]] = ["code", "description", "displayName", "name", "skipOverlay"]
 
     model_config = ConfigDict(
         populate_by_name=True,
@@ -81,6 +82,11 @@ class CreateVariantManagementFuncV1Request(BaseModel):
         if self.display_name is None and "display_name" in self.model_fields_set:
             _dict['displayName'] = None
 
+        # set to None if skip_overlay (nullable) is None
+        # and model_fields_set contains the field
+        if self.skip_overlay is None and "skip_overlay" in self.model_fields_set:
+            _dict['skipOverlay'] = None
+
         return _dict
 
     @classmethod
@@ -96,7 +102,8 @@ class CreateVariantManagementFuncV1Request(BaseModel):
             "code": obj.get("code"),
             "description": obj.get("description"),
             "displayName": obj.get("displayName"),
-            "name": obj.get("name")
+            "name": obj.get("name"),
+            "skipOverlay": obj.get("skipOverlay")
         })
         return _obj
 

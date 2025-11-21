@@ -26,6 +26,13 @@ class TestFuncsApi(unittest.TestCase):
     def tearDown(self) -> None:
         pass
 
+    def test_create_transformation(self) -> None:
+        """Test case for create_transformation
+
+        Create a transformation function
+        """
+        pass
+
     def test_get_func(self) -> None:
         """Test case for get_func
 
