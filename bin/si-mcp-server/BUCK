@@ -31,10 +31,12 @@ deno_compile(
     name = "build",
     main = "main.ts",
     out = "si-mcp-server",
-    srcs = glob([
-        "src/**/*.ts",
+    srcs = [
+        "//bin/si:mcp-server-src",  # Use vendored source from si (source of truth)
         "main.ts",
-    ]),
+        "deno.json",
+        "deno.lock",
+    ],
     permissions = [
         "allow-all",
     ],
@@ -53,17 +55,11 @@ deno_format(
     check = True,
 )
 
-deno_test(
+# TODO(Paul): This tricks the build system into building the binary as its unit test
+# suite which will force a lint and basic compile correctness check.
+alias(
     name = "test-unit",
-    srcs = glob(["src/**/*_test.ts"]),
-    ignore = ["node_modules"],
-    permissions = [
-        "allow-all",
-    ],
-    env = [
-        "SI_API_TOKEN=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ3b3Jrc3BhY2VJZCI6InRlc3Qtd29ya3NwYWNlLWlkIiwidXNlcklkIjoidGVzdC11c2VyLWlkIn0.fakesignature",
-        "SI_WORKSPACE_ID=test-workspace-id"
-    ],
+    actual = ":build",
 )
 
 docker_image(

@@ -40,6 +40,18 @@ import type { ComponentGetOptions } from "./component/get.ts";
 import type { ComponentUpdateOptions } from "./component/update.ts";
 import type { ComponentDeleteOptions } from "./component/delete.ts";
 import type { ComponentSearchOptions } from "./component/search.ts";
+import {
+  callAiAgentInit,
+  type AiAgentInitOptions,
+} from "./command/ai-agent/init.ts";
+import {
+  callAiAgentStart,
+  type AiAgentStartOptions,
+} from "./command/ai-agent/start.ts";
+import {
+  callAiAgentConfig,
+  type AiAgentConfigOptions,
+} from "./command/ai-agent/config.ts";
 
 /** Current version of the SI CLI */
 const VERSION = "0.1.0";
@@ -167,6 +179,10 @@ function buildCommand() {
     })
     .command("completion", new CompletionsCommand())
     // deno-lint-ignore no-explicit-any
+    .command("ai-agent", buildAiAgentCommand() as any)
+    // deno-lint-ignore no-explicit-any
+    .command("mcp-server", buildMcpServerCommand() as any)
+    // deno-lint-ignore no-explicit-any
     .command("component", buildComponentCommand() as any)
     // deno-lint-ignore no-explicit-any
     .command("project", buildProjectCommand() as any)
@@ -180,6 +196,66 @@ function buildCommand() {
     .command("template", buildTemplateCommand() as any)
     // deno-lint-ignore no-explicit-any
     .command("whoami", buildWhoamiCommand() as any);
+}
+
+/**
+ * Builds the mcp-server command.
+ * Runs the vendored MCP server (bundled in the si binary).
+ *
+ * @returns A SubCommand configured for running the MCP server
+ * @internal
+ */
+function buildMcpServerCommand() {
+  return createSubCommand()
+    .description("Run the MCP server (internal use by AI tools - for debugging only)")
+    .arguments("<mode:string>")
+    .action(async (_options, mode) => {
+      if (mode !== "stdio") {
+        throw new Error(`Unknown mode: ${mode}. Only 'stdio' is supported.`);
+      }
+
+      // Dynamic import to avoid loading MCP server code until needed
+      const { start_stdio } = await import("./mcp-server/stdio_transport.ts");
+      const { createServer } = await import("./mcp-server/server.ts");
+      const { analytics } = await import("./mcp-server/analytics.ts");
+      const { setAiAgentUserFlag } = await import("./mcp-server/user_state.ts");
+
+      // Start the MCP server directly
+      await analytics.trackServerStart();
+      await setAiAgentUserFlag();
+
+      const server = createServer();
+
+      let ended = false;
+      const shutdown = async (reason: string, exitCode: number | null = 0) => {
+        if (ended) return;
+        ended = true;
+        console.log("MCP server shutdown:", reason);
+        try {
+          analytics.trackServerEnd();
+        } catch {
+          // ignore
+        }
+        await new Promise((r) => setTimeout(r, 25));
+        if (exitCode !== null) Deno.exit(exitCode);
+      };
+
+      const onSigInt = () => shutdown("SIGINT", 0);
+      const onSigTerm = () => shutdown("SIGTERM", 0);
+      Deno.addSignalListener("SIGINT", onSigInt);
+      Deno.addSignalListener("SIGTERM", onSigTerm);
+
+      try {
+        await start_stdio(server);
+        await shutdown("transport_closed", null);
+      } catch (err: unknown) {
+        const name = err instanceof Error ? err.name : "unknown";
+        await shutdown(`uncaught_error:${name}`, 1);
+      } finally {
+        Deno.removeSignalListener("SIGINT", onSigInt);
+        Deno.removeSignalListener("SIGTERM", onSigTerm);
+      }
+    });
 }
 
 /**
@@ -359,6 +435,74 @@ function buildWhoamiCommand() {
 
       await callWhoami(Context.instance(), apiCtx);
     });
+}
+
+/**
+ * Builds the ai-agent command group with all subcommands.
+ *
+ * @returns A SubCommand configured for AI agent operations
+ * @internal
+ */
+function buildAiAgentCommand() {
+  return createSubCommand()
+    .description("Manages the SI AI Agent (MCP server)")
+    .action(function () {
+      this.showHelp();
+    })
+    .command(
+      "init",
+      createSubCommand()
+        .description(
+          "Initialize AI agent (one-time setup: configure token and create MCP files)",
+        )
+        .option(
+          "--target-dir <path:string>",
+          "Directory to create config files (defaults to current directory)",
+        )
+        .option(
+          "--api-token <token:string>",
+          "System Initiative API token (will prompt if not provided)",
+        )
+        .option(
+          "--tool <name:string>",
+          "AI tool to use: claude (default), cursor, windsurf, or none",
+        )
+        .action(async (options) => {
+          await callAiAgentInit(Context.instance(), options as AiAgentInitOptions);
+        }),
+    )
+    .command(
+      "start",
+      createSubCommand()
+        .description("Launch Claude Code (MCP server starts automatically)")
+        .option(
+          "--tool <name:string>",
+          "AI tool to launch (default: claude)",
+        )
+        .action(async (options) => {
+          await callAiAgentStart(Context.instance(), options as AiAgentStartOptions);
+        }),
+    )
+    .command(
+      "config",
+      createSubCommand()
+        .description("View or update AI agent configuration")
+        .option(
+          "--show",
+          "Show current configuration (default if no other options provided)",
+        )
+        .option(
+          "--update-token",
+          "Update the API token",
+        )
+        .option(
+          "--tool <name:string>",
+          "Update the AI tool: claude, cursor, windsurf, or none",
+        )
+        .action(async (options) => {
+          await callAiAgentConfig(Context.instance(), options as AiAgentConfigOptions);
+        }),
+    );
 }
 
 /**

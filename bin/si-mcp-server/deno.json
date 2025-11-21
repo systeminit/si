@@ -19,6 +19,7 @@
     "posthog-node": "npm:posthog-node@^4.2.1",
     "ulid": "npm:ulid@^3.0.1",
     "zod": "npm:zod@^3.21.4",
-    "zod-to-json-schema": "npm:zod-to-json-schema@^3.24.6"
+    "zod-to-json-schema": "npm:zod-to-json-schema@^3.24.6",
+    "zod-v3": "npm:zod@^3.21.4"
   }
 }
