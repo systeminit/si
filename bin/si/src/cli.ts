@@ -375,8 +375,11 @@ function buildRemoteSchemaCommand() {
           "Pushes schemas to your remote System Initiative workspace",
         )
         .option("-s, --skip-confirmation", "Skip confirmation prompt")
+        .option("-b, --update-builtins", "Change builtin schema, without creating overlays. SI Admin Only", {
+          hidden: false,
+        })
         .arguments("[...SCHEMA_NAME:string]")
-        .action(async ({ root, skipConfirmation }, ...schemaNames) => {
+        .action(async ({ root, skipConfirmation, updateBuiltins }, ...schemaNames) => {
           const project = createProject(root);
 
           const ctx = Context.instance();
@@ -387,6 +390,7 @@ function buildRemoteSchemaCommand() {
             project,
             schemaNames,
             skipConfirmation,
+            !!updateBuiltins,
           );
         }),
     )

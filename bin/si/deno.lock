@@ -30,7 +30,6 @@
     "jsr:@std/text@~1.0.7": "1.0.16",
     "jsr:@std/ulid@1": "1.0.0",
     "jsr:@std/yaml@^1.0.5": "1.0.10",
-    "jsr:@systeminit/api-client@^1.9.0": "1.9.0",
     "npm:@modelcontextprotocol/sdk@^1.16.0": "1.18.1_express@5.1.0_zod@3.25.76",
     "npm:@types/node@24.0.7": "24.0.7",
     "npm:axios@*": "1.13.2",
@@ -164,12 +163,6 @@
     },
     "@std/yaml@1.0.10": {
       "integrity": "245706ea3511cc50c8c6d00339c23ea2ffa27bd2c7ea5445338f8feff31fa58e"
-    },
-    "@systeminit/api-client@1.9.0": {
-      "integrity": "35a7fcb52522bcdc7f2843d5c041f44e35b67a1ae2f2b336bcf285d3c5f74b08",
-      "dependencies": [
-        "npm:axios@^1.6.1"
-      ]
     }
   },
   "npm": {
@@ -820,7 +813,7 @@
       "jsr:@std/path@^1.1.2",
       "jsr:@std/ulid@1",
       "jsr:@std/yaml@^1.0.5",
-      "jsr:@systeminit/api-client@^1.9.0",
+      "jsr:@systeminit/api-client@^1.10.0",
       "npm:@modelcontextprotocol/sdk@^1.16.0",
       "npm:axios@^1.13.1",
       "npm:ejs@^3.1.10",
