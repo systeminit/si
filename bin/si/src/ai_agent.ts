@@ -45,6 +45,42 @@ interface McpConfig {
   };
 }
 
+/**
+ * Check if an MCP config is using the old Docker-based format
+ */
+function isOldDockerFormat(config: McpConfig): boolean {
+  const serverConfig = config.mcpServers["system-initiative"];
+  return serverConfig.command === "docker" &&
+    Array.isArray(serverConfig.args) &&
+    serverConfig.args.includes("systeminit/si-mcp-server:stable");
+}
+
+/**
+ * Migrate an old Docker-based MCP config to the new bundled format
+ */
+function migrateDockerConfig(
+  oldConfig: McpConfig,
+  newCommand: string,
+): McpConfig {
+  const oldServerConfig = oldConfig.mcpServers["system-initiative"];
+
+  // Preserve the API token from the old config
+  const apiToken = oldServerConfig.env.SI_API_TOKEN;
+
+  return {
+    mcpServers: {
+      "system-initiative": {
+        type: "stdio",
+        command: newCommand,
+        args: ["mcp-server", "stdio"],
+        env: {
+          SI_API_TOKEN: apiToken,
+        },
+      },
+    },
+  };
+}
+
 /** Claude settings configuration structure */
 interface ClaudeSettings {
   enabledMcpjsonServers: string[];
@@ -114,6 +150,7 @@ export function validateToken(token: string): boolean {
 /**
  * Create the .mcp.json configuration file
  * Points to the bundled MCP server in si binary
+ * If an old Docker-based config exists, it will be migrated to the new format
  */
 export async function createMcpConfig(
   apiToken: string,
@@ -123,20 +160,55 @@ export async function createMcpConfig(
   // Deno.execPath() returns the path to the currently running executable
   const siBinaryPath = Deno.execPath();
 
-  const mcpConfig: McpConfig = {
-    mcpServers: {
-      "system-initiative": {
-        type: "stdio",
-        command: siBinaryPath,
-        args: ["mcp-server", "stdio"],
-        env: {
-          SI_API_TOKEN: apiToken,
+  const mcpPath = join(targetDir, ".mcp.json");
+
+  // Check if .mcp.json already exists
+  let mcpConfig: McpConfig;
+  try {
+    const existingContent = await Deno.readTextFile(mcpPath);
+    const existingConfig = JSON.parse(existingContent) as McpConfig;
+
+    // Check if it's using the old Docker format
+    if (isOldDockerFormat(existingConfig)) {
+      // Migrate to new format, preserving the API token
+      mcpConfig = migrateDockerConfig(existingConfig, siBinaryPath);
+    } else {
+      // Already in new format, just update the API token
+      mcpConfig = {
+        mcpServers: {
+          "system-initiative": {
+            type: "stdio",
+            command: siBinaryPath,
+            args: ["mcp-server", "stdio"],
+            env: {
+              SI_API_TOKEN: apiToken,
+            },
+          },
+        },
+      };
+    }
+  } catch (error) {
+    // File doesn't exist or can't be read, create new config
+    if (!(error instanceof Deno.errors.NotFound)) {
+      // If it's not a "not found" error, something else went wrong
+      throw error;
+    }
+
+    // Create new config
+    mcpConfig = {
+      mcpServers: {
+        "system-initiative": {
+          type: "stdio",
+          command: siBinaryPath,
+          args: ["mcp-server", "stdio"],
+          env: {
+            SI_API_TOKEN: apiToken,
+          },
         },
       },
-    },
-  };
+    };
+  }
 
-  const mcpPath = join(targetDir, ".mcp.json");
   await Deno.writeTextFile(mcpPath, JSON.stringify(mcpConfig, null, 2));
   return mcpPath;
 }
