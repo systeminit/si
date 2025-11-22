@@ -3419,6 +3419,7 @@ dependencies = [
  "si-id",
  "strum",
  "telemetry",
+ "telemetry-utils",
  "thiserror 2.0.12",
 ]
 

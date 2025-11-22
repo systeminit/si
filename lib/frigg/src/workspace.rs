@@ -32,6 +32,7 @@ use si_id::{
     WorkspacePk,
 };
 use telemetry::prelude::*;
+use telemetry_utils::monotonic;
 
 use crate::{
     Domain,
@@ -411,16 +412,21 @@ impl FriggStore {
                 index_pointer_value.definition_checksums,
                 materialized_view_definition_checksums()
             );
+            monotonic!(frigg_get_change_set_index_definition_checksum_mismatch = 1);
             return Ok(None);
         }
 
+        // If we have a dangling pointer, that is an error and not a "None" case.
         let object_key = index_pointer_value.index_object_key;
         let bytes = self
             .store
             .get(object_key.to_string())
             .await
             .map_err(Error::EntryGetChangeSetIndex)?
-            .ok_or(Error::IndexObjectNotFound(object_key.into()))?;
+            .ok_or_else(|| {
+                monotonic!(frigg_get_change_set_index_object_not_found = 1);
+                Error::IndexObjectNotFound(object_key.into())
+            })?;
         let object = serde_json::from_slice(bytes.as_ref()).map_err(Error::Deserialize)?;
 
         Ok(Some((object, revision)))
@@ -444,6 +450,7 @@ impl FriggStore {
             Self::change_set_index_key(workspace_id, &change_set_id.to_string());
 
         let Some((bytes, revision)) = self.get_object_raw_bytes(&index_pointer_key).await? else {
+            monotonic!(frigg_get_change_set_index_pointer_not_present = 1);
             return Ok(None);
         };
 
@@ -451,7 +458,10 @@ impl FriggStore {
             match serde_json::from_slice::<ChangeSetIndexPointerVersion>(bytes.as_ref())
                 .map_err(Error::Deserialize)?
             {
-                ChangeSetIndexPointerVersion::V1(_) => return Ok(None),
+                ChangeSetIndexPointerVersion::V1(_) => {
+                    monotonic!(frigg_get_change_set_index_pointer_old_version = 1);
+                    return Ok(None);
+                }
                 ChangeSetIndexPointerVersion::V2(index) => index,
             };
 
