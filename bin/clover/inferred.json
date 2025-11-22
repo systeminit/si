@@ -1747,6 +1747,12 @@
       "neptune1.2"
     ]
   },
+  "The VPC encryption control mode, either monitor or enforce.": {
+    "enum": [
+      "monitor",
+      "enforce"
+    ]
+  },
   "For high throughput for FIFO queues, specifies whether message deduplication occurs at the message group or queue level. Valid values are ``messageGroup`` and ``queue``.\n To enable high throughput for a FIFO queue, set this attribute to ``messageGroup`` *and* set the ``FifoThroughputLimit`` attribute to ``perMessageGroupId``. If you set these attributes to anything other than these values, normal throughput is in effect and deduplication occurs as specified. For more information, see [High throughput for FIFO queues](https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/high-throughput-fifo.html) and [Quotas related to messages](https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/quotas-messages.html) in the *Developer Guide*.": {
     "enum": [
       "messageGroup",
@@ -7027,6 +7033,9 @@
   "Prefix for error report keys.": {
     "enum": null
   },
+  "Prefix for the CloudWatch log stream name.": {
+    "enum": null
+  },
   "Prefixes are used to infer logical hierarchy": {
     "enum": null
   },
@@ -8497,6 +8506,9 @@
   "The ARN of the execution role for the RStudioServerPro Domain-level app.": {
     "enum": null
   },
+  "The ARN of the execution role used to access user resources for Spark sessions and Identity Center enabled workgroups. This property applies only to Spark enabled workgroups and Identity Center enabled workgroups.": {
+    "enum": null
+  },
   "The ARN of the flow.": {
     "enum": null
   },
@@ -9100,6 +9112,9 @@
   "The Amazon Resource Name (ARN) of the IPAM Resource Discovery Association.": {
     "enum": null
   },
+  "The Amazon Resource Name (ARN) of the JWT key secret.": {
+    "enum": null
+  },
   "The Amazon Resource Name (ARN) of the KMS key that encrypts data in the cluster.": {
     "enum": null
   },
@@ -9125,6 +9140,9 @@
     "enum": null
   },
   "The Amazon Resource Name (ARN) of the Redshift data warehouse to use as the target for replication": {
+    "enum": null
+  },
+  "The Amazon Resource Name (ARN) of the S3 bucket where vector embeddings are stored. This bucket contains the vector data used by the knowledge base.": {
     "enum": null
   },
   "The Amazon Resource Name (ARN) of the S3 bucket.": {
@@ -9379,6 +9397,9 @@
   "The Amazon Resource Name (ARN) of the vector bucket.": {
     "enum": null
   },
+  "The Amazon Resource Name (ARN) of the vector index used for the knowledge base. This ARN identifies the specific vector index resource within Amazon Bedrock.": {
+    "enum": null
+  },
   "The Amazon Resource Name (ARN) of the view for which a version is being created.": {
     "enum": null
   },
@@ -9455,6 +9476,9 @@
     "enum": null
   },
   "The Amazon S3 bucket where the inference request and response data is stored.": {
+    "enum": null
+  },
+  "The Amazon S3 destination URI for log publishing.": {
     "enum": null
   },
   "The Amazon S3 directory that contains the database installation files for your CEV. For example, a valid bucket name is ``123456789012/cev1``. If this setting isn't specified, no prefix is assumed.": {
@@ -10408,6 +10432,12 @@
   "The ID of the software set to apply.": {
     "enum": null
   },
+  "The ID of the source attachment through which traffic enters a transit gateway": {
+    "enum": null
+  },
+  "The ID of the source attachment through which traffic leaves a transit gateway": {
+    "enum": null
+  },
   "The ID of the source network interface.": {
     "enum": null
   },
@@ -10451,6 +10481,9 @@
     "enum": null
   },
   "The ID of the transit gateway attachment.": {
+    "enum": null
+  },
+  "The ID of the transit gateway metering policy for which the entry is being created": {
     "enum": null
   },
   "The ID of the transit gateway multicast domain.": {
@@ -10624,6 +10657,9 @@
   "The Id of this pool's source. If set, all space provisioned in this pool must be free space provisioned in the parent pool.": {
     "enum": null
   },
+  "The Id of transit gateway": {
+    "enum": null
+  },
   "The Investigation Role's ARN.": {
     "enum": null
   },
@@ -10664,6 +10700,12 @@
     "enum": null
   },
   "The KMS encryption key id/alias used to encrypt the Data Store contents at rest.": {
+    "enum": null
+  },
+  "The KMS key ARN to encrypt the logs published to the given Amazon S3 destination.": {
+    "enum": null
+  },
+  "The KMS key ARN to encrypt the logs stored in managed log persistence.": {
     "enum": null
   },
   "The KMS key for the database. If the KMS key is not specified, the database will be encrypted with a Timestream managed KMS key located in your account.": {
@@ -10988,6 +11030,9 @@
     "enum": null
   },
   "The UsageType which a SKU pricing rule is modifying": {
+    "enum": null
+  },
+  "The VPC on which this VPC encryption control is applied.": {
     "enum": null
   },
   "The VPC where you want the private graph endpoint to be created, ie, the graph will be reachable from within the VPC.": {
@@ -11782,6 +11827,9 @@
   "The default netmask length for allocations made from this pool. This value is used when the netmask length of an allocation isn't specified.": {
     "enum": null
   },
+  "The default number of DPUs to use for executors. An executor is the smallest unit of compute that a notebook session can request from Athena. The default is 1.": {
+    "enum": null
+  },
   "The default number of days until the data within the domain expires.": {
     "enum": null
   },
@@ -11795,6 +11843,9 @@
     "enum": null
   },
   "The default value for the variable when no value is received.": {
+    "enum": null
+  },
+  "The default value is `STANDARD`. A value of `STANDARD` means that Slurm Rest is enabled.": {
     "enum": null
   },
   "The default value is `STANDARD`. A value of `STANDARD` means that Slurm accounting is enabled.": {
@@ -13114,6 +13165,18 @@
   "The limit of how many bytes that a message can contain before SQS rejects it. You can specify an integer value from ``1,024`` bytes (1 KiB) to ``262,144`` bytes (256 KiB). The default value is ``262,144`` (256 KiB).": {
     "enum": null
   },
+  "The list of IP addresses of the instances receiving traffic from the transit gateway": {
+    "enum": null
+  },
+  "The list of IP addresses of the instances sending traffic to the transit gateway for which the metering policy entry is applicable": {
+    "enum": null
+  },
+  "The list of ports on destination instances receiving traffic from the transit gateway": {
+    "enum": null
+  },
+  "The list of ports on source instances sending traffic to the transit gateway": {
+    "enum": null
+  },
   "The local address.": {
     "enum": null
   },
@@ -13355,6 +13418,9 @@
     "enum": null
   },
   "The maximum number of Aurora capacity units (ACUs) for a DB instance in an Aurora Serverless v2 cluster. You can specify ACU values in half-step increments, such as 40, 40.5, 41, and so on. The largest value that you can use is 128.\n The maximum capacity must be higher than 0.5 ACUs. For more information, see [Choosing the maximum Aurora Serverless v2 capacity setting for a cluster](https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/aurora-serverless-v2.setting-capacity.html#aurora-serverless-v2.max_capacity_considerations) in the *Amazon Aurora User Guide*.\n Aurora automatically sets certain parameters for Aurora Serverless V2 DB instances to values that depend on the maximum ACU value in the capacity range. When you update the maximum capacity value, the ``ParameterApplyStatus`` value for the DB instance changes to ``pending-reboot``. You can update the parameter values by rebooting the DB instance after changing the capacity range.": {
+    "enum": null
+  },
+  "The maximum number of DPUs that can run concurrently.": {
     "enum": null
   },
   "The maximum number of Neptune capacity units (NCUs) for a DB instance in an Neptune Serverless cluster. You can specify NCU values in half-step increments, such as 40, 40.5, 41, and so on. The smallest value you can use is 2.5, whereas the largest is 128.": {
@@ -14716,6 +14782,9 @@
   "The name of the log group for pipeline execution logs.": {
     "enum": null
   },
+  "The name of the log group in Amazon CloudWatch Logs where you want to publish your logs.": {
+    "enum": null
+  },
   "The name of the log group where the log stream is created.": {
     "enum": null
   },
@@ -15154,6 +15223,9 @@
   "The name of the vector index to create.": {
     "enum": null
   },
+  "The name of the vector index used for the knowledge base. This name identifies the vector index within the Amazon Bedrock service.": {
+    "enum": null
+  },
   "The name of the vector store.": {
     "enum": null
   },
@@ -15458,6 +15530,9 @@
     "enum": null
   },
   "The number of DPUs to request to be allocated to the reservation.": {
+    "enum": null
+  },
+  "The number of DPUs to use for the coordinator. A coordinator is a special executor that orchestrates processing work and manages other executors in a notebook session. The default is 1.": {
     "enum": null
   },
   "The number of ENA queues to be created with the instance.": {
@@ -16282,6 +16357,9 @@
   "The protocol number. A value of \"-1\" means all protocols. If you specify \"-1\" or a protocol number other than \"6\" (TCP), \"17\" (UDP), or \"1\" (ICMP), traffic on all ports is allowed, regardless of any ports or ICMP types or codes that you specify. If you specify protocol \"58\" (ICMPv6) and specify an IPv4 CIDR block, traffic for all ICMP types and codes allowed, regardless of any that you specify. If you specify protocol \"58\" (ICMPv6) and specify an IPv6 CIDR block, you must specify an ICMP type and code": {
     "enum": null
   },
+  "The protocol of the traffic": {
+    "enum": null
+  },
   "The protocol that AWS Global Accelerator uses to check the health of endpoints in this endpoint group.": {
     "enum": null
   },
@@ -16453,6 +16531,9 @@
   "The resource ID to include in key requests.": {
     "enum": null
   },
+  "The resource owner information responsible for paying default billable charges for the traffic flow": {
+    "enum": null
+  },
   "The resource policy document, which can be up to 5kb in size.": {
     "enum": null
   },
@@ -16534,6 +16615,9 @@
   "The rule number in the policy document that applies to this change.": {
     "enum": null
   },
+  "The rule number of the metering policy entry": {
+    "enum": null
+  },
   "The rule priority. A listener can't have multiple rules with the same priority.\n If you try to reorder rules by updating their priorities, do not specify a new priority if an existing rule already uses this priority, as this can cause an error. If you need to reuse a priority with a different rule, you must remove it as a priority first, and then specify it in a subsequent update.": {
     "enum": null
   },
@@ -16553,6 +16637,9 @@
     "enum": null
   },
   "The scale specification for the container service.": {
+    "enum": null
+  },
+  "The scaling tier for the provisioned control plane.": {
     "enum": null
   },
   "The schedule for the capacity manager data export. Currently supports hourly exports that provide periodic snapshots of capacity manager data.": {
@@ -17482,6 +17569,12 @@
   "The type of the artifact store, such as S3.": {
     "enum": null
   },
+  "The type of the attachment through which traffic enters a  transit gateway": {
+    "enum": null
+  },
+  "The type of the attachment through which traffic leaves a transit gateway": {
+    "enum": null
+  },
   "The type of the certificate authority.": {
     "enum": null
   },
@@ -17914,6 +18007,9 @@
   "The version of the EC2 launch template to use.": {
     "enum": null
   },
+  "The version of the JWT key secret.": {
+    "enum": null
+  },
   "The version of the PartnerApp.": {
     "enum": null
   },
@@ -18308,6 +18404,30 @@
     "enum": null
   },
   "Use this property to provide commands or a command script to run when you launch your build instance.": {
+    "enum": null
+  },
+  "Used to enable or disable EFS exclusion": {
+    "enum": null
+  },
+  "Used to enable or disable EIGW exclusion": {
+    "enum": null
+  },
+  "Used to enable or disable IGW exclusion": {
+    "enum": null
+  },
+  "Used to enable or disable Lambda exclusion": {
+    "enum": null
+  },
+  "Used to enable or disable Nat gateway exclusion": {
+    "enum": null
+  },
+  "Used to enable or disable VGW exclusion": {
+    "enum": null
+  },
+  "Used to enable or disable VPC peering exclusion": {
+    "enum": null
+  },
+  "Used to enable or disable Vpc Lattice exclusion": {
     "enum": null
   },
   "Used to install the certificate authority certificate and update the certificate authority status.": {
