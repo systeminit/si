@@ -166,26 +166,30 @@ ctx.namePattern({
 
 ## Running a Template
 
-Once your template is ready, run it with the `si-tmpl` binary.
+Once your template is ready, run it with the `si` binary.
 
 ```bash
-SI_API_TOKEN=<token> si-tmpl run ./tmpl/example.ts --key unique-key
+SI_API_TOKEN=<token> si run ./tmpl/example.ts --key unique-key
 ```
 
 For verbose logs:
 
 ```bash
-si-tmpl run ./tmpl/example.ts --key unique-key --verbose 3
+si run ./tmpl/example.ts --key unique-key --verbose 3
 ```
 
 You can also cache your workspace for faster runs:
 
 ```bash
-si-tmpl run ./tmpl/cache.ts --key cache-gen --cache-baseline ./cache/baseline.yaml --cache-baseline-only
+si run ./tmpl/cache.ts --key cache-gen --cache-baseline ./cache/baseline.yaml --cache-baseline-only
 ```
 
 Then use it later:
 
 ```bash
-si-tmpl run ./tmpl/example.ts --key example-run --baseline ./cache/baseline.yaml
+si run ./tmpl/example.ts --key example-run --baseline ./cache/baseline.yaml
 ```
+
+## Installing the SI binary
+
+The SI binary is currently in active development. You can follow the instructions in the [README](https://github.com/systeminit/si/tree/main/bin/si#installation) to help get started. The work to make these binaries available is currently underway. 
