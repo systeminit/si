@@ -1,4 +1,6 @@
 import { AxiosError } from "axios";
+import { Logger } from "./logger.ts";
+
 
 export function unknownValueToErrorMessage(value: unknown): string {
   if (typeof value === "string") return value;
@@ -169,4 +171,60 @@ export async function logComponentWithSchema(
   }
 
   ctx.logger.info(messageTemplate, logContext);
+}
+
+/**
+ * Extracts the category from a search pattern like "Fastly::*"
+ * Returns the category or null if pattern is invalid
+ */
+export function extractCategoryFromPattern(pattern: string): string | null {
+  // Match patterns like "Category::*" or "Category::Subcategory::*"
+  const match = pattern.match(/^(.+)::\*$/);
+  if (match && match[1]) {
+    return match[1];
+  }
+  // If pattern is just "*", return null to search all
+  if (pattern === "*") {
+    return null;
+  }
+  return null;
+}
+
+/**
+ * Detects if a schema name is a search pattern (e.g., "Fastly::*")
+ */
+export function isSearchPattern(schemaName: string): boolean {
+  return schemaName.includes("*");
+}
+
+/**
+ * Searches for schemas using the search API
+ */
+export async function searchSchemas(
+  api: SchemasApi,
+  logger: Logger,
+  changeSetCoord: ChangeSetCoordinate,
+  pattern: string,
+): Promise<string[]> {
+  const category = extractCategoryFromPattern(pattern);
+
+  logger.info(`Searching for schemas matching pattern: ${pattern}`);
+  if (category) {
+    logger.info(`  Using category filter: ${category}`);
+  } else {
+    logger.info(`  Searching all schemas`);
+  }
+
+  const response = await api.searchSchemas({
+    workspaceId: changeSetCoord.workspaceId,
+    changeSetId: changeSetCoord.changeSetId,
+    searchSchemasV1Request: {
+      category: category,
+    },
+  });
+
+  const schemaNames = response.data.schemas.map((s) => s.schemaName);
+  logger.info(`  Found ${schemaNames.length} matching schema(s)`);
+
+  return schemaNames;
 }

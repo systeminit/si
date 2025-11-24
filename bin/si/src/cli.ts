@@ -26,6 +26,7 @@ import { Context } from "./context.ts";
 import * as jwt from "./jwt.ts";
 import { FunctionKind, Project } from "./project.ts";
 import {
+  callRemoteSchemaOverlaysDetach,
   callRemoteSchemaOverlaysPush,
   callRemoteSchemaPush,
 } from "./command/remote/schema/push.ts";
@@ -420,6 +421,26 @@ function buildRemoteSchemaOverlayCommand() {
             cliContext,
             project,
             skipConfirmation,
+          );
+        }),
+    )
+    .command(
+      "detach",
+      createSubCommand()
+        .description(
+          "Lists all schemas and their attached functions from remote workspace",
+        )
+        .arguments("[...SCHEMA_NAME:string]")
+        .action(async ({ root }, ...schemaNames) => {
+          const project = createProject(root);
+
+          const ctx = Context.instance();
+          const cliContext = await initializeCliContextWithAuth({ ctx });
+
+          await callRemoteSchemaOverlaysDetach(
+            cliContext,
+            project,
+            schemaNames,
           );
         }),
     );

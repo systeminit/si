@@ -17,6 +17,7 @@ import {
 } from "../../../project.ts";
 import type { Logger } from "@logtape/logtape";
 import { wrapInChangeSet } from "../../../change_set_utils.ts";
+import { isSearchPattern, searchSchemas } from "../../../helpers.ts";
 
 async function parseActions(
   ctx: Context,
@@ -1437,4 +1438,135 @@ async function readRawInput() {
     Deno.stdin.setRaw(false);
   }
   return input;
+}
+
+export async function callRemoteSchemaOverlaysDetach(
+  cliContext: AuthenticatedCliContext,
+  project: Project,
+  schemaNames: string[],
+) {
+  const { apiConfiguration, workspace, ctx } = cliContext;
+  const logger = ctx.logger;
+  const { id: workspaceId } = workspace;
+
+  const siSchemasApi = new SchemasApi(apiConfiguration);
+  const siFuncsApi = new FuncsApi(apiConfiguration);
+  const changeSetsApi = new ChangeSetsApi(apiConfiguration);
+
+  logger.info("Listing schemas and their attached functions...");
+  logger.info("---");
+  logger.info("");
+
+  // Get HEAD change set
+  const changeSets = (await changeSetsApi.listChangeSets({ workspaceId }))
+    .data.changeSets as { id: string; isHead: boolean }[];
+
+  const headChangesetId = changeSets.find((cs) => cs.isHead)?.id;
+
+  if (!headChangesetId) {
+    throw new Error("No head change set found");
+  }
+
+  // If no schema names provided, get all schemas from workspace
+  let schemasToList: string[] = schemaNames;
+
+  if (schemasToList.length === 0) {
+    logger.info("No schemas specified, listing all schemas in workspace...");
+    const searchResponse = await siSchemasApi.searchSchemas({
+      workspaceId,
+      changeSetId: headChangesetId,
+      searchSchemasV1Request: {},
+    });
+    schemasToList = searchResponse.data.schemas.map((s) => s.schemaName);
+    logger.info(`Found ${schemasToList.length} schemas`);
+    logger.info("");
+  }
+
+  const changeSetCoord = {
+    workspaceId: workspace.id,
+    changeSetId: "HEAD",
+  };
+
+  const expandedSchemaNames: string[] = [];
+  for (const schemaName of schemaNames) {
+    if (isSearchPattern(schemaName)) {
+      const matchingSchemas = await searchSchemas(
+        siSchemasApi,
+        logger,
+        changeSetCoord,
+        schemaName,
+      );
+      expandedSchemaNames.push(...matchingSchemas);
+    } else {
+      expandedSchemaNames.push(schemaName);
+    }
+  }
+
+
+  // Process each schema
+  for (const schemaName of expandedSchemaNames) {
+    try {
+      // Get schema from remote
+      const existingSchema = await tryFindSchema(
+        siSchemasApi,
+        workspaceId,
+        headChangesetId,
+        schemaName,
+      );
+
+      if (!existingSchema) {
+        logger.warn(`Schema ${schemaName} not found remotely, skipping`);
+        continue;
+      }
+
+      // Get variant data
+      const existingVariant = (await siSchemasApi.getDefaultVariant({
+        workspaceId,
+        changeSetId: headChangesetId,
+        schemaId: existingSchema.schemaId,
+      })).data;
+
+      logger.info(`\nSchema: ${schemaName}`);
+      logger.info(`  Category: ${existingVariant.category}`);
+      logger.info(`  Is Builtin: ${existingVariant.installedFromUpstream}`);
+      logger.info(`  Attached Overlays:`);
+
+      if (existingVariant.variantFuncs.length === 0) {
+        logger.info(`    (none)`);
+        continue;
+      }
+
+      // Fetch and display each function
+      for (const { id: funcId, isOverlay, funcKind } of existingVariant.variantFuncs) {
+        if (!isOverlay) continue;
+
+        // TODO detach overlays from builtin schemas
+
+        const func = (await siFuncsApi.getFunc({
+          workspaceId,
+          changeSetId: headChangesetId,
+          funcId,
+        })).data;
+
+        // Determine the kind string
+        let kindStr = "Unknown";
+        if (funcKind.kind === "action") {
+          kindStr = `Action (${funcKind.actionKind})`;
+        } else if (funcKind.kind === "management") {
+          kindStr = `Management (${funcKind.managementKind})`;
+        } else if (funcKind.kind === "other") {
+          kindStr = funcKind.funcKind;
+        }
+
+        logger.info(`    - ${func.name} (${kindStr})`);
+      }
+
+    } catch (error) {
+      logger.error(`Error processing schema ${schemaName}: ${unknownValueToErrorMessage(error)}`);
+    }
+  }
+
+  logger.info("");
+  logger.info("---");
+  logger.info("Done listing schemas and attached functions");
 }
