@@ -933,6 +933,11 @@ impl VariantAuthoringClient {
         Ok(())
     }
 
+    #[instrument(
+        name = "variant.authoring.execute_asset_func",
+        level = "info",
+        skip_all
+    )]
     pub async fn execute_asset_func(
         ctx: &DalContext,
         asset_func: &Func,
