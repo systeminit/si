@@ -12,7 +12,7 @@ Want to influence the road map?
 
 ## Provider Coverage (In-development)
 
-We are expanding our list of supported providers, starting with Azure and Google
+We are expanding our list of supported [providers](https://docs.systeminit.com/reference/providers), starting with Azure and Google
 Cloud. These new providers will be available in Q4 2025.
 
 - Azure (in public beta)
