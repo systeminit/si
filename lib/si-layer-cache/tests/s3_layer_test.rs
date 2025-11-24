@@ -8,7 +8,7 @@ use si_layer_cache::{
 #[ignore = "requires VersityGW running"]
 async fn test_s3_put_get() {
     let config = ObjectStorageConfig::default().for_cache("test-cache");
-    let s3 = S3Layer::new(config, KeyTransformStrategy::Passthrough)
+    let s3 = S3Layer::new(config, "test-cache", KeyTransformStrategy::Passthrough)
         .await
         .expect("Failed to create S3Layer");
 
@@ -17,24 +17,17 @@ async fn test_s3_put_get() {
 
     // Test data
     let key = "test-key-12345";
-    let sort_key = "sort-key";
     let value = b"test value data";
-    let cache_name = "test-cache";
 
     // Write
-    s3.insert(key, sort_key, value, cache_name)
-        .await
-        .expect("Failed to insert");
+    s3.insert(key, value).await.expect("Failed to insert");
 
     // Read back
-    let result = s3.get(key, cache_name).await.expect("Failed to get");
+    let result = s3.get(key).await.expect("Failed to get");
     assert_eq!(result, Some(value.to_vec()));
 
     // Non-existent key
-    let missing = s3
-        .get("nonexistent", cache_name)
-        .await
-        .expect("Failed to get");
+    let missing = s3.get("nonexistent").await.expect("Failed to get");
     assert_eq!(missing, None);
 }
 
@@ -42,21 +35,18 @@ async fn test_s3_put_get() {
 #[ignore = "requires VersityGW running"]
 async fn test_key_transform_passthrough() {
     let config = ObjectStorageConfig::default().for_cache("test-transform");
-    let s3 = S3Layer::new(config, KeyTransformStrategy::Passthrough)
+    let s3 = S3Layer::new(config, "test-transform", KeyTransformStrategy::Passthrough)
         .await
         .expect("Failed to create S3Layer");
     s3.migrate().await.expect("Failed to create bucket");
 
     // Content-addressable key (already well-distributed)
     let key = "abcdef123456789";
-    let cache_name = "test-transform";
 
-    s3.insert(key, "sort", b"value", cache_name)
-        .await
-        .expect("Failed to insert");
+    s3.insert(key, b"value").await.expect("Failed to insert");
 
     // Verify we can read it back (transform is applied consistently)
-    let val = s3.get(key, cache_name).await.expect("Failed to get");
+    let val = s3.get(key).await.expect("Failed to get");
     assert_eq!(val, Some(b"value".to_vec()));
 }
 
@@ -64,21 +54,18 @@ async fn test_key_transform_passthrough() {
 #[ignore = "requires VersityGW running"]
 async fn test_key_transform_reverse() {
     let config = ObjectStorageConfig::default().for_cache("test-reverse");
-    let s3 = S3Layer::new(config, KeyTransformStrategy::ReverseKey)
+    let s3 = S3Layer::new(config, "test-reverse", KeyTransformStrategy::ReverseKey)
         .await
         .expect("Failed to create S3Layer");
     s3.migrate().await.expect("Failed to create bucket");
 
     // ULID-based key (timestamp prefix needs reversal)
     let key = "01HN6Y8K9Z123456789ABC";
-    let cache_name = "test-reverse";
 
-    s3.insert(key, "sort", b"value", cache_name)
-        .await
-        .expect("Failed to insert");
+    s3.insert(key, b"value").await.expect("Failed to insert");
 
     // Verify we can read it back (transform is applied consistently)
-    let val = s3.get(key, cache_name).await.expect("Failed to get");
+    let val = s3.get(key).await.expect("Failed to get");
     assert_eq!(val, Some(b"value".to_vec()));
 }
 
@@ -86,7 +73,7 @@ async fn test_key_transform_reverse() {
 #[ignore = "requires VersityGW running"]
 async fn test_s3_three_tier_prefix() {
     let config = ObjectStorageConfig::default().for_cache("test-prefix");
-    let s3 = S3Layer::new(config, KeyTransformStrategy::Passthrough)
+    let s3 = S3Layer::new(config, "test-prefix", KeyTransformStrategy::Passthrough)
         .await
         .expect("Failed to create S3Layer");
     s3.migrate().await.expect("Failed to create bucket");
@@ -94,20 +81,19 @@ async fn test_s3_three_tier_prefix() {
     // Keys that should have three-tier prefixing
     let key1 = "abcdef123456";
     let key2 = "xyz789abcdef";
-    let cache_name = "test-prefix";
 
-    s3.insert(key1, "sort1", b"value1", cache_name)
+    s3.insert(key1, b"value1")
         .await
         .expect("Failed to insert key1");
-    s3.insert(key2, "sort2", b"value2", cache_name)
+    s3.insert(key2, b"value2")
         .await
         .expect("Failed to insert key2");
 
     // Verify we can read them back
-    let val1 = s3.get(key1, cache_name).await.expect("Failed to get key1");
+    let val1 = s3.get(key1).await.expect("Failed to get key1");
     assert_eq!(val1, Some(b"value1".to_vec()));
 
-    let val2 = s3.get(key2, cache_name).await.expect("Failed to get key2");
+    let val2 = s3.get(key2).await.expect("Failed to get key2");
     assert_eq!(val2, Some(b"value2".to_vec()));
 }
 
@@ -115,26 +101,21 @@ async fn test_s3_three_tier_prefix() {
 #[ignore = "requires VersityGW running"]
 async fn test_s3_get_bulk() {
     let config = ObjectStorageConfig::default().for_cache("test-bulk");
-    let s3 = S3Layer::new(config, KeyTransformStrategy::Passthrough)
+    let s3 = S3Layer::new(config, "test-bulk", KeyTransformStrategy::Passthrough)
         .await
         .expect("Failed to create S3Layer");
     s3.migrate().await.expect("Failed to create bucket");
 
-    let cache_name = "test-bulk";
-
     // Insert multiple keys
     let keys = vec!["bulk1", "bulk2", "bulk3"];
     for key in &keys {
-        s3.insert(key, "sort", key.as_bytes(), cache_name)
+        s3.insert(key, key.as_bytes())
             .await
             .expect("Failed to insert");
     }
 
     // Bulk fetch
-    let results = s3
-        .get_bulk(&keys, cache_name)
-        .await
-        .expect("Failed to get bulk");
+    let results = s3.get_bulk(&keys).await.expect("Failed to get bulk");
 
     assert_eq!(results.len(), 3);
     assert_eq!(results.get("bulk1"), Some(&b"bulk1".to_vec()));

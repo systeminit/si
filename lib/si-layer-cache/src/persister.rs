@@ -487,9 +487,7 @@ impl PersisterTask {
                 s3_layer
                     .insert(
                         event.key.as_ref(),
-                        event.payload.sort_key.as_ref(),
                         event.payload.value.as_ref(),
-                        event.payload.db_name.as_ref(),
                     )
                     .await
             }

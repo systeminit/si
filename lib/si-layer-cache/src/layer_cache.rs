@@ -198,7 +198,7 @@ where
                     "S3 layer found, calling get"
                 );
 
-                match s3_layer.get(key.as_ref(), self.name.as_str()).await? {
+                match s3_layer.get(key.as_ref()).await? {
                     Some(bytes) => {
                         monotonic!(
                             layer_cache_backend_resolved = 1,
@@ -267,7 +267,7 @@ where
                     .get(self.name.as_str())
                     .ok_or(LayerDbError::S3NotConfigured)?;
 
-                let result = s3_layer.get(key.as_ref(), self.name.as_str()).await?;
+                let result = s3_layer.get(key.as_ref()).await?;
 
                 let result_label: &'static str = if result.is_some() { "hit" } else { "miss" };
                 monotonic!(
@@ -368,7 +368,7 @@ where
                     .get(self.name.as_str())
                     .ok_or(LayerDbError::S3NotConfigured)?;
 
-                match s3_layer.get(key.as_ref(), self.name.as_str()).await? {
+                match s3_layer.get(key.as_ref()).await? {
                     Some(bytes) => {
                         debug!(
                             cache.name = self.name.as_str(),
@@ -412,7 +412,7 @@ where
                     .get(self.name.as_str())
                     .ok_or(LayerDbError::S3NotConfigured)?;
 
-                let result = s3_layer.get(key.as_ref(), self.name.as_str()).await?;
+                let result = s3_layer.get(key.as_ref()).await?;
 
                 debug!(
                     cache.name = self.name.as_str(),
@@ -469,7 +469,7 @@ where
 
                     // Convert Vec<Arc<str>> to Vec<&str>
                     let keys_refs: Vec<&str> = not_found.iter().map(|k| k.as_ref()).collect();
-                    let s3_results = s3_layer.get_bulk(&keys_refs, self.name.as_str()).await?;
+                    let s3_results = s3_layer.get_bulk(&keys_refs).await?;
 
                     if !s3_results.is_empty() {
                         // Find keys not in S3 for PG fallback
@@ -510,7 +510,7 @@ where
 
                     // Convert Vec<Arc<str>> to Vec<&str>
                     let keys_refs: Vec<&str> = not_found.iter().map(|k| k.as_ref()).collect();
-                    let results = s3_layer.get_bulk(&keys_refs, self.name.as_str()).await?;
+                    let results = s3_layer.get_bulk(&keys_refs).await?;
                     if results.is_empty() {
                         None
                     } else {
