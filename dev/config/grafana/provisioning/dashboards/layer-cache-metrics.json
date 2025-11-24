@@ -1660,6 +1660,289 @@
           "valueSize": 18
         }
       }
+    },
+    {
+      "id": 27,
+      "gridPos": {
+        "x": 0,
+        "y": 137,
+        "w": 24,
+        "h": 8
+      },
+      "type": "timeseries",
+      "title": "${backend} Backend - Read Latency (p50, p95, p99)",
+      "repeat": "backend",
+      "repeatDirection": "v",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "histogram_quantile(0.50, sum(rate(layer_cache_read_latency_ms_bucket{exported_job=~\"$service\", cache_name=~\"$cache\", backend=\"${backend}\"}[$__interval])) by (cache_name, le))",
+          "legendFormat": "{{cache_name}} - p50",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "histogram_quantile(0.95, sum(rate(layer_cache_read_latency_ms_bucket{exported_job=~\"$service\", cache_name=~\"$cache\", backend=\"${backend}\"}[$__interval])) by (cache_name, le))",
+          "legendFormat": "{{cache_name}} - p95",
+          "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "histogram_quantile(0.99, sum(rate(layer_cache_read_latency_ms_bucket{exported_job=~\"$service\", cache_name=~\"$cache\", backend=\"${backend}\"}[$__interval])) by (cache_name, le))",
+          "legendFormat": "{{cache_name}} - p99",
+          "refId": "C"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "never"
+          }
+        }
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        },
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max",
+            "mean"
+          ]
+        }
+      }
+    },
+    {
+      "id": 28,
+      "gridPos": {
+        "x": 0,
+        "y": 145,
+        "w": 24,
+        "h": 8
+      },
+      "type": "timeseries",
+      "title": "End-to-End Request Latency (p50, p95, p99)",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "histogram_quantile(0.50, sum(rate(layer_cache_request_latency_ms_bucket{exported_job=~\"$service\", cache_name=~\"$cache\"}[$__interval])) by (cache_name, le))",
+          "legendFormat": "{{cache_name}} - p50",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "histogram_quantile(0.95, sum(rate(layer_cache_request_latency_ms_bucket{exported_job=~\"$service\", cache_name=~\"$cache\"}[$__interval])) by (cache_name, le))",
+          "legendFormat": "{{cache_name}} - p95",
+          "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "histogram_quantile(0.99, sum(rate(layer_cache_request_latency_ms_bucket{exported_job=~\"$service\", cache_name=~\"$cache\"}[$__interval])) by (cache_name, le))",
+          "legendFormat": "{{cache_name}} - p99",
+          "refId": "C"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "never"
+          }
+        }
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        },
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max",
+            "mean"
+          ]
+        }
+      }
+    },
+    {
+      "id": 29,
+      "gridPos": {
+        "x": 0,
+        "y": 153,
+        "w": 24,
+        "h": 8
+      },
+      "type": "timeseries",
+      "title": "${backend} Backend - Hit vs Miss (p95)",
+      "repeat": "backend",
+      "repeatDirection": "v",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "histogram_quantile(0.95, sum(rate(layer_cache_read_latency_ms_bucket{exported_job=~\"$service\", cache_name=~\"$cache\", backend=\"${backend}\", result=\"hit\"}[$__interval])) by (cache_name, le))",
+          "legendFormat": "{{cache_name}} - hit",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "histogram_quantile(0.95, sum(rate(layer_cache_read_latency_ms_bucket{exported_job=~\"$service\", cache_name=~\"$cache\", backend=\"${backend}\", result=\"miss\"}[$__interval])) by (cache_name, le))",
+          "legendFormat": "{{cache_name}} - miss",
+          "refId": "B"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "never"
+          }
+        }
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        },
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max",
+            "mean"
+          ]
+        }
+      }
+    },
+    {
+      "id": 31,
+      "gridPos": {
+        "x": 0,
+        "y": 169,
+        "w": 24,
+        "h": 8
+      },
+      "type": "heatmap",
+      "title": "${backend} Backend - Latency Distribution",
+      "repeat": "backend",
+      "repeatDirection": "v",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "sum(increase(layer_cache_read_latency_ms_bucket{exported_job=~\"$service\", cache_name=~\"$cache\", backend=\"${backend}\"}[$__interval])) by (le)",
+          "legendFormat": "{{le}}",
+          "refId": "A",
+          "format": "heatmap"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "hideFrom": {
+              "tooltip": false,
+              "viz": false,
+              "legend": false
+            }
+          }
+        }
+      },
+      "options": {
+        "calculate": false,
+        "cellGap": 2,
+        "color": {
+          "exponent": 0.5,
+          "fill": "dark-orange",
+          "mode": "scheme",
+          "scheme": "Oranges",
+          "steps": 128
+        },
+        "exemplars": {
+          "color": "rgba(255,0,255,0.7)"
+        },
+        "filterValues": {
+          "le": 1E-9
+        },
+        "legend": {
+          "show": true
+        },
+        "rowsFrame": {
+          "layout": "auto"
+        },
+        "tooltip": {
+          "show": true,
+          "yHistogram": false
+        },
+        "yAxis": {
+          "axisPlacement": "left",
+          "reverse": false,
+          "unit": "ms"
+        }
+      }
     }
   ],
   "time": {
