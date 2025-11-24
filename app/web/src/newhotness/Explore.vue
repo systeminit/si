@@ -2393,7 +2393,7 @@ const shortcuts: { [Key in string]: (e: KeyDetails[Key]) => void } = {
   },
   // g: undefined,
   // h: undefined,
-  // i: undefined,
+  // i: used for import in ComponentDetails
   // j: undefined,
   k: (e) => {
     if (e.metaKey || e.ctrlKey) return;

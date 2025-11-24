@@ -9,15 +9,8 @@
             component.qualificationTotals.succeeded === 0
           "
           tighter
-          :class="
-            clsx(
-              'text-sm ml-auto',
-              themeClasses(
-                'border-neutral-500 bg-neutral-100 text-black',
-                'border-neutral-600 bg-neutral-900 text-white',
-              ),
-            )
-          "
+          variant="component"
+          class="text-xs ml-auto"
         >
           Unknown
         </TextPill>
@@ -27,45 +20,24 @@
             component.qualificationTotals.warned === 0
           "
           tighter
-          :class="
-            clsx(
-              'text-xs ml-auto',
-              themeClasses(
-                'border-success-500 bg-neutral-100 text-black',
-                'border-success-600 bg-neutral-900 text-white',
-              ),
-            )
-          "
+          variant="success"
+          class="text-xs ml-auto"
         >
           All passed
         </TextPill>
         <TextPill
           v-else-if="component.qualificationTotals.failed > 0"
           tighter
-          :class="
-            clsx(
-              'text-xs ml-auto',
-              themeClasses(
-                'border-destructive-500 bg-destructive-100 text-black',
-                'border-destructive-600 bg-destructive-900 text-white',
-              ),
-            )
-          "
+          variant="destructive"
+          class="text-xs ml-auto"
         >
           {{ component.qualificationTotals.failed }} Failed
         </TextPill>
         <TextPill
           v-else-if="component.qualificationTotals.warned > 0"
           tighter
-          :class="
-            clsx(
-              'text-xs ml-auto',
-              themeClasses(
-                'border-warning-500 bg-warning-100 text-black',
-                'border-warning-600 bg-warning-900 text-white',
-              ),
-            )
-          "
+          variant="warning"
+          class="text-xs ml-auto"
         >
           {{ component.qualificationTotals.warned }} Warning
         </TextPill>
@@ -80,8 +52,7 @@
 </template>
 
 <script setup lang="ts">
-import { themeClasses, TextPill } from "@si/vue-lib/design-system";
-import clsx from "clsx";
+import { TextPill } from "@si/vue-lib/design-system";
 import { computed } from "vue";
 import {
   ComponentInList,
