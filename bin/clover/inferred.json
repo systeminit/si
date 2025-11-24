@@ -7048,6 +7048,9 @@
   "Pricing rule name": {
     "enum": null
   },
+  "Principal arn that should not update image pull times.": {
+    "enum": null
+  },
   "Priority": {
     "enum": null
   },
@@ -8360,6 +8363,9 @@
     "enum": null
   },
   "The ARN of the IAM role that has permissions to read from the Amazon S3 data source.": {
+    "enum": null
+  },
+  "The ARN of the IAM role that is used by Secrets Manager to rotate a managed external secret.": {
     "enum": null
   },
   "The ARN of the IAM role that the code interpreter uses to access resources.": {
@@ -17030,6 +17036,9 @@
     "enum": null
   },
   "The storage server model type of the Exadata infrastructure. For the list of valid model names, use the ListDbSystemShapes operation.": {
+    "enum": null
+  },
+  "The storage tier for the Kinesis Video Stream. Determines the storage class used for stream data.": {
     "enum": null
   },
   "The storage type of a knowledge base.": {
