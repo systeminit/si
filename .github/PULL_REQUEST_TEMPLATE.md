@@ -23,6 +23,15 @@ off :)-->
 - [X] Manual test: new functionality works in UI
 - [X] Manual test: (regression check) creating a component still works
 
+## Does it require a docs change?
+
+<!-- Does it require a docs change and was that change made in this PR? -->
+<!-- This includes "docs.systeminit.com", "DEV_DOCS.md", "README.md" and other docs within the repository -->
+
+- [ ] No
+- [ ] Yes, and this PR includes it
+- [ ] Yes, and this PR does not include it (reasoning below)
+
 ## In short: [:link:](https://giphy.com/)
 
 ![](put .gif link here - click the :link: besides the gif on giphy to copy it)
