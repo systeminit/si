@@ -900,8 +900,8 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "(rate(layer_cache_persister_write_duration_seconds_sum{exported_job=~\"$service\", cache_name=~\"$cache\"}[1m]) / rate(layer_cache_persister_write_duration_seconds_count{exported_job=~\"$service\", cache_name=~\"$cache\"}[1m])) * 1000",
-          "legendFormat": "{{exported_job}}/{{cache_name}} - avg",
+          "expr": "rate(layer_cache_persister_write_duration_ms_sum{exported_job=~\"$service\", cache_name=~\"$cache\", backend=~\"$backend\"}[1m]) / rate(layer_cache_persister_write_duration_ms_count{exported_job=~\"$service\", cache_name=~\"$cache\", backend=~\"$backend\"}[1m])",
+          "legendFormat": "{{exported_job}}/{{cache_name}}/{{backend}} - avg",
           "refId": "A"
         }
       ],

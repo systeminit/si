@@ -13,6 +13,7 @@ use si_data_nats::NatsClient;
 use si_data_pg::PgPool;
 use telemetry::prelude::*;
 use telemetry_utils::{
+    histogram,
     metric,
     monotonic,
 };
@@ -439,7 +440,11 @@ impl PersisterTask {
         pg_pool: &PgPool,
         s3_layers: &Option<Arc<HashMap<&'static str, S3Layer>>>,
     ) -> LayerDbResult<()> {
-        match backend {
+        let cache_name = event.payload.db_name.as_ref();
+        let event_kind = event.event_kind.as_ref();
+        let write_start = std::time::Instant::now();
+
+        let result = match backend {
             BackendType::Postgres => {
                 let pg_layer = PgLayer::new(pg_pool.clone(), event.payload.db_name.as_ref());
 
@@ -485,13 +490,23 @@ impl PersisterTask {
                     .ok_or(LayerDbError::S3NotConfigured)?;
 
                 s3_layer
-                    .insert(
-                        event.key.as_ref(),
-                        event.payload.value.as_ref(),
-                    )
+                    .insert(event.key.as_ref(), event.payload.value.as_ref())
                     .await
             }
-        }
+        };
+
+        let write_duration = write_start.elapsed().as_millis() as f64;
+        let status = if result.is_ok() { "success" } else { "error" };
+
+        histogram!(
+            layer_cache_persister.write_duration_ms = write_duration,
+            cache_name = cache_name,
+            status = status,
+            backend = backend.as_ref(),
+            event_kind = event_kind
+        );
+
+        result
     }
 
     #[allow(clippy::too_many_arguments)]
