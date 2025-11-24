@@ -9,6 +9,7 @@ rust_library(
         "//lib/si-frontend-mv-types-rs:si-frontend-mv-types",
         "//lib/si-id:si-id",
         "//lib/telemetry-rs:telemetry",
+        "//lib/telemetry-utils-rs:telemetry-utils",
         "//third-party/rust:bytes",
         "//third-party/rust:futures",
         "//third-party/rust:remain",

@@ -52,6 +52,7 @@ use crate::{
         (status = 200, description = "Components retrieved successfully", body = SearchComponentsV1Response),
         (status = 401, description = "Unauthorized - Invalid or missing token"),
         (status = 404, description = "Component not found"),
+        (status = 424, description = "Failed Dependency - missing or invalid change set index"),
         (status = 500, description = "Internal server error", body = crate::service::v1::common::ApiError)
     )
 )]
