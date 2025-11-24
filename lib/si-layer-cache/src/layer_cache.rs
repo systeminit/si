@@ -129,13 +129,27 @@ where
     }
 
     pub async fn get(&self, key: Arc<str>) -> LayerDbResult<Option<V>> {
+        use std::time::Instant;
+
+        use telemetry_utils::histogram;
+
+        let request_start = Instant::now();
+
         monotonic!(
             layer_cache_requests_total = 1,
             cache_name = self.name.as_str()
         );
 
         // Try memory/disk cache first
+        let foyer_start = Instant::now();
         if let Some(value) = self.cache.get(key.clone()).await {
+            histogram!(
+                layer_cache.read_latency_ms = foyer_start.elapsed().as_millis() as f64,
+                cache_name = self.name.as_str(),
+                backend = "foyer",
+                result = "hit"
+            );
+
             monotonic!(
                 layer_cache_backend_resolved = 1,
                 cache_name = self.name.as_str(),
@@ -147,6 +161,14 @@ where
                 cache.key = key.as_ref(),
                 "cache hit in memory/disk"
             );
+
+            // Emit end-to-end metric for Foyer hit
+            histogram!(
+                layer_cache.request_latency_ms = request_start.elapsed().as_millis() as f64,
+                cache_name = self.name.as_str(),
+                result = "hit"
+            );
+
             return Ok(Some(value));
         }
 
@@ -155,6 +177,14 @@ where
             cache.key = key.as_ref(),
             cache.mode = ?self.mode,
             "cache miss in memory/disk, fetching from backend"
+        );
+
+        // Emit Foyer miss metric
+        histogram!(
+            layer_cache.read_latency_ms = foyer_start.elapsed().as_millis() as f64,
+            cache_name = self.name.as_str(),
+            backend = "foyer",
+            result = "miss"
         );
 
         // Cache miss - fetch from storage backend based on mode
@@ -296,6 +326,13 @@ where
                 self.cache
                     .insert(key.clone(), deserialized.clone(), bytes.len());
 
+                // Emit end-to-end metric for backend hit
+                histogram!(
+                    layer_cache.request_latency_ms = request_start.elapsed().as_millis() as f64,
+                    cache_name = self.name.as_str(),
+                    result = "hit"
+                );
+
                 Ok(Some(deserialized))
             }
             None => {
@@ -305,6 +342,14 @@ where
                     cache.mode = ?self.mode,
                     "not found in any backend, returning None"
                 );
+
+                // Emit end-to-end metric for complete miss
+                histogram!(
+                    layer_cache.request_latency_ms = request_start.elapsed().as_millis() as f64,
+                    cache_name = self.name.as_str(),
+                    result = "miss"
+                );
+
                 Ok(None)
             }
         }
