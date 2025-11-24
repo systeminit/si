@@ -1,33 +1,5 @@
 # SI Auth API
 
-### Prisma / DB
-
-Use `pnpx prisma` to run prisma commands locally. For example
-
-- `pnpx prisma migrate dev --name something-descriptive` - generates and runs new migration based on prisma schema
-- `pnpx prisma migrate reset` - wipes db, re-runs all migrations
-- `pnpx prisma db push` - push changes directly to db without any migrations (good for experimentation)
-
-### JWT Signing Key
-
-### ES256 
-
-- `ssh-keygen -t ecdsa -b 256 -m PEM -f jwtES256.key`
-- `openssl ec -in jwtES256.key -pubout -outform PEM -out jwtES256.key.pub`
-
-### RS256 (deprecated)
-
-- `ssh-keygen -t rsa -b 4096 -m PEM -f jwtRS256.key`
-- `openssl rsa -in jwtRS256.key -pubout -outform PEM -out jwtRS256.key.pub`
-
-### Config / env vars
-
-- Config is loaded from .env files
-- Put local overrides in gitignored .env.local
-- on deployed environments override using actual env vars
-- auto-restart is not currently triggered on .env file changes (
-  see [issue](https://github.com/nodejs/node/issues/45467))
-
 ## Running auth stack locally
 
 By default, our system is set up to hit the production auth stack because we still want real auth when running local dev
@@ -55,9 +27,35 @@ While working on the auth stack, we still need to run it locally and configure t
    ```bash
    pnpm run db:reset
    ```
-5. Navigate to the Tilt dashboard
-6. Enable `auth-api` in the Title dashboard to run it.
-7. `auth-portal` will run automatically once this succeeds.
+5. Tilt dashboard: Enable [`auth-api`](http://localhost:10350/r/auth-api/overview) and then [`auth-portal`](http://localhost:10350/r/auth-portal/overview).
+
+### Prisma / DB
+
+Use `pnpm exec prisma` to run prisma commands locally. For example
+
+- `pnpm exec prisma migrate dev --name something-descriptive` - generates and runs new migration based on prisma schema
+- `pnpm exec prisma migrate reset` - wipes db, re-runs all migrations
+- `pnpm exec prisma db push` - push changes directly to db without any migrations (good for experimentation)
+
+### JWT Signing Key
+
+### ES256 
+
+- `ssh-keygen -t ecdsa -b 256 -m PEM -f jwtES256.key`
+- `openssl ec -in jwtES256.key -pubout -outform PEM -out jwtES256.key.pub`
+
+### RS256 (deprecated)
+
+- `ssh-keygen -t rsa -b 4096 -m PEM -f jwtRS256.key`
+- `openssl rsa -in jwtRS256.key -pubout -outform PEM -out jwtRS256.key.pub`
+
+### Config / env vars
+
+- Config is loaded from .env files
+- Put local overrides in gitignored .env.local
+- on deployed environments override using actual env vars
+- auto-restart is not currently triggered on .env file changes (
+  see [issue](https://github.com/nodejs/node/issues/45467))
 
 ## Deploy the Auth API to Production
 

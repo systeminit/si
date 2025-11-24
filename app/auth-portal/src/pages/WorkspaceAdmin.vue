@@ -2,6 +2,21 @@
   <div class="overflow-scroll">
     <template v-if="featureFlagsStore.ADMIN_PAGE">
       <div>
+        <h2 class="pb-md font-bold">Administration Dashboard</h2>
+
+        <div class="pb-md">
+          <VButton
+            iconRight="chevron--right"
+            tone="action"
+            variant="solid"
+            @click="router.push({ name: 'rum-report' })"
+          >
+            View RUM Report
+          </VButton>
+        </div>
+
+        <divider class="my-4" />
+
         <h3 class="pb-md font-bold">
           Create production workspace for an invited user
         </h3>

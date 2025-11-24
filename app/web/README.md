@@ -2,37 +2,37 @@
 
 ## Project setup
 ```
-npm install
+pnpm install
 ```
 
 ### Compiles and hot-reloads for development
 ```
-npm run start
+pnpm run start
 ```
 
 ### Compiles and minifies for production
 ```
-npm run build
+pnpm run build
 ```
 
 ### Lint check (no fix)
 ```
-npm run lint
+pnpm run lint
 ```
 
 ### Type check (no fix)
 ```
-npm run build:check
+pnpm run build:check
 ```
 
 ### Code formatting check (no fix)
 ```
-npm run fmt:check
+pnpm run fmt:check
 ```
 
 ### Format code (WILL FIX)
 ```
-npm run fmt
+pnpm run fmt
 ```
 
 # Vue 3 + Typescript + Vite

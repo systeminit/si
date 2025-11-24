@@ -17,6 +17,7 @@ import ProfilePage from "./pages/ProfilePage.vue";
 import WorkspaceGoPage from "./pages/WorkspaceGoPage.vue";
 import WorkspaceAdmin from "./pages/WorkspaceAdmin.vue";
 import WorkspaceAuthTokensPage from "./pages/WorkspaceAuthTokensPage.vue";
+import RumReport from "./pages/RumReport.vue";
 
 // normally we'd initialize a router directly, but instead we pass the options to ViteSSG
 export const routerOptions: RouterOptions = {
@@ -101,6 +102,11 @@ export const routerOptions: RouterOptions = {
       path: "/workspace-admin",
       name: "workspace-admin",
       component: WorkspaceAdmin,
+    },
+    {
+      path: "/rum-report",
+      name: "rum-report",
+      component: RumReport,
     },
 
     // auth api redirects to this route - gives us some flexibility with what to do with user

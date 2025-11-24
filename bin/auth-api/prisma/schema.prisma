@@ -107,14 +107,15 @@ model Workspace {
     /// Denotes whether this will show up in the workspaces list in app.systeminit.com
     /// If it's true, then it will not be shown in the workspaces list
     isHidden Boolean @default(false) @map("is_hidden")
-    
+
     // This will determine whether approvals are enabled for the workspace
     // only a workspace owner can enable / disable this. It's off by default
     // but enabling it will force the workspace to be refreshed and will determine
     // how the UI reacts
     approvalsEnabled Boolean @default(false) @map("approvals_enabled")
 
-    tokens AuthToken[]
+    tokens             AuthToken[]
+    workspaceRumMonths WorkspaceRumMonth[]
 
     @@index(fields: [creatorUserId])
     @@map("workspaces")
@@ -191,4 +192,26 @@ model AuthToken {
     lastUsedAt DateTime?
     /// From where this token was last used
     lastUsedIp String?
+}
+
+/// Resources Under Management for a workspace, for a given month
+model WorkspaceRumMonth {
+    /// id of workspace this RUM entry is for
+    workspaceId String    @map("workspace_id")
+    /// Workspace this RUM entry is for
+    workspace   Workspace @relation(fields: [workspaceId], references: [id])
+    /// Month for this RUM entry
+    month       DateTime
+
+    /// Max number of resources under management for this workspace, this month
+    maxRum        Int      @map("max_rum")
+    /// The end of the data for this entry, exclusive.  If we haven't processed RUM for the
+    /// full month yet, this will reflect that. If we have, end_date will be the start of the
+    /// next month.)
+    maxRumDataEnd DateTime @map("max_rum_data_end")
+    /// The date the max rum was reached. Might not be during this month!
+    maxRumDate    DateTime @map("rum_date")
+
+    @@id([workspaceId, month])
+    @@map("workspace_rum_months")
 }
