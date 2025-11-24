@@ -211,6 +211,16 @@ automationApiRouter.get("/workspace/:workspaceId/members", async (ctx) => {
   ctx.body = members;
 });
 
+// When we send a hubspot email via the posthog event
+// if the workspace name is a domain name like string e.g. bing.com
+// then when the email gets sent, it will render as a link to bing.com
+// rather than the workspace name as a string
+// this adds a zero width space to stop the email clients from rendering it
+// it will still look like bing.com but it's effectively breaking the link
+function escapeDomainLikeString(input: string): string {
+  return input.replace(/\./g, "\u200B.");
+}
+
 automationApiRouter.post("/workspace/:workspaceId/membership", async (ctx) => {
   const { authUser, workspace } = await authorizeWorkspaceRoute(ctx, [
     RoleType.OWNER,
@@ -230,7 +240,7 @@ automationApiRouter.post("/workspace/:workspaceId/membership", async (ctx) => {
     newPermissionLevel: reqBody.role === "EDITOR" ? "Collaborator" : "Approver",
     memberUserName: user?.email || "",
     workspaceId: workspace.id,
-    workspaceName: workspace.displayName,
+    workspaceName: escapeDomainLikeString(workspace.displayName),
     initiatedBy: authUser.email,
     memberChangedAt: new Date(),
   });
@@ -329,7 +339,7 @@ automationApiRouter.delete("/workspace/:workspaceId/members", async (ctx) => {
 
   tracker.trackEvent(authUser, "workspace_user_removed_v2", {
     workspaceId: workspace.id,
-    workspaceName: workspace.displayName,
+    workspaceName: escapeDomainLikeString(workspace.displayName),
     initiatedBy: authUser.email,
     memberUserName: reqBody.email,
     memberChangedAt: new Date(),
