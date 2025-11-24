@@ -14,6 +14,7 @@ import { PipelineOptions, selectedProviders } from "../pipelines/types.ts";
 // Import all providers to ensure they register themselves
 import "../pipelines/aws/spec.ts";
 import "../pipelines/hetzner/provider.ts";
+import "../pipelines/entra/provider.ts";
 import "../pipelines/dummy/spec.ts";
 
 // set this boolean to true to print out duplicates instead of throwing an error
