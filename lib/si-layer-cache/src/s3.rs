@@ -281,13 +281,17 @@ impl S3Layer {
 
     /// Get a value by key from S3
     pub async fn get(&self, key: &str) -> LayerDbResult<Option<Vec<u8>>> {
+        use std::time::Instant;
+
         use aws_sdk_s3::{
             error::SdkError,
             operation::get_object::GetObjectError,
         };
+        use telemetry_utils::histogram;
 
         use crate::error::AwsSdkError;
 
+        let start = Instant::now();
         let s3_key = self.transform_and_prefix_key(key);
 
         match self
@@ -314,12 +318,25 @@ impl S3Layer {
                     })?
                     .to_vec();
 
+                histogram!(
+                    layer_cache.read_latency_ms = start.elapsed().as_millis() as f64,
+                    cache_name = self.cache_name.as_str(),
+                    backend = "s3",
+                    result = "hit"
+                );
+
                 Ok(Some(bytes))
             }
             Err(sdk_err) => {
                 // Check for NoSuchKey error - return None instead of error
                 if let SdkError::ServiceError(err) = &sdk_err {
                     if matches!(err.err(), GetObjectError::NoSuchKey(_)) {
+                        histogram!(
+                            layer_cache.read_latency_ms = start.elapsed().as_millis() as f64,
+                            cache_name = self.cache_name.as_str(),
+                            backend = "s3",
+                            result = "miss"
+                        );
                         return Ok(None);
                     }
                 }
@@ -330,6 +347,12 @@ impl S3Layer {
                     || error_str.contains("404")
                     || error_str.contains("Not Found")
                 {
+                    histogram!(
+                        layer_cache.read_latency_ms = start.elapsed().as_millis() as f64,
+                        cache_name = self.cache_name.as_str(),
+                        backend = "s3",
+                        result = "miss"
+                    );
                     return Ok(None);
                 }
 
@@ -694,7 +717,7 @@ mod tests {
             Ok(_) => { /* success - we have AWS credentials available */ }
             Err(e) => {
                 // Expected failure in test environment without AWS credentials
-                eprintln!("Expected error without AWS credentials: {:?}", e);
+                eprintln!("Expected error without AWS credentials: {e:?}");
             }
         }
     }
