@@ -76,6 +76,11 @@ impl PgLayer {
     }
 
     pub async fn get(&self, key: &str) -> LayerDbResult<Option<Vec<u8>>> {
+        use std::time::Instant;
+
+        use telemetry_utils::histogram;
+
+        let start = Instant::now();
         let key: String = key.into();
         let client = self.pool.get().await?;
         let maybe_row = client.query_opt(&self.get_value_query, &[&key]).await?;
@@ -83,9 +88,24 @@ impl PgLayer {
         match maybe_row {
             Some(row) => {
                 monotonic!(layer_cache.hit.pg = 1);
-                Ok(Some(row.get("value")))
+                let value = row.get("value");
+                histogram!(
+                    layer_cache.read_latency_ms = start.elapsed().as_millis() as f64,
+                    cache_name = self.table_name.as_str(),
+                    backend = "postgres",
+                    result = "hit"
+                );
+                Ok(Some(value))
             }
-            None => Ok(None),
+            None => {
+                histogram!(
+                    layer_cache.read_latency_ms = start.elapsed().as_millis() as f64,
+                    cache_name = self.table_name.as_str(),
+                    backend = "postgres",
+                    result = "miss"
+                );
+                Ok(None)
+            }
         }
     }
 
@@ -105,6 +125,11 @@ impl PgLayer {
         &self,
         keys: &[Arc<str>],
     ) -> LayerDbResult<Option<HashMap<String, Vec<u8>>>> {
+        use std::time::Instant;
+
+        use telemetry_utils::histogram;
+
+        let start = Instant::now();
         let mut result = HashMap::new();
         let client = self.pool.get().await?;
 
@@ -115,13 +140,28 @@ impl PgLayer {
             .await?
         {
             monotonic!(layer_cache.hit.pg = 1);
-            result.insert(
-                row.get::<&str, String>("key").to_owned(),
-                row.get::<&str, Vec<u8>>("value"),
+            let key = row.get::<&str, String>("key").to_owned();
+            let value = row.get::<&str, Vec<u8>>("value");
+
+            // Emit metric for each key found (hit)
+            histogram!(
+                layer_cache.read_latency_ms = start.elapsed().as_millis() as f64,
+                cache_name = self.table_name.as_str(),
+                backend = "postgres",
+                result = "hit"
             );
+
+            result.insert(key, value);
         }
 
         if result.is_empty() {
+            // All keys missed - emit one miss metric
+            histogram!(
+                layer_cache.read_latency_ms = start.elapsed().as_millis() as f64,
+                cache_name = self.table_name.as_str(),
+                backend = "postgres",
+                result = "miss"
+            );
             return Ok(None);
         }
 
