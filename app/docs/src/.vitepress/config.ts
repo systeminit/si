@@ -170,6 +170,10 @@ export default withMermaid(defineConfig({
             link: "/reference/vocabulary",
           },
           {
+            text: "Writing Templates",
+            link: "/reference/templating",
+          },
+          {
             text: "Providers",
             link: "/reference/providers",
           },
