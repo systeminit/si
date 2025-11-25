@@ -693,6 +693,43 @@ The project enforces code quality through:
 - Add JSDoc comments for public APIs
 - Run tests and linting before submitting changes
 
+### Outstanding Development Tasks
+
+- [ ] Remove all temporary exemptions of `Deno.env.get()` and replace with
+      configuration injection.
+- [ ] Use consistent and cross-platform path computation for configuration file
+      paths, following `XDG_CONFIG_HOME` standards on Unix platforms
+      (`ai_agent.ts` module).
+- [ ] Extract command logic in `mcp-server` subcommand into subcommand,
+      consistent with other subcommands.
+- [ ] Remove locally duplicated `--api-token` option in `ai-agent init`
+      subcommand which is already a global option.
+- [ ] Split hidden subcommands into explicit ones which are represented by
+      `--show`/`--update-token`/`--tool` in `ai-agent config` subcommand.
+- [ ] Remove locally duplicated `SI_API_TOKEN` and `SI_BASE_URL` environment
+      variable parsing in the `run` subcommand as they are already global
+      options (both as options and environment variables).
+- [ ] Remove locally duplicated `SI_API_TOKEN` and `SI_BASE_URL` environment
+      variable parsing in the `template run` subcommand as they are already
+      global options (both as options and environment variables).
+- [ ] Provide an alternative mechansim (likely a Cliffy command alias) to avoid
+      duplicate configuration of the `run` and `template run` subcommands.
+- [ ] Remove locally duplicated `SI_API_TOKEN` and `SI_BASE_URL` environment
+      variable parsing in the `component get` subcommand as they are already
+      global options (both as options and environment variables).
+- [ ] Remove locally duplicated `SI_API_TOKEN` and `SI_BASE_URL` environment
+      variable parsing in the `component update` subcommand as they are already
+      global options (both as options and environment variables).
+- [ ] Remove locally duplicated `SI_API_TOKEN` and `SI_BASE_URL` environment
+      variable parsing in the `component delete` subcommand as they are already
+      global options (both as options and environment variables).
+- [ ] Remove locally duplicated `SI_API_TOKEN` and `SI_BASE_URL` environment
+      variable parsing in the `component search` subcommand as they are already
+      global options (both as options and environment variables).
+- [ ] Consider a common short option character for `--change-set` options across
+      CLI (the `-c` is used inconsistently and may lead to confusion when
+      calling other subcommands with short options).
+
 ## License
 
 See the root of the System Initiative repository for license information.
