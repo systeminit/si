@@ -160,8 +160,12 @@ impl FromRequestParts<AppState> for Authorization {
                 .await
                 .map_err(unauthorized_error)?
                 .custom;
-        if !user_claim.authorized_for(SiJwtClaimRole::Web) {
-            return Err(unauthorized_error("Not authorized for web role"));
+        if !user_claim.authorized_for(SiJwtClaimRole::Web)
+            && !user_claim.authorized_for(SiJwtClaimRole::Automation)
+        {
+            return Err(unauthorized_error(
+                "Not authorized for web or automation role",
+            ));
         }
 
         Ok(Self {
