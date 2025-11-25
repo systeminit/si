@@ -12,6 +12,7 @@
 
 import { Secret } from "@cliffy/prompt";
 import type { Context } from "../../context.ts";
+import type { AiTool } from "../../ai_agent.ts";
 import {
   getConfigPath,
   loadConfig,
@@ -102,7 +103,7 @@ export async function callAiAgentConfig(
   // Update tool
   if (options.tool) {
     logger.info(`\nUpdating tool to: ${options.tool}`);
-    config.tool = options.tool as any;
+    config.tool = options.tool as AiTool;
     configChanged = true;
     logger.info("✅ Tool updated");
   }

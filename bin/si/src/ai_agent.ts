@@ -94,6 +94,7 @@ interface ClaudeSettings {
  * Get the path to the AI agent configuration directory
  */
 export function getConfigDir(): string {
+  // deno-lint-ignore si-rules/no-deno-env-get
   const home = Deno.env.get("HOME") || Deno.env.get("USERPROFILE");
   if (!home) {
     throw new Error("Could not determine home directory");
@@ -792,6 +793,7 @@ export async function startLocalServer(
     args,
     env: {
       SI_API_TOKEN: config.apiToken,
+      // deno-lint-ignore si-rules/no-deno-env-get
       SI_BASE_URL: Deno.env.get("SI_BASE_URL") || "https://api.systeminit.com",
     },
     stdin: "piped",

@@ -1,5 +1,5 @@
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
+import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod-v3";
 import {
   ActionsApi,
@@ -15,7 +15,7 @@ import {
   successResponse,
   withAnalytics,
 } from "./commonBehavior.ts";
-import { ActionList, ActionSchema } from "../data/actions.ts";
+import { type ActionList, ActionSchema } from "../data/actions.ts";
 
 const name = "action-list";
 const title = "List actions";

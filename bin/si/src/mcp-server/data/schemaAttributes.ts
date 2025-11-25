@@ -1,4 +1,4 @@
-import {
+import type {
   GetSchemaVariantV1Response,
   PropSchemaV1,
 } from "@systeminit/api-client";
