@@ -12,7 +12,6 @@ rust_library(
         "//lib/si-events-rs:si-events",
         "//lib/si-id:si-id",
         "//third-party/rust:chrono",
-        "//third-party/rust:json-patch",
         "//third-party/rust:remain",
         "//third-party/rust:serde",
         "//third-party/rust:serde_json",
