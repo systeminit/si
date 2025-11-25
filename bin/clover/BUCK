@@ -44,10 +44,7 @@ deno_test(
     srcs = glob(
         ["**/*.ts", "**/test/*.ts"],
         exclude = [
-            "src/pipelines/aws/funcs/**/*",
-            "src/pipelines/azure/funcs/**/*",
-            "src/pipelines/hetzner/funcs/**/*",
-            "src/pipelines/dummy/funcs/**/*",
+            "src/pipelines/**/funcs/**/*",
             "src/provider-schemas/**",
         ]
     ),
