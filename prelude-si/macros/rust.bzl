@@ -41,13 +41,6 @@ def rust_binary(
         test_unit_resources = {},
         extra_test_targets = [],
         toml_srcs = ["Cargo.toml"],
-        source_url = "http://github.com/systeminit/si.git",
-        author = "The System Initiative <dev@systeminit.com>",
-        license = "Apache-2.0",
-        publish_target = "publish-binary",
-        promote_target = "promote-binary",
-        artifact_destination = "s3://si-artifacts-prod",
-        artifact_cname = "artifacts.systeminit.com",
         visibility = ["PUBLIC"],
         **kwargs):
     native.rust_binary(
