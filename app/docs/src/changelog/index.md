@@ -2,6 +2,72 @@
 
 All notable changes to System Initiative will be documented in this file.
 
+## November 17th to 23rd, 2025
+
+### ✨ Added
+
+- Launched coverage for **DigitalOcean assets** with new onboarding flow.
+- Added support for **pulling uninstalled schemas** in the SI CLI.
+- Added an **installed schema event** to the workspace audit log.
+- Added the ability to **skip creating overlays** when editing built-ins in the
+  Public API.
+
+### 🔄 Changed
+
+- Improved consistency between the **Attribute and Secret Panels** in the web
+  app.
+- Allowed users to **switch workspaces** while waiting in the lobby.
+- Removed the automatic redirect to a **default workspace** during login.
+
+### 🐞 Fixed
+
+- Fixed an issue with **bulk writes to SQLite** in the web app.
+- Fixed map rendering issues in the web app.
+- Fixed poor rendering of the **code viewer** when displaying a single line of
+  code.
+- Fixed onboarding screen rendering issues in **Firefox**.
+- Fixed an issue in the MCP Server where `componentDiscover` selected the wrong
+  function type.
+- Fixed schema color handling when authoring via the **SI binary**.
+- Fixed an issue creating a **template from baseline** in the SI binary.
+
+## November 10th to 16th, 2025
+
+### ✨ Added
+
+- Added filtering in the Web App Map view to show components with diffs.
+- Added support for retrieving component resources via the Public API.
+- Added the ability to execute debug functions through the Public API.
+- Added support for deleting overlay function bindings and updating overlay
+  functions via the Public API.
+- Added support for conduit to push and pull overlay functions.
+- Added support for conduit to push schema names instead of all schemas.
+- Added the ability to create attribute and transformation functions via the
+  Public API.
+- Added visibility in the Web App when an AI Agent creates a change set.
+- Added support for pulling overlays and schemas using wildcards in conduit.
+- Added support for using debug functions through the MCP tool.
+
+### 🔄 Changed
+
+- Improved SQLite performance by adding a ReadWrite lock.
+- Removed the requirement for the AI Agent banner after onboarding in the Web
+  App.
+
+### 🐞 Fixed
+
+- Fixed unnecessary SQLite queries triggered during Web App page load.
+- Fixed an issue where component upgrades incorrectly queued update functions.
+- Fixed an issue where the component details page briefly showed an incorrect
+  “does not exist” message.
+- Fixed collapsing behavior for categories in the AddComponentModal.
+- Fixed an error not being captured when creating a component in the
+  AddComponentModal.
+- Fixed multiple issues in the right-click context menu related to hotkeys and
+  menu visibility.
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/nFJgHwkR4kY?si=Zt-yT4SZiDljrRIu" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+
 ## November 3rd to 9th, 2025
 
 ### ✨ Added
