@@ -13,6 +13,7 @@ use si_data_nats::NatsClient;
 use si_data_pg::PgPool;
 use telemetry::prelude::*;
 use telemetry_utils::{
+    histogram,
     metric,
     monotonic,
 };
@@ -439,7 +440,11 @@ impl PersisterTask {
         pg_pool: &PgPool,
         s3_layers: &Option<Arc<HashMap<&'static str, S3Layer>>>,
     ) -> LayerDbResult<()> {
-        match backend {
+        let cache_name = event.payload.db_name.as_ref();
+        let event_kind = event.event_kind.as_ref();
+        let write_start = std::time::Instant::now();
+
+        let result = match backend {
             BackendType::Postgres => {
                 let pg_layer = PgLayer::new(pg_pool.clone(), event.payload.db_name.as_ref());
 
@@ -485,15 +490,23 @@ impl PersisterTask {
                     .ok_or(LayerDbError::S3NotConfigured)?;
 
                 s3_layer
-                    .insert(
-                        event.key.as_ref(),
-                        event.payload.sort_key.as_ref(),
-                        event.payload.value.as_ref(),
-                        event.payload.db_name.as_ref(),
-                    )
+                    .insert(event.key.as_ref(), event.payload.value.as_ref())
                     .await
             }
-        }
+        };
+
+        let write_duration = write_start.elapsed().as_millis() as f64;
+        let status = if result.is_ok() { "success" } else { "error" };
+
+        histogram!(
+            layer_cache_persister.write_duration_ms = write_duration,
+            cache_name = cache_name,
+            status = status,
+            backend = backend.as_ref(),
+            event_kind = event_kind
+        );
+
+        result
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -1045,111 +1058,6 @@ impl PersistEventTask {
         let pg_layer = PgLayer::new(self.pg_pool.clone(), event.payload.db_name.as_ref());
         pg_layer.delete(&event.payload.key).await?;
         Ok(())
-    }
-
-    #[instrument(level = "debug", skip_all)]
-    pub async fn write_layers(self, event: LayeredEvent, status_tx: PersisterStatusWriter) {
-        match self.try_write_layers(event, false).await {
-            Ok(_) => status_tx.send(PersistStatus::Finished),
-            Err(err) => {
-                error!(error = ?err, "persister write task failed");
-                status_tx.send(PersistStatus::Error(err));
-            }
-        }
-    }
-
-    #[instrument(level = "debug", skip_all)]
-    pub async fn try_write_layers(&self, event: LayeredEvent, is_retry: bool) -> LayerDbResult<()> {
-        let start = std::time::Instant::now();
-        let cache_name = event.payload.db_name.to_string();
-        let event = Arc::new(event);
-
-        // Write to nats
-        let nats_join = if is_retry {
-            None
-        } else {
-            Some(self.layered_event_client.publish(event.clone()).await?)
-        };
-
-        // Write to pg
-        let pg_self = self.clone();
-        let pg_event = event.clone();
-        let pg_join = tokio::task::spawn(async move { pg_self.write_to_pg(pg_event).await });
-
-        // Wait for PostgreSQL write
-        let pg_result = pg_join.await;
-        let pg_error = match &pg_result {
-            Ok(Ok(_)) => None,
-            Ok(Err(e)) => Some(e.to_string()),
-            Err(e) => Some(e.to_string()),
-        };
-
-        // Wait for NATS publish if this was an initial attempt
-        let nats_error = if let Some(nats_handle) = nats_join {
-            match nats_handle.await {
-                Ok(Ok(_)) => None,
-                Ok(Err(e)) => Some(e.to_string()),
-                Err(e) => Some(e.to_string()),
-            }
-        } else {
-            None
-        };
-
-        let result = if pg_error.is_some() || nats_error.is_some() {
-            let kind = PersisterTaskErrorKind::Write;
-
-            // Track which component failed
-            if pg_error.is_some() && nats_error.is_some() {
-                info!(
-                    metrics = true,
-                    counter.layer_cache_persister_both_error = 1,
-                    cache_name = &cache_name,
-                    operation = "write",
-                    backend = BackendType::Postgres.as_ref(),
-                    event_kind = event.event_kind.as_ref()
-                );
-            } else if pg_error.is_some() {
-                info!(
-                    metrics = true,
-                    counter.layer_cache_persister_pg_error = 1,
-                    cache_name = &cache_name,
-                    operation = "write",
-                    backend = BackendType::Postgres.as_ref(),
-                    event_kind = event.event_kind.as_ref()
-                );
-            } else if nats_error.is_some() {
-                info!(
-                    metrics = true,
-                    counter.layer_cache_persister_nats_error = 1,
-                    cache_name = &cache_name,
-                    operation = "write",
-                    backend = BackendType::Postgres.as_ref(),
-                    event_kind = event.event_kind.as_ref()
-                );
-            }
-
-            Err(LayerDbError::PersisterTaskFailed(PersisterTaskError {
-                kind,
-                pg_error,
-                nats_error,
-            }))
-        } else {
-            Ok(())
-        };
-
-        let duration = start.elapsed().as_secs_f64();
-        let status = if result.is_ok() { "success" } else { "error" };
-        let event_kind = event.event_kind.as_ref();
-        info!(
-            metrics = true,
-            histogram.layer_cache_persister_write_duration_seconds = duration,
-            cache_name = &cache_name,
-            status = status,
-            backend = BackendType::Postgres.as_ref(),
-            event_kind = event_kind
-        );
-
-        result
     }
 
     // Write an event to the pg layer

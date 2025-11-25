@@ -217,7 +217,7 @@ where
 
         for (cache_name, strategy) in cache_configs {
             let cache_config = config.object_storage_config.for_cache(cache_name);
-            let s3_layer = S3Layer::new(cache_config, strategy).await?;
+            let s3_layer = S3Layer::new(cache_config, cache_name, strategy).await?;
             layers.insert(cache_name, s3_layer);
         }
 
