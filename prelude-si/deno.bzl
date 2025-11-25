@@ -12,9 +12,34 @@ load(
     "DenoWorkspaceInfo",
 )
 
+DenoTargetRuntimeInfo = provider(fields = {
+    "target": provider_field(typing.Any, default = None),
+    "runtime_dir": provider_field(typing.Any, default = None),
+})
+
 def deno_binary_impl(ctx: AnalysisContext) -> list[Provider]:
-    out = ctx.actions.declare_output(ctx.attrs.out)
     deno_toolchain = ctx.attrs._deno_toolchain[DenoToolchainInfo]
+
+    # Read target string from toolchain (selected by platform constraints)
+    target_string = deno_toolchain.target_string if deno_toolchain.target_string else None
+
+    # Determine binary extension based on target platform
+    binary_name = ctx.attrs.out
+    if target_string and target_string.startswith("windows-"):
+        if not binary_name.endswith(".exe"):
+            binary_name = binary_name + ".exe"
+
+    out = ctx.actions.declare_output(binary_name)
+
+    # Build hidden dependencies list
+    hidden_deps = list(ctx.attrs.srcs)
+
+    # Add target runtime as hidden dependency (triggers download if not cached)
+    if target_string:
+        runtime_dep = ctx.attrs._target_runtimes.get(target_string)
+        if runtime_dep:
+            runtime_info = runtime_dep[DenoTargetRuntimeInfo]
+            hidden_deps.append(runtime_info.runtime_dir)
 
     cmd = cmd_args(
         ctx.attrs._python_toolchain[PythonToolchainInfo].interpreter,
@@ -27,13 +52,17 @@ def deno_binary_impl(ctx: AnalysisContext) -> list[Provider]:
         ctx.attrs.extra_srcs,
         "--output",
         out.as_output(),
-        hidden = ctx.attrs.srcs,
+        hidden = hidden_deps,
     )
 
     if ctx.attrs.deno_cache:
         deno_cache_provider = ctx.attrs.deno_cache[DenoWorkspaceInfo]
         cmd.add("--deno-dir", deno_cache_provider.cache_dir)
         cmd.add("--workspace-dir", deno_cache_provider.workspace_dir)
+
+    # Handle cross-compilation with target runtime
+    if target_string:
+        cmd.add("--target", target_string)
 
     if ctx.attrs.permissions:
         cmd.add("--permissions", *ctx.attrs.permissions)
@@ -86,6 +115,18 @@ deno_binary = rule(
         "_deno_toolchain": attrs.toolchain_dep(
             default = "toolchains//:deno",
             providers = [DenoToolchainInfo],
+        ),
+        "_target_runtimes": attrs.dict(
+            key = attrs.string(),
+            value = attrs.dep(providers = [DenoTargetRuntimeInfo]),
+            default = {
+                "linux-x86_64": "toolchains//:deno-runtime-linux-x86_64",
+                "linux-aarch64": "toolchains//:deno-runtime-linux-aarch64",
+                "darwin-x86_64": "toolchains//:deno-runtime-darwin-x86_64",
+                "darwin-aarch64": "toolchains//:deno-runtime-darwin-aarch64",
+                "windows-x86_64": "toolchains//:deno-runtime-windows-x86_64",
+                "windows-aarch64": "toolchains//:deno-runtime-windows-aarch64",
+            },
         ),
     },
 )
@@ -389,6 +430,52 @@ deno_workspace = rule(
             default = "deno_cache",
             doc = "The name of the output directory for the Deno cache.",
         ),
+        "_python_toolchain": attrs.toolchain_dep(
+            default = "toolchains//:python",
+            providers = [PythonToolchainInfo],
+        ),
+        "_deno_toolchain": attrs.toolchain_dep(
+            default = "toolchains//:deno",
+            providers = [DenoToolchainInfo],
+        ),
+    },
+)
+
+def deno_target_runtime_impl(ctx: AnalysisContext) -> list[Provider]:
+    """Downloads a Deno target runtime for cross-compilation."""
+    deno_toolchain = ctx.attrs._deno_toolchain[DenoToolchainInfo]
+
+    # Output is the downloaded runtime artifact
+    runtime_out = ctx.actions.declare_output(
+        "deno-runtime-{}".format(ctx.attrs.target),
+        dir = True,
+    )
+
+    cmd = cmd_args(
+        ctx.attrs._python_toolchain[PythonToolchainInfo].interpreter,
+        deno_toolchain.deno_target_runtime[DefaultInfo].default_outputs[0],
+        "--deno-exe",
+        deno_toolchain.deno_exe,
+        "--target",
+        ctx.attrs.target,
+        "--output-dir",
+        runtime_out.as_output(),
+    )
+
+    ctx.actions.run(cmd, category = "deno", identifier = "deno_target_runtime")
+
+    return [
+        DefaultInfo(default_output = runtime_out),
+        DenoTargetRuntimeInfo(
+            target = ctx.attrs.target,
+            runtime_dir = runtime_out,
+        ),
+    ]
+
+deno_target_runtime = rule(
+    impl = deno_target_runtime_impl,
+    attrs = {
+        "target": attrs.string(doc = "Target platform string (e.g., linux-x86_64)"),
         "_python_toolchain": attrs.toolchain_dep(
             default = "toolchains//:python",
             providers = [PythonToolchainInfo],

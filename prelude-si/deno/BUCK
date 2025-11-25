@@ -25,6 +25,11 @@ export_file(
     name = "deno_workspace.py",
 )
 
+export_file(
+    name = "deno_target_runtime.py",
+    visibility = ["PUBLIC"],
+)
+
 yapf_check(
     name = "check-format-python",
     srcs = glob(["**/*.py"]),

@@ -13,6 +13,7 @@ load(
 load("@prelude-si//toolchains:clang_distribution.bzl", "download_clang_distribution", "hermetic_clang_toolchain")
 load("@prelude-si//toolchains:deno_distribution.bzl", "download_deno_distribution")
 load("@prelude-si//deno:toolchain.bzl", "deno_toolchain")
+load("@prelude-si//:deno.bzl", "deno_target_runtime")
 load("@prelude-si//toolchains:rust_distribution.bzl", "download_rust_distribution", "hermetic_rust_toolchain")
 load("@prelude-si//toolchains:python_distribution.bzl", "download_python_distribution", "hermetic_python_toolchain", "hermetic_python_bootstrap_toolchain")
 load("@prelude-si//artifact:toolchain.bzl", "artifact_toolchain")
@@ -161,9 +162,93 @@ build_context_toolchain(
     visibility = ["PUBLIC"],
 )
 
+# Platform-specific toolchain instances
 deno_toolchain(
-    name = "deno",
+    name = "deno-linux-x86_64",
     deno_exe = "$(location :deno_dist-extraction)/toolchain/bin/deno",
+    target_string = "linux-x86_64",
+)
+
+deno_target_runtime(
+    name = "deno-runtime-linux-x86_64",
+    target = "linux-x86_64",
+    visibility = ["PUBLIC"],
+)
+
+deno_toolchain(
+    name = "deno-linux-aarch64",
+    deno_exe = "$(location :deno_dist-extraction)/toolchain/bin/deno",
+    target_string = "linux-aarch64",
+)
+
+deno_target_runtime(
+    name = "deno-runtime-linux-aarch64",
+    target = "linux-aarch64",
+    visibility = ["PUBLIC"],
+)
+
+deno_toolchain(
+    name = "deno-darwin-x86_64",
+    deno_exe = "$(location :deno_dist-extraction)/toolchain/bin/deno",
+    target_string = "darwin-x86_64",
+)
+
+deno_target_runtime(
+    name = "deno-runtime-darwin-x86_64",
+    target = "darwin-x86_64",
+    visibility = ["PUBLIC"],
+)
+
+deno_toolchain(
+    name = "deno-darwin-aarch64",
+    deno_exe = "$(location :deno_dist-extraction)/toolchain/bin/deno",
+    target_string = "darwin-aarch64",
+)
+
+deno_target_runtime(
+    name = "deno-runtime-darwin-aarch64",
+    target = "darwin-aarch64",
+    visibility = ["PUBLIC"],
+)
+
+deno_toolchain(
+    name = "deno-windows-x86_64",
+    deno_exe = "$(location :deno_dist-extraction)/toolchain/bin/deno",
+    target_string = "windows-x86_64",
+)
+
+deno_target_runtime(
+    name = "deno-runtime-windows-x86_64",
+    target = "windows-x86_64",
+    visibility = ["PUBLIC"],
+)
+
+deno_toolchain(
+    name = "deno-windows-aarch64",
+    deno_exe = "$(location :deno_dist-extraction)/toolchain/bin/deno",
+    target_string = "windows-aarch64",
+)
+
+deno_target_runtime(
+    name = "deno-runtime-windows-aarch64",
+    target = "windows-aarch64",
+    visibility = ["PUBLIC"],
+)
+
+toolchain_alias(
+    name = "deno",
+    actual = select({
+        "prelude//cpu:arm64": select({
+            "prelude//os:linux": ":deno-linux-aarch64",
+            "prelude//os:macos": ":deno-darwin-aarch64",
+            "prelude//os:windows": ":deno-windows-aarch64",
+        }),
+        "prelude//cpu:x86_64": select({
+            "prelude//os:linux": ":deno-linux-x86_64",
+            "prelude//os:macos": ":deno-darwin-x86_64",
+            "prelude//os:windows": ":deno-windows-x86_64",
+        }),
+    }),
     visibility = ["PUBLIC"],
 )
 
