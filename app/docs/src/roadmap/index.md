@@ -5,27 +5,27 @@ outline:
 
 # Roadmap
 
-Updated October 27, 2025.
+Updated November 25, 2025.
 
 Want to influence the road map?
 [Learn more about how to work on System Initiative](../explanation/working-on-si.md).
 
-## Provider Coverage (In-development)
+## SI CLI (In development)
 
-We are expanding our list of supported [providers](https://docs.systeminit.com/reference/providers), starting with Azure and Google
-Cloud. These new providers will be available in Q4 2025.
+We are introducing a CLI for System Initiative. It gives you tools to manage
+your workspace without the web app. You can manage components, author schemas,
+and generate templates for reuse. The CLI also gives you direct control of the
+AI Agent from your terminal.
+
+## Provider Coverage (In Public Beta)
+
+We are expanding our list of supported
+[providers](https://docs.systeminit.com/reference/providers), starting with
+Azure and Google Cloud. These new providers will be available in Q4 2025.
 
 - Azure (in public beta)
 - Hetzner Cloud (in public beta)
 - DigitalOcean (in public beta)
-
-## Local Schema Authoring (In development)
-
-We’re introducing a new authoring CLI that lets users define and edit schemas
-locally from their preferred IDE or text editor. Users can author and refine
-asset schemas and functions on disk, then push changes to their System
-Initiative workspace or pull remote updates locally for review and application
-within the workspace model.
 
 ## AI Authoring (Generally Available)
 
