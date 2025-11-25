@@ -72,10 +72,6 @@ pub use components::{
         ManagementFunctionReference,
     },
     find_component::FindComponentV1Params,
-    generate_template::{
-        GenerateTemplateV1Request,
-        GenerateTemplateV1Response,
-    },
     get_component::{
         GetComponentV1Response,
         GetComponentV1ResponseManagementFunction,
@@ -223,7 +219,6 @@ pub use crate::api_types::func_run::v1::{
         components::manage_component::manage_component,
         components::duplicate_components::duplicate_components,
         components::upgrade_component::upgrade_component,
-        components::generate_template::generate_template,
         components::erase_component::erase_component,
         components::restore_component::restore_component,
         components::get_component_resource::get_component_resource,
@@ -305,8 +300,6 @@ pub use crate::api_types::func_run::v1::{
             RestoreComponentV1Response,
             DuplicateComponentsV1Request,
             DuplicateComponentsV1Response,
-            GenerateTemplateV1Request,
-            GenerateTemplateV1Response,
             ExecuteManagementFunctionV1Request,
             ExecuteManagementFunctionV1Response,
             ComponentPropKey,

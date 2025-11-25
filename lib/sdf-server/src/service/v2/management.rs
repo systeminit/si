@@ -71,10 +71,8 @@ use super::func::FuncAPIError;
 use crate::{
     AppState,
     service::force_change_set_response::ForceChangeSetResponse,
-    track,
 };
 
-mod generate_template;
 mod history;
 mod latest;
 mod state;
@@ -98,8 +96,6 @@ pub enum ManagementApiError {
     FuncAuthoring(#[from] FuncAuthoringError),
     #[error("generated mgmt func {0} has no prototype")]
     FuncMissingPrototype(FuncId),
-    #[error("generate template error: {0}")]
-    GenerateTemplate(#[from] sdf_core::generate_template::GenerateTemplateError),
     #[error("hyper error: {0}")]
     Http(#[from] axum::http::Error),
     #[error("layer db error: {0}")]
@@ -295,9 +291,5 @@ pub fn v2_routes() -> Router<AppState> {
             get(latest::all_latest_for_component),
         )
         .route("/history", get(history::history))
-        .route(
-            "/generate_template/:viewId",
-            post(generate_template::generate_template),
-        )
         .route("/state/:funcRunId", get(state::state))
 }
