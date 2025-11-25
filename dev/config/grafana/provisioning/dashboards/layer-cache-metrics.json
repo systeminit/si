@@ -62,7 +62,7 @@
           "type": "prometheus",
           "uid": "${datasource}"
         },
-        "query": "label_values(layer_cache_persister_write_attempted{exported_job=~\"$service\"}, cache_name)",
+        "query": "label_values(layer_cache_persister_write_attempted{exported_job=~\"${service}\"}, cache_name)",
         "refresh": 2,
         "sort": 1,
         "multi": true,
@@ -71,17 +71,36 @@
       },
       {
         "name": "backend",
-        "type": "query",
+        "type": "custom",
         "label": "Backend",
-        "datasource": {
-          "type": "prometheus",
-          "uid": "${datasource}"
-        },
-        "query": "label_values(layer_cache_backend_resolved_total{exported_job=~\"$service\"}, backend)",
-        "refresh": 2,
-        "sort": 1,
+        "query": "foyer, postgres, s3",
         "multi": true,
-        "includeAll": true
+        "includeAll": true,
+        "hide": 0,
+        "options": [
+          {
+            "selected": false,
+            "text": "All",
+            "value": "$__all"
+          },
+          {
+            "selected": false,
+            "text": "foyer",
+            "value": "foyer"
+          },
+          {
+            "selected": false,
+            "text": "postgres",
+            "value": "postgres"
+          },
+          {
+            "selected": false,
+            "text": "s3",
+            "value": "s3"
+          }
+        ],
+        "queryValue": "",
+        "skipUrlSync": false
       }
     ]
   },
@@ -106,7 +125,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "rate(layer_cache_retry_queue_enqueued{exported_job=~\"$service\", cache_name=~\"$cache\"}[1m])",
+          "expr": "rate(layer_cache_retry_queue_enqueued{exported_job=~\"${service}\", cache_name=~\"${cache}\"}[1m])",
           "legendFormat": "{{exported_job}}/{{cache_name}} - enqueued",
           "refId": "A"
         }
@@ -160,7 +179,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "rate(layer_cache_retry_queue_success{exported_job=~\"$service\", cache_name=~\"$cache\"}[1m])",
+          "expr": "rate(layer_cache_retry_queue_success{exported_job=~\"${service}\", cache_name=~\"${cache}\"}[1m])",
           "legendFormat": "{{exported_job}}/{{cache_name}} - success",
           "refId": "A"
         }
@@ -214,7 +233,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "rate(layer_cache_retry_queue_failed{exported_job=~\"$service\", cache_name=~\"$cache\"}[1m])",
+          "expr": "rate(layer_cache_retry_queue_failed{exported_job=~\"${service}\", cache_name=~\"${cache}\"}[1m])",
           "legendFormat": "{{exported_job}}/{{cache_name}} - failed",
           "refId": "A"
         }
@@ -268,7 +287,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "rate(layer_cache_retry_queue_permanent_failure{exported_job=~\"$service\", cache_name=~\"$cache\"}[1m])",
+          "expr": "rate(layer_cache_retry_queue_permanent_failure{exported_job=~\"${service}\", cache_name=~\"${cache}\"}[1m])",
           "legendFormat": "{{exported_job}}/{{cache_name}} - permanent failure",
           "refId": "A"
         }
@@ -322,7 +341,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "layer_cache_retry_queue_depth{exported_job=~\"$service\", cache_name=~\"$cache\"}",
+          "expr": "layer_cache_retry_queue_depth{exported_job=~\"${service}\", cache_name=~\"${cache}\"}",
           "legendFormat": "{{exported_job}}/{{cache_name}} - queue depth",
           "refId": "A"
         }
@@ -376,7 +395,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "rate(layer_cache_retry_queue_success{exported_job=~\"$service\", cache_name=~\"$cache\"}[1m])",
+          "expr": "rate(layer_cache_retry_queue_success{exported_job=~\"${service}\", cache_name=~\"${cache}\"}[1m])",
           "legendFormat": "{{exported_job}}/{{cache_name}} - success",
           "refId": "A"
         },
@@ -385,7 +404,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "rate(layer_cache_retry_queue_failed{exported_job=~\"$service\", cache_name=~\"$cache\"}[1m])",
+          "expr": "rate(layer_cache_retry_queue_failed{exported_job=~\"${service}\", cache_name=~\"${cache}\"}[1m])",
           "legendFormat": "{{exported_job}}/{{cache_name}} - retryable failure",
           "refId": "B"
         },
@@ -394,7 +413,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "rate(layer_cache_retry_queue_permanent_failure{exported_job=~\"$service\", cache_name=~\"$cache\"}[1m])",
+          "expr": "rate(layer_cache_retry_queue_permanent_failure{exported_job=~\"${service}\", cache_name=~\"${cache}\"}[1m])",
           "legendFormat": "{{exported_job}}/{{cache_name}} - permanent failure",
           "refId": "C"
         }
@@ -498,7 +517,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "sum(layer_cache_retry_queue_depth{exported_job=~\"$service\", cache_name=~\"$cache\"})",
+          "expr": "sum(layer_cache_retry_queue_depth{exported_job=~\"${service}\", cache_name=~\"${cache}\"})",
           "refId": "A"
         }
       ],
@@ -560,7 +579,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "layer_cache_retry_queue_depth{exported_job=~\"$service\", cache_name=~\"$cache\"}",
+          "expr": "layer_cache_retry_queue_depth{exported_job=~\"${service}\", cache_name=~\"${cache}\"}",
           "legendFormat": "{{exported_job}}/{{cache_name}}",
           "refId": "A"
         }
@@ -616,7 +635,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "rate(layer_cache_persister_write_attempted{exported_job=~\"$service\", cache_name=~\"$cache\"}[1m])",
+          "expr": "rate(layer_cache_persister_write_attempted{exported_job=~\"${service}\", cache_name=~\"${cache}\"}[1m])",
           "legendFormat": "{{exported_job}}/{{cache_name}} - attempted",
           "refId": "A"
         },
@@ -625,7 +644,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "rate(layer_cache_persister_write_success{exported_job=~\"$service\", cache_name=~\"$cache\", backend=~\"$backend\"}[1m])",
+          "expr": "rate(layer_cache_persister_write_success{exported_job=~\"${service}\", cache_name=~\"${cache}\", backend=~\"${backend}\"}[1m])",
           "legendFormat": "{{exported_job}}/{{cache_name}} - success",
           "refId": "B"
         }
@@ -679,7 +698,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "rate(layer_cache_persister_write_failed_retryable{exported_job=~\"$service\", cache_name=~\"$cache\"}[1m])",
+          "expr": "rate(layer_cache_persister_write_failed_retryable{exported_job=~\"${service}\", cache_name=~\"${cache}\"}[1m])",
           "legendFormat": "{{exported_job}}/{{cache_name}} - retryable",
           "refId": "A"
         },
@@ -688,7 +707,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "rate(layer_cache_persister_write_failed_permanent{exported_job=~\"$service\", cache_name=~\"$cache\"}[1m])",
+          "expr": "rate(layer_cache_persister_write_failed_permanent{exported_job=~\"${service}\", cache_name=~\"${cache}\"}[1m])",
           "legendFormat": "{{exported_job}}/{{cache_name}} - permanent",
           "refId": "B"
         },
@@ -697,7 +716,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "rate(layer_cache_persister_write_failed_retryable{exported_job=~\"$service\", cache_name=~\"$cache\", backend=\"s3\", error_kind!=\"\"}[1m])",
+          "expr": "rate(layer_cache_persister_write_failed_retryable{exported_job=~\"${service}\", cache_name=~\"${cache}\", backend=\"s3\", error_kind!=\"\"}[1m])",
           "legendFormat": "{{exported_job}}/{{cache_name}}/S3 - {{error_kind}}",
           "refId": "C"
         }
@@ -751,7 +770,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "rate(layer_cache_persister_write_failed_retryable{exported_job=~\"$service\", cache_name=~\"$cache\", backend=\"s3\", error_kind!=\"\"}[1m])",
+          "expr": "rate(layer_cache_persister_write_failed_retryable{exported_job=~\"${service}\", cache_name=~\"${cache}\", backend=\"s3\", error_kind!=\"\"}[1m])",
           "legendFormat": "{{exported_job}}/{{cache_name}} - {{error_kind}}",
           "refId": "A"
         }
@@ -900,7 +919,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "rate(layer_cache_persister_write_duration_ms_sum{exported_job=~\"$service\", cache_name=~\"$cache\", backend=~\"$backend\"}[1m]) / rate(layer_cache_persister_write_duration_ms_count{exported_job=~\"$service\", cache_name=~\"$cache\", backend=~\"$backend\"}[1m])",
+          "expr": "rate(layer_cache_persister_write_duration_ms_sum{exported_job=~\"${service}\", cache_name=~\"${cache}\", backend=~\"${backend}\"}[1m]) / rate(layer_cache_persister_write_duration_ms_count{exported_job=~\"${service}\", cache_name=~\"${cache}\", backend=~\"${backend}\"}[1m])",
           "legendFormat": "{{exported_job}}/{{cache_name}}/{{backend}} - avg",
           "refId": "A"
         }
@@ -955,7 +974,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "(rate(layer_cache_persister_evict_duration_seconds_sum{exported_job=~\"$service\", cache_name=~\"$cache\", backend=~\"$backend\"}[1m]) / rate(layer_cache_persister_evict_duration_seconds_count{exported_job=~\"$service\", cache_name=~\"$cache\", backend=~\"$backend\"}[1m])) * 1000",
+          "expr": "(rate(layer_cache_persister_evict_duration_seconds_sum{exported_job=~\"${service}\", cache_name=~\"${cache}\", backend=~\"${backend}\"}[1m]) / rate(layer_cache_persister_evict_duration_seconds_count{exported_job=~\"${service}\", cache_name=~\"${cache}\", backend=~\"${backend}\"}[1m])) * 1000",
           "legendFormat": "{{exported_job}}/{{cache_name}} - avg",
           "refId": "A"
         }
@@ -1010,7 +1029,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "rate(layer_cache_persister_pg_error{exported_job=~\"$service\", cache_name=~\"$cache\", operation=\"write\"}[1m])",
+          "expr": "rate(layer_cache_persister_pg_error{exported_job=~\"${service}\", cache_name=~\"${cache}\", operation=\"write\"}[1m])",
           "legendFormat": "{{exported_job}}/{{cache_name}} - PostgreSQL",
           "refId": "A"
         },
@@ -1019,7 +1038,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "rate(layer_cache_persister_nats_error{exported_job=~\"$service\", cache_name=~\"$cache\", operation=\"write\"}[1m])",
+          "expr": "rate(layer_cache_persister_nats_error{exported_job=~\"${service}\", cache_name=~\"${cache}\", operation=\"write\"}[1m])",
           "legendFormat": "{{exported_job}}/{{cache_name}} - NATS",
           "refId": "B"
         },
@@ -1028,7 +1047,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "rate(layer_cache_persister_both_error{exported_job=~\"$service\", cache_name=~\"$cache\", operation=\"write\"}[1m])",
+          "expr": "rate(layer_cache_persister_both_error{exported_job=~\"${service}\", cache_name=~\"${cache}\", operation=\"write\"}[1m])",
           "legendFormat": "{{exported_job}}/{{cache_name}} - Both",
           "refId": "C"
         }
@@ -1082,7 +1101,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "rate(layer_cache_persister_pg_error{exported_job=~\"$service\", cache_name=~\"$cache\", operation=\"evict\"}[1m])",
+          "expr": "rate(layer_cache_persister_pg_error{exported_job=~\"${service}\", cache_name=~\"${cache}\", operation=\"evict\"}[1m])",
           "legendFormat": "{{exported_job}}/{{cache_name}} - PostgreSQL",
           "refId": "A"
         },
@@ -1091,7 +1110,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "rate(layer_cache_persister_nats_error{exported_job=~\"$service\", cache_name=~\"$cache\", operation=\"evict\"}[1m])",
+          "expr": "rate(layer_cache_persister_nats_error{exported_job=~\"${service}\", cache_name=~\"${cache}\", operation=\"evict\"}[1m])",
           "legendFormat": "{{exported_job}}/{{cache_name}} - NATS",
           "refId": "B"
         },
@@ -1100,7 +1119,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "rate(layer_cache_persister_both_error{exported_job=~\"$service\", cache_name=~\"$cache\", operation=\"evict\"}[1m])",
+          "expr": "rate(layer_cache_persister_both_error{exported_job=~\"${service}\", cache_name=~\"${cache}\", operation=\"evict\"}[1m])",
           "legendFormat": "{{exported_job}}/{{cache_name}} - Both",
           "refId": "C"
         }
@@ -1154,7 +1173,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "rate(layer_cache_persister_event_by_kind{exported_job=~\"$service\", cache_name=~\"$cache\"}[1m])",
+          "expr": "rate(layer_cache_persister_event_by_kind{exported_job=~\"${service}\", cache_name=~\"${cache}\"}[1m])",
           "legendFormat": "{{exported_job}}/{{cache_name}} - {{event_kind}}",
           "refId": "A"
         }
@@ -1208,7 +1227,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "rate(layer_cache_persister_retry_attempted{exported_job=~\"$service\", cache_name=~\"$cache\"}[1m])",
+          "expr": "rate(layer_cache_persister_retry_attempted{exported_job=~\"${service}\", cache_name=~\"${cache}\"}[1m])",
           "legendFormat": "{{exported_job}}/{{cache_name}} - retry attempts",
           "refId": "A"
         }
@@ -1262,7 +1281,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "(rate(layer_cache_persister_retry_duration_seconds_sum{exported_job=~\"$service\", cache_name=~\"$cache\"}[1m]) / rate(layer_cache_persister_retry_duration_seconds_count{exported_job=~\"$service\", cache_name=~\"$cache\"}[1m])) * 1000",
+          "expr": "(rate(layer_cache_persister_retry_duration_seconds_sum{exported_job=~\"${service}\", cache_name=~\"${cache}\"}[1m]) / rate(layer_cache_persister_retry_duration_seconds_count{exported_job=~\"${service}\", cache_name=~\"${cache}\"}[1m])) * 1000",
           "legendFormat": "{{exported_job}}/{{cache_name}} - avg",
           "refId": "A"
         }
@@ -1317,7 +1336,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "histogram_quantile(0.50, rate(layer_cache_persistence_latency_seconds_bucket{exported_job=~\"$service\", cache_name=~\"$cache\", backend=~\"$backend\"}[1m])) * 1000",
+          "expr": "histogram_quantile(0.50, rate(layer_cache_persistence_latency_seconds_bucket{exported_job=~\"${service}\", cache_name=~\"${cache}\", backend=~\"${backend}\"}[1m])) * 1000",
           "legendFormat": "{{exported_job}}/{{cache_name}}/{{operation}}/{{event_kind}} - p50",
           "refId": "A"
         },
@@ -1326,7 +1345,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "histogram_quantile(0.95, rate(layer_cache_persistence_latency_seconds_bucket{exported_job=~\"$service\", cache_name=~\"$cache\", backend=~\"$backend\"}[1m])) * 1000",
+          "expr": "histogram_quantile(0.95, rate(layer_cache_persistence_latency_seconds_bucket{exported_job=~\"${service}\", cache_name=~\"${cache}\", backend=~\"${backend}\"}[1m])) * 1000",
           "legendFormat": "{{exported_job}}/{{cache_name}}/{{operation}}/{{event_kind}} - p95",
           "refId": "B"
         },
@@ -1335,7 +1354,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "histogram_quantile(0.99, rate(layer_cache_persistence_latency_seconds_bucket{exported_job=~\"$service\", cache_name=~\"$cache\", backend=~\"$backend\"}[1m])) * 1000",
+          "expr": "histogram_quantile(0.99, rate(layer_cache_persistence_latency_seconds_bucket{exported_job=~\"${service}\", cache_name=~\"${cache}\", backend=~\"${backend}\"}[1m])) * 1000",
           "legendFormat": "{{exported_job}}/{{cache_name}}/{{operation}}/{{event_kind}} - p99",
           "refId": "C"
         }
@@ -1390,7 +1409,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "rate(layer_cache_persister_evict_attempted{exported_job=~\"$service\", cache_name=~\"$cache\", backend=~\"$backend\"}[1m])",
+          "expr": "rate(layer_cache_persister_evict_attempted{exported_job=~\"${service}\", cache_name=~\"${cache}\", backend=~\"${backend}\"}[1m])",
           "legendFormat": "{{exported_job}}/{{cache_name}} - attempted",
           "refId": "A"
         },
@@ -1399,7 +1418,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "rate(layer_cache_persister_evict_success{exported_job=~\"$service\", cache_name=~\"$cache\", backend=~\"$backend\"}[1m])",
+          "expr": "rate(layer_cache_persister_evict_success{exported_job=~\"${service}\", cache_name=~\"${cache}\", backend=~\"${backend}\"}[1m])",
           "legendFormat": "{{exported_job}}/{{cache_name}} - success",
           "refId": "B"
         }
@@ -1453,7 +1472,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "rate(layer_cache_persister_evict_failed_retryable{exported_job=~\"$service\", cache_name=~\"$cache\", backend=~\"$backend\"}[1m])",
+          "expr": "rate(layer_cache_persister_evict_failed_retryable{exported_job=~\"${service}\", cache_name=~\"${cache}\", backend=~\"${backend}\"}[1m])",
           "legendFormat": "{{exported_job}}/{{cache_name}} - retryable",
           "refId": "A"
         },
@@ -1462,7 +1481,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "rate(layer_cache_persister_evict_failed_permanent{exported_job=~\"$service\", cache_name=~\"$cache\", backend=~\"$backend\"}[1m])",
+          "expr": "rate(layer_cache_persister_evict_failed_permanent{exported_job=~\"${service}\", cache_name=~\"${cache}\", backend=~\"${backend}\"}[1m])",
           "legendFormat": "{{exported_job}}/{{cache_name}} - permanent",
           "refId": "B"
         }
@@ -1497,7 +1516,7 @@
       }
     },
     {
-      "id": null,
+      "id": 32,
       "gridPos": {
         "x": 0,
         "y": 112,
@@ -1509,7 +1528,7 @@
       "collapsed": false
     },
     {
-      "id": null,
+      "id": 33,
       "gridPos": {
         "x": 0,
         "y": 113,
@@ -1531,7 +1550,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "sum(rate(layer_cache_backend_resolved_total{exported_job=~\"$service\", cache_name=~\"$cache\", backend=\"${backend}\", result=\"hit\"}[5m])) / sum(rate(layer_cache_requests_total{exported_job=~\"$service\", cache_name=~\"$cache\"}[5m]))",
+          "expr": "sum(rate(layer_cache_backend_resolved_total{exported_job=~\"${service}\", cache_name=~\"${cache}\", backend=\"${backend}\", result=\"hit\"}[5m])) / sum(rate(layer_cache_requests_total{exported_job=~\"${service}\", cache_name=~\"${cache}\"}[5m]))",
           "refId": "A"
         }
       ],
@@ -1548,7 +1567,7 @@
       }
     },
     {
-      "id": null,
+      "id": 34,
       "gridPos": {
         "x": 0,
         "y": 121,
@@ -1567,7 +1586,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "sum(rate(layer_cache_backend_resolved_total{exported_job=~\"$service\", cache_name=~\"$cache\", backend=\"foyer\", result=\"hit\"}[1m]))",
+          "expr": "sum(rate(layer_cache_backend_resolved_total{exported_job=~\"${service}\", cache_name=~\"${cache}\", backend=\"foyer\", result=\"hit\"}[1m]))",
           "legendFormat": "Foyer",
           "refId": "A"
         },
@@ -1576,7 +1595,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "sum(rate(layer_cache_backend_resolved_total{exported_job=~\"$service\", cache_name=~\"$cache\", backend=\"s3\", result=\"hit\"}[1m]))",
+          "expr": "sum(rate(layer_cache_backend_resolved_total{exported_job=~\"${service}\", cache_name=~\"${cache}\", backend=\"s3\", result=\"hit\"}[1m]))",
           "legendFormat": "S3",
           "refId": "B"
         },
@@ -1585,7 +1604,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "sum(rate(layer_cache_backend_resolved_total{exported_job=~\"$service\", cache_name=~\"$cache\", backend=\"pg\", result=\"hit\"}[1m]))",
+          "expr": "sum(rate(layer_cache_backend_resolved_total{exported_job=~\"${service}\", cache_name=~\"${cache}\", backend=\"pg\", result=\"hit\"}[1m]))",
           "legendFormat": "PostgreSQL",
           "refId": "C"
         },
@@ -1594,7 +1613,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "sum(rate(layer_cache_backend_resolved_total{exported_job=~\"$service\", cache_name=~\"$cache\", result=\"miss\"}[1m]))",
+          "expr": "sum(rate(layer_cache_backend_resolved_total{exported_job=~\"${service}\", cache_name=~\"${cache}\", result=\"miss\"}[1m]))",
           "legendFormat": "Not Found",
           "refId": "D"
         }
@@ -1617,7 +1636,7 @@
       }
     },
     {
-      "id": null,
+      "id": 35,
       "gridPos": {
         "x": 0,
         "y": 129,
@@ -1639,7 +1658,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "sum by (backend) (rate(layer_cache_backend_resolved_total{exported_job=~\"$service\", cache_name=\"${cache}\", backend=~\"$backend\"}[5m]))",
+          "expr": "sum by (backend) (rate(layer_cache_backend_resolved_total{exported_job=~\"${service}\", cache_name=\"${cache}\", backend=~\"${backend}\"}[5m]))",
           "legendFormat": "{{backend}}",
           "refId": "A"
         }
@@ -1683,7 +1702,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "histogram_quantile(0.50, sum(rate(layer_cache_read_latency_ms_bucket{exported_job=~\"$service\", cache_name=~\"$cache\", backend=\"${backend}\"}[$__interval])) by (cache_name, le))",
+          "expr": "histogram_quantile(0.50, sum(rate(layer_cache_read_latency_ms_bucket{exported_job=~\"${service}\", cache_name=~\"${cache}\", backend=\"${backend}\"}[$__interval])) by (cache_name, le))",
           "legendFormat": "{{cache_name}} - p50",
           "refId": "A"
         },
@@ -1692,7 +1711,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "histogram_quantile(0.95, sum(rate(layer_cache_read_latency_ms_bucket{exported_job=~\"$service\", cache_name=~\"$cache\", backend=\"${backend}\"}[$__interval])) by (cache_name, le))",
+          "expr": "histogram_quantile(0.95, sum(rate(layer_cache_read_latency_ms_bucket{exported_job=~\"${service}\", cache_name=~\"${cache}\", backend=\"${backend}\"}[$__interval])) by (cache_name, le))",
           "legendFormat": "{{cache_name}} - p95",
           "refId": "B"
         },
@@ -1701,7 +1720,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "histogram_quantile(0.99, sum(rate(layer_cache_read_latency_ms_bucket{exported_job=~\"$service\", cache_name=~\"$cache\", backend=\"${backend}\"}[$__interval])) by (cache_name, le))",
+          "expr": "histogram_quantile(0.99, sum(rate(layer_cache_read_latency_ms_bucket{exported_job=~\"${service}\", cache_name=~\"${cache}\", backend=\"${backend}\"}[$__interval])) by (cache_name, le))",
           "legendFormat": "{{cache_name}} - p99",
           "refId": "C"
         }
@@ -1733,7 +1752,8 @@
             "mean"
           ]
         }
-      }
+      },
+      "interval": "1m"
     },
     {
       "id": 28,
@@ -1755,7 +1775,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "histogram_quantile(0.50, sum(rate(layer_cache_request_latency_ms_bucket{exported_job=~\"$service\", cache_name=~\"$cache\"}[$__interval])) by (cache_name, le))",
+          "expr": "histogram_quantile(0.50, sum(rate(layer_cache_request_latency_ms_bucket{exported_job=~\"${service}\", cache_name=~\"${cache}\"}[$__interval])) by (cache_name, le))",
           "legendFormat": "{{cache_name}} - p50",
           "refId": "A"
         },
@@ -1764,7 +1784,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "histogram_quantile(0.95, sum(rate(layer_cache_request_latency_ms_bucket{exported_job=~\"$service\", cache_name=~\"$cache\"}[$__interval])) by (cache_name, le))",
+          "expr": "histogram_quantile(0.95, sum(rate(layer_cache_request_latency_ms_bucket{exported_job=~\"${service}\", cache_name=~\"${cache}\"}[$__interval])) by (cache_name, le))",
           "legendFormat": "{{cache_name}} - p95",
           "refId": "B"
         },
@@ -1773,7 +1793,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "histogram_quantile(0.99, sum(rate(layer_cache_request_latency_ms_bucket{exported_job=~\"$service\", cache_name=~\"$cache\"}[$__interval])) by (cache_name, le))",
+          "expr": "histogram_quantile(0.99, sum(rate(layer_cache_request_latency_ms_bucket{exported_job=~\"${service}\", cache_name=~\"${cache}\"}[$__interval])) by (cache_name, le))",
           "legendFormat": "{{cache_name}} - p99",
           "refId": "C"
         }
@@ -1805,7 +1825,8 @@
             "mean"
           ]
         }
-      }
+      },
+      "interval": "1m"
     },
     {
       "id": 29,
@@ -1829,7 +1850,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "histogram_quantile(0.95, sum(rate(layer_cache_read_latency_ms_bucket{exported_job=~\"$service\", cache_name=~\"$cache\", backend=\"${backend}\", result=\"hit\"}[$__interval])) by (cache_name, le))",
+          "expr": "histogram_quantile(0.95, sum(rate(layer_cache_read_latency_ms_bucket{exported_job=~\"${service}\", cache_name=~\"${cache}\", backend=\"${backend}\", result=\"hit\"}[$__interval])) by (cache_name, le))",
           "legendFormat": "{{cache_name}} - hit",
           "refId": "A"
         },
@@ -1838,7 +1859,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "histogram_quantile(0.95, sum(rate(layer_cache_read_latency_ms_bucket{exported_job=~\"$service\", cache_name=~\"$cache\", backend=\"${backend}\", result=\"miss\"}[$__interval])) by (cache_name, le))",
+          "expr": "histogram_quantile(0.95, sum(rate(layer_cache_read_latency_ms_bucket{exported_job=~\"${service}\", cache_name=~\"${cache}\", backend=\"${backend}\", result=\"miss\"}[$__interval])) by (cache_name, le))",
           "legendFormat": "{{cache_name}} - miss",
           "refId": "B"
         }
@@ -1870,7 +1891,8 @@
             "mean"
           ]
         }
-      }
+      },
+      "interval": "1m"
     },
     {
       "id": 31,
@@ -1894,7 +1916,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "sum(increase(layer_cache_read_latency_ms_bucket{exported_job=~\"$service\", cache_name=~\"$cache\", backend=\"${backend}\"}[$__interval])) by (le)",
+          "expr": "sum(increase(layer_cache_read_latency_ms_bucket{exported_job=~\"${service}\", cache_name=~\"${cache}\", backend=\"${backend}\"}[$__interval])) by (le)",
           "legendFormat": "{{le}}",
           "refId": "A",
           "format": "heatmap"
@@ -1925,7 +1947,7 @@
           "color": "rgba(255,0,255,0.7)"
         },
         "filterValues": {
-          "le": 1E-9
+          "le": 1e-09
         },
         "legend": {
           "show": true
@@ -1942,7 +1964,8 @@
           "reverse": false,
           "unit": "ms"
         }
-      }
+      },
+      "interval": "1m"
     }
   ],
   "time": {

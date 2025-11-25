@@ -39,7 +39,6 @@ use aws_sdk_sts::error::SdkError;
 use telemetry::prelude::*;
 use thiserror::Error;
 
-const DEFAULT_MAX_ATTEMPTS: u32 = 10;
 const DEFAULT_FALLBACK_REGION: &str = "us-east-1";
 
 #[allow(missing_docs)]
@@ -63,10 +62,11 @@ type Result<T> = result::Result<T, AwsConfigError>;
 pub struct AwsConfig {}
 
 impl AwsConfig {
-    /// Get an aws config from the environment with built-in retry and sane defaults. It will
-    /// attempt to verify the credentials by getting the established caller identity.
+    /// Get an aws config from the environment with retries disabled and sane defaults.
+    /// Retries are handled by the application's retry queue instead of the SDK.
+    /// It will attempt to verify the credentials by getting the established caller identity.
     pub async fn from_env() -> Result<SdkConfig> {
-        let retry_config = RetryConfig::adaptive().with_max_attempts(DEFAULT_MAX_ATTEMPTS);
+        let retry_config = RetryConfig::disabled();
 
         let config = aws_config::from_env()
             .retry_config(retry_config)
