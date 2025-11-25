@@ -389,8 +389,8 @@ function buildRemoteSchemaCommand() {
             cliContext,
             project,
             schemaNames,
-            skipConfirmation,
             !!updateBuiltins,
+            skipConfirmation,
           );
         }),
     )
