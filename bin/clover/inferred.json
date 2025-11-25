@@ -4363,6 +4363,9 @@
   "A unique name to identify the origin request policy.": {
     "enum": null
   },
+  "A unique name to identify the trust store": {
+    "enum": null
+  },
   "A unique set of Availability Zones, Local Zones, or Wavelength Zones from which AWS advertises IP addresses. Use this parameter to limit the IP address to this location. IP addresses cannot move between network border groups.\n Use [DescribeAvailabilityZones](https://docs.aws.amazon.com/AWSEC2/latest/APIReference/API_DescribeAvailabilityZones.html) to view the network border groups.": {
     "enum": null
   },
@@ -10873,6 +10876,12 @@
   "The S3 bucket": {
     "enum": null
   },
+  "The S3 bucket containing the CA certificates bundle PEM file": {
+    "enum": null
+  },
+  "The S3 bucket region": {
+    "enum": null
+  },
   "The S3 bucket that contains the OpenAPI definition to import. Required if you specify a ``BodyS3Location`` for an API.": {
     "enum": null
   },
@@ -10889,6 +10898,12 @@
     "enum": null
   },
   "The S3 key name of the location where Identity Resolution Jobs write result files.": {
+    "enum": null
+  },
+  "The S3 object key of the CA certificates bundle PEM file": {
+    "enum": null
+  },
+  "The S3 object version of the CA certificates bundle PEM file": {
     "enum": null
   },
   "The S3 prefix that is the destination for log delivery.": {
