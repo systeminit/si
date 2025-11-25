@@ -17,7 +17,8 @@
         <StatusBox
           v-if="showStatusBanner"
           :kind="
-            specialCaseManagementExecutionStatus === 'Running'
+            specialCaseManagementExecutionStatus === 'Running' ||
+            attributePanelRef?.importing
               ? 'loading'
               : 'error'
           "
@@ -178,24 +179,18 @@
               tone="destructive"
               @click="deleteComponent"
             />
-            <div
-              v-if="
-                isUpgradeable ||
-                (specialCaseManagementFuncKind === 'runTemplate' &&
-                  specialCaseManagementFunc?.id)
-              "
-              class="w-px h-6 bg-neutral-600 self-center"
-            ></div>
-            <NewButton
-              v-if="isUpgradeable"
-              v-tooltip="'Upgrade (U)'"
-              :label="upgradeLoading ? 'Upgrading...' : 'Upgrade'"
-              :icon="upgradeLoading ? 'loader' : 'bolt-outline'"
-              :loading="upgradeLoading"
-              :disabled="upgradeLoading"
-              loadingIcon="loader"
-              @click="upgradeComponent"
-            />
+            <template v-if="isUpgradeable">
+              <div class="w-px h-6 bg-neutral-600 self-center" />
+              <NewButton
+                v-tooltip="'Upgrade (U)'"
+                :label="upgradeLoading ? 'Upgrading...' : 'Upgrade'"
+                :icon="upgradeLoading ? 'loader' : 'bolt-outline'"
+                :loading="upgradeLoading"
+                :disabled="upgradeLoading"
+                loadingIcon="loader"
+                @click="upgradeComponent"
+              />
+            </template>
           </template>
         </div>
       </div>
@@ -203,66 +198,52 @@
       <div
         :class="
           clsx(
-            'attrs flex flex-col gap-sm',
+            'attrs flex flex-col',
             !showStatusBanner && !component?.toDelete && 'attrs-no-banner',
           )
         "
       >
         <CollapsingFlexItem ref="attrRef" :expandable="false" open>
           <template #header>
-            <div
-              class="flex flex-row items-center place-content-between w-full"
-            >
-              <span class="text-sm flex items-center">Attributes</span>
-              <NewButton
-                v-if="specialCaseManagementFuncKind === 'import'"
-                :label="
-                  showResourceInput
-                    ? 'Set attributes manually'
-                    : 'Import a Resource'
-                "
-                @click.stop="
-                  () => {
-                    showResourceInput = !showResourceInput;
-                  }
-                "
-              />
-              <template
-                v-else-if="
-                  specialCaseManagementFuncKind === 'runTemplate' &&
-                  specialCaseManagementFunc?.id
-                "
-              >
-                <NewButton
-                  :label="
-                    specialCaseManagementExecutionStatus === 'Failure'
-                      ? 'Re-run template'
-                      : 'Run template'
-                  "
-                  tone="action"
-                  :loading="specialCaseManagementExecutionStatus === 'Running'"
-                  loadingText="Running template"
-                  :disabled="specialCaseManagementExecutionStatus === 'Running'"
-                  loadingIcon="loader"
-                  @click.stop="runMgmtFunc(specialCaseManagementFunc?.id)"
-                />
-              </template>
-            </div>
+            <span class="text-sm">Attributes</span>
+          </template>
+          <template #headerIcons>
+            <NewButton
+              v-if="specialCaseManagementFuncKind === 'import'"
+              v-tooltip="
+                attributePanelRef?.importing
+                  ? undefined
+                  : 'Import Existing Resource (𝙸)'
+              "
+              label="Import a resource"
+              :loading="attributePanelRef?.importing"
+              loadingText="Importing..."
+              @click.stop.prevent="openImportModal"
+            />
+            <NewButton
+              v-else-if="
+                specialCaseManagementFuncKind === 'runTemplate' &&
+                specialCaseManagementFunc?.id
+              "
+              :label="
+                specialCaseManagementExecutionStatus === 'Failure'
+                  ? 'Re-run template'
+                  : 'Run template'
+              "
+              tone="action"
+              :loading="specialCaseManagementExecutionStatus === 'Running'"
+              loadingText="Running template"
+              :disabled="specialCaseManagementExecutionStatus === 'Running'"
+              loadingIcon="loader"
+              @click.stop="runMgmtFunc(specialCaseManagementFunc?.id)"
+            />
           </template>
           <AttributePanel
             ref="attributePanelRef"
             :component="component"
             :attributeTree="attributeTree || undefined"
-            :importFunc="
-              specialCaseManagementFuncKind === 'import' && showResourceInput
-                ? specialCaseManagementFunc
-                : undefined
-            "
-            :importFuncRun="
-              specialCaseManagementFuncKind === 'import'
-                ? specialCaseManagementFuncRun
-                : undefined
-            "
+            :importFunc="importFunc"
+            :importFuncRun="importFuncRun"
             @focused="(path) => focused(path)"
           />
         </CollapsingFlexItem>
@@ -448,6 +429,7 @@
       :componentId="componentId"
       :availableViewListOptions="availableViewListOptions"
     />
+    <ComponentImportModal ref="importModalRef" @submit="doImport" />
   </section>
 </template>
 
@@ -528,6 +510,7 @@ import {
   availableViewListOptionsForComponentIds,
   useComponentsAndViews,
 } from "./logic_composables/view";
+import ComponentImportModal from "./ComponentImportModal.vue";
 
 const showSkeleton = computed(
   () =>
@@ -755,6 +738,17 @@ const specialCaseManagementFuncKind = computed(() => {
 });
 const dispatchedSpecialCaseManagementFunc = ref(false);
 
+const importFunc = computed(() =>
+  specialCaseManagementFuncKind.value === "import"
+    ? specialCaseManagementFunc.value
+    : undefined,
+);
+const importFuncRun = computed(() =>
+  specialCaseManagementFuncKind.value === "import"
+    ? specialCaseManagementFuncRun.value
+    : undefined,
+);
+
 // API to run special case management funcs
 const mgmtRunApi = useApi();
 const route = useRoute();
@@ -788,7 +782,16 @@ const runMgmtFunc = async (funcId: string) => {
   }
 };
 
-const showResourceInput = ref(false);
+const importModalRef = ref<InstanceType<typeof ComponentImportModal>>();
+const openImportModal = () => {
+  if (attributePanelRef.value?.resourceIdValue) {
+    importModalRef.value?.open(
+      attributePanelRef.value?.resourceIdValue as string,
+    );
+  } else {
+    importModalRef.value?.open();
+  }
+};
 
 // MGMT funcs
 const MGMT_RUN_KEY = "latestMgmtFuncRuns";
@@ -909,7 +912,13 @@ const shortcuts: { [Key in string]: (e: KeyDetails[Key]) => void } = {
   },
   // g: undefined,
   // h: undefined,
-  // i: undefined,
+  i: (e) => {
+    if (e.metaKey || e.ctrlKey) return;
+    e.preventDefault();
+    if (specialCaseManagementFuncKind.value === "import") {
+      openImportModal();
+    }
+  },
   // j: undefined,
   k: (e) => {
     e.preventDefault();
@@ -988,16 +997,28 @@ onBeforeUnmount(() => {
   realtimeStore.unsubscribe(MGMT_RUN_KEY);
 });
 
+const importFailure = computed(
+  () =>
+    specialCaseManagementFuncKind.value === "import" &&
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (specialCaseManagementFuncRun.value?.resultValue as any)?.health ===
+      "error",
+);
 const showComponentStateBanner = computed(() => !component.value);
 const showStatusBanner = computed(
   () =>
+    importFailure.value ||
     specialCaseManagementExecutionStatus.value === "Failure" ||
+    specialCaseManagementExecutionStatus.value === "ActionFailure" ||
     specialCaseManagementExecutionStatus.value === "Running",
 );
 const seeFuncRunLabel = "See Func Run";
 const statusBannerText = computed(() => {
   if (specialCaseManagementFuncKind.value === "import")
-    if (specialCaseManagementExecutionStatus.value === "Running")
+    if (
+      specialCaseManagementExecutionStatus.value === "Running" ||
+      attributePanelRef.value?.importing
+    )
       return "Importing...";
     else
       return `Error executing Import function. Click "${seeFuncRunLabel}" for more details.`;
@@ -1159,6 +1180,10 @@ const availableViewListOptions = computed(() =>
     true,
   ),
 );
+
+const doImport = (resourceId: string) => {
+  attributePanelRef.value?.doImport(resourceId);
+};
 
 const emit = defineEmits<{
   (e: "openChangesetModal"): void;

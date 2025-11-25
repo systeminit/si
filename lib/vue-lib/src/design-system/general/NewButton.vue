@@ -14,7 +14,8 @@
       clsx(
         'newbutton',
         tone !== 'nostyle' && [
-          'flex flex-row items-center gap-xs justify-center rounded-sm',
+          'flex flex-row items-center justify-center rounded-sm',
+          size === '2xs' || size === 'xs' ? 'gap-2xs' : 'gap-xs',
           'transition-all whitespace-nowrap leading-none font-medium max-h-fit',
           hasLabel ? 'px-xs py-2xs' : 'p-3xs m-3xs',
           tone !== 'empty' && 'border',
@@ -90,7 +91,7 @@
       <TruncateWithTooltip
         v-if="truncateText && hasLabel"
         ref="truncateRef"
-        class="py-2xs"
+        :class="size === '2xs' || size === 'xs' ? 'py-3xs' : 'py-2xs'"
       >
         <slot v-if="confirmClick && confirmFirstClickAt" name="confirm-click">
           |
@@ -102,7 +103,10 @@
         </slot>
         <slot v-else>{{ label }}</slot>
       </TruncateWithTooltip>
-      <span v-else-if="hasLabel" class="py-2xs">
+      <span
+        v-else-if="hasLabel"
+        :class="size === '2xs' || size === 'xs' ? 'py-3xs' : 'py-2xs'"
+      >
         <slot v-if="confirmClick && confirmFirstClickAt" name="confirm-click">
           |
           {{

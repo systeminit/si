@@ -4,50 +4,6 @@
     data-testid="attribute-panel"
     class="p-xs flex flex-col gap-xs"
   >
-    <div
-      v-if="importFunc && !component.toDelete"
-      class="grid grid-cols-2 gap-2xs relative text-sm h-lg"
-    >
-      <div class="flex flex-row items-center gap-2xs">
-        <TruncateWithTooltip>{{
-          importing ? "Importing Attributes" : "Import"
-        }}</TruncateWithTooltip>
-      </div>
-      <input
-        ref="importInputRef"
-        v-model="resourceIdFormValue"
-        :class="
-          clsx(
-            'block w-full h-lg p-xs ml-auto text-sm border font-mono',
-            themeClasses(
-              'text-shade-100 bg-shade-0 border-neutral-400',
-              'text-shade-0 bg-shade-100 border-neutral-600',
-            ),
-          )
-        "
-        type="text"
-        placeholder="Resource Id"
-        @keydown.enter="doImport"
-      />
-      <Icon
-        v-if="importing || bifrostingResourceId"
-        class="absolute right-[54px] top-xs pointer-events-none"
-        name="loader"
-        size="sm"
-        tone="action"
-      />
-      <TextPill
-        class="absolute text-xs right-xs top-[7px] cursor-default"
-        variant="key2"
-        :class="
-          clsx(!(importing || bifrostingResourceId) && 'hover:cursor-pointer')
-        "
-        @click.prevent="doImport"
-      >
-        Enter
-      </TextPill>
-    </div>
-
     <div class="grid grid-cols-2 items-center gap-2xs text-sm h-lg">
       <nameForm.Field
         :validators="{
@@ -178,13 +134,7 @@ import {
 } from "vue";
 import { Fzf } from "fzf";
 import { useRoute } from "vue-router";
-import {
-  Icon,
-  SiSearch,
-  themeClasses,
-  TruncateWithTooltip,
-  TextPill,
-} from "@si/vue-lib/design-system";
+import { SiSearch, themeClasses } from "@si/vue-lib/design-system";
 import clsx from "clsx";
 import * as _ from "lodash-es";
 import { useMutation, useQueryClient } from "@tanstack/vue-query";
@@ -198,7 +148,6 @@ import {
 } from "@/workers/types/entity_kind_types";
 import { PropKind } from "@/api/sdf/dal/prop";
 import { useMakeKey } from "@/store/realtime/heimdall";
-import { FuncRun } from "@/newhotness/api_composables/func_run";
 import { AttributePath, ComponentId } from "@/api/sdf/dal/component";
 import { componentTypes, routes, UseApi, useApi } from "./api_composables";
 import ComponentAttribute, {
@@ -218,6 +167,7 @@ import {
 } from "./logic_composables/attribute_tree";
 import AttributeChildLayout from "./layout_components/AttributeChildLayout.vue";
 import { AttributeInputContext } from "./types";
+import { FuncRun } from "./api_composables/func_run";
 
 provide<AttributeInputContext>("ATTRIBUTEINPUT", { blankInput: false });
 
@@ -609,18 +559,12 @@ const resourceIdAttr = computed(() => {
 const resourceIdValue = computed(
   () => resourceIdAttr.value?.attributeValue.value ?? null,
 );
-const resourceIdFormValue = ref<JsonValue>();
-
-const importInputRef = ref<HTMLInputElement>();
+const resourceIdFormValue = ref<string>();
 
 const bifrostingResourceId = ref(false);
-const saveResourceId = async () => {
-  if (!resourceIdFormValue.value) {
-    return;
-  }
-
+const saveResourceId = async (resourceId: string) => {
   // Normalize values for comparison (handle null, undefined, empty string)
-  const formValue = resourceIdFormValue.value || null;
+  const formValue = resourceId || null;
   const currentValue = resourceIdValue.value || null;
 
   // Only save if the value has actually changed
@@ -630,19 +574,8 @@ const saveResourceId = async () => {
 
   bifrostingResourceId.value = true;
 
-  await save("/si/resourceId", resourceIdFormValue.value, PropKind.String);
+  await save("/si/resourceId", resourceId, PropKind.String);
 };
-
-watch(
-  resourceIdFormValue,
-  _.debounce(
-    () => {
-      saveResourceId();
-    },
-    500,
-    { trailing: true },
-  ),
-);
 
 watch([resourceIdValue], () => {
   if (resourceIdFormValue.value === resourceIdValue.value) {
@@ -652,10 +585,13 @@ watch([resourceIdValue], () => {
 
 const runMgmtFuncApi = useApi();
 
-const doImport = async () => {
+const doImport = async (resourceId: string) => {
   if (bifrostingResourceId.value) {
     return;
   }
+
+  resourceIdFormValue.value = resourceId;
+  await saveResourceId(resourceId);
 
   const func = props.importFunc;
   if (!func) return;
@@ -697,25 +633,10 @@ const spawningFunc = ref(false);
 const importing = computed(
   () =>
     spawningFunc.value ||
+    bifrostingResourceId.value ||
     ["Created", "Dispatched", "Running", "Postprocessing"].includes(
       props.importFuncRun?.state ?? "",
     ),
-);
-
-// Initialize form value when component mounts or data changes
-// This ensures the form always reflects the current server value initially
-watch(
-  () => resourceIdValue.value,
-  (newValue) => {
-    // Only update form if user isn't currently editing (no focus) or if it's the initial load
-    if (
-      !resourceIdFormValue.value ||
-      resourceIdFormValue.value === (resourceIdValue.value ?? undefined)
-    ) {
-      resourceIdFormValue.value = newValue ?? undefined;
-    }
-  },
-  { immediate: true },
 );
 
 onMounted(() => {
@@ -843,5 +764,8 @@ const emit = defineEmits<{
 
 defineExpose({
   focusSearch,
+  doImport,
+  importing,
+  resourceIdValue,
 });
 </script>
