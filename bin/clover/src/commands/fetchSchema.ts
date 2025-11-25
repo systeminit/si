@@ -5,6 +5,7 @@ import "../pipelines/aws/spec.ts";
 import "../pipelines/hetzner/provider.ts";
 import "../pipelines/azure/provider.ts";
 import "../pipelines/entra/provider.ts";
+import "../pipelines/digitalocean/provider.ts";
 import "../pipelines/dummy/spec.ts";
 
 const logger = _logger.ns("fetchSchema").seal();
