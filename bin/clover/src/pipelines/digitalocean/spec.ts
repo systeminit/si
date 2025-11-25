@@ -319,7 +319,8 @@ export function normalizeDigitalOceanProperty(
           "byte",
           "binary",
           "password",
-          "uri",
+          "ipv4", // TODO Joi can validate ips we should use this
+          "ipv6", // TODO Joi can validate ips we should use this
         ].includes(format)
       ) {
         delete normalized.format;
@@ -336,6 +337,11 @@ export function normalizeDigitalOceanProperty(
           format === "int32")
       ) {
         normalized.format = "double";
+      } else if (
+        normalized.type === "string" &&
+        format === "hostname"
+      ) {
+        normalized.format = "uri";
       }
     }
 
