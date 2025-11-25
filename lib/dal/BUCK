@@ -156,7 +156,7 @@ rust_test(
         "dev.jwt_signing_public_key.pem": "//config/keys:dev.jwt_signing_public_key.pem",
         "dev.postgres.root.crt": "//config/keys:dev.postgres.root.crt",
         "dev.donkey.key": "//lib/dal:dev.donkey.key",
-        "lang-js": "//bin/lang-js:bin",
+        "lang-js": "//bin/lang-js:lang-js",
         "pkgs_path": "//pkgs:pkgs",
         "prod.jwt_signing_public_key.pem": "//config/keys:prod.jwt_signing_public_key.pem",
     },

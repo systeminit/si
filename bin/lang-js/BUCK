@@ -1,24 +1,19 @@
 load(
-    "@prelude-si//:macros.bzl",
-    "alias",
-    "export_file",
-    "nix_omnibus_pkg",
-)
-load(
     "@prelude-si//:deno.bzl",
-    "deno_compile",
     "deno_format",
     "deno_run",
     "deno_test",
 )
+load(
+    "@prelude-si//:macros.bzl",
+    "alias",
+    "deno_binary",
+    "export_file",
+    "nix_omnibus_pkg",
+)
 
 export_file(
     name = "deno.json",
-)
-
-alias(
-    name = "lang-js",
-    actual = ":bin"
 )
 
 filegroup(
@@ -29,9 +24,9 @@ filegroup(
     visibility = ["PUBLIC"],
 )
 
-# this builds bundle.ts so it can be used at runtime by function execution
+# this builds bundle.js so it can be used at runtime by function execution
 deno_run(
-    name = "build",
+    name = "bundle",
     main = "src/build.ts",
     out = "bundle.js",
     srcs = glob(["src/**/*.ts"]),
@@ -41,22 +36,21 @@ deno_run(
     visibility = ["PUBLIC"],
 )
 
-deno_compile(
-    name = "bin",
+deno_binary(
+    name = "lang-js",
     main = "src/index.ts",
-    out = "lang-js",
     srcs = glob([
         "src/**/*.ts",
         "src/**/*.js",
     ]),
     extra_srcs = [
-      ":build"
+        ":bundle",
     ],
     permissions = [
         "allow-all",
     ],
     unstable_flags = [
-        "node-globals"
+        "node-globals",
     ],
     visibility = ["PUBLIC"],
 )
@@ -77,7 +71,7 @@ deno_test(
     name = "test-unit",
     srcs = glob(["**/tests/**/*.ts"]),
     extra_srcs = [
-        ":build",
+        ":bundle",
     ],
     ignore = ["node_modules"],
     permissions = [
@@ -92,10 +86,10 @@ deno_test(
 nix_omnibus_pkg(
     name = "omnibus",
     pkg_name = "lang-js",
-    build_dep = "//bin/lang-js:bin",
+    build_dep = "//bin/lang-js:lang-js",
     srcs = {
         "//:flake.nix": ".",
         "//:flake.lock": ".",
         "//:rust-toolchain": ".",
-    }
+    },
 )

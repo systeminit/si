@@ -6,7 +6,7 @@ load(
 )
 
 export_file(
-    name = "deno_compile.py",
+    name = "deno_binary.py",
 )
 
 export_file(

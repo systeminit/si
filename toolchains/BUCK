@@ -162,8 +162,8 @@ build_context_toolchain(
 )
 
 deno_toolchain(
-    name = "deno", 
-    deno_binary = "$(location :deno_dist-extraction)/toolchain/bin/deno",
+    name = "deno",
+    deno_exe = "$(location :deno_dist-extraction)/toolchain/bin/deno",
     visibility = ["PUBLIC"],
 )
 

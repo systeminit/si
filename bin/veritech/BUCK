@@ -33,7 +33,7 @@ rust_binary(
     resources = {
         "cyclone": "//bin/cyclone:cyclone",
         "dev.decryption.key": "//lib/veritech-server:dev.decryption.key",
-        "lang-js": "//bin/lang-js:bin",
+        "lang-js": "//bin/lang-js:lang-js",
         "firecracker-setup.sh": "//lib/si-firecracker:firecracker-setup.sh",
         "prepare_jailer.sh": "//lib/si-firecracker:prepare_jailer.sh",
     },
