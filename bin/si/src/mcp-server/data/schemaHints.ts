@@ -1,4 +1,4 @@
-import { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
+import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { errorResponse } from "../tools/commonBehavior.ts";
 
 export function validateSchemaPrereqs(

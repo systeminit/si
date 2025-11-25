@@ -1,9 +1,9 @@
-import { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
-import { ZodTypeAny } from "zod-v3";
+import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
+import type { ZodTypeAny } from "zod-v3";
 import { zodToJsonSchema } from "zod-to-json-schema";
 import { analytics } from "../analytics.ts";
 import { WORKSPACE_ID } from "../si_client.ts";
-import { ChangeSetItem } from "../data/changeSets.ts";
+import type { ChangeSetItem } from "../data/changeSets.ts";
 
 export async function withAnalytics<T extends { isError?: boolean }>(
   toolName: string,

@@ -1,6 +1,6 @@
-import { ConsoleStream, Level, Logger, LogRecord } from "@onjara/optic";
+import { ConsoleStream, Level, Logger, type LogRecord } from "@onjara/optic";
 import { TokenReplacer } from "@onjara/optic/formatters";
-import _ from "lodash";
+import type _ from "lodash";
 
 class StderrStream extends ConsoleStream {
   override log(msg: string): void {

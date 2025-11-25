@@ -11,8 +11,10 @@ export class Analytics {
   }
 
   private initializePostHog() {
+    // deno-lint-ignore si-rules/no-deno-env-get
     const apiKey = Deno.env.get("POSTHOG_API_KEY") ||
       "phc_KpehlXOqtU44B2MeW6WjqR09NxRJCYEiUReA58QcAYK"; // Prod Posthog
+    // deno-lint-ignore si-rules/no-deno-env-get
     const host = Deno.env.get("POSTHOG_HOST") || "https://e.systeminit.com";
 
     if (apiKey) {
