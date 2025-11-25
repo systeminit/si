@@ -266,8 +266,8 @@ export async function callRemoteSchemaPush(
   cliContext: AuthenticatedCliContext,
   project: Project,
   filterSchemaNames: string[],
-  skipConfirmation?: boolean,
   updateBuiltins: boolean,
+  skipConfirmation?: boolean,
 ) {
   const { apiConfiguration, workspace, ctx } = cliContext;
   const logger = ctx.logger;
