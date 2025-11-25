@@ -35,7 +35,6 @@ groups = {
     "testing": [
         "bedrock",
         "db-test",
-        "localstack",
         "postgres-test",
     ],
     "telemetry": [
@@ -168,11 +167,6 @@ compose_services = {
     "jaeger": {
         "links": [
             link("http://localhost:16686", "jaeger-ui"),
-        ],
-    },
-    "localstack": {
-        "links": [
-            link("http://localhost:4566", "localstack-api"),
         ],
     },
     "loki": {},

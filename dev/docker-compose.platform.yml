@@ -58,12 +58,6 @@ services:
       # jaeger ui
       - "16686:16686"
 
-  localstack:
-    #<<: *loki-logged-service
-    image: localstack/localstack
-    ports:
-      - "4566:4566"
-
   loki:
     #<<: *loki-logged-service
     image: grafana/loki
