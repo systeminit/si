@@ -26,6 +26,13 @@ class TestSchemasApi(unittest.TestCase):
     def tearDown(self) -> None:
         pass
 
+    def test_contribute(self) -> None:
+        """Test case for contribute
+
+        Contribute the default variant of a schema to the module index
+        """
+        pass
+
     def test_create_schema(self) -> None:
         """Test case for create_schema
 

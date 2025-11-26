@@ -63,6 +63,7 @@ use utoipa::{
 
 use crate::AppState;
 
+pub mod contribute;
 pub mod create_action;
 pub mod create_attribute;
 pub mod create_authentication;
@@ -97,6 +98,12 @@ pub enum SchemaError {
     CachedModule(#[from] dal::cached_module::CachedModuleError),
     #[error("component error: {0}")]
     Component(#[from] dal::ComponentError),
+    #[error("cannot contribute unlocked schema variant: {0}")]
+    ContributeUnlockedVariant(SchemaVariantId),
+    #[error("cannot contribute builtin schema: {0}")]
+    ContributeUpstreamSchema(SchemaId),
+    #[error("contributions can only be made on HEAD")]
+    ContributionsMustBeMadeFromHead,
     #[error("decode error: {0}")]
     Decode(#[from] ulid::DecodeError),
     #[error("frigg error: {0}")]
@@ -125,6 +132,12 @@ pub enum SchemaError {
     MissingOutputLocationForAttributeFunc,
     #[error("schema missing asset func id: {0}")]
     MissingVariantFunc(SchemaVariantId),
+    #[error("module error: {0}")]
+    Module(#[from] dal::module::ModuleError),
+    #[error("module index client error: {0}")]
+    ModuleIndexClient(#[from] module_index_client::ModuleIndexClientError),
+    #[error("module index not configured")]
+    ModuleIndexNotConfigured,
     #[error("changes not permitted on HEAD change set")]
     NotPermittedOnHead,
     #[error("output socket error: {0}")]
@@ -147,6 +160,8 @@ pub enum SchemaError {
     SlowRuntime(#[from] dal::slow_rt::SlowRuntimeError),
     #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),
+    #[error("url parse error: {0}")]
+    UrlParse(#[from] url::ParseError),
     #[error("validation error: {0}")]
     Validation(String),
     #[error("variant authoring error: {0}")]
@@ -204,6 +219,12 @@ impl crate::service::v1::common::ErrorIntoResponse for SchemaError {
             SchemaError::SchemaVariantNotMemberOfSchema(_, _) => {
                 (StatusCode::PRECONDITION_REQUIRED, self.to_string())
             }
+            SchemaError::ContributionsMustBeMadeFromHead => {
+                (StatusCode::PRECONDITION_FAILED, self.to_string())
+            }
+            SchemaError::ContributeUpstreamSchema(_) => {
+                (StatusCode::PRECONDITION_FAILED, self.to_string())
+            }
             SchemaError::Validation(_) => (StatusCode::UNPROCESSABLE_ENTITY, self.to_string()),
             SchemaError::SchemaVariant(dal::SchemaVariantError::SchemaVariantLocked(_)) => {
                 (StatusCode::NOT_FOUND, self.to_string())
@@ -248,6 +269,7 @@ pub fn routes() -> Router<AppState> {
                 .route("/", get(get_schema::get_schema))
                 .route("/unlock", post(unlock_schema::unlock_schema))
                 .route("/install", post(install_schema::install_schema))
+                .route("/contribute", post(contribute::contribute))
                 .nest(
                     "/variant",
                     Router::new()
