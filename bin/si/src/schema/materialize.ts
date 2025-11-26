@@ -25,7 +25,7 @@
  * @module
  */
 
-import { getLogger } from "./logger.ts";
+import { getLogger } from "../logger.ts";
 import {
   type AbsoluteDirectoryPath,
   FunctionKind,

@@ -11,15 +11,15 @@
  * @module
  */
 
-import type { Context } from "../../context.ts";
-import { loadConfig } from "../../ai_agent.ts";
+import type { Context } from "../context.ts";
+import { loadConfig } from "./shared.ts";
 
 export interface AiAgentStartOptions {
   tool?: string;
 }
 
 /**
- * Execute the ai-agent start command
+ * Start the AI agent by launching the configured tool
  */
 export async function callAiAgentStart(
   ctx: Context,

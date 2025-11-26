@@ -18,7 +18,7 @@ import { parse as parseYaml } from "@std/yaml";
 import { extname } from "@std/path";
 import { Context } from "../context.ts";
 import { apiConfig, WORKSPACE_ID } from "../si_client.ts";
-import { resolveChangeSet } from "../change_set_utils.ts";
+import { resolveChangeSet } from "./change_set.ts";
 import { filterAttributes } from "./attribute_utils.ts";
 import { updateComponent } from "./update_utils.ts";
 import { computeAttributeDiff } from "../template/attribute_diff.ts";
@@ -130,7 +130,7 @@ async function fetchCurrentComponent(
  * @param inputFile - Path to the input JSON/YAML file
  * @param options - Update command options
  */
-export async function componentUpdate(
+export async function callComponentUpdate(
   inputFile: string,
   options: ComponentUpdateOptions,
 ): Promise<void> {

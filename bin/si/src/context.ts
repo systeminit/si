@@ -33,7 +33,7 @@
 import type { Logger } from "@logtape/logtape";
 import type { Configuration } from "@systeminit/api-client";
 import { Analytics } from "./analytics.ts";
-import type { UserData } from "./jwt.ts";
+import type { UserData } from "./cli/jwt.ts";
 import {
   configureLogger,
   getLogger,

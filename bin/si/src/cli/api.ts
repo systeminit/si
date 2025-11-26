@@ -1,7 +1,7 @@
 import { getLogger } from "@logtape/logtape";
 import { Configuration } from "@systeminit/api-client";
-import { AuthApiClient, type WorkspaceDetails } from "./auth-api-client.ts";
-import * as jwt from "./jwt.ts";
+import { AuthApiClient, type WorkspaceDetails } from "./auth.ts";
+import * as jwt from "../cli/jwt.ts";
 
 const logger = getLogger(["si", "api"]);
 

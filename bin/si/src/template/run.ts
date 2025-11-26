@@ -1,4 +1,4 @@
-import { Context } from "./context.ts";
+import { Context } from "../context.ts";
 import { isAbsolute, resolve, toFileUrl } from "@std/path";
 import { transpileTemplate } from "./transpile.ts";
 
@@ -10,30 +10,30 @@ export type {
   TemplateComponent,
   TemplateContextOptions,
   TransformFunction,
-} from "./template/context.ts";
+} from "./context.ts";
 export {
   componentViewToTemplateComponent,
   filterComponentAttributes,
   TemplateContext,
-} from "./template/context.ts";
+} from "./context.ts";
 export {
   loadDataFromFile,
   loadInputData,
   schemaHasRequiredFields,
-} from "./template/input.ts";
-export { loadBaselineFromFile, setBaseline } from "./template/baseline.ts";
-export { getHeadChangeSetId } from "./si_client.ts";
-export type { BaselineCache } from "./template/cache.ts";
-export { cacheBaseline } from "./template/cache.ts";
-export { initializeWorkingSet } from "./template/working_set.ts";
-export { updateNamesOfWorkingSet } from "./template/names.ts";
-export { applyTransform } from "./template/transform.ts";
-export { queryExistingSet } from "./template/existing_set.ts";
+} from "./input.ts";
+export { loadBaselineFromFile, setBaseline } from "./baseline.ts";
+export { getHeadChangeSetId } from "../si_client.ts";
+export type { BaselineCache } from "./cache.ts";
+export { cacheBaseline } from "./cache.ts";
+export { initializeWorkingSet } from "./working_set.ts";
+export { updateNamesOfWorkingSet } from "./names.ts";
+export { applyTransform } from "./transform.ts";
+export { queryExistingSet } from "./existing_set.ts";
 export {
   attributeDiffToUpdatePayload,
   computeAttributeDiff,
   isEmptyDiff,
-} from "./template/attribute_diff.ts";
+} from "./attribute_diff.ts";
 export type {
   AttributeDiff,
   ComponentChange,
@@ -43,25 +43,25 @@ export type {
   PendingChanges,
   SubscriptionSource,
   UpdateChange,
-} from "./template/converge_types.ts";
-export { buildPendingChanges } from "./template/pending_changes.ts";
-export { rewriteSubscriptions } from "./template/subscriptions.ts";
-export { topologicalSort } from "./template/topology.ts";
-export { executeChanges } from "./template/execute.ts";
-export { convergeTemplate } from "./template/converge.ts";
+} from "./converge_types.ts";
+export { buildPendingChanges } from "./pending_changes.ts";
+export { rewriteSubscriptions } from "./subscriptions.ts";
+export { topologicalSort } from "./topology.ts";
+export { executeChanges } from "./execute.ts";
+export { convergeTemplate } from "./converge.ts";
 
 // Import for internal use
 import {
   TemplateContext,
   type TemplateContextOptions,
-} from "./template/context.ts";
-import { loadInputData, schemaHasRequiredFields } from "./template/input.ts";
-import { loadBaselineFromFile, setBaseline } from "./template/baseline.ts";
-import { cacheBaseline } from "./template/cache.ts";
-import { initializeWorkingSet } from "./template/working_set.ts";
-import { updateNamesOfWorkingSet } from "./template/names.ts";
-import { applyTransform } from "./template/transform.ts";
-import { convergeTemplate } from "./template/converge.ts";
+} from "./context.ts";
+import { loadInputData, schemaHasRequiredFields } from "./input.ts";
+import { loadBaselineFromFile, setBaseline } from "./baseline.ts";
+import { cacheBaseline } from "./cache.ts";
+import { initializeWorkingSet } from "./working_set.ts";
+import { updateNamesOfWorkingSet } from "./names.ts";
+import { applyTransform } from "./transform.ts";
+import { convergeTemplate } from "./converge.ts";
 import { z } from "zod";
 
 /**
@@ -160,7 +160,7 @@ function createTemplateContext(
  * });
  * ```
  */
-export async function runTemplate(
+export async function callRunTemplate(
   template: string,
   options: TemplateContextOptions,
 ) {

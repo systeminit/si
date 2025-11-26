@@ -11,14 +11,14 @@
  */
 
 import { Secret } from "@cliffy/prompt";
-import type { Context } from "../../context.ts";
-import type { AiTool } from "../../ai_agent.ts";
+import type { Context } from "../context.ts";
+import type { AiTool } from "./shared.ts";
 import {
   getConfigPath,
   loadConfig,
   saveConfig,
   validateToken,
-} from "../../ai_agent.ts";
+} from "./shared.ts";
 
 export interface AiAgentConfigOptions {
   show?: boolean;
@@ -37,7 +37,7 @@ function maskToken(token: string): string {
 }
 
 /**
- * Execute the ai-agent config command
+ * View or update AI agent configuration
  */
 export async function callAiAgentConfig(
   ctx: Context,

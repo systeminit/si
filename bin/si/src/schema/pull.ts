@@ -4,23 +4,23 @@ import {
   SchemasApi,
   type SchemaVariantFunc,
 } from "@systeminit/api-client";
-import type { ApiContext } from "../../../api.ts";
-import { SCHEMA_FILE_FORMAT_VERSION } from "../../../config.ts";
-import type { Context } from "../../../context.ts";
-import type { FunctionMetadata, SchemaMetadata } from "../../../generators.ts";
-import * as materialize from "../../../materialize.ts";
+import type { ApiContext } from "../cli/api.ts";
+import { SCHEMA_FILE_FORMAT_VERSION } from "./config.ts";
+import type { Context } from "../context.ts";
+import type { FunctionMetadata, SchemaMetadata } from "./generators.ts";
+import * as materialize from "./materialize.ts";
 import {
   functionKindToMaterializableEntity,
   MaterializableEntity,
-} from "../../../materialize.ts";
-import { getLogger } from "../../../logger.ts";
+} from "./materialize.ts";
+import { getLogger } from "../logger.ts";
 import {
   type AbsoluteDirectoryPath,
   type AbsoluteFilePath,
   FunctionKind,
   normalizeFsName,
   type Project,
-} from "../../../project.ts";
+} from "./project.ts";
 
 const logger = getLogger();
 

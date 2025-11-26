@@ -34,7 +34,7 @@
 
 import { type ArgumentValue, Type, ValidationError } from "@cliffy/command";
 import { dirname } from "@std/path";
-import { Project } from "../project.ts";
+import { Project } from "../schema/project.ts";
 
 /** The marker file used to identify an SI project root directory. */
 const ROOT_MARKER = ".siroot";

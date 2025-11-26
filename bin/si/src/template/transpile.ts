@@ -5,7 +5,7 @@ import {
   Workspace,
 } from "@deno/loader";
 import { basename, dirname, join } from "@std/path";
-import { Context } from "./context.ts";
+import { Context } from "../context.ts";
 
 /**
  * Transpiles a TypeScript file to JavaScript at runtime using @deno/loader.

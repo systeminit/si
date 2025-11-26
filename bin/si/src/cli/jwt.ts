@@ -24,7 +24,7 @@
  * @module
  */
 
-import { unknownValueToErrorMessage } from "./helpers.ts";
+import { unknownValueToErrorMessage } from "../helpers.ts";
 
 /**
  * User identification data extracted from a JWT token.

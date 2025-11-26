@@ -79,7 +79,7 @@
  */
 
 import { isAbsolute, join as pathJoin, normalize, relative } from "@std/path";
-import { getLogger } from "./logger.ts";
+import { getLogger } from "../logger.ts";
 
 const logger = getLogger();
 

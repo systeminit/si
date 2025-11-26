@@ -9,7 +9,7 @@
 
 import { ensureDir } from "@std/fs";
 import { join } from "@std/path";
-import type { Logger } from "./logger.ts";
+import type { Logger } from "../logger.ts";
 
 /** Supported AI coding tools */
 export type AiTool = "claude";

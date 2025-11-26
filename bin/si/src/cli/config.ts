@@ -1,6 +1,10 @@
-import * as jwt from "./jwt.ts";
+/**
+ * CLI configuration utilities
+ *
+ * This module provides utilities for extracting configuration from environment variables.
+ */
 
-export const SCHEMA_FILE_FORMAT_VERSION = 0;
+import * as jwt from "./jwt.ts";
 
 export interface Config {
   apiUrl: string;

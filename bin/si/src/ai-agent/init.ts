@@ -12,7 +12,7 @@
  */
 
 import { Input, Secret } from "@cliffy/prompt";
-import type { Context } from "../../context.ts";
+import type { Context } from "../context.ts";
 import {
   createClaudeMd,
   createClaudeSettings,
@@ -22,9 +22,9 @@ import {
   loadConfig,
   saveConfig,
   validateToken,
-} from "../../ai_agent.ts";
+} from "./shared.ts";
 
-import type { AiTool } from "../../ai_agent.ts";
+import type { AiTool } from "./shared.ts";
 
 export interface AiAgentInitOptions {
   targetDir?: string;
@@ -33,7 +33,7 @@ export interface AiAgentInitOptions {
 }
 
 /**
- * Execute the ai-agent init command
+ * Initialize the AI agent configuration
  */
 export async function callAiAgentInit(
   ctx: Context,

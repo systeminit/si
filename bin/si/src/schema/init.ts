@@ -7,9 +7,9 @@
  * @module
  */
 
-import type { Context } from "../../context.ts";
-import { getLogger } from "../../logger.ts";
-import { type AbsoluteDirectoryPath, Project } from "../../project.ts";
+import type { Context } from "../context.ts";
+import { getLogger } from "../logger.ts";
+import { type AbsoluteDirectoryPath, Project } from "./project.ts";
 
 const logger = getLogger();
 

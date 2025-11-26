@@ -5,18 +5,18 @@ import {
   type GetFuncV1Response,
   SchemasApi,
 } from "@systeminit/api-client";
-import type { Context } from "../../../context.ts";
-import type { AuthenticatedCliContext } from "../../../cli/helpers.ts";
-import { unknownValueToErrorMessage } from "../../../helpers.ts";
-import { SCHEMA_FILE_FORMAT_VERSION } from "../../../config.ts";
+import type { Context } from "../context.ts";
+import type { AuthenticatedCliContext } from "../cli/helpers.ts";
+import { unknownValueToErrorMessage } from "../helpers.ts";
+import { SCHEMA_FILE_FORMAT_VERSION } from "./config.ts";
 import {
   type AbsoluteDirectoryPath,
   FunctionKind,
   normalizeFsName,
   type Project,
-} from "../../../project.ts";
+} from "./project.ts";
 import type { Logger } from "@logtape/logtape";
-import { wrapInChangeSet } from "../../../change_set_utils.ts";
+import { wrapInChangeSet } from "./change_set.ts";
 
 async function parseActions(
   ctx: Context,

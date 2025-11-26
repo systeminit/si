@@ -25,9 +25,9 @@ import {
   cleanForYaml,
   type ComponentGetCache,
 } from "./cache.ts";
-import { cachedGetComponent, cachedGetSchema } from "../cache.ts";
+import { cachedGetComponent, cachedGetSchema } from "./cache_api.ts";
 import { isSubscription } from "../template/attribute_diff.ts";
-import { resolveChangeSet } from "../change_set_utils.ts";
+import { resolveChangeSet } from "./change_set.ts";
 import { filterAttributes } from "./attribute_utils.ts";
 
 /**
@@ -345,7 +345,7 @@ export function displayComponentInfo(cacheData: ComponentGetCache): void {
  * @param componentIdOrName - Component ID or name
  * @param options - Command options
  */
-export async function getComponent(
+export async function callComponentGet(
   componentIdOrName: string,
   options: ComponentGetOptions,
 ): Promise<void> {

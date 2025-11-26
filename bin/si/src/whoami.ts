@@ -1,6 +1,6 @@
 import { WhoamiApi } from "@systeminit/api-client";
-import type { Context } from "../context.ts";
-import type { ApiContext } from "../api.ts";
+import type { Context } from "./context.ts";
+import type { ApiContext } from "./cli/api.ts";
 
 export async function callWhoami(_ctx: Context, apiCtx: ApiContext) {
   const whoamiApi = new WhoamiApi(apiCtx.config);

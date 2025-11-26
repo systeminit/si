@@ -14,7 +14,7 @@ import {
   type Configuration,
   type UpdateComponentV1Request,
 } from "@systeminit/api-client";
-import { extractErrorDetails, logComponentWithSchema } from "../helpers.ts";
+import { extractErrorDetails, logComponentWithSchema } from "./helpers.ts";
 
 /**
  * Executes all pending changes (creates, updates, deletes) in the provided order.
