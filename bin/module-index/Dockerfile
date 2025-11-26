@@ -23,7 +23,7 @@ WORKDIR /workdir
 
 COPY --from=buck2 /bin/buck2 /usr/local/bin/buck2
 
-RUN buck2 build bin/$BIN:$BIN \
+RUN buck2 build @//mode/release bin/$BIN:$BIN \
     --config rbe.enabled=true \
     --out /tmp/local-bin/$BIN
 
