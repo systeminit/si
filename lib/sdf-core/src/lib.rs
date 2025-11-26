@@ -13,7 +13,6 @@ pub mod async_route;
 pub mod change_set_mvs;
 pub mod dal_wrapper;
 pub mod force_change_set_response;
-pub mod generate_template;
 pub mod index;
 pub mod nats_multiplexer;
 pub mod tracking;
