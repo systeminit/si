@@ -106,6 +106,47 @@
           label="Remove from list"
           @select="remove"
         />
+        <hr class="border-neutral-600 my-xs" />
+        <h5 class="text-neutral-400 pl-2xs">APPLY BEFORE:</h5>
+        <ol v-if="myDependencies.length > 0">
+          <li
+            v-for="a in myDependencies"
+            :key="a.id"
+            class="flex flex-row items-center px-2xs gap-xs"
+          >
+            <Icon
+              :class="actionIconClass(a.kind)"
+              :name="actionIcon(a.kind)"
+              size="sm"
+            />
+            <span class="align-baseline leading-[30px]"
+              ><strong>{{ actionKindToAbbreviation(a.kind) }}:</strong>
+              {{ a.componentSchemaName }}
+              {{ a.componentName ?? "unknown" }}
+            </span>
+          </li>
+        </ol>
+        <p v-else class="ml-xs">None</p>
+        <h5 class="text-neutral-400 pl-2xs">WAITING ON:</h5>
+        <ol v-if="dependentOn.length > 0">
+          <li
+            v-for="a in dependentOn"
+            :key="a.id"
+            class="flex flex-row items-center px-2xs gap-xs"
+          >
+            <Icon
+              :class="actionIconClass(a.kind)"
+              :name="actionIcon(a.kind)"
+              size="sm"
+            />
+            <span class="align-baseline leading-[30px]"
+              ><strong>{{ actionKindToAbbreviation(a.kind) }}:</strong>
+              {{ a.componentSchemaName }}
+              {{ a.componentName ?? "unknown" }}
+            </span>
+          </li>
+        </ol>
+        <p v-else class="ml-xs">None</p>
       </DropdownMenu>
       <DetailsPanelMenuIcon
         v-if="!noInteraction"
@@ -140,6 +181,7 @@ import { routes, useApi } from "./api_composables";
 
 const props = defineProps<{
   action: ActionProposedView;
+  actionsById?: Map<string, ActionProposedView>;
   slim?: boolean;
   selected?: boolean;
   failed?: boolean;
@@ -201,6 +243,30 @@ const actionOnHold = computed(() => {
 
 const actionFailed = computed(() => {
   return props.action.state === ActionState.Failed;
+});
+
+// Hydrate action IDs into full action objects
+const hydrateActions = (
+  actionIds: string[] | undefined,
+): ActionProposedView[] => {
+  if (!actionIds || !props.actionsById) return [];
+
+  const actions: ActionProposedView[] = [];
+  for (const id of actionIds) {
+    const action = props.actionsById.get(id);
+    if (action) {
+      actions.push(action);
+    }
+  }
+  return actions;
+};
+
+const dependentOn = computed(() => {
+  return hydrateActions(props.action.dependentOn);
+});
+
+const myDependencies = computed(() => {
+  return hydrateActions(props.action.myDependencies);
 });
 
 const actionRunning = computed(() => {

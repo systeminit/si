@@ -677,6 +677,7 @@ import { routes, useApi } from "./api_composables";
 import { ExploreGridRowData } from "./explore_grid/ExploreGridRow.vue";
 import { useDefaultSubscription } from "./logic_composables/default_subscriptions";
 import { useContext } from "./logic_composables/context";
+import { generateMockActions } from "./logic_composables/mock_data";
 
 const router = useRouter();
 const route = useRoute();
@@ -1222,14 +1223,18 @@ const bulkDone = () => {
 
 // ================================================================================================
 // ACTIONS INFORMATION FOR GROUP BY
+const DEBUG_USE_MOCK_ACTIONS = false;
 const actionViewListRaw = useQuery<BifrostActionViewList | null>({
   queryKey: key(EntityKind.ActionViewList),
   queryFn: async () =>
     await bifrost<BifrostActionViewList>(args(EntityKind.ActionViewList)),
 });
-const actionViewList = computed(
-  () => actionViewListRaw.data.value?.actions ?? [],
-);
+const actionViewList = computed(() => {
+  if (DEBUG_USE_MOCK_ACTIONS) {
+    return generateMockActions(ctx.changeSetId.value);
+  }
+  return actionViewListRaw.data.value?.actions ?? [];
+});
 
 const componentsHaveActionsWithState = computed(() => {
   const results: ComponentsHaveActionsWithState = {
