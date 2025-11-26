@@ -47,6 +47,7 @@ pub mod layer_cache;
 mod nats;
 pub mod persister;
 pub mod pg;
+pub mod rate_limiter;
 pub mod retry_queue;
 pub mod s3;
 
