@@ -8794,8 +8794,8 @@ packages:
     resolution: {integrity: sha512-dRB78srN/l6gqWulah9SrxeYnxeddIG30+GOqK/9OlLVyLg3HPnr6SqOWTWOXKRwC2eGYCkZ59NNuSgvSrpgOA==}
     engines: {node: ^12.20.0 || ^14.13.1 || >=16.0.0}
 
-  node-forge@1.3.1:
-    resolution: {integrity: sha512-dPEtOeMvF9VMcYV/1Wb8CPoVAXtp6MKMlcbAt4ddqmGqUJ6fQZFXkNZNkNlfevtNkGtaSoXf/vNNNSvgrdXwtA==}
+  node-forge@1.3.2:
+    resolution: {integrity: sha512-6xKiQ+cph9KImrRh0VsjH2d8/GXA4FIMlgU4B757iI1ApvcyA9VlouP0yZJha01V+huImO+kKMU7ih+2+E14fw==}
     engines: {node: '>= 6.13.0'}
 
   node-gyp-build@4.1.1:
@@ -20955,7 +20955,7 @@ snapshots:
       http-shutdown: 1.2.2
       jiti: 2.4.2
       mlly: 1.7.3
-      node-forge: 1.3.1
+      node-forge: 1.3.2
       pathe: 1.1.2
       std-env: 3.8.0
       ufo: 1.6.1
@@ -21695,7 +21695,7 @@ snapshots:
       fetch-blob: 3.2.0
       formdata-polyfill: 4.0.10
 
-  node-forge@1.3.1: {}
+  node-forge@1.3.2: {}
 
   node-gyp-build@4.1.1:
     optional: true
