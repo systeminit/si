@@ -1987,8 +1987,8 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "s3_write_queue_depth{backend=\"s3\"}",
-          "legendFormat": "{{cache_name}}",
+          "expr": "s3_write_queue_depth{exported_job=~\"${service}\", cache_name=~\"${cache}\", backend=\"s3\"}",
+          "legendFormat": "{{exported_job}}/{{cache_name}}",
           "refId": "A"
         }
       ],
@@ -2063,8 +2063,8 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "s3_write_backoff_ms{backend=\"s3\"}",
-          "legendFormat": "{{cache_name}}",
+          "expr": "s3_write_backoff_ms{exported_job=~\"${service}\", cache_name=~\"${cache}\", backend=\"s3\"}",
+          "legendFormat": "{{exported_job}}/{{cache_name}}",
           "refId": "A"
         }
       ],
@@ -2134,8 +2134,8 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "sum(rate(s3_write_attempts_total{backend=\"s3\",result=\"success\"}[5m])) by (cache_name)",
-          "legendFormat": "Success - {{cache_name}}",
+          "expr": "sum(rate(s3_write_attempts_total{exported_job=~\"${service}\", cache_name=~\"${cache}\", backend=\"s3\", result=\"success\"}[5m])) by (exported_job, cache_name)",
+          "legendFormat": "{{exported_job}}/{{cache_name}} - Success",
           "refId": "A"
         },
         {
@@ -2143,8 +2143,8 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "sum(rate(s3_write_attempts_total{backend=\"s3\",result=\"throttle\"}[5m])) by (cache_name)",
-          "legendFormat": "Throttle - {{cache_name}}",
+          "expr": "sum(rate(s3_write_attempts_total{exported_job=~\"${service}\", cache_name=~\"${cache}\", backend=\"s3\", result=\"throttle\"}[5m])) by (exported_job, cache_name)",
+          "legendFormat": "{{exported_job}}/{{cache_name}} - Throttle",
           "refId": "B"
         },
         {
@@ -2152,8 +2152,8 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "sum(rate(s3_write_attempts_total{backend=\"s3\",result=~\"error_.*\"}[5m])) by (cache_name)",
-          "legendFormat": "Error - {{cache_name}}",
+          "expr": "sum(rate(s3_write_attempts_total{exported_job=~\"${service}\", cache_name=~\"${cache}\", backend=\"s3\", result=~\"error_.*\"}[5m])) by (exported_job, cache_name)",
+          "legendFormat": "{{exported_job}}/{{cache_name}} - Error",
           "refId": "C"
         }
       ],
@@ -2206,8 +2206,8 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "histogram_quantile(0.50, sum(rate(s3_write_duration_ms_bucket{backend=\"s3\"}[5m])) by (le, cache_name))",
-          "legendFormat": "p50 - {{cache_name}}",
+          "expr": "histogram_quantile(0.50, sum(rate(s3_write_duration_ms_bucket{exported_job=~\"${service}\", cache_name=~\"${cache}\", backend=\"s3\"}[5m])) by (le, exported_job, cache_name))",
+          "legendFormat": "{{exported_job}}/{{cache_name}} - p50",
           "refId": "A"
         },
         {
@@ -2215,8 +2215,8 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "histogram_quantile(0.95, sum(rate(s3_write_duration_ms_bucket{backend=\"s3\"}[5m])) by (le, cache_name))",
-          "legendFormat": "p95 - {{cache_name}}",
+          "expr": "histogram_quantile(0.95, sum(rate(s3_write_duration_ms_bucket{exported_job=~\"${service}\", cache_name=~\"${cache}\", backend=\"s3\"}[5m])) by (le, exported_job, cache_name))",
+          "legendFormat": "{{exported_job}}/{{cache_name}} - p95",
           "refId": "B"
         },
         {
@@ -2224,8 +2224,8 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "histogram_quantile(0.99, sum(rate(s3_write_duration_ms_bucket{backend=\"s3\"}[5m])) by (le, cache_name))",
-          "legendFormat": "p99 - {{cache_name}}",
+          "expr": "histogram_quantile(0.99, sum(rate(s3_write_duration_ms_bucket{exported_job=~\"${service}\", cache_name=~\"${cache}\", backend=\"s3\"}[5m])) by (le, exported_job, cache_name))",
+          "legendFormat": "{{exported_job}}/{{cache_name}} - p99",
           "refId": "C"
         }
       ],
