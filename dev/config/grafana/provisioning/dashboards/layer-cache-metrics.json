@@ -1903,7 +1903,7 @@
         "h": 8
       },
       "type": "heatmap",
-      "title": "${backend} Backend - Latency Distribution",
+      "title": "${backend} Backend - Read Latency Distribution",
       "repeat": "backend",
       "repeatDirection": "v",
       "datasource": {
@@ -1947,7 +1947,7 @@
           "color": "rgba(255,0,255,0.7)"
         },
         "filterValues": {
-          "le": 1e-09
+          "le": 1E-9
         },
         "legend": {
           "show": true
@@ -1966,6 +1966,295 @@
         }
       },
       "interval": "1m"
+    },
+    {
+      "id": 36,
+      "gridPos": {
+        "x": 0,
+        "y": 177,
+        "w": 12,
+        "h": 8
+      },
+      "type": "timeseries",
+      "title": "S3 Write Queue Depth",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "s3_write_queue_depth{exported_job=~\"${service}\", cache_name=~\"${cache}\", backend=\"s3\"}",
+          "legendFormat": "{{exported_job}}/{{cache_name}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "never"
+          }
+        }
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        },
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "calcs": [
+            "lastNotNull",
+            "max",
+            "mean"
+          ]
+        }
+      },
+      "alert": {
+        "name": "S3 Queue Growing",
+        "conditions": [
+          {
+            "evaluator": {
+              "params": [
+                100
+              ],
+              "type": "gt"
+            },
+            "query": {
+              "params": [
+                "A",
+                "5m",
+                "now"
+              ]
+            },
+            "type": "query"
+          }
+        ],
+        "message": "S3 write queue depth exceeds 100 for 5 minutes"
+      }
+    },
+    {
+      "id": 37,
+      "gridPos": {
+        "x": 12,
+        "y": 177,
+        "w": 12,
+        "h": 8
+      },
+      "type": "timeseries",
+      "title": "S3 Write Backoff State",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "s3_write_backoff_ms{exported_job=~\"${service}\", cache_name=~\"${cache}\", backend=\"s3\"}",
+          "legendFormat": "{{exported_job}}/{{cache_name}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "never"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": null,
+                "color": "green"
+              },
+              {
+                "value": 1000,
+                "color": "yellow"
+              },
+              {
+                "value": 3000,
+                "color": "red"
+              }
+            ]
+          }
+        }
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        },
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "calcs": [
+            "lastNotNull",
+            "max",
+            "mean"
+          ]
+        }
+      }
+    },
+    {
+      "id": 38,
+      "gridPos": {
+        "x": 0,
+        "y": 185,
+        "w": 12,
+        "h": 8
+      },
+      "type": "timeseries",
+      "title": "S3 Write Success Rate",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "sum(rate(s3_write_attempts_total{exported_job=~\"${service}\", cache_name=~\"${cache}\", backend=\"s3\", result=\"success\"}[5m])) by (exported_job, cache_name)",
+          "legendFormat": "{{exported_job}}/{{cache_name}} - Success",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "sum(rate(s3_write_attempts_total{exported_job=~\"${service}\", cache_name=~\"${cache}\", backend=\"s3\", result=\"throttle\"}[5m])) by (exported_job, cache_name)",
+          "legendFormat": "{{exported_job}}/{{cache_name}} - Throttle",
+          "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "sum(rate(s3_write_attempts_total{exported_job=~\"${service}\", cache_name=~\"${cache}\", backend=\"s3\", result=~\"error_.*\"}[5m])) by (exported_job, cache_name)",
+          "legendFormat": "{{exported_job}}/{{cache_name}} - Error",
+          "refId": "C"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "never"
+          }
+        }
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        },
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "calcs": [
+            "lastNotNull",
+            "max",
+            "mean"
+          ]
+        }
+      }
+    },
+    {
+      "id": 39,
+      "gridPos": {
+        "x": 12,
+        "y": 185,
+        "w": 12,
+        "h": 8
+      },
+      "type": "heatmap",
+      "title": "S3 Write Latency Distribution",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "sum(increase(s3_write_duration_ms_bucket{exported_job=~\"${service}\", cache_name=~\"${cache}\", backend=\"s3\"}[$__interval])) by (le)",
+          "legendFormat": "{{le}}",
+          "refId": "A",
+          "format": "heatmap"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "hideFrom": {
+              "tooltip": false,
+              "viz": false,
+              "legend": false
+            }
+          }
+        }
+      },
+      "options": {
+        "calculate": false,
+        "cellGap": 2,
+        "color": {
+          "exponent": 0.5,
+          "fill": "dark-orange",
+          "mode": "scheme",
+          "scheme": "Oranges",
+          "steps": 128
+        },
+        "exemplars": {
+          "color": "rgba(255,0,255,0.7)"
+        },
+        "filterValues": {
+          "le": 1E-9
+        },
+        "legend": {
+          "show": true
+        },
+        "rowsFrame": {
+          "layout": "auto"
+        },
+        "tooltip": {
+          "show": true,
+          "yHistogram": false
+        },
+        "yAxis": {
+          "axisPlacement": "left",
+          "reverse": false,
+          "unit": "ms"
+        }
+      }
     }
   ],
   "time": {
