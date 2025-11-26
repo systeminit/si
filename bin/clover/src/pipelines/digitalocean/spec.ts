@@ -127,9 +127,9 @@ export function mergeResourceOperations(
     ]),
   );
 
-  // Use provider-style naming: DigitalOcean/droplets
+  // Use provider-style naming: DigitalOcean Droplets (capitalized, preserving plurality)
   const schema: DigitalOceanSchema = {
-    typeName: `DigitalOcean/${resourceName}`,
+    typeName: `DigitalOcean ${_.startCase(resourceName)}`,
     description: schemaDescription,
     requiredProperties,
     handlers,
