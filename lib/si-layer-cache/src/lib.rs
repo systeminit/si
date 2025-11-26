@@ -49,6 +49,7 @@ pub mod persister;
 pub mod pg;
 pub mod rate_limiter;
 pub mod retry_queue;
+pub mod s3_write_queue;
 pub mod s3;
 
 #[derive(AsRefStr, Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
