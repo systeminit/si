@@ -1,5 +1,6 @@
 import { ExpandedPropSpecFor } from "../../spec/props.ts";
 import { ExpandedPkgSpec } from "../../spec/pkgs.ts";
+import pluralize from "npm:pluralize@^8.0.0";
 import {
   CfProperty,
   PipelineOptions,
@@ -91,44 +92,111 @@ export function digitalOceanParseRawSchema(
   const specs: ExpandedPkgSpec[] = [];
 
   const resourceOperations: Record<string, OperationData[]> = {};
+
   Object.entries(allSchemas.paths || {}).forEach(
     ([endpoint, openApiDescription]) => {
+      if (!openApiDescription) return;
+
+      // Rename Assets that had different names on v1
+
+
+
+      // Skip Assets that are not supported
+      // if([
+      //   // Unmappable Entities
+      //   "Add-On",
+      //   "Billing",
+      //   // Future Assets
+      //   "Uptime",
+      //   "GradientAI Platform",
+      // ].includes(schemaName)) {
+      //   return;
+      // }
+
+
+
       // Extract resource name from path (e.g., /v2/droplets -> droplets)
-      const pathParts = endpoint.split("/").filter((s) =>
-        s && !s.startsWith("{")
-      );
-      if (pathParts.length === 0) return;
+      // const pathParts = endpoint.split("/").filter((s) =>
+      //   s && !s.startsWith("{")
+      // );
 
-      // Skip version prefix
-      const noun = pathParts[0] === "v2" ? pathParts[1] : pathParts[0];
-      if (!noun) return;
+      const pathParts = [] as string[];
 
-      // TODO: Skip action endpoints and sub-resources for now
-      if (pathParts.length > 2) return;
+      const urlSections = endpoint.split("/");
+      if (urlSections.length < 3 || urlSections[1] !== 'v2') return; // TODO WARN
 
-      if (!resourceOperations[noun]) {
-        resourceOperations[noun] = [];
+      let isSubAsset = false;
+      let gotId = false;
+      for (const urlSection of urlSections.slice(2)) {
+        // If we got an id and are still moving down, this is a sub-asset that should be skipped.
+        if (gotId) {
+          isSubAsset = true;
+          break;
+        }
+        // If id section, we don't add it to the pathParts, but we use it
+        if (urlSection.startsWith("{")) {
+          gotId = true;
+          continue;
+        }
+
+        pathParts.push(urlSection);
       }
-      if (openApiDescription) {
-        resourceOperations[noun].push({
-          endpoint,
-          openApiDescription: {
-            get: openApiDescription.get,
-            post: openApiDescription.post,
-            put: openApiDescription.put,
-            patch: openApiDescription.patch,
-            delete: openApiDescription.delete,
-          },
-        });
+
+      if (isSubAsset) return;
+
+      if (pathParts[0] === "1-clicks") return;
+      if (pathParts[0] === "add-ons") return;
+      if (pathParts[0] === "gen-ai") return;
+      if (pathParts[0] === "sizes") return;
+      if (pathParts[0] === "regions") return;
+      if (pathParts[0] === "customers") return;
+      if (pathParts[0] === "monitoring" && pathParts[1] === "metrics") return;
+
+      const methods = `${
+        openApiDescription.get !== undefined ? "GET " : ""
+      }${
+        openApiDescription.post !== undefined ? "POST " : ""
+      }${
+        openApiDescription.put !== undefined ? "PUT " : ""
+      }${
+        openApiDescription.patch !== undefined ? "PATCH " : ""
+      }${
+        openApiDescription.delete !== undefined ? "DELETE" : ""
+      }`
+
+      console.log(endpoint, pathParts, methods);
+
+      // Next steps:
+      // Generate a name for the resource based on the path parts. Make sure to make them singular and capitalized before joining.
+      return;
+
+      if (!resourceOperations[schemaName]) {
+        resourceOperations[schemaName] = [];
       }
+
+      resourceOperations[schemaName].push({
+        endpoint,
+        openApiDescription: {
+          get: openApiDescription.get,
+          post: openApiDescription.post,
+          put: openApiDescription.put,
+          patch: openApiDescription.patch,
+          delete: openApiDescription.delete,
+        },
+      });
     },
   );
 
-  Object.entries(resourceOperations).forEach(([noun, operations]) => {
+  // With the resource operations list, filter out assets that don't have POST endpoints.
+
+  Object.entries(resourceOperations).forEach(([name, operations]) => {
+    console.log(`DigitalOcean ${name}`);
+    return;
     // Extract description from tag
     const firstOp = operations[0]?.openApiDescription;
     const tags = firstOp?.get?.tags || firstOp?.post?.tags;
     const tagName = tags?.[0];
+
     let description: string | undefined;
 
     if (tagName && allSchemas.tags) {
@@ -139,7 +207,8 @@ export function digitalOceanParseRawSchema(
     }
 
     const result = mergeResourceOperations(
-      noun,
+      schemaName,
+      name,
       operations,
       description,
     );

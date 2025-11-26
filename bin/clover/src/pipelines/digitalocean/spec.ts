@@ -15,6 +15,7 @@ import {
 
 export function mergeResourceOperations(
   resourceName: string,
+  endpoint: string,
   operations: OperationData[],
   description?: string,
 ): {
@@ -129,11 +130,11 @@ export function mergeResourceOperations(
 
   // Use provider-style naming: DigitalOcean Droplets (capitalized, preserving plurality)
   const schema: DigitalOceanSchema = {
-    typeName: `DigitalOcean ${_.startCase(resourceName)}`,
+    typeName: `DigitalOcean ${resourceName}`,
     description: schemaDescription,
     requiredProperties,
     handlers,
-    endpoint: resourceName,
+    endpoint,
   };
 
   return {
