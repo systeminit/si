@@ -3682,6 +3682,7 @@ const getReferences = async (
 const IGNORE_LIST = new Set<EntityKind>([
   EntityKind.LuminorkDefaultVariant,
   EntityKind.LuminorkSchemaVariant,
+  EntityKind.LuminorkChangeSetReview,
 ]);
 
 const LISTABLE_ITEMS = [

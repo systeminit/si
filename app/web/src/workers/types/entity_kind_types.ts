@@ -56,6 +56,7 @@ export enum EntityKind {
   // IGNORING THESE
   LuminorkDefaultVariant = "LuminorkDefaultVariant",
   LuminorkSchemaVariant = "LuminorkSchemaVariant",
+  LuminorkChangeSetReview = "LuminorkChangeSetReview",
   // DEPLOYMENT aka GLOBAL
   CachedSchema = "CachedSchema",
   CachedSchemaVariant = "CachedSchemaVariant",

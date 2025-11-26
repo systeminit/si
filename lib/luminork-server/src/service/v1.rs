@@ -31,6 +31,11 @@ pub use change_sets::{
     },
     delete::DeleteChangeSetV1Response,
     get::GetChangeSetV1Response,
+    get_review::{
+        AttributeDiffTreeV1,
+        ComponentReviewV1,
+        GetReviewV1Response,
+    },
     list::ListChangeSetV1Response,
     merge_status::{
         MergeStatusV1Response,
@@ -205,6 +210,7 @@ pub use crate::api_types::func_run::v1::{
         change_sets::create::create_change_set,
         change_sets::list::list_change_sets,
         change_sets::get::get_change_set,
+        change_sets::get_review::get_review,
         change_sets::delete::abandon_change_set,
         change_sets::force_apply::force_apply,
         change_sets::merge_status::merge_status,
@@ -365,6 +371,9 @@ pub use crate::api_types::func_run::v1::{
             ExecDebugFuncV1Request,
             ExecDebugFuncV1Response,
             GetDebugFuncJobStateV1Response,
+            AttributeDiffTreeV1,
+            ComponentReviewV1,
+            GetReviewV1Response,
         )
     ),
     tags(
