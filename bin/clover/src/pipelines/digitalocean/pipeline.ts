@@ -10,6 +10,7 @@ import { generateAssetFuncs } from "../generic/generateAssetFuncs.ts";
 import { applyAssetOverrides } from "../generic/applyAssetOverrides.ts";
 import { createSuggestionsForPrimaryIdentifiers } from "../generic/createSuggestionsAcrossAssets.ts";
 import { readDigitalOceanOpenApiSpec } from "./schema.ts";
+import { addDefaultProps } from "./pipeline-steps/addDefaultProps.ts";
 import path from "node:path";
 
 export async function generateDigitalOceanSpecs(
@@ -22,6 +23,8 @@ export async function generateDigitalOceanSpecs(
   const schemaPath = path.join(options.providerSchemasPath, "digitalocean.json");
   const openApiSpec = await readDigitalOceanOpenApiSpec(schemaPath);
   specs = digitalOceanParseRawSchema(openApiSpec);
+
+  specs = addDefaultProps(specs);
 
   // Apply standard pipeline steps
   specs = generateDefaultFuncsFromConfig(specs, digitalOceanProviderConfig);
