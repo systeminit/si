@@ -42,34 +42,39 @@ key components:
 
 ```
 si
-├── ai-agent               - Manage the SI AI Agent (MCP server)
-│   ├── init               - Initialize AI agent configuration
-│   ├── start              - Launch Claude Code
-│   └── config             - Update configuration
-├── completion              - Generate shell completions
-├── component              - Component-related operations
-│   ├── get                - Get component data by name or ID
-│   ├── update             - Update component from JSON/YAML file
-│   ├── delete             - Delete a component
-│   └── search             - Search for components
-├── project
-│   └── init               - Initialize a new SI project
-├── remote
-│   └── schema
-│       ├── pull           - Pull schemas from remote workspace
-│       └── push           - Push schemas to remote workspace
-├── run                    - Run a SI template file
-├── schema
-│   ├── action generate    - Generate action functions
-│   ├── authentication generate - Generate authentication functions
-│   ├── codegen generate   - Generate code generator functions
-│   ├── management generate - Generate management functions
-│   ├── qualification generate - Generate qualification functions
-│   ├── scaffold generate  - Scaffold a complete schema
-│   └── overlay            - Generate overlay functions
-├── template
-│   └── run                - Run a SI template file (alias)
-└── whoami                 - Display authenticated user information
+├── ai-agent                          - Manage the SI AI Agent (MCP server)
+│   ├── init                          - Initialize AI agent configuration
+│   ├── start                         - Launch Claude Code
+│   ├── config                        - Update configuration
+│   └── stdio                         - Run MCP server in stdio mode (for external AI tools)
+├── completion                         - Generate shell completions
+├── component                         - Component-related operations
+│   ├── get                           - Get component data by name or ID
+│   ├── update                        - Update component from JSON/YAML file
+│   ├── delete                        - Delete a component
+│   └── search                        - Search for components
+├── schema                            - Manage schemas and project
+│   ├── init                          - Initialize a new SI project
+│   ├── generate                      - Generate schema functions
+│   │   ├── action                    - Generate action functions
+│   │   ├── authentication            - Generate authentication functions
+│   │   ├── codegen                   - Generate code generator functions
+│   │   ├── management                - Generate management functions
+│   │   ├── qualification             - Generate qualification functions
+│   │   └── scaffold                  - Scaffold a complete schema
+│   ├── overlay                       - Manage schema overlays
+│   │   ├── generate                  - Generate overlay functions
+│   │   │   ├── action                - Generate action overlay functions
+│   │   │   ├── authentication        - Generate authentication overlay functions
+│   │   │   ├── codegen               - Generate codegen overlay functions
+│   │   │   ├── management            - Generate management overlay functions
+│   │   │   └── qualification         - Generate qualification overlay functions
+│   │   └── push                      - Push overlays to workspace
+│   ├── pull                          - Pull schemas from workspace
+│   └── push                          - Push schemas to workspace
+├── template                          - Manage templates
+│   └── run                           - Run a SI template file
+└── whoami                            - Display authenticated user information
 ```
 
 ### Project Structure
@@ -188,9 +193,11 @@ si ai-agent start
 
 The AI agent is incredibly simple:
 
-1. **Bundled MCP Server**: The MCP server is compiled directly into the `si` binary
+1. **Bundled MCP Server**: The MCP server is compiled directly into the `si`
+   binary
 2. **Launch Claude**: `si ai-agent start` just launches Claude Code
-3. **Claude Manages Everything**: Claude reads `.mcp.json` and spawns the bundled MCP server automatically
+3. **Claude Manages Everything**: Claude reads `.mcp.json` and spawns the
+   bundled MCP server automatically
 4. **Auto-Cleanup**: Exit Claude = MCP server stops automatically
 
 **Single binary. Zero downloads. No process management. Just works.**
@@ -245,6 +252,7 @@ si ai-agent start
 ```
 
 **What happens:**
+
 ```
 Starting SI AI Agent...
 
@@ -272,23 +280,24 @@ si ai-agent config --update-token
 | `.mcp.json`                   | Project directory | MCP configuration for Claude Code      |
 | `.claude/settings.local.json` | Project directory | Claude-specific settings               |
 
-**Note:** The MCP server is bundled directly in the `si` binary - no separate downloads or binaries needed!
+**Note:** The MCP server is bundled directly in the `si` binary - no separate
+downloads or binaries needed!
 
 ### Schema Management
 
 #### Initialize a Project
 
-Initialize a new SI project with the `project init` command:
+Initialize a new SI project with the `schema init` command:
 
 ```bash
 # Initialize in current directory
-si project init
+si schema init
 
 # Initialize in a specific directory
-si project init /path/to/project
+si schema init /path/to/project
 
 # Or use the --root option
-si --root /path/to/project project init
+si --root /path/to/project schema init
 ```
 
 This creates a `.siroot` marker file in the project root directory.
@@ -298,7 +307,7 @@ This creates a `.siroot` marker file in the project root directory.
 Generate a complete schema scaffold:
 
 ```bash
-si schema scaffold generate MySchema
+si schema generate scaffold MySchema
 ```
 
 This creates the schema directory structure with template files for the schema
@@ -310,19 +319,19 @@ Generate specific function types for a schema:
 
 ```bash
 # Generate an action function
-si schema action generate MySchema create
+si schema generate action MySchema create
 
 # Generate a code generator
-si schema codegen generate MySchema terraform
+si schema generate codegen MySchema terraform
 
 # Generate a management function
-si schema management generate MySchema reconcile
+si schema generate management MySchema reconcile
 
 # Generate a qualification
-si schema qualification generate MySchema validate
+si schema generate qualification MySchema validate
 
 # Generate an authentication function
-si schema authentication generate MySchema validate-api-key
+si schema generate authentication MySchema validate-api-key
 ```
 
 #### Pull from Remote
@@ -331,10 +340,10 @@ Pull schemas from your System Initiative workspace to your local project:
 
 ```bash
 # Pull a specific schema
-si remote schema pull MySchema
+si schema pull MySchema
 
 # Pull multiple schemas
-si remote schema pull Schema1 Schema2 Schema3
+si schema pull Schema1 Schema2 Schema3
 ```
 
 #### Push to Remote
@@ -342,7 +351,7 @@ si remote schema pull Schema1 Schema2 Schema3
 Push your schemas to your System Initiative workspace:
 
 ```bash
-si remote schema push
+si schema push
 ```
 
 ### Template Execution
@@ -352,7 +361,7 @@ si remote schema push
 Execute a template file to manage infrastructure declaratively:
 
 ```bash
-SI_API_TOKEN=<your-token> si run <template-file> --key <invocation-key>
+SI_API_TOKEN=<your-token> si template run <template-file> --key <invocation-key>
 ```
 
 **Required Arguments:**
@@ -371,7 +380,7 @@ SI_API_TOKEN=<your-token> si run <template-file> --key <invocation-key>
 **Example:**
 
 ```bash
-SI_API_TOKEN=eyJhbGc... si run ./templates/infrastructure.ts --key prod-deploy-001
+SI_API_TOKEN=eyJhbGc... si template run ./templates/infrastructure.ts --key prod-deploy-001
 ```
 
 #### Writing Templates
@@ -556,10 +565,10 @@ Without arguments, this displays the help text listing all available commands.
 deno task dev --help
 
 # Generate a schema scaffold
-deno task dev schema scaffold generate MySchema
+deno task dev schema generate scaffold MySchema
 
 # Run a template
-SI_API_TOKEN=<token> deno task dev run ./templates/test.ts --key test-001
+SI_API_TOKEN=<token> deno task dev template run ./templates/test.ts --key test-001
 ```
 
 ### Building
@@ -644,11 +653,11 @@ If you encounter authentication errors:
 
 If the CLI cannot find your project root:
 
-1. Initialize a project using `si project init` if you haven't already
+1. Initialize a project using `si schema init` if you haven't already
 2. Verify `.siroot` exists in your project root directory
 3. Use the `--root` flag to explicitly specify the project root:
    ```bash
-   si --root /path/to/project schema scaffold generate MySchema
+   si --root /path/to/project schema generate scaffold MySchema
    ```
 
 ### Verbose Logging
@@ -657,10 +666,10 @@ Enable verbose logging to debug issues:
 
 ```bash
 # Maximum verbosity (trace level)
-si -v4 schema scaffold generate MySchema
+si -v4 schema generate scaffold MySchema
 
 # Or specify a numeric level (0-4)
-si --verbose 4 run template.ts --key test
+si --verbose 4 template run template.ts --key test
 ```
 
 ## Code Quality
