@@ -212,6 +212,28 @@ export function extractPropertiesFromRequestBody(
 ): { properties: Record<string, NormalizedDigitalOceanSchema>; required: string[] } {
   const schema = requestBody?.content?.["application/json"]?.schema;
 
+  if (!schema) {
+    return { properties: {}, required: [] };
+  }
+
+  // Handle oneOf - prefer single resource creation over bulk (e.g., single droplet vs multi droplet)
+  // We look for the schema with fewest allOf members or the first one
+  if (schema.oneOf && Array.isArray(schema.oneOf)) {
+    // Try to find the "single" variant - typically has "name" not "names"
+    let selectedSchema = schema.oneOf[0];
+
+    for (const alt of schema.oneOf) {
+      const flattened = flattenSchemaProperties(alt);
+      // Prefer schema with "name" property over "names" (single vs multi)
+      if (flattened.properties.name && !flattened.properties.names) {
+        selectedSchema = alt;
+        break;
+      }
+    }
+
+    return flattenSchemaProperties(selectedSchema);
+  }
+
   return flattenSchemaProperties(schema);
 }
 
@@ -221,8 +243,12 @@ export function extractPropertiesFromResponse(
 ): { properties: Record<string, NormalizedDigitalOceanSchema>; required: string[] } {
   let schema = response?.content?.["application/json"]?.schema;
 
+  if (!schema) {
+    return { properties: {}, required: [] };
+  }
+
   // For LIST operations, extract from the collection items
-  if (isListOperation && schema) {
+  if (isListOperation) {
     // Flatten first to resolve allOf
     const flattened = flattenSchemaProperties(schema);
 
@@ -233,6 +259,17 @@ export function extractPropertiesFromResponse(
       if (propSchema.type === "array" && propSchema.items) {
         schema = propSchema.items;
         return flattenSchemaProperties(schema);
+      }
+    }
+  } else {
+    // For single resource GET operations, DigitalOcean wraps the response
+    // e.g., { droplet: {...} } or { volume: {...} }
+    // Unwrap by taking the first property value
+    const flattened = flattenSchemaProperties(schema);
+    if (flattened.properties && Object.keys(flattened.properties).length > 0) {
+      const firstPropSchema = Object.values(flattened.properties)[0];
+      if (firstPropSchema && firstPropSchema.properties) {
+        return flattenSchemaProperties(firstPropSchema);
       }
     }
   }
@@ -452,6 +489,40 @@ export function normalizeDigitalOceanProperty(
       const smooshed = nonStringMember
         ? { ...prop, type: nonStringMember.type, oneOf: undefined }
         : { ...prop, type: "string", oneOf: undefined };
+
+      return normalizeDigitalOceanProperty(smooshed, path, newVisited);
+    }
+  }
+
+  // Handle anyOf with primitive types - smoosh them like oneOf
+  if (prop.anyOf) {
+    if (!Array.isArray(prop.anyOf)) {
+      throw new Error(
+        `Invalid anyOf at path ${path || "(root)"}: expected array`,
+      );
+    }
+
+    const allPrimitives = prop.anyOf.every((member) => {
+      if (!member || typeof member !== "object") {
+        return false;
+      }
+      const type = member.type;
+      return (
+        type === "string" ||
+        type === "number" ||
+        type === "integer" ||
+        type === "boolean"
+      );
+    });
+
+    if (allPrimitives) {
+      // Pick the non-string type (prefer number, integer, boolean over string)
+      const nonStringMember = prop.anyOf.find(
+        (member) => member.type !== "string",
+      );
+      const smooshed = nonStringMember
+        ? { ...prop, type: nonStringMember.type, anyOf: undefined }
+        : { ...prop, type: "string", anyOf: undefined };
 
       return normalizeDigitalOceanProperty(smooshed, path, newVisited);
     }
