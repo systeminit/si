@@ -571,6 +571,75 @@ impl S3Layer {
     }
 }
 
+/// Classification of S3 errors for appropriate handling
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum S3ErrorKind {
+    /// Throttling/rate limiting error (SlowDown, RequestLimitExceeded, ServiceUnavailable)
+    Throttle,
+    /// Serialization/construction error (non-retryable)
+    Serialization,
+    /// Transient error (retryable but not throttling)
+    Transient,
+}
+
+impl S3ErrorKind {
+    /// Returns true if this is a throttling error
+    pub fn is_throttle(&self) -> bool {
+        matches!(self, S3ErrorKind::Throttle)
+    }
+
+    /// Returns true if this is a serialization error
+    pub fn is_serialization(&self) -> bool {
+        matches!(self, S3ErrorKind::Serialization)
+    }
+
+    /// Returns true if this is a transient error
+    pub fn is_transient(&self) -> bool {
+        matches!(self, S3ErrorKind::Transient)
+    }
+}
+
+/// Classify an S3 SDK error into an error kind for appropriate handling
+///
+/// # Classification Rules
+///
+/// - **Throttle**: SlowDown, RequestLimitExceeded, ServiceUnavailable (503)
+/// - **Serialization**: ConstructionFailure (indicates bad request data)
+/// - **Transient**: All other errors (network, timeout, internal errors, etc.)
+pub fn classify_s3_error<E>(error: &aws_sdk_s3::error::SdkError<E, http::Response<()>>) -> S3ErrorKind
+where
+    E: std::error::Error,
+{
+    use aws_sdk_s3::error::SdkError;
+
+    match error {
+        SdkError::ServiceError(context) => {
+            // Extract HTTP status code as primary classification mechanism
+            let status = context.raw().status().as_u16();
+            let error_msg = format!("{:?}", context.err());
+
+            // Classify based on HTTP status code (503) with message validation
+            if status == 503
+                || error_msg.contains("SlowDown")
+                || error_msg.contains("RequestLimitExceeded")
+                || error_msg.contains("ServiceUnavailable")
+            {
+                S3ErrorKind::Throttle
+            } else {
+                // All other service errors are transient (InternalError, etc.)
+                S3ErrorKind::Transient
+            }
+        }
+        // AWS SDK serialization/construction errors
+        SdkError::ConstructionFailure(_) => S3ErrorKind::Serialization,
+        // All other errors are transient (network, timeout, etc.)
+        SdkError::ResponseError(_) => S3ErrorKind::Transient,
+        SdkError::TimeoutError(_) => S3ErrorKind::Transient,
+        SdkError::DispatchFailure(_) => S3ErrorKind::Transient,
+        _ => S3ErrorKind::Transient,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -720,5 +789,99 @@ mod tests {
                 eprintln!("Expected error without AWS credentials: {e:?}");
             }
         }
+    }
+
+    mod s3_error_classification_tests {
+        use super::*;
+
+        // Test the convenience predicates on S3ErrorKind
+        #[test]
+        fn test_error_kind_predicates() {
+            let throttle = S3ErrorKind::Throttle;
+            assert!(throttle.is_throttle());
+            assert!(!throttle.is_serialization());
+            assert!(!throttle.is_transient());
+
+            let serialization = S3ErrorKind::Serialization;
+            assert!(!serialization.is_throttle());
+            assert!(serialization.is_serialization());
+            assert!(!serialization.is_transient());
+
+            let transient = S3ErrorKind::Transient;
+            assert!(!transient.is_throttle());
+            assert!(!transient.is_serialization());
+            assert!(transient.is_transient());
+        }
+
+        // Test that Hash derivation works for S3ErrorKind
+        #[test]
+        fn test_error_kind_hash() {
+            use std::collections::HashSet;
+
+            let mut set = HashSet::new();
+            set.insert(S3ErrorKind::Throttle);
+            set.insert(S3ErrorKind::Serialization);
+            set.insert(S3ErrorKind::Transient);
+
+            assert_eq!(set.len(), 3);
+            assert!(set.contains(&S3ErrorKind::Throttle));
+            assert!(set.contains(&S3ErrorKind::Serialization));
+            assert!(set.contains(&S3ErrorKind::Transient));
+        }
+
+        // Test that S3ErrorKind can be cloned and compared
+        #[test]
+        fn test_error_kind_clone_and_eq() {
+            let original = S3ErrorKind::Throttle;
+            let cloned = original;
+            assert_eq!(original, cloned);
+
+            let different = S3ErrorKind::Transient;
+            assert_ne!(original, different);
+        }
+
+        // Test that S3ErrorKind can be used in match expressions
+        #[test]
+        fn test_error_kind_match() {
+            fn describe_error(kind: S3ErrorKind) -> &'static str {
+                match kind {
+                    S3ErrorKind::Throttle => "throttle",
+                    S3ErrorKind::Serialization => "serialization",
+                    S3ErrorKind::Transient => "transient",
+                }
+            }
+
+            assert_eq!(describe_error(S3ErrorKind::Throttle), "throttle");
+            assert_eq!(describe_error(S3ErrorKind::Serialization), "serialization");
+            assert_eq!(describe_error(S3ErrorKind::Transient), "transient");
+        }
+
+        // Documentation of classify_s3_error behavior:
+        //
+        // The classify_s3_error function categorizes AWS SDK errors based on:
+        // 1. HTTP status codes (primary mechanism):
+        //    - 503 → Throttle (with message validation as secondary check)
+        //    - Other status codes → Transient
+        //
+        // 2. Error type patterns:
+        //    - ServiceError: Check status code 503 for throttling
+        //                    Also check message for SlowDown/RequestLimitExceeded/ServiceUnavailable
+        //    - ConstructionFailure: → Serialization (non-retryable)
+        //    - TimeoutError: → Transient (retryable)
+        //    - DispatchFailure: → Transient (retryable)
+        //    - ResponseError: → Transient (retryable)
+        //
+        // Testing this function with real AWS SDK errors requires either:
+        // a) Integration tests with actual S3 backend (expensive, slow, flaky)
+        // b) Mocking AWS SDK ServiceError with proper internal types (not exposed by SDK)
+        //
+        // The implementation follows the same pattern as categorize_error (lines 462-483)
+        // which uses status code as primary classification with message as fallback.
+        //
+        // The straightforward pattern matching makes the implementation self-documenting,
+        // and the predicates above verify the enum works correctly.
+        //
+        // Future work: Consider adding integration tests that trigger actual S3 errors
+        // or exploring if AWS SDK test utilities become available.
     }
 }

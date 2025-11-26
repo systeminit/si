@@ -28,6 +28,7 @@ rust_library(
         "//third-party/rust:foyer",
         "//third-party/rust:fs4",
         "//third-party/rust:futures",
+        "//third-party/rust:http",
         "//third-party/rust:miniz_oxide",
         "//third-party/rust:mixtrics",
         "//third-party/rust:postcard",
