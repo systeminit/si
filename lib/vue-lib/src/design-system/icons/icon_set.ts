@@ -184,6 +184,7 @@ import CarbonRepeat from "~icons/carbon/repeat";
 import CarbonUndo from "~icons/carbon/undo";
 import CarbonInformation from "~icons/carbon/information";
 import CarbonWarning from "~icons/carbon/warning";
+import CarbonRestart from '~icons/carbon/restart'
 
 // streamline
 import StreamlineBracesCircleSolid from "~icons/streamline/braces-circle-solid";
@@ -397,6 +398,7 @@ export const ICONS = Object.freeze({
   "refresh-hex-outline": RefreshHexOutline,
   repeat: CarbonRepeat,
   resize: Resize,
+  restart: CarbonRestart,
   save: Save,
   scissors: Scissors,
   search: Search,
