@@ -101,6 +101,7 @@ class SearchApi:
         _response_types_map: Dict[str, Optional[str]] = {
             '200': "SearchV1Response",
             '401': None,
+            '424': None,
             '500': "ApiError",
         }
         response_data = self.api_client.call_api(
@@ -177,6 +178,7 @@ class SearchApi:
         _response_types_map: Dict[str, Optional[str]] = {
             '200': "SearchV1Response",
             '401': None,
+            '424': None,
             '500': "ApiError",
         }
         response_data = self.api_client.call_api(
@@ -253,6 +255,7 @@ class SearchApi:
         _response_types_map: Dict[str, Optional[str]] = {
             '200': "SearchV1Response",
             '401': None,
+            '424': None,
             '500': "ApiError",
         }
         response_data = self.api_client.call_api(
