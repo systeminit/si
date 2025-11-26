@@ -125,6 +125,9 @@ pub struct ObjectStorageConfig {
     /// Optional key prefix for test isolation
     /// When set, all object keys are prefixed with this value after transformation
     pub key_prefix: Option<String>,
+    /// Rate limiting configuration for S3 writes
+    #[serde(default)]
+    pub rate_limit: RateLimitConfig,
 }
 
 impl Default for ObjectStorageConfig {
@@ -139,6 +142,7 @@ impl Default for ObjectStorageConfig {
                 secret_key: "bugbear".into(),
             },
             key_prefix: None,
+            rate_limit: RateLimitConfig::default(),
         }
     }
 }
@@ -262,14 +266,13 @@ impl S3Layer {
     /// * `config` - S3 cache configuration
     /// * `cache_name` - Name of this cache (used for queue directory)
     /// * `strategy` - Key transformation strategy
-    /// * `rate_limit_config` - Optional rate limiting configuration. If None, writes are processed
-    ///   immediately without rate limiting (but still through the queue for durability).
+    /// * `rate_limit_config` - Rate limiting configuration for adaptive backoff
     /// * `queue_base_path` - Base directory for queue persistence
     pub async fn new(
         config: S3CacheConfig,
         cache_name: impl Into<String>,
         strategy: KeyTransformStrategy,
-        rate_limit_config: Option<RateLimitConfig>,
+        rate_limit_config: RateLimitConfig,
         queue_base_path: impl AsRef<Path>,
     ) -> LayerDbResult<Self> {
         info!(
@@ -290,6 +293,7 @@ impl S3Layer {
                     None,     // expiration
                     "static", // provider name
                 );
+                info!(endpoint = config.endpoint, "Using S3 endpoint",);
 
                 aws_config::SdkConfig::builder()
                     .endpoint_url(&config.endpoint)
@@ -323,35 +327,31 @@ impl S3Layer {
             .map_err(|e| LayerDbError::S3WriteQueue(e.to_string()))?;
         let write_queue = Arc::new(write_queue);
 
-        // Start queue processor if rate limiting configured
-        let (processor_handle, processor_shutdown) = if let Some(rate_config) = rate_limit_config {
-            // Create a temporary S3Layer without queue fields for the processor to use
-            let processor_layer = Self {
-                client: client.clone(),
-                bucket_name: bucket_name.clone(),
-                cache_name: cache_name_str.clone(),
-                strategy,
-                key_prefix: key_prefix.clone(),
-                write_queue: None,
-                processor_handle: None,
-                processor_shutdown: None,
-            };
-            let processor_layer_arc = Arc::new(processor_layer);
-
-            let processor = S3QueueProcessor::new(
-                Arc::clone(&write_queue),
-                rate_config,
-                processor_layer_arc,
-                cache_name_str.clone(),
-            );
-
-            let shutdown = processor.shutdown_handle();
-            let handle = tokio::spawn(processor.process_queue());
-
-            (Some(Arc::new(handle)), Some(shutdown))
-        } else {
-            (None, None)
+        // Start queue processor
+        // Create a temporary S3Layer without queue fields for the processor to use
+        let processor_layer = Self {
+            client: client.clone(),
+            bucket_name: bucket_name.clone(),
+            cache_name: cache_name_str.clone(),
+            strategy,
+            key_prefix: key_prefix.clone(),
+            write_queue: None,
+            processor_handle: None,
+            processor_shutdown: None,
         };
+        let processor_layer_arc = Arc::new(processor_layer);
+
+        let processor = S3QueueProcessor::new(
+            Arc::clone(&write_queue),
+            rate_limit_config,
+            processor_layer_arc,
+            cache_name_str.clone(),
+        );
+
+        let shutdown = processor.shutdown_handle();
+        let handle = tokio::spawn(processor.process_queue());
+
+        let (processor_handle, processor_shutdown) = (Some(Arc::new(handle)), Some(shutdown));
 
         Ok(S3Layer {
             client,
@@ -833,6 +833,7 @@ mod tests {
                 secret_key: "secret".into(),
             },
             key_prefix,
+            rate_limit: RateLimitConfig::default(),
         };
         base_config.for_cache("test-cache")
     }
@@ -848,7 +849,7 @@ mod tests {
             config,
             "test-cache",
             KeyTransformStrategy::Passthrough,
-            None,
+            RateLimitConfig::default(),
             temp_dir.path(),
         )
         .await
@@ -878,7 +879,7 @@ mod tests {
             config,
             "test-cache",
             KeyTransformStrategy::Passthrough,
-            None,
+            RateLimitConfig::default(),
             temp_dir.path(),
         )
         .await
@@ -899,7 +900,7 @@ mod tests {
             config,
             "test-cache",
             KeyTransformStrategy::ReverseKey,
-            None,
+            RateLimitConfig::default(),
             temp_dir.path(),
         )
         .await
@@ -921,7 +922,7 @@ mod tests {
             config,
             "test-cache",
             KeyTransformStrategy::ReverseKey,
-            None,
+            RateLimitConfig::default(),
             temp_dir.path(),
         )
         .await
@@ -944,6 +945,7 @@ mod tests {
                 secret_key: "secret".into(),
             },
             key_prefix: None,
+            rate_limit: RateLimitConfig::default(),
         };
 
         let cache_config = base_config.for_cache("cas_objects");
@@ -977,6 +979,7 @@ mod tests {
             region: "us-west-2".to_string(),
             auth: S3AuthConfig::IamRole,
             key_prefix: None,
+            rate_limit: RateLimitConfig::default(),
         };
 
         let cache_config = config.for_cache("test-cache");
@@ -997,7 +1000,7 @@ mod tests {
             cache_config,
             "test-cache",
             KeyTransformStrategy::Passthrough,
-            None,
+            RateLimitConfig::default(),
             temp_dir.path(),
         )
         .await;

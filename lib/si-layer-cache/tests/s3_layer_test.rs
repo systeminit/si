@@ -2,15 +2,25 @@ use si_layer_cache::{
     KeyTransformStrategy,
     ObjectStorageConfig,
     S3Layer,
+    rate_limiter::RateLimitConfig,
 };
 
 #[tokio::test]
 #[ignore = "requires VersityGW running"]
 async fn test_s3_put_get() {
+    use tempfile::TempDir;
+
+    let temp_dir = TempDir::new().expect("Failed to create temp dir");
     let config = ObjectStorageConfig::default().for_cache("test-cache");
-    let s3 = S3Layer::new(config, "test-cache", KeyTransformStrategy::Passthrough)
-        .await
-        .expect("Failed to create S3Layer");
+    let s3 = S3Layer::new(
+        config,
+        "test-cache",
+        KeyTransformStrategy::Passthrough,
+        RateLimitConfig::default(),
+        temp_dir.path(),
+    )
+    .await
+    .expect("Failed to create S3Layer");
 
     // Ensure bucket exists
     s3.migrate().await.expect("Failed to create bucket");
@@ -34,10 +44,19 @@ async fn test_s3_put_get() {
 #[tokio::test]
 #[ignore = "requires VersityGW running"]
 async fn test_key_transform_passthrough() {
+    use tempfile::TempDir;
+
+    let temp_dir = TempDir::new().expect("Failed to create temp dir");
     let config = ObjectStorageConfig::default().for_cache("test-transform");
-    let s3 = S3Layer::new(config, "test-transform", KeyTransformStrategy::Passthrough)
-        .await
-        .expect("Failed to create S3Layer");
+    let s3 = S3Layer::new(
+        config,
+        "test-transform",
+        KeyTransformStrategy::Passthrough,
+        RateLimitConfig::default(),
+        temp_dir.path(),
+    )
+    .await
+    .expect("Failed to create S3Layer");
     s3.migrate().await.expect("Failed to create bucket");
 
     // Content-addressable key (already well-distributed)
@@ -53,10 +72,19 @@ async fn test_key_transform_passthrough() {
 #[tokio::test]
 #[ignore = "requires VersityGW running"]
 async fn test_key_transform_reverse() {
+    use tempfile::TempDir;
+
+    let temp_dir = TempDir::new().expect("Failed to create temp dir");
     let config = ObjectStorageConfig::default().for_cache("test-reverse");
-    let s3 = S3Layer::new(config, "test-reverse", KeyTransformStrategy::ReverseKey)
-        .await
-        .expect("Failed to create S3Layer");
+    let s3 = S3Layer::new(
+        config,
+        "test-reverse",
+        KeyTransformStrategy::ReverseKey,
+        RateLimitConfig::default(),
+        temp_dir.path(),
+    )
+    .await
+    .expect("Failed to create S3Layer");
     s3.migrate().await.expect("Failed to create bucket");
 
     // ULID-based key (timestamp prefix needs reversal)
@@ -72,10 +100,19 @@ async fn test_key_transform_reverse() {
 #[tokio::test]
 #[ignore = "requires VersityGW running"]
 async fn test_s3_three_tier_prefix() {
+    use tempfile::TempDir;
+
+    let temp_dir = TempDir::new().expect("Failed to create temp dir");
     let config = ObjectStorageConfig::default().for_cache("test-prefix");
-    let s3 = S3Layer::new(config, "test-prefix", KeyTransformStrategy::Passthrough)
-        .await
-        .expect("Failed to create S3Layer");
+    let s3 = S3Layer::new(
+        config,
+        "test-prefix",
+        KeyTransformStrategy::Passthrough,
+        RateLimitConfig::default(),
+        temp_dir.path(),
+    )
+    .await
+    .expect("Failed to create S3Layer");
     s3.migrate().await.expect("Failed to create bucket");
 
     // Keys that should have three-tier prefixing
@@ -100,10 +137,19 @@ async fn test_s3_three_tier_prefix() {
 #[tokio::test]
 #[ignore = "requires VersityGW running"]
 async fn test_s3_get_bulk() {
+    use tempfile::TempDir;
+
+    let temp_dir = TempDir::new().expect("Failed to create temp dir");
     let config = ObjectStorageConfig::default().for_cache("test-bulk");
-    let s3 = S3Layer::new(config, "test-bulk", KeyTransformStrategy::Passthrough)
-        .await
-        .expect("Failed to create S3Layer");
+    let s3 = S3Layer::new(
+        config,
+        "test-bulk",
+        KeyTransformStrategy::Passthrough,
+        RateLimitConfig::default(),
+        temp_dir.path(),
+    )
+    .await
+    .expect("Failed to create S3Layer");
     s3.migrate().await.expect("Failed to create bucket");
 
     // Insert multiple keys

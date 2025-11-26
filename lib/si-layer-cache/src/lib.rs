@@ -76,9 +76,9 @@ pub mod persister;
 pub mod pg;
 pub mod rate_limiter;
 pub mod retry_queue;
-pub mod s3_write_queue;
-pub mod s3_queue_processor;
 pub mod s3;
+pub mod s3_queue_processor;
+pub mod s3_write_queue;
 
 #[derive(AsRefStr, Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[strum(serialize_all = "snake_case")]
@@ -94,6 +94,11 @@ pub use pg::{
     APPLICATION_NAME,
     DBNAME,
     default_pg_pool_config,
+};
+pub use rate_limiter::{
+    RateLimitConfig,
+    RateLimitConfigError,
+    RateLimiter,
 };
 pub use s3::{
     KeyTransformStrategy,

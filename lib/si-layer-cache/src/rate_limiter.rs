@@ -117,6 +117,22 @@ use serde::{
     Serialize,
 };
 
+/// Errors that can occur when validating RateLimitConfig
+#[derive(Debug, Clone, thiserror::Error)]
+pub enum RateLimitConfigError {
+    #[error("min_delay_ms ({0}) cannot be greater than max_delay_ms ({1})")]
+    MinGreaterThanMax(u64, u64),
+
+    #[error("backoff_multiplier ({0}) must be greater than 1.0")]
+    MultiplierTooSmall(f32),
+
+    #[error("success_divisor ({0}) must be greater than 1.0")]
+    DivisorTooSmall(f32),
+
+    #[error("successes_before_reduction cannot be zero")]
+    SuccessesZero,
+}
+
 /// Configuration for adaptive rate limiting with exponential backoff.
 ///
 /// This configuration defines the parameters for an adaptive rate limiter that:
@@ -192,6 +208,40 @@ impl RateLimitConfig {
     pub fn success_divisor(&self) -> f32 {
         self.success_divisor
             .unwrap_or(self.backoff_multiplier * 0.75)
+    }
+
+    /// Validates the configuration parameters.
+    ///
+    /// Returns an error if any of the following conditions are violated:
+    /// - `min_delay_ms` must be less than or equal to `max_delay_ms`
+    /// - `backoff_multiplier` must be greater than 1.0
+    /// - `success_divisor` (if set) must be greater than 1.0
+    /// - `successes_before_reduction` must be greater than 0
+    pub fn validate(&self) -> Result<(), RateLimitConfigError> {
+        if self.min_delay_ms > self.max_delay_ms {
+            return Err(RateLimitConfigError::MinGreaterThanMax(
+                self.min_delay_ms,
+                self.max_delay_ms,
+            ));
+        }
+
+        if self.backoff_multiplier <= 1.0 {
+            return Err(RateLimitConfigError::MultiplierTooSmall(
+                self.backoff_multiplier,
+            ));
+        }
+
+        if let Some(divisor) = self.success_divisor {
+            if divisor <= 1.0 {
+                return Err(RateLimitConfigError::DivisorTooSmall(divisor));
+            }
+        }
+
+        if self.successes_before_reduction == 0 {
+            return Err(RateLimitConfigError::SuccessesZero);
+        }
+
+        Ok(())
     }
 }
 
@@ -621,5 +671,60 @@ mod tests {
         limiter.reduce_backoff();
 
         assert_eq!(limiter.current_delay(), Duration::from_millis(50));
+    }
+
+    #[test]
+    fn test_validate_default_config() {
+        let config = RateLimitConfig::default();
+        assert!(config.validate().is_ok());
+    }
+
+    #[test]
+    fn test_validate_min_greater_than_max() {
+        let config = RateLimitConfig {
+            min_delay_ms: 1000,
+            max_delay_ms: 500,
+            ..Default::default()
+        };
+        assert!(matches!(
+            config.validate(),
+            Err(RateLimitConfigError::MinGreaterThanMax(1000, 500))
+        ));
+    }
+
+    #[test]
+    fn test_validate_multiplier_too_small() {
+        let config = RateLimitConfig {
+            backoff_multiplier: 0.5,
+            ..Default::default()
+        };
+        assert!(matches!(
+            config.validate(),
+            Err(RateLimitConfigError::MultiplierTooSmall(_))
+        ));
+    }
+
+    #[test]
+    fn test_validate_divisor_too_small() {
+        let config = RateLimitConfig {
+            success_divisor: Some(0.8),
+            ..Default::default()
+        };
+        assert!(matches!(
+            config.validate(),
+            Err(RateLimitConfigError::DivisorTooSmall(_))
+        ));
+    }
+
+    #[test]
+    fn test_validate_successes_zero() {
+        let config = RateLimitConfig {
+            successes_before_reduction: 0,
+            ..Default::default()
+        };
+        assert!(matches!(
+            config.validate(),
+            Err(RateLimitConfigError::SuccessesZero)
+        ));
     }
 }
