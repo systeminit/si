@@ -1,33 +1,63 @@
 //! A fast in-memory, network aware, layered write-through cache for System Initiative.
 //!
-//! It should have 3 layers of caching:
+//! # Architecture
 //!
-//! * Foyer, an in-memory LRU style cache.
-//! * Foyer, which also include an on-disk to keep more data locally than can be held in memory.
-//! * Postgres, our final persistant storage layer.
+//! The cache has 3 layers:
 //!
-//! When a write is requested, the following happens:
+//! * **Foyer** - In-memory LRU cache with optional disk backing
+//! * **S3** - Object storage persistence with internal write queue and adaptive rate limiting
+//! * **Postgres** - Database persistence layer
 //!
-//! * The data is written first to Foyer in-memory
-//! * Foyer handles shuffling to the disk when appropriate
-//! * The data is then published to a nats topic layer-cache.workspaceId
-//! * Any remote si-layer-cache instances listen to this topic, and populate their local caches
-//! * Postgres gets written to eventually by a 'persister' process that writes to PG from the write
-//! stream
-//! * On transient PostgreSQL failures, writes are persisted to a retry queue and retried with
-//! exponential backoff
+//! ## Write Path
 //!
-//! When a read is requested, the following happen:
+//! Write behavior depends on the configured [`PersisterMode`]:
 //!
-//! * The data is read from foyer
-//! * On a miss in-memory, Foyer gets it from disk, promotes it to in-memory, and returns it to the user
-//! * On a miss, the data is read from Postgres, and then inserted in Foyer
-//! returned to the user
+//! 1. Data written to Foyer in-memory cache
+//! 2. Foyer handles disk shuffling when appropriate
+//! 3. Data published to NATS topic for remote cache population
+//! 4. Persistence backends (S3, Postgres, or both) handle durable storage based on mode
 //!
-//! # Retry Queue
+//! For S3-enabled modes (`DualWrite`, `S3Primary`, `S3Only`):
+//! - All S3 writes are enqueued to persistent disk queue (no fast path for durability)
+//! - Background processor dequeues and writes to S3 with adaptive rate limiting
 //!
-//! The retry queue ensures data durability when PostgreSQL is temporarily unavailable. See
-//! [`retry_queue`] module for details.
+//! ## S3 Write Queue
+//!
+//! All S3 writes go through a persistent queue for durability guarantees:
+//!
+//! - **Queue directory:** `{base_path}/{cache_name}_s3_queue/`
+//! - **File format:** `{ULID}.pending` (Postcard-serialized `LayeredEvent`)
+//! - **Ordering:** ULID-based chronological order
+//! - **Dead letter queue:** `dead_letter/` subdirectory for corrupted data
+//!
+//! See [`s3_write_queue`] and [`s3_queue_processor`] modules for details.
+//!
+//! ## Adaptive Rate Limiting
+//!
+//! S3 writes are rate-limited to avoid constant throttling:
+//!
+//! - **Exponential backoff** on throttling (503, SlowDown, etc.)
+//! - **Gradual reduction** after consecutive successes
+//! - **Configurable parameters** via [`RateLimitConfig`]
+//!
+//! See [`rate_limiter`] module for state machine details.
+//!
+//! ## Read Path
+//!
+//! Read behavior depends on the configured [`PersisterMode`]:
+//!
+//! - **PostgresOnly, DualWrite:** Read from Foyer → Postgres
+//! - **S3Primary:** Read from Foyer → S3 → Postgres (fallback)
+//! - **S3Only:** Read from Foyer → S3
+//!
+//! Fetched data populates Foyer for future reads.
+//!
+//! ## Retry Queue
+//!
+//! For transient PostgreSQL failures, writes are persisted to a retry queue with exponential
+//! backoff.
+//!
+//! See [`retry_queue`] module for details.
 //!
 #![allow(clippy::doc_lazy_continuation)]
 
@@ -49,8 +79,9 @@ pub mod persister;
 pub mod pg;
 pub mod rate_limiter;
 pub mod retry_queue;
-pub mod s3_write_queue;
 pub mod s3;
+pub mod s3_queue_processor;
+pub mod s3_write_queue;
 
 #[derive(AsRefStr, Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[strum(serialize_all = "snake_case")]
@@ -77,4 +108,5 @@ pub use s3::{
     ObjectStorageConfig,
     S3AuthConfig,
     S3Layer,
+    S3ReadRetryConfig,
 };

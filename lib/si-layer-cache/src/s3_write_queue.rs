@@ -37,10 +37,14 @@ pub enum S3WriteQueueError {
     #[error("IO error")]
     Io(#[from] std::io::Error),
 
+    #[error("S3 configuration error: {message}")]
+    Configuration { message: String },
+
     #[error("Scan encountered {error_count} corrupted files, moved to dead letter queue")]
     ScanWithErrors { error_count: usize },
 }
 
+#[derive(Debug)]
 pub struct S3WriteQueue {
     queue_dir: PathBuf,
     dlq_dir: PathBuf,
