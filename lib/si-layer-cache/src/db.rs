@@ -217,7 +217,18 @@ where
 
         for (cache_name, strategy) in cache_configs {
             let cache_config = config.object_storage_config.for_cache(cache_name);
-            let s3_layer = S3Layer::new(cache_config, cache_name, strategy).await?;
+            // Use cache disk path as base for S3 write queue, same as retry queue
+            let queue_base_path = config.cache_config.disk_path();
+            // TODO: Add rate_limit_config to LayerDbConfig in future task
+            let rate_limit_config = None;
+            let s3_layer = S3Layer::new(
+                cache_config,
+                cache_name,
+                strategy,
+                rate_limit_config,
+                queue_base_path,
+            )
+            .await?;
             layers.insert(cache_name, s3_layer);
         }
 

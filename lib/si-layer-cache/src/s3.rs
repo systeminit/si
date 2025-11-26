@@ -1,6 +1,8 @@
 use std::{
     collections::HashMap,
     fmt,
+    path::Path,
+    sync::Arc,
 };
 
 use aws_config::Region;
@@ -13,10 +15,17 @@ use serde::{
 use si_std::SensitiveString;
 use strum::AsRefStr;
 use telemetry::prelude::*;
+use tokio::task::JoinHandle;
 
-use crate::error::{
-    LayerDbError,
-    LayerDbResult,
+use crate::{
+    error::{
+        LayerDbError,
+        LayerDbResult,
+    },
+    event::LayeredEvent,
+    rate_limiter::RateLimitConfig,
+    s3_queue_processor::S3QueueProcessor,
+    s3_write_queue::S3WriteQueue,
 };
 
 /// Strategy for transforming keys before storage in S3
@@ -158,7 +167,78 @@ impl ObjectStorageConfig {
     }
 }
 
-/// S3-compatible object storage layer
+/// S3-based persistence layer with internal write queue and adaptive rate limiting.
+///
+/// # Architecture
+///
+/// All writes go through a persistent disk queue (no fast path) to guarantee durability:
+///
+/// 1. `write()` enqueues LayeredEvent to disk atomically
+/// 2. Background processor dequeues in ULID order
+/// 3. Processor applies backoff delay if rate limited
+/// 4. Processor attempts S3 write
+/// 5. On success: remove from queue, update rate limiter
+/// 6. On throttle (503): increase backoff, leave in queue
+/// 7. On serialization error: move to dead letter queue
+/// 8. On transient error: increase backoff, leave in queue
+///
+/// # Rate Limiting
+///
+/// Adaptive exponential backoff prevents constant S3 throttling:
+///
+/// - **On throttle:** delay *= backoff_multiplier (default: 2.0), capped at max_delay
+/// - **On success:** consecutive_successes++
+/// - **After N successes:** delay /= success_divisor (default: 1.5), streak resets
+/// - **Below Zeno threshold (50ms):** delay resets to zero (solves dichotomy paradox)
+///
+/// # Configuration
+///
+/// Rate limiting configured via `RateLimitConfig` in `ObjectStorageConfig`:
+///
+/// ```json
+/// {
+///   "rate_limit": {
+///     "min_delay_ms": 0,
+///     "max_delay_ms": 5000,
+///     "initial_backoff_ms": 100,
+///     "backoff_multiplier": 2.0,
+///     "success_divisor": null,  // defaults to multiplier * 0.75
+///     "zeno_threshold_ms": 50,
+///     "successes_before_reduction": 3
+///   }
+/// }
+/// ```
+///
+/// # Logging
+///
+/// - Enqueue: TRACE level (normal operation)
+/// - Success: TRACE level (expected happy path)
+/// - Throttle: DEBUG level (expected, not alarming)
+/// - Transient error: WARN level (unexpected but retryable)
+/// - Serialization error: ERROR level (data corruption)
+///
+/// # Metrics
+///
+/// - `s3_write_queue_depth` - Current pending writes
+/// - `s3_write_backoff_ms` - Current backoff delay
+/// - `s3_write_attempts_total{result}` - Attempts by result (success/throttle/error)
+/// - `s3_write_duration_ms` - Time from enqueue to completion
+///
+/// # Shutdown
+///
+/// On Drop:
+/// 1. Signals processor to shutdown
+/// 2. Processor completes in-flight write
+/// 3. Processor exits (does not drain queue)
+/// 4. Queue remains on disk for restart
+///
+/// # Startup
+///
+/// On initialization:
+/// 1. Scans queue directory for `*.pending` files
+/// 2. Loads pending writes in ULID order
+/// 3. Starts processor with zero backoff
+/// 4. Rate limits rediscovered naturally during processing
 #[derive(Clone, Debug)]
 pub struct S3Layer {
     client: Client,
@@ -166,14 +246,31 @@ pub struct S3Layer {
     cache_name: String,
     strategy: KeyTransformStrategy,
     key_prefix: Option<String>,
+    write_queue: Option<Arc<S3WriteQueue>>,
+    processor_handle: Option<Arc<JoinHandle<()>>>,
+    processor_shutdown: Option<Arc<tokio::sync::Notify>>,
 }
 
 impl S3Layer {
     /// Create a new S3Layer from configuration and strategy
+    ///
+    /// All writes go through a persistent queue for durability. The queue processor
+    /// runs in the background and applies adaptive rate limiting if configured.
+    ///
+    /// # Parameters
+    ///
+    /// * `config` - S3 cache configuration
+    /// * `cache_name` - Name of this cache (used for queue directory)
+    /// * `strategy` - Key transformation strategy
+    /// * `rate_limit_config` - Optional rate limiting configuration. If None, writes are processed
+    ///   immediately without rate limiting (but still through the queue for durability).
+    /// * `queue_base_path` - Base directory for queue persistence
     pub async fn new(
         config: S3CacheConfig,
         cache_name: impl Into<String>,
         strategy: KeyTransformStrategy,
+        rate_limit_config: Option<RateLimitConfig>,
+        queue_base_path: impl AsRef<Path>,
     ) -> LayerDbResult<Self> {
         info!(
             layer_db.s3.auth_mode = config.auth.as_ref(),
@@ -217,13 +314,54 @@ impl S3Layer {
             .build();
 
         let client = Client::from_conf(s3_config);
+        let cache_name_str = cache_name.into();
+        let bucket_name = config.bucket_name;
+        let key_prefix = config.key_prefix;
+
+        // Initialize write queue
+        let write_queue = S3WriteQueue::new(&queue_base_path, &cache_name_str)
+            .map_err(|e| LayerDbError::S3WriteQueue(e.to_string()))?;
+        let write_queue = Arc::new(write_queue);
+
+        // Start queue processor if rate limiting configured
+        let (processor_handle, processor_shutdown) = if let Some(rate_config) = rate_limit_config {
+            // Create a temporary S3Layer without queue fields for the processor to use
+            let processor_layer = Self {
+                client: client.clone(),
+                bucket_name: bucket_name.clone(),
+                cache_name: cache_name_str.clone(),
+                strategy,
+                key_prefix: key_prefix.clone(),
+                write_queue: None,
+                processor_handle: None,
+                processor_shutdown: None,
+            };
+            let processor_layer_arc = Arc::new(processor_layer);
+
+            let processor = S3QueueProcessor::new(
+                Arc::clone(&write_queue),
+                rate_config,
+                processor_layer_arc,
+                cache_name_str.clone(),
+            );
+
+            let shutdown = processor.shutdown_handle();
+            let handle = tokio::spawn(processor.process_queue());
+
+            (Some(Arc::new(handle)), Some(shutdown))
+        } else {
+            (None, None)
+        };
 
         Ok(S3Layer {
             client,
-            bucket_name: config.bucket_name,
-            cache_name: cache_name.into(),
+            bucket_name,
+            cache_name: cache_name_str,
             strategy,
-            key_prefix: config.key_prefix,
+            key_prefix,
+            write_queue: Some(write_queue),
+            processor_handle,
+            processor_shutdown,
         })
     }
 
@@ -369,7 +507,7 @@ impl S3Layer {
         }
     }
 
-    /// Insert a value into S3
+    /// Insert a value into S3 directly (used by queue processor)
     pub async fn insert(&self, key: &str, value: &[u8]) -> LayerDbResult<()> {
         use crate::error::AwsSdkError;
 
@@ -396,6 +534,29 @@ impl S3Layer {
                 Err(LayerDbError::S3(Box::new(s3_error)))
             }
         }
+    }
+
+    /// Enqueue a write to the persistent queue for background processing
+    ///
+    /// All writes go through the queue for durability. The background processor
+    /// dequeues and writes to S3 with adaptive rate limiting.
+    pub fn write(&self, event: &LayeredEvent) -> LayerDbResult<()> {
+        let queue = self
+            .write_queue
+            .as_ref()
+            .ok_or_else(|| LayerDbError::S3WriteQueue("Queue not initialized".to_string()))?;
+
+        let ulid = queue
+            .enqueue(event)
+            .map_err(|e| LayerDbError::S3WriteQueue(e.to_string()))?;
+
+        trace!(
+            cache = %self.cache_name,
+            ulid = %ulid,
+            "Queued S3 write"
+        );
+
+        Ok(())
     }
 
     /// Get multiple values in parallel
@@ -571,6 +732,21 @@ impl S3Layer {
     }
 }
 
+impl Drop for S3Layer {
+    fn drop(&mut self) {
+        // Signal processor to shutdown
+        if let Some(shutdown) = &self.processor_shutdown {
+            shutdown.notify_one();
+        }
+
+        // Abort the processor task handle if it exists
+        // Note: Can't await in Drop, processor will exit on next loop iteration
+        if let Some(handle) = &self.processor_handle {
+            handle.abort();
+        }
+    }
+}
+
 /// Classification of S3 errors for appropriate handling
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum S3ErrorKind {
@@ -606,7 +782,9 @@ impl S3ErrorKind {
 /// - **Throttle**: SlowDown, RequestLimitExceeded, ServiceUnavailable (503)
 /// - **Serialization**: ConstructionFailure (indicates bad request data)
 /// - **Transient**: All other errors (network, timeout, internal errors, etc.)
-pub fn classify_s3_error<E>(error: &aws_sdk_s3::error::SdkError<E, http::Response<()>>) -> S3ErrorKind
+pub fn classify_s3_error<E>(
+    error: &aws_sdk_s3::error::SdkError<E, http::Response<()>>,
+) -> S3ErrorKind
 where
     E: std::error::Error,
 {
@@ -661,11 +839,20 @@ mod tests {
 
     #[tokio::test]
     async fn test_transform_and_prefix_key_with_test_prefix_passthrough() {
-        let config = test_cache_config(Some("test-uuid-1234".to_string()));
+        use tempfile::TempDir;
 
-        let layer = S3Layer::new(config, "test-cache", KeyTransformStrategy::Passthrough)
-            .await
-            .expect("Failed to create S3Layer");
+        let config = test_cache_config(Some("test-uuid-1234".to_string()));
+        let temp_dir = TempDir::new().expect("Failed to create temp dir");
+
+        let layer = S3Layer::new(
+            config,
+            "test-cache",
+            KeyTransformStrategy::Passthrough,
+            None,
+            temp_dir.path(),
+        )
+        .await
+        .expect("Failed to create S3Layer");
 
         // Test with 6+ character key
         let result = layer.transform_and_prefix_key("abc123def456");
@@ -682,11 +869,20 @@ mod tests {
 
     #[tokio::test]
     async fn test_transform_and_prefix_key_without_test_prefix_passthrough() {
-        let config = test_cache_config(None);
+        use tempfile::TempDir;
 
-        let layer = S3Layer::new(config, "test-cache", KeyTransformStrategy::Passthrough)
-            .await
-            .expect("Failed to create S3Layer");
+        let config = test_cache_config(None);
+        let temp_dir = TempDir::new().expect("Failed to create temp dir");
+
+        let layer = S3Layer::new(
+            config,
+            "test-cache",
+            KeyTransformStrategy::Passthrough,
+            None,
+            temp_dir.path(),
+        )
+        .await
+        .expect("Failed to create S3Layer");
 
         let result = layer.transform_and_prefix_key("abc123def456");
         assert_eq!(result, "ab/c1/23/abc123def456");
@@ -694,11 +890,20 @@ mod tests {
 
     #[tokio::test]
     async fn test_transform_and_prefix_key_with_test_prefix_reverse() {
-        let config = test_cache_config(Some("test-uuid-5678".to_string()));
+        use tempfile::TempDir;
 
-        let layer = S3Layer::new(config, "test-cache", KeyTransformStrategy::ReverseKey)
-            .await
-            .expect("Failed to create S3Layer");
+        let config = test_cache_config(Some("test-uuid-5678".to_string()));
+        let temp_dir = TempDir::new().expect("Failed to create temp dir");
+
+        let layer = S3Layer::new(
+            config,
+            "test-cache",
+            KeyTransformStrategy::ReverseKey,
+            None,
+            temp_dir.path(),
+        )
+        .await
+        .expect("Failed to create S3Layer");
 
         // "abc123" reversed is "321cba"
         let result = layer.transform_and_prefix_key("abc123");
@@ -707,11 +912,20 @@ mod tests {
 
     #[tokio::test]
     async fn test_transform_and_prefix_key_without_test_prefix_reverse() {
-        let config = test_cache_config(None);
+        use tempfile::TempDir;
 
-        let layer = S3Layer::new(config, "test-cache", KeyTransformStrategy::ReverseKey)
-            .await
-            .expect("Failed to create S3Layer");
+        let config = test_cache_config(None);
+        let temp_dir = TempDir::new().expect("Failed to create temp dir");
+
+        let layer = S3Layer::new(
+            config,
+            "test-cache",
+            KeyTransformStrategy::ReverseKey,
+            None,
+            temp_dir.path(),
+        )
+        .await
+        .expect("Failed to create S3Layer");
 
         // "abc123" reversed is "321cba"
         let result = layer.transform_and_prefix_key("abc123");
@@ -776,10 +990,15 @@ mod tests {
 
         // Note: We can't easily test actual IAM credential resolution without AWS credentials
         // That would be an integration test requiring AWS setup
+        use tempfile::TempDir;
+
+        let temp_dir = TempDir::new().expect("Failed to create temp dir");
         let layer = S3Layer::new(
             cache_config,
             "test-cache",
             KeyTransformStrategy::Passthrough,
+            None,
+            temp_dir.path(),
         )
         .await;
         match layer {

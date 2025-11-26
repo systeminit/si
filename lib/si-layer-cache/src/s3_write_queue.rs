@@ -44,6 +44,7 @@ pub enum S3WriteQueueError {
     ScanWithErrors { error_count: usize },
 }
 
+#[derive(Debug)]
 pub struct S3WriteQueue {
     queue_dir: PathBuf,
     dlq_dir: PathBuf,
