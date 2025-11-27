@@ -523,7 +523,7 @@ impl S3Layer {
 
                 // Not a "not found" error - wrap with context
                 let aws_error = AwsSdkError::GetObject(sdk_err);
-                let s3_error = Self::categorize_error(
+                let s3_error = categorize_s3_error(
                     aws_error,
                     crate::error::S3Operation::Get,
                     self.cache_name.clone(),
@@ -552,7 +552,7 @@ impl S3Layer {
             Ok(_) => Ok(()),
             Err(sdk_err) => {
                 let aws_error = AwsSdkError::PutObject(sdk_err);
-                let s3_error = Self::categorize_error(
+                let s3_error = categorize_s3_error(
                     aws_error,
                     crate::error::S3Operation::Put,
                     self.cache_name.clone(),
@@ -619,7 +619,7 @@ impl S3Layer {
             Ok(_) => Ok(()),
             Err(sdk_err) => {
                 let aws_error = AwsSdkError::HeadBucket(sdk_err);
-                let s3_error = Self::categorize_error(
+                let s3_error = categorize_s3_error(
                     aws_error,
                     crate::error::S3Operation::HeadBucket,
                     // Use bucket name as cache name for head_bucket operations
@@ -631,132 +631,6 @@ impl S3Layer {
         }
     }
 
-    /// Categorize AWS SDK error into appropriate S3Error variant with context
-    fn categorize_error(
-        aws_error: crate::error::AwsSdkError,
-        operation: crate::error::S3Operation,
-        cache_name: String,
-        key: String,
-    ) -> crate::error::S3Error {
-        use crate::error::{
-            AwsSdkError,
-            S3Error,
-        };
-
-        // Extract message from AWS error for display
-        let message = aws_error.to_string();
-
-        // Helper to determine error category from status and message
-        let determine_category = |status: u16, error_msg: &str| -> &'static str {
-            if status == 403
-                || error_msg.contains("AccessDenied")
-                || error_msg.contains("InvalidAccessKeyId")
-                || error_msg.contains("SignatureDoesNotMatch")
-            {
-                "authentication"
-            } else if status == 404
-                || error_msg.contains("NoSuchBucket")
-                || error_msg.contains("NoSuchKey")
-            {
-                "not_found"
-            } else if status == 503
-                || error_msg.contains("SlowDown")
-                || error_msg.contains("RequestLimitExceeded")
-                || error_msg.contains("ServiceUnavailable")
-            {
-                "throttling"
-            } else {
-                "other"
-            }
-        };
-
-        // Determine error category based on AWS SDK error type
-        // Note: Can't use match arm `|` patterns because each variant has different inner types
-        let category = match &aws_error {
-            AwsSdkError::PutObject(sdk_err) => match sdk_err {
-                aws_sdk_s3::error::SdkError::ServiceError(err) => {
-                    let status = err.raw().status().as_u16();
-                    let error_msg = format!("{:?}", err.err());
-                    determine_category(status, &error_msg)
-                }
-                aws_sdk_s3::error::SdkError::TimeoutError(_)
-                | aws_sdk_s3::error::SdkError::DispatchFailure(_)
-                | aws_sdk_s3::error::SdkError::ResponseError(_) => "network",
-                aws_sdk_s3::error::SdkError::ConstructionFailure(_) => "configuration",
-                _ => "other",
-            },
-            AwsSdkError::GetObject(sdk_err) => match sdk_err {
-                aws_sdk_s3::error::SdkError::ServiceError(err) => {
-                    let status = err.raw().status().as_u16();
-                    let error_msg = format!("{:?}", err.err());
-                    determine_category(status, &error_msg)
-                }
-                aws_sdk_s3::error::SdkError::TimeoutError(_)
-                | aws_sdk_s3::error::SdkError::DispatchFailure(_)
-                | aws_sdk_s3::error::SdkError::ResponseError(_) => "network",
-                aws_sdk_s3::error::SdkError::ConstructionFailure(_) => "configuration",
-                _ => "other",
-            },
-            AwsSdkError::HeadBucket(sdk_err) => match sdk_err {
-                aws_sdk_s3::error::SdkError::ServiceError(err) => {
-                    let status = err.raw().status().as_u16();
-                    let error_msg = format!("{:?}", err.err());
-                    determine_category(status, &error_msg)
-                }
-                aws_sdk_s3::error::SdkError::TimeoutError(_)
-                | aws_sdk_s3::error::SdkError::DispatchFailure(_)
-                | aws_sdk_s3::error::SdkError::ResponseError(_) => "network",
-                aws_sdk_s3::error::SdkError::ConstructionFailure(_) => "configuration",
-                _ => "other",
-            },
-        };
-
-        // Build appropriate S3Error variant based on category
-        match category {
-            "authentication" => S3Error::Authentication {
-                operation,
-                cache_name,
-                key,
-                message,
-                source: aws_error,
-            },
-            "not_found" => S3Error::NotFound {
-                operation,
-                cache_name,
-                key,
-                message,
-                source: aws_error,
-            },
-            "throttling" => S3Error::Throttling {
-                operation,
-                cache_name,
-                key,
-                message,
-                source: aws_error,
-            },
-            "network" => S3Error::Network {
-                operation,
-                cache_name,
-                key,
-                message,
-                source: aws_error,
-            },
-            "configuration" => S3Error::Configuration {
-                operation,
-                cache_name,
-                key,
-                message,
-                source: aws_error,
-            },
-            _ => S3Error::Other {
-                operation,
-                cache_name,
-                key,
-                message,
-                source: aws_error,
-            },
-        }
-    }
 }
 
 impl Drop for S3Layer {
@@ -799,6 +673,136 @@ impl S3ErrorKind {
     /// Returns true if this is a transient error
     pub fn is_transient(&self) -> bool {
         matches!(self, S3ErrorKind::Transient)
+    }
+}
+
+/// Categorize AWS SDK error into appropriate S3Error variant with context
+///
+/// Used by both S3Layer (for read operations) and S3QueueProcessor (for write operations)
+/// to consistently classify S3 errors for retry/backoff decisions.
+pub fn categorize_s3_error(
+    aws_error: crate::error::AwsSdkError,
+    operation: crate::error::S3Operation,
+    cache_name: String,
+    key: String,
+) -> crate::error::S3Error {
+    use crate::error::{
+        AwsSdkError,
+        S3Error,
+    };
+
+    // Extract message from AWS error for display
+    let message = aws_error.to_string();
+
+    // Helper to determine error category from status and message
+    let determine_category = |status: u16, error_msg: &str| -> &'static str {
+        if status == 403
+            || error_msg.contains("AccessDenied")
+            || error_msg.contains("InvalidAccessKeyId")
+            || error_msg.contains("SignatureDoesNotMatch")
+        {
+            "authentication"
+        } else if status == 404
+            || error_msg.contains("NoSuchBucket")
+            || error_msg.contains("NoSuchKey")
+        {
+            "not_found"
+        } else if status == 503
+            || error_msg.contains("SlowDown")
+            || error_msg.contains("RequestLimitExceeded")
+            || error_msg.contains("ServiceUnavailable")
+        {
+            "throttling"
+        } else {
+            "other"
+        }
+    };
+
+    // Determine error category based on AWS SDK error type
+    // Note: Can't use match arm `|` patterns because each variant has different inner types
+    let category = match &aws_error {
+        AwsSdkError::PutObject(sdk_err) => match sdk_err {
+            aws_sdk_s3::error::SdkError::ServiceError(err) => {
+                let status = err.raw().status().as_u16();
+                let error_msg = format!("{:?}", err.err());
+                determine_category(status, &error_msg)
+            }
+            aws_sdk_s3::error::SdkError::TimeoutError(_)
+            | aws_sdk_s3::error::SdkError::DispatchFailure(_)
+            | aws_sdk_s3::error::SdkError::ResponseError(_) => "network",
+            aws_sdk_s3::error::SdkError::ConstructionFailure(_) => "configuration",
+            _ => "other",
+        },
+        AwsSdkError::GetObject(sdk_err) => match sdk_err {
+            aws_sdk_s3::error::SdkError::ServiceError(err) => {
+                let status = err.raw().status().as_u16();
+                let error_msg = format!("{:?}", err.err());
+                determine_category(status, &error_msg)
+            }
+            aws_sdk_s3::error::SdkError::TimeoutError(_)
+            | aws_sdk_s3::error::SdkError::DispatchFailure(_)
+            | aws_sdk_s3::error::SdkError::ResponseError(_) => "network",
+            aws_sdk_s3::error::SdkError::ConstructionFailure(_) => "configuration",
+            _ => "other",
+        },
+        AwsSdkError::HeadBucket(sdk_err) => match sdk_err {
+            aws_sdk_s3::error::SdkError::ServiceError(err) => {
+                let status = err.raw().status().as_u16();
+                let error_msg = format!("{:?}", err.err());
+                determine_category(status, &error_msg)
+            }
+            aws_sdk_s3::error::SdkError::TimeoutError(_)
+            | aws_sdk_s3::error::SdkError::DispatchFailure(_)
+            | aws_sdk_s3::error::SdkError::ResponseError(_) => "network",
+            aws_sdk_s3::error::SdkError::ConstructionFailure(_) => "configuration",
+            _ => "other",
+        },
+    };
+
+    // Build appropriate S3Error variant based on category
+    match category {
+        "authentication" => S3Error::Authentication {
+            operation,
+            cache_name,
+            key,
+            message,
+            source: aws_error,
+        },
+        "not_found" => S3Error::NotFound {
+            operation,
+            cache_name,
+            key,
+            message,
+            source: aws_error,
+        },
+        "throttling" => S3Error::Throttling {
+            operation,
+            cache_name,
+            key,
+            message,
+            source: aws_error,
+        },
+        "network" => S3Error::Network {
+            operation,
+            cache_name,
+            key,
+            message,
+            source: aws_error,
+        },
+        "configuration" => S3Error::Configuration {
+            operation,
+            cache_name,
+            key,
+            message,
+            source: aws_error,
+        },
+        _ => S3Error::Other {
+            operation,
+            cache_name,
+            key,
+            message,
+            source: aws_error,
+        },
     }
 }
 
