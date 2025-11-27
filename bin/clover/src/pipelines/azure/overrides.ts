@@ -1,6 +1,7 @@
 import { PropOverrideFn, SchemaOverrideFn } from "../types.ts";
 import { ExpandedPkgSpec } from "../../spec/pkgs.ts";
 import {
+  attachQualificationFunction,
   fixNames,
   objectPropForOverride,
   propForOverride,
@@ -31,6 +32,19 @@ export const AZURE_SCHEMA_OVERRIDES = new Map<string, SchemaOverrideFn>([
     "Microsoft.Web/sites",
     (spec: ExpandedPkgSpec) => {
       const variant = spec.schemas[0].variants[0];
+      
+      const domainId = variant.domain.uniqueId;
+      if (!domainId) return;
+
+      const { func: validationLinuxFxVersionFunc, leafFuncSpec: leafFuncSpecDetails } =
+        attachQualificationFunction(
+          "./src/pipelines/azure/funcs/overrides/Microsoft.Web.sites/qualifications/validateLinuxFxVersion.ts",
+          "Validate Linux Fx Version",
+          "c9b5cd9e6c498e4b6c7f40fc3a6f94b17d6d88b188c6e3f21c52b185f6fa9a5d",
+          domainId,
+        );
+      spec.funcs.push(validationLinuxFxVersionFunc);
+      variant.leafFunctions.push(leafFuncSpecDetails);
 
       const extendedLocationProp = objectPropForOverride(
         variant.domain,
