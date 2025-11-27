@@ -22,7 +22,7 @@ use crate::{
         LayerDbError,
         LayerDbResult,
     },
-    event::LayeredEvent,
+    event::{LayeredEvent, LayeredEventPayload},
     rate_limiter::RateLimitConfig,
     s3_queue_processor::S3QueueProcessor,
     s3_write_queue::S3WriteQueue,
@@ -552,43 +552,37 @@ impl S3Layer {
         }
     }
 
-    /// Insert a value into S3 directly (used by queue processor)
-    pub async fn insert(&self, key: &str, value: &[u8]) -> LayerDbResult<()> {
-        use crate::error::AwsSdkError;
-
-        let s3_key = self.transform_and_prefix_key(key);
-
-        match self
-            .client
-            .put_object()
-            .bucket(&self.bucket_name)
-            .key(s3_key)
-            .body(value.to_vec().into())
-            .send()
-            .await
-        {
-            Ok(_) => Ok(()),
-            Err(sdk_err) => {
-                let aws_error = AwsSdkError::PutObject(sdk_err);
-                let s3_error = categorize_s3_error(
-                    aws_error,
-                    crate::error::S3Operation::Put,
-                    self.cache_name.clone(),
-                    key.to_string(),
-                );
-                Err(LayerDbError::S3(Box::new(s3_error)))
-            }
-        }
-    }
-
-    /// Enqueue a write to the persistent queue for background processing
+    /// Insert an event into S3 via the write queue
     ///
-    /// All writes go through the queue for durability. The background processor
-    /// dequeues and writes to S3 with adaptive rate limiting.
-    pub fn write(&self, event: &LayeredEvent) -> LayerDbResult<()> {
+    /// Transforms the key according to the configured strategy and prefix before queueing.
+    /// The queued event contains the final S3 key ready to write.
+    ///
+    /// This is the single write interface - all S3 writes go through the queue for durability.
+    pub fn insert(&self, event: &LayeredEvent) -> LayerDbResult<()> {
+        // Transform key at API boundary
+        let transformed_key = self.transform_and_prefix_key(&event.key);
+        let transformed_key_arc: Arc<str> = Arc::from(transformed_key);
+
+        // Create new event with transformed key
+        // Most fields are Arc, so clone is cheap
+        let transformed_event = LayeredEvent {
+            event_id: event.event_id,
+            event_kind: event.event_kind.clone(),
+            key: transformed_key_arc.clone(),
+            metadata: event.metadata.clone(),
+            payload: LayeredEventPayload {
+                db_name: event.payload.db_name.clone(),
+                key: transformed_key_arc.clone(),  // Reuse same Arc
+                sort_key: event.payload.sort_key.clone(),
+                value: event.payload.value.clone(),
+            },
+            web_events: event.web_events.clone(),
+        };
+
+        // Queue the transformed event
         let ulid = self
             .write_queue
-            .enqueue(event)
+            .enqueue(&transformed_event)
             .map_err(|e| LayerDbError::S3WriteQueue(e.to_string()))?;
 
         trace!(
