@@ -22,7 +22,10 @@ use crate::{
         LayerDbError,
         LayerDbResult,
     },
-    event::{LayeredEvent, LayeredEventPayload},
+    event::{
+        LayeredEvent,
+        LayeredEventPayload,
+    },
     rate_limiter::RateLimitConfig,
     s3_queue_processor::S3QueueProcessor,
     s3_write_queue::S3WriteQueue,
@@ -367,8 +370,8 @@ impl S3Layer {
         };
 
         // VersityGW with POSIX backend requires path-style bucket access
-        let s3_config_builder = aws_sdk_s3::config::Builder::from(&sdk_config)
-            .force_path_style(true);
+        let s3_config_builder =
+            aws_sdk_s3::config::Builder::from(&sdk_config).force_path_style(true);
 
         // Apply read retry configuration
         let retry_config = aws_sdk_s3::config::retry::RetryConfig::standard()
@@ -380,9 +383,7 @@ impl S3Layer {
                 read_retry_config.max_backoff_ms,
             ));
 
-        let s3_config = s3_config_builder
-            .retry_config(retry_config)
-            .build();
+        let s3_config = s3_config_builder.retry_config(retry_config).build();
 
         let client = Client::from_conf(s3_config);
 
@@ -593,7 +594,7 @@ impl S3Layer {
             metadata: event.metadata.clone(),
             payload: LayeredEventPayload {
                 db_name: event.payload.db_name.clone(),
-                key: transformed_key_arc.clone(),  // Reuse same Arc
+                key: transformed_key_arc.clone(), // Reuse same Arc
                 sort_key: event.payload.sort_key.clone(),
                 value: event.payload.value.clone(),
             },
@@ -659,7 +660,6 @@ impl S3Layer {
             }
         }
     }
-
 }
 
 impl Drop for S3Layer {

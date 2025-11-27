@@ -157,10 +157,11 @@ impl S3QueueProcessor {
 
         // Key is already transformed - write directly to S3
         // Event.key contains the final S3 key after transformation
-        let result = self.s3_client
+        let result = self
+            .s3_client
             .put_object()
             .bucket(&self.bucket_name)
-            .key(event.key.as_ref())  // Pre-transformed key from queue
+            .key(event.key.as_ref()) // Pre-transformed key from queue
             .body(Arc::unwrap_or_clone(event.payload.value).into())
             .send()
             .await;
