@@ -17,7 +17,7 @@ ws_url = "ws://localhost:5157"
 http_url = "http://localhost:5157"
 
 [service]
-port = 5156
+port = 5380
 
 [paging]
 # A serialized sodiumoxide key; never use this one in production!
