@@ -21,6 +21,7 @@ use si_layer_cache::{
     db::LayerDbConfig,
     error::LayerDbError,
 };
+use si_service_endpoints::ServiceEndpointsConfig;
 use si_std::CanonicalFileError;
 use si_tls::CertificateSource;
 use telemetry::prelude::*;
@@ -62,7 +63,7 @@ impl ConfigError {
 type Result<T> = std::result::Result<T, ConfigError>;
 
 #[allow(missing_docs)]
-#[derive(Debug, Builder)]
+#[derive(Debug, Builder, Serialize)]
 pub struct Config {
     #[builder(default = "PgPoolConfig::default()")]
     pg_pool: PgPoolConfig,
@@ -90,6 +91,9 @@ pub struct Config {
 
     #[builder(default = "Features::default()")]
     features: Features,
+
+    #[builder(default = "default_service_endpoints_config()")]
+    service_endpoints: ServiceEndpointsConfig,
 }
 
 impl StandardConfig for Config {
@@ -150,6 +154,12 @@ impl Config {
     pub fn features(&self) -> Features {
         self.features
     }
+
+    /// Gets a reference to the config's service endpoints configuration.
+    #[must_use]
+    pub fn service_endpoints(&self) -> &ServiceEndpointsConfig {
+        &self.service_endpoints
+    }
 }
 
 /// Static feature flags for Rebaser.
@@ -187,6 +197,8 @@ pub struct ConfigFile {
     quiescent_period_secs: u64,
     #[serde(default)]
     features: Features,
+    #[serde(default = "default_service_endpoints_config")]
+    service_endpoints: ServiceEndpointsConfig,
 }
 
 impl Default for ConfigFile {
@@ -201,6 +213,7 @@ impl Default for ConfigFile {
             instance_id: random_instance_id(),
             quiescent_period_secs: default_quiescent_period_secs(),
             features: Default::default(),
+            service_endpoints: default_service_endpoints_config(),
         }
     }
 }
@@ -225,6 +238,7 @@ impl TryFrom<ConfigFile> for Config {
         config.instance_id(value.instance_id);
         config.quiescent_period(Duration::from_secs(value.quiescent_period_secs));
         config.features(value.features);
+        config.service_endpoints(value.service_endpoints);
         config.build().map_err(Into::into)
     }
 }
@@ -255,6 +269,10 @@ fn default_quiescent_period() -> Duration {
 
 fn default_quiescent_period_secs() -> u64 {
     DEFAULT_QUIESCENT_PERIOD_SECS
+}
+
+fn default_service_endpoints_config() -> ServiceEndpointsConfig {
+    ServiceEndpointsConfig::new(0)
 }
 
 /// This function is used to determine the development environment and update the [`ConfigFile`]

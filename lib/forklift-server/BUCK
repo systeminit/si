@@ -15,6 +15,7 @@ rust_library(
         "//lib/si-events-rs:si-events",
         "//lib/si-layer-cache:si-layer-cache",
         "//lib/si-runtime-rs:si-runtime",
+        "//lib/si-service-endpoints:si-service-endpoints",
         "//lib/si-settings:si-settings",
         "//lib/si-std:si-std",
         "//lib/si-tls:si-tls",

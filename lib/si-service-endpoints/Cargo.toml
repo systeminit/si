@@ -1,0 +1,20 @@
+[package]
+name = "si-service-endpoints"
+version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+axum = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+telemetry = { workspace = true }
+thiserror = { workspace = true }
+tokio = { workspace = true, features = ["macros", "net", "rt"] }
+tokio-util = { workspace = true }
+tower = { workspace = true }
+tower-http = { workspace = true }

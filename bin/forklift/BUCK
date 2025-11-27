@@ -10,6 +10,7 @@ rust_binary(
         "//lib/forklift-server:forklift-server",
         "//lib/innit-client:innit-client",
         "//lib/si-service:si-service",
+        "//lib/telemetry-utils-rs:telemetry-utils",
         "//third-party/rust:clap",
     ],
     srcs = glob(["src/**/*.rs"]),

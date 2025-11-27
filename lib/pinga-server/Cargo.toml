@@ -28,6 +28,7 @@ si-data-pg = { path = "../../lib/si-data-pg" }
 si-db = { path = "../../lib/si-db" }
 si-events = { path = "../../lib/si-events-rs" }
 si-layer-cache = { path = "../../lib/si-layer-cache" }
+si-service-endpoints = { path = "../../lib/si-service-endpoints" }
 si-settings = { path = "../../lib/si-settings" }
 si-std = { path = "../../lib/si-std" }
 si-tls = { path = "../../lib/si-tls" }

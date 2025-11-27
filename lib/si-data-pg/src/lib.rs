@@ -167,6 +167,7 @@ pub type PgTxn = PgSharedTransaction;
 pub struct PgPoolConfig {
     pub user: String,
     pub password: SensitiveString,
+    #[serde(skip_serializing)]
     pub certificate: Option<CertificateSource>,
     pub dbname: String,
     pub application_name: String,

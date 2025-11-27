@@ -34,6 +34,7 @@ si-data-pg = { path = "../../lib/si-data-pg" }
 si-events = { path = "../../lib/si-events-rs" }
 si-frontend-types = { path = "../../lib/si-frontend-types-rs" }
 si-layer-cache = { path = "../../lib/si-layer-cache" }
+si-service-endpoints = { path = "../../lib/si-service-endpoints" }
 si-settings = { path = "../../lib/si-settings" }
 si-std = { path = "../../lib/si-std" }
 si-tls = { path = "../../lib/si-tls" }
