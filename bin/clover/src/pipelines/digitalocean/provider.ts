@@ -166,9 +166,34 @@ export function digitalOceanParseRawSchema(
 
       console.log(endpoint, pathParts, methods);
 
-      // Next steps:
-      // Generate a name for the resource based on the path parts. Make sure to make them singular and capitalized before joining.
-      return;
+      // Generate a name for the resource based on the path parts
+      // Make them singular and capitalized before joining
+      const acronyms = new Set(['nfs', 'vpc', 'cdn', 'api', 'ssh', 'ip', 'ipv6', 'uuid', 'byoip']);
+
+      const schemaName = pathParts
+        .flatMap(part => {
+          // Split on underscores and hyphens to handle compound words
+          return part.split(/[-_]/);
+        })
+        .map(word => {
+          // Special case for kubernetes - don't singularize
+          if (word === 'kubernetes') {
+            return 'Kubernetes';
+          }
+          // Check if the original word is an acronym BEFORE singularizing
+          if (acronyms.has(word.toLowerCase())) {
+            return word.toUpperCase();
+          }
+          // Singularize the word
+          const singular = pluralize.singular(word);
+          // Check if singularized form is an acronym
+          if (acronyms.has(singular.toLowerCase())) {
+            return singular.toUpperCase();
+          }
+          // Otherwise capitalize first letter
+          return singular.charAt(0).toUpperCase() + singular.slice(1);
+        })
+        .join(' ');
 
       if (!resourceOperations[schemaName]) {
         resourceOperations[schemaName] = [];
