@@ -30,6 +30,8 @@ import { mergeResourceOperations, normalizeDigitalOceanProperty } from "./spec.t
 import { generateDigitalOceanSpecs } from "./pipeline.ts";
 import { JSONSchema } from "../draft_07.ts";
 import SwaggerParser from "@apidevtools/swagger-parser";
+import logger from "../../logger.ts";
+import { resourceUsage } from "node:process";
 
 function createDocLink(
   { typeName }: SuperSchema,
@@ -97,45 +99,22 @@ export function digitalOceanParseRawSchema(
     ([endpoint, openApiDescription]) => {
       if (!openApiDescription) return;
 
-      // Rename Assets that had different names on v1
-
-
-
-      // Skip Assets that are not supported
-      // if([
-      //   // Unmappable Entities
-      //   "Add-On",
-      //   "Billing",
-      //   // Future Assets
-      //   "Uptime",
-      //   "GradientAI Platform",
-      // ].includes(schemaName)) {
-      //   return;
-      // }
-
-
-
-      // Extract resource name from path (e.g., /v2/droplets -> droplets)
-      // const pathParts = endpoint.split("/").filter((s) =>
-      //   s && !s.startsWith("{")
-      // );
-
       const pathParts = [] as string[];
 
       const urlSections = endpoint.split("/");
       if (urlSections.length < 3 || urlSections[1] !== 'v2') return; // TODO WARN
 
       let isSubAsset = false;
-      let gotId = false;
+      let hasId = false;
       for (const urlSection of urlSections.slice(2)) {
         // If we got an id and are still moving down, this is a sub-asset that should be skipped.
-        if (gotId) {
+        if (hasId) {
           isSubAsset = true;
           break;
         }
         // If id section, we don't add it to the pathParts, but we use it
         if (urlSection.startsWith("{")) {
-          gotId = true;
+          hasId = true;
           continue;
         }
 
@@ -144,13 +123,9 @@ export function digitalOceanParseRawSchema(
 
       if (isSubAsset) return;
 
-      if (pathParts[0] === "1-clicks") return;
+      // Skipping endpoints that do not represent assets
       if (pathParts[0] === "add-ons") return;
       if (pathParts[0] === "gen-ai") return;
-      if (pathParts[0] === "sizes") return;
-      if (pathParts[0] === "regions") return;
-      if (pathParts[0] === "customers") return;
-      if (pathParts[0] === "monitoring" && pathParts[1] === "metrics") return;
 
       const methods = `${
         openApiDescription.get !== undefined ? "GET " : ""
@@ -168,18 +143,23 @@ export function digitalOceanParseRawSchema(
 
       // Generate a name for the resource based on the path parts
       // Make them singular and capitalized before joining
-      const acronyms = new Set(['nfs', 'vpc', 'cdn', 'api', 'ssh', 'ip', 'ipv6', 'uuid', 'byoip']);
+      const acronymList = ['nfs', 'vpc', 'cdn', 'api', 'ssh', 'ip', 'ipv6', 'uuid', 'byoip'];
+      const acronyms = new Set(acronymList);
 
-      const schemaName = pathParts
+      // Since tech words are often weird, we set a list of words that don't lose the final S when singular.
+      acronymList.forEach((acronym) => {
+        console.log(acronym);
+        pluralize.addUncountableRule(acronym);
+      });
+      pluralize.addUncountableRule('kubernetes');
+
+      const schemaNameRaw = pathParts
         .flatMap(part => {
           // Split on underscores and hyphens to handle compound words
           return part.split(/[-_]/);
         })
         .map(word => {
 
-          // Since tech words are often weird, we set a list of words that don't lose the final S when singular.
-          pluralize.addUncountableRule('nfs');
-          pluralize.addUncountableRule('kubernetes');
 
           // Singularize the word
           const singular = pluralize.singular(word);
@@ -188,7 +168,7 @@ export function digitalOceanParseRawSchema(
             return singular.toUpperCase();
           }
 
-          // Otherwise capitalize first letter
+          // Otherwise capitalize the first letter
           return singular.charAt(0).toUpperCase() + singular.slice(1);
         })
         .join(' ');
@@ -204,15 +184,21 @@ export function digitalOceanParseRawSchema(
         "Certificate": "SSL Certificate",
       };
 
-      const schemaNameMapped = nameMappings[schemaName] || schemaName;
-      const fullSchemaName = `DigitalOcean ${schemaNameMapped}`;
+      const schemaName = nameMappings[schemaNameRaw] || schemaNameRaw;
 
-      if (!resourceOperations[fullSchemaName]) {
-        resourceOperations[fullSchemaName] = [];
+      // DO has /v2/registry and v2/registries, and we only use one of them since the operations overlap.
+      if (
+        schemaName === "Container Registry" &&
+        endpoint === "/v2/registry"
+      ) {
+        return;
       }
 
-      resourceOperations[fullSchemaName].push({
+      resourceOperations[schemaName] ??= [];
+
+      resourceOperations[schemaName].push({
         endpoint,
+        endpointHasId: hasId,
         openApiDescription: {
           get: openApiDescription.get,
           post: openApiDescription.post,
@@ -224,25 +210,23 @@ export function digitalOceanParseRawSchema(
     },
   );
 
-
-  // With the resource operations list, filter out assets that don't have POST endpoints.
-
-  let count = 0;
   Object.entries(resourceOperations).forEach(([schemaName, operations]) => {
 
     const hasPost = operations.some(op => op.openApiDescription.post !== undefined);
     const hasGet = operations.some(op => op.openApiDescription.get !== undefined);
 
-    const hasEndpointWithId = operations.some(op =>
-      op.endpoint.split('/').some(part => part.startsWith('{'))
-    );
+    if (operations.length > 2) {
+      logger.warn(`DigitalOcean ${schemaName} has more than 2 operations. Skipping.`);
+      return;
+    }
 
-    if (!hasPost || !hasGet || !hasEndpointWithId) return;
+    const endpointWithId = operations
+      .find(op => op.endpointHasId);
 
-    console.log(schemaName, operations.map(op => op.endpoint).join(', '));
+    const endpointWithoutId = operations
+      .find(op => !op.endpointHasId);
 
-    count++;
-    return;
+    if (!hasPost || !hasGet || !endpointWithId || !endpointWithoutId) return;
 
     // Extract description from tag
     const firstOp = operations[0]?.openApiDescription;
@@ -260,24 +244,28 @@ export function digitalOceanParseRawSchema(
 
     const result = mergeResourceOperations(
       schemaName,
-      name,
+      endpointWithoutId.endpoint,
       operations,
       description,
     );
-    if (result) {
-      const spec = makeModule(
-        result.schema,
-        htmlToMarkdown(result.schema.description) ?? result.schema.description,
-        result.onlyProperties,
-        digitalOceanProviderConfig,
-        result.domainProperties,
-        result.resourceValueProperties,
-      );
-      specs.push(spec);
-    }
+
+    if (!result) return;
+
+    console.log(schemaName, operations.map(op => op.endpoint).join(', '));
+
+    const spec = makeModule(
+      result.schema,
+      htmlToMarkdown(result.schema.description) ?? result.schema.description,
+      result.onlyProperties,
+      digitalOceanProviderConfig,
+      result.domainProperties,
+      result.resourceValueProperties,
+    );
+    specs.push(spec);
+
   });
 
-  console.log(`${count} assets parsed.`);
+  console.log(`Parsed ${specs.length} DigitalOcean schemas.`)
 
   return specs;
 }

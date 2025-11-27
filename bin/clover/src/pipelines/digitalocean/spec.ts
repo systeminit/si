@@ -84,7 +84,7 @@ export function mergeResourceOperations(
     createOnly: [],
     readOnly: [],
     writeOnly: [],
-    primaryIdentifier: ["id"],
+    primaryIdentifier: ["id"], // TODO This is false for some DO assets
   };
 
   // createOnly: only in POST, not in PUT/PATCH
@@ -359,6 +359,7 @@ export function normalizeDigitalOceanProperty(
           "password",
           "ipv4", // TODO Joi can validate ips we should use this
           "ipv6", // TODO Joi can validate ips we should use this
+          "cidr",
         ].includes(format)
       ) {
         delete normalized.format;
@@ -377,7 +378,7 @@ export function normalizeDigitalOceanProperty(
         normalized.format = "double";
       } else if (
         normalized.type === "string" &&
-        format === "hostname"
+        ["hostname", "url"].includes(format)
       ) {
         normalized.format = "uri";
       }

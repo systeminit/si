@@ -66,6 +66,7 @@ export type DigitalOceanOpenApiParameter = Extend<
 
 export interface OperationData {
   endpoint: string;
+  endpointHasId: boolean;
   openApiDescription: {
     get?: DigitalOceanOpenApiOperation;
     post?: DigitalOceanOpenApiOperation;
