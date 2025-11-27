@@ -26,6 +26,7 @@ export interface DigitalOceanSchema extends SuperSchema {
   requiredProperties: Set<string>;
   handlers: Record<string, { permissions: string[]; timeoutInMinutes: number }>;
   endpoint: string;
+  docTag?: string;
 }
 
 export type DigitalOceanOpenApiDocument = OpenAPIV3_1.Document<

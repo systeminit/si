@@ -34,23 +34,28 @@ import logger from "../../logger.ts";
 import { resourceUsage } from "node:process";
 
 function createDocLink(
-  { typeName }: SuperSchema,
+  schema: SuperSchema,
   defName: string | undefined,
   propName?: string,
 ): string {
-  const docLink = "https://docs.digitalocean.com/reference/api";
-  // Extract resource name from DigitalOcean/droplets format
-  const resourceName = typeName.split("/")[1] || typeName;
+  const docLink = "https://docs.digitalocean.com/reference/api/digitalocean/";
+
+  // Use the docTag from the schema if available
+  const digitalOceanSchema = schema as DigitalOceanSchema;
+  const tagName = digitalOceanSchema.docTag || schema.typeName.replace("DigitalOcean ", "");
+
+  // Replace spaces with hyphens for URL compatibility
+  const tag = tagName.replace(/ /g, '-');
 
   if (defName) {
-    return `${docLink}/${resourceName}#${defName.toLowerCase()}`;
+    return `${docLink}#tag/${tag}`;
   }
 
   if (propName) {
-    return `${docLink}/${resourceName}#properties`;
+    return `${docLink}#tag/${tag}`;
   }
 
-  return `${docLink}/${resourceName}`;
+  return `${docLink}#tag/${tag}`;
 }
 
 function digitalOceanCategory(_schema: SuperSchema): string {

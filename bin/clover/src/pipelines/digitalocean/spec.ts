@@ -128,6 +128,10 @@ export function mergeResourceOperations(
     ]),
   );
 
+  // Extract the doc tag from the first operation
+  const firstOp = getOperation || postOperation || putOperation || patchOperation;
+  const docTag = firstOp?.tags?.[0];
+
   // Use provider-style naming: DigitalOcean Droplets (capitalized, preserving plurality)
   const schema: DigitalOceanSchema = {
     typeName: `DigitalOcean ${resourceName}`,
@@ -135,6 +139,7 @@ export function mergeResourceOperations(
     requiredProperties,
     handlers,
     endpoint,
+    docTag,
   };
 
   return {
