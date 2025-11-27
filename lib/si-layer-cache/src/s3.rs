@@ -155,6 +155,9 @@ pub struct ObjectStorageConfig {
     /// Rate limiting configuration for S3 writes
     #[serde(default)]
     pub rate_limit: RateLimitConfig,
+    /// Retry configuration for S3 read operations
+    #[serde(default)]
+    pub read_retry: S3ReadRetryConfig,
 }
 
 impl Default for ObjectStorageConfig {
@@ -170,6 +173,7 @@ impl Default for ObjectStorageConfig {
             },
             key_prefix: None,
             rate_limit: RateLimitConfig::default(),
+            read_retry: S3ReadRetryConfig::default(),
         }
     }
 }
@@ -277,9 +281,9 @@ pub struct S3Layer {
     cache_name: String,
     strategy: KeyTransformStrategy,
     key_prefix: Option<String>,
-    write_queue: Option<Arc<S3WriteQueue>>,
-    processor_handle: Option<Arc<JoinHandle<()>>>,
-    processor_shutdown: Option<Arc<tokio::sync::Notify>>,
+    write_queue: Arc<S3WriteQueue>,
+    processor_handle: Arc<JoinHandle<()>>,
+    processor_shutdown: Arc<tokio::sync::Notify>,
 }
 
 impl S3Layer {
@@ -294,12 +298,14 @@ impl S3Layer {
     /// * `cache_name` - Name of this cache (used for queue directory)
     /// * `strategy` - Key transformation strategy
     /// * `rate_limit_config` - Rate limiting configuration for adaptive backoff
+    /// * `read_retry_config` - Retry configuration for S3 read operations
     /// * `queue_base_path` - Base directory for queue persistence
     pub async fn new(
         config: S3CacheConfig,
         cache_name: impl Into<String>,
         strategy: KeyTransformStrategy,
         rate_limit_config: RateLimitConfig,
+        read_retry_config: S3ReadRetryConfig,
         queue_base_path: impl AsRef<Path>,
     ) -> LayerDbResult<Self> {
         info!(
@@ -340,11 +346,33 @@ impl S3Layer {
         };
 
         // VersityGW with POSIX backend requires path-style bucket access
-        let s3_config = aws_sdk_s3::config::Builder::from(&sdk_config)
-            .force_path_style(true)
+        let s3_config_builder = aws_sdk_s3::config::Builder::from(&sdk_config)
+            .force_path_style(true);
+
+        // Apply read retry configuration
+        let retry_config = aws_sdk_s3::config::retry::RetryConfig::standard()
+            .with_max_attempts(read_retry_config.max_attempts)
+            .with_initial_backoff(std::time::Duration::from_millis(
+                read_retry_config.initial_backoff_ms,
+            ))
+            .with_max_backoff(std::time::Duration::from_millis(
+                read_retry_config.max_backoff_ms,
+            ));
+
+        let s3_config = s3_config_builder
+            .retry_config(retry_config)
             .build();
 
         let client = Client::from_conf(s3_config);
+
+        // Create separate S3 client for processor with retry disabled
+        // Processor uses application-level retry via queue, so SDK retry must be disabled
+        let processor_s3_config = aws_sdk_s3::config::Builder::from(&sdk_config)
+            .force_path_style(true)
+            .retry_config(aws_sdk_s3::config::retry::RetryConfig::disabled())
+            .build();
+
+        let processor_client = Client::from_conf(processor_s3_config);
         let cache_name_str = cache_name.into();
         let bucket_name = config.bucket_name;
         let key_prefix = config.key_prefix;
@@ -355,30 +383,20 @@ impl S3Layer {
         let write_queue = Arc::new(write_queue);
 
         // Start queue processor
-        // Create a temporary S3Layer without queue fields for the processor to use
-        let processor_layer = Self {
-            client: client.clone(),
-            bucket_name: bucket_name.clone(),
-            cache_name: cache_name_str.clone(),
-            strategy,
-            key_prefix: key_prefix.clone(),
-            write_queue: None,
-            processor_handle: None,
-            processor_shutdown: None,
-        };
-        let processor_layer_arc = Arc::new(processor_layer);
-
+        // Create processor with direct S3 client access (no S3Layer dependency)
         let processor = S3QueueProcessor::new(
             Arc::clone(&write_queue),
             rate_limit_config,
-            processor_layer_arc,
+            processor_client,
+            bucket_name.clone(),
             cache_name_str.clone(),
         );
 
         let shutdown = processor.shutdown_handle();
         let handle = tokio::spawn(processor.process_queue());
 
-        let (processor_handle, processor_shutdown) = (Some(Arc::new(handle)), Some(shutdown));
+        let processor_handle = Arc::new(handle);
+        let processor_shutdown = shutdown;
 
         Ok(S3Layer {
             client,
@@ -386,7 +404,7 @@ impl S3Layer {
             cache_name: cache_name_str,
             strategy,
             key_prefix,
-            write_queue: Some(write_queue),
+            write_queue,
             processor_handle,
             processor_shutdown,
         })
@@ -568,12 +586,8 @@ impl S3Layer {
     /// All writes go through the queue for durability. The background processor
     /// dequeues and writes to S3 with adaptive rate limiting.
     pub fn write(&self, event: &LayeredEvent) -> LayerDbResult<()> {
-        let queue = self
+        let ulid = self
             .write_queue
-            .as_ref()
-            .ok_or_else(|| LayerDbError::S3WriteQueue("Queue not initialized".to_string()))?;
-
-        let ulid = queue
             .enqueue(event)
             .map_err(|e| LayerDbError::S3WriteQueue(e.to_string()))?;
 
@@ -636,15 +650,11 @@ impl S3Layer {
 impl Drop for S3Layer {
     fn drop(&mut self) {
         // Signal processor to shutdown
-        if let Some(shutdown) = &self.processor_shutdown {
-            shutdown.notify_one();
-        }
+        self.processor_shutdown.notify_one();
 
-        // Abort the processor task handle if it exists
+        // Abort the processor task handle
         // Note: Can't await in Drop, processor will exit on next loop iteration
-        if let Some(handle) = &self.processor_handle {
-            handle.abort();
-        }
+        self.processor_handle.abort();
     }
 }
 

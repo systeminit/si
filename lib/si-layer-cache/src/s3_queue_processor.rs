@@ -3,6 +3,7 @@ use std::{
     time::Duration,
 };
 
+use aws_sdk_s3::Client;
 use futures::FutureExt;
 use telemetry::prelude::*;
 use telemetry_utils::{
@@ -26,7 +27,6 @@ use crate::{
         RateLimitConfig,
         RateLimiter,
     },
-    s3::S3Layer,
     s3_write_queue::{
         S3WriteQueue,
         S3WriteQueueError,
@@ -36,7 +36,8 @@ use crate::{
 pub struct S3QueueProcessor {
     queue: Arc<S3WriteQueue>,
     rate_limiter: RateLimiter,
-    s3_layer: Arc<S3Layer>,
+    s3_client: Client,
+    bucket_name: String,
     cache_name: String,
     shutdown: Arc<Notify>,
 }
@@ -45,13 +46,15 @@ impl S3QueueProcessor {
     pub fn new(
         queue: Arc<S3WriteQueue>,
         rate_limiter_config: RateLimitConfig,
-        s3_layer: Arc<S3Layer>,
+        s3_client: Client,
+        bucket_name: String,
         cache_name: String,
     ) -> Self {
         Self {
             queue,
             rate_limiter: RateLimiter::new(rate_limiter_config),
-            s3_layer,
+            s3_client,
+            bucket_name,
             cache_name,
             shutdown: Arc::new(Notify::new()),
         }
