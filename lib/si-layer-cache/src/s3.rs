@@ -91,6 +91,33 @@ pub struct S3CacheConfig {
     pub key_prefix: Option<String>,
 }
 
+/// Configuration for S3 read operation retry behavior
+///
+/// Controls AWS SDK retry configuration for S3Layer read operations (get, head_bucket).
+/// Write operations use application-level retry via queue and have SDK retry disabled.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct S3ReadRetryConfig {
+    /// Maximum number of retry attempts (default: 3)
+    pub max_attempts: u32,
+    /// Initial backoff delay in milliseconds (default: 100)
+    pub initial_backoff_ms: u64,
+    /// Maximum backoff delay in milliseconds (default: 20000)
+    pub max_backoff_ms: u64,
+    /// Backoff multiplier for exponential backoff (default: 2.0)
+    pub backoff_multiplier: f64,
+}
+
+impl Default for S3ReadRetryConfig {
+    fn default() -> Self {
+        Self {
+            max_attempts: 3,
+            initial_backoff_ms: 100,
+            max_backoff_ms: 20000,
+            backoff_multiplier: 2.0,
+        }
+    }
+}
+
 /// Configuration for S3-compatible object storage.
 ///
 /// Supports AWS S3 and S3-compatible services (VersityGW, MinIO, etc).
