@@ -122,7 +122,6 @@ class SiLambda:
             billing_user_workspace_id = cast(Optional[WorkspaceId], self.getenv("BILLING_USER_WORKSPACE_ID"))
             assert billing_user_workspace_id is not None, "BILLING_USER_WORKSPACE_ID must be set"
 
-            print(billing_user_password)
             self._auth_api = SiAuthApi.login(auth_api_url, billing_user_email, billing_user_password["BILLING_USER_PASWORD"], billing_user_workspace_id)
 
         return self._auth_api
