@@ -105,4 +105,5 @@ pub use s3::{
     ObjectStorageConfig,
     S3AuthConfig,
     S3Layer,
+    S3ReadRetryConfig,
 };

@@ -2,6 +2,7 @@ use si_layer_cache::{
     KeyTransformStrategy,
     ObjectStorageConfig,
     S3Layer,
+    S3ReadRetryConfig,
     rate_limiter::RateLimitConfig,
 };
 
@@ -17,6 +18,7 @@ async fn test_s3_put_get() {
         "test-cache",
         KeyTransformStrategy::Passthrough,
         RateLimitConfig::default(),
+        S3ReadRetryConfig::default(),
         temp_dir.path(),
     )
     .await
@@ -53,6 +55,7 @@ async fn test_key_transform_passthrough() {
         "test-transform",
         KeyTransformStrategy::Passthrough,
         RateLimitConfig::default(),
+        S3ReadRetryConfig::default(),
         temp_dir.path(),
     )
     .await
@@ -81,6 +84,7 @@ async fn test_key_transform_reverse() {
         "test-reverse",
         KeyTransformStrategy::ReverseKey,
         RateLimitConfig::default(),
+        S3ReadRetryConfig::default(),
         temp_dir.path(),
     )
     .await
@@ -109,6 +113,7 @@ async fn test_s3_three_tier_prefix() {
         "test-prefix",
         KeyTransformStrategy::Passthrough,
         RateLimitConfig::default(),
+        S3ReadRetryConfig::default(),
         temp_dir.path(),
     )
     .await
@@ -146,6 +151,7 @@ async fn test_s3_get_bulk() {
         "test-bulk",
         KeyTransformStrategy::Passthrough,
         RateLimitConfig::default(),
+        S3ReadRetryConfig::default(),
         temp_dir.path(),
     )
     .await

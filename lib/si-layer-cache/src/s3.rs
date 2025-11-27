@@ -869,6 +869,7 @@ mod tests {
             },
             key_prefix,
             rate_limit: RateLimitConfig::default(),
+            read_retry: S3ReadRetryConfig::default(),
         };
         base_config.for_cache("test-cache")
     }
@@ -885,6 +886,7 @@ mod tests {
             "test-cache",
             KeyTransformStrategy::Passthrough,
             RateLimitConfig::default(),
+            S3ReadRetryConfig::default(),
             temp_dir.path(),
         )
         .await
@@ -915,6 +917,7 @@ mod tests {
             "test-cache",
             KeyTransformStrategy::Passthrough,
             RateLimitConfig::default(),
+            S3ReadRetryConfig::default(),
             temp_dir.path(),
         )
         .await
@@ -936,6 +939,7 @@ mod tests {
             "test-cache",
             KeyTransformStrategy::ReverseKey,
             RateLimitConfig::default(),
+            S3ReadRetryConfig::default(),
             temp_dir.path(),
         )
         .await
@@ -958,6 +962,7 @@ mod tests {
             "test-cache",
             KeyTransformStrategy::ReverseKey,
             RateLimitConfig::default(),
+            S3ReadRetryConfig::default(),
             temp_dir.path(),
         )
         .await
@@ -981,6 +986,7 @@ mod tests {
             },
             key_prefix: None,
             rate_limit: RateLimitConfig::default(),
+            read_retry: S3ReadRetryConfig::default(),
         };
 
         let cache_config = base_config.for_cache("cas_objects");
@@ -1015,6 +1021,7 @@ mod tests {
             auth: S3AuthConfig::IamRole,
             key_prefix: None,
             rate_limit: RateLimitConfig::default(),
+            read_retry: S3ReadRetryConfig::default(),
         };
 
         let cache_config = config.for_cache("test-cache");
@@ -1036,6 +1043,7 @@ mod tests {
             "test-cache",
             KeyTransformStrategy::Passthrough,
             RateLimitConfig::default(),
+            S3ReadRetryConfig::default(),
             temp_dir.path(),
         )
         .await;
