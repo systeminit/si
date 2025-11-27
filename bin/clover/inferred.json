@@ -10930,6 +10930,9 @@
   "The SNS topic provided to Application Insights that is associated to the created opsItem.": {
     "enum": null
   },
+  "The SQL query that defines the segment criteria.": {
+    "enum": null
+  },
   "The SSL/TLS certificate name.": {
     "enum": null
   },
