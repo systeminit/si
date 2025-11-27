@@ -176,30 +176,42 @@ export function digitalOceanParseRawSchema(
           return part.split(/[-_]/);
         })
         .map(word => {
-          // Special case for kubernetes - don't singularize
-          if (word === 'kubernetes') {
-            return 'Kubernetes';
-          }
-          // Check if the original word is an acronym BEFORE singularizing
-          if (acronyms.has(word.toLowerCase())) {
-            return word.toUpperCase();
-          }
+
+          // Since tech words are often weird, we set a list of words that don't lose the final S when singular.
+          pluralize.addUncountableRule('nfs');
+          pluralize.addUncountableRule('kubernetes');
+
           // Singularize the word
           const singular = pluralize.singular(word);
-          // Check if singularized form is an acronym
+
           if (acronyms.has(singular.toLowerCase())) {
             return singular.toUpperCase();
           }
+
           // Otherwise capitalize first letter
           return singular.charAt(0).toUpperCase() + singular.slice(1);
         })
         .join(' ');
 
-      if (!resourceOperations[schemaName]) {
-        resourceOperations[schemaName] = [];
+      // For historical reasons we need to rename these assets to match the names we already had
+      const nameMappings = {
+        "App": "App Platform",
+        "Registry": "Container Registry",
+        "Image": "Custom Image",
+        "Database": "Database Cluster",
+        "Monitoring Alert": "Monitoring Alert Policy",
+        "Account Key": "SSH Key",
+        "Certificate": "SSL Certificate",
+      };
+
+      const schemaNameMapped = nameMappings[schemaName] || schemaName;
+      const fullSchemaName = `DigitalOcean ${schemaNameMapped}`;
+
+      if (!resourceOperations[fullSchemaName]) {
+        resourceOperations[fullSchemaName] = [];
       }
 
-      resourceOperations[schemaName].push({
+      resourceOperations[fullSchemaName].push({
         endpoint,
         openApiDescription: {
           get: openApiDescription.get,
@@ -212,11 +224,26 @@ export function digitalOceanParseRawSchema(
     },
   );
 
+
   // With the resource operations list, filter out assets that don't have POST endpoints.
 
-  Object.entries(resourceOperations).forEach(([name, operations]) => {
-    console.log(`DigitalOcean ${name}`);
+  let count = 0;
+  Object.entries(resourceOperations).forEach(([schemaName, operations]) => {
+
+    const hasPost = operations.some(op => op.openApiDescription.post !== undefined);
+    const hasGet = operations.some(op => op.openApiDescription.get !== undefined);
+
+    const hasEndpointWithId = operations.some(op =>
+      op.endpoint.split('/').some(part => part.startsWith('{'))
+    );
+
+    if (!hasPost || !hasGet || !hasEndpointWithId) return;
+
+    console.log(schemaName, operations.map(op => op.endpoint).join(', '));
+
+    count++;
     return;
+
     // Extract description from tag
     const firstOp = operations[0]?.openApiDescription;
     const tags = firstOp?.get?.tags || firstOp?.post?.tags;
@@ -249,6 +276,8 @@ export function digitalOceanParseRawSchema(
       specs.push(spec);
     }
   });
+
+  console.log(`${count} assets parsed.`);
 
   return specs;
 }
