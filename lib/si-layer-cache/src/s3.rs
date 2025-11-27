@@ -208,7 +208,7 @@ impl ObjectStorageConfig {
 ///
 /// All writes go through a persistent disk queue (no fast path) to guarantee durability:
 ///
-/// 1. `write()` enqueues LayeredEvent to disk atomically
+/// 1. `insert()` transforms the key and enqueues LayeredEvent to disk atomically
 /// 2. Background processor dequeues in ULID order
 /// 3. Processor applies backoff delay if rate limited
 /// 4. Processor attempts S3 write
@@ -216,6 +216,27 @@ impl ObjectStorageConfig {
 /// 6. On throttle (503): increase backoff, leave in queue
 /// 7. On serialization error: move to dead letter queue
 /// 8. On transient error: increase backoff, leave in queue
+///
+/// # S3 Clients
+///
+/// Two independent S3 clients with different retry configurations:
+///
+/// - **S3Layer client**: Configurable SDK retry for resilient synchronous reads
+/// - **Processor client**: SDK retry disabled (application-level retry via queue)
+///
+/// This separation ensures processor issues don't affect S3Layer reads, and allows
+/// optimal retry strategies for each use case.
+///
+/// # Key Transformation
+///
+/// Keys are transformed at the API boundary before queueing:
+///
+/// - Strategy transformation (Passthrough or ReverseKey)
+/// - Three-tier distribution prefix (`ab/c1/23/...`)
+/// - Optional key_prefix if configured
+///
+/// Events in the queue contain pre-transformed keys ready for S3 storage.
+/// The processor uses keys directly without transformation.
 ///
 /// # Rate Limiting
 ///
@@ -567,7 +588,7 @@ impl S3Layer {
         // Most fields are Arc, so clone is cheap
         let transformed_event = LayeredEvent {
             event_id: event.event_id,
-            event_kind: event.event_kind.clone(),
+            event_kind: event.event_kind,
             key: transformed_key_arc.clone(),
             metadata: event.metadata.clone(),
             payload: LayeredEventPayload {
