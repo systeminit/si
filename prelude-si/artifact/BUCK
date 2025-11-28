@@ -13,6 +13,16 @@ export_file(
     name = "publish.py",
 )
 
+export_file(
+    name = "generate_binary_metadata.py",
+    visibility = ["PUBLIC"],
+)
+
+export_file(
+    name = "create_binary_archive.py",
+    visibility = ["PUBLIC"],
+)
+
 yapf_check(
     name = "check-format-python",
     srcs = glob(["**/*.py"]),

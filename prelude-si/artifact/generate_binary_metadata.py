@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Builds a metadata file for a rust binary.
+Builds a metadata file for a binary.
 """
 import argparse
 import os
@@ -64,6 +64,18 @@ def parse_args() -> argparse.Namespace:
         help="Name of binary to build",
     )
     parser.add_argument(
+        "--arch",
+        required=True,
+        choices=[arch.value for arch in PlatformArchitecture],
+        help="Target architecture",
+    )
+    parser.add_argument(
+        "--os",
+        required=True,
+        choices=[os.value for os in PlatformOS],
+        help="Target operating system",
+    )
+    parser.add_argument(
         "--author",
         required=True,
         help="Author to be used in binary metadata",
@@ -86,8 +98,10 @@ def main() -> int:
     args = parse_args()
 
     git_info = load_git_info(args.git_info_json)
-    architecture = detect_architecture()
-    os = detect_os()
+
+    # argparse validates these are valid enum values
+    architecture = PlatformArchitecture(args.arch)
+    os = PlatformOS(args.os)
 
     b3sum = compute_b3sum(args.binary)
     build_metadata = compute_build_metadata(
@@ -105,46 +119,6 @@ def main() -> int:
 def write_json(output: str, metadata: Union[Dict[str, str], List[str]]):
     with open(output, "w") as file:
         json.dump(metadata, file, sort_keys=True)
-
-
-# Possible machine architecture detection comes from reading the Rustup shell
-# script installer--thank you for your service!
-# See: https://github.com/rust-lang/rustup/blob/master/rustup-init.sh
-def detect_architecture() -> PlatformArchitecture:
-    machine = os.uname().machine
-
-    if (machine == "amd64" or machine == "x86_64" or machine == "x86-64"
-            or machine == "x64"):
-        return PlatformArchitecture.X86_64
-    elif (machine == "arm64" or machine == "aarch64" or machine == "arm64v8"):
-        return PlatformArchitecture.Aarch64
-    else:
-        print(
-            f"xxx Failed to determine architecure or unsupported: {machine}",
-            file=sys.stderr,
-        )
-        sys.exit(1)
-
-
-# Possible machine operating system detection comes from reading the Rustup shell
-# script installer--thank you for your service!
-# See: https://github.com/rust-lang/rustup/blob/master/rustup-init.sh
-def detect_os() -> PlatformOS:
-    platform_os = os.uname().sysname
-
-    match platform_os:
-        case "Darwin":
-            return PlatformOS.Darwin
-        case "Linux":
-            return PlatformOS.Linux
-        case "Windows":
-            return PlatformOS.Windows
-        case _:
-            print(
-                f"xxx Failed to determine operating system or unsupported: {platform_os}",
-                file=sys.stderr,
-            )
-            sys.exit(1)
 
 
 def load_git_info(git_info_file: str) -> Dict[str, str | int | bool]:

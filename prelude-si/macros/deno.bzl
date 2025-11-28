@@ -1,10 +1,16 @@
 load(
+    "@prelude-si//:artifact.bzl",
+    _artifact_promote = "artifact_promote",
+    _artifact_publish = "artifact_publish",
+)
+load(
     "@prelude-si//:build_metadata.bzl",
     _deno_git_metadata_typescript = "deno_git_metadata_typescript",
 )
 load(
     "@prelude-si//:deno.bzl",
     _deno_binary = "deno_binary",
+    _deno_binary_artifact = "deno_binary_artifact",
     _deno_format = "deno_format",
     _deno_test = "deno_test",
 )
@@ -67,3 +73,95 @@ def deno_test(
         visibility = visibility,
         **kwargs
     )
+
+def deno_binary_artifact(
+        name,
+        binary,
+        source_url = "http://github.com/systeminit/si.git",
+        author = "The System Initiative <dev@systeminit.com>",
+        license = "Apache-2.0",
+        artifact_destination = "s3://si-artifacts-prod",
+        artifact_cname = "artifacts.systeminit.com",
+        visibility = ["PUBLIC"]):
+    """Create Deno binary artifact with publish/promote targets for all platforms.
+
+    Creates base targets:
+    - :{name}-binary-artifact
+    - :publish-{name}-binary-artifact
+    - :promote-{name}-binary-artifact
+
+    Plus platform-specific aliases for each:
+    - :{name}-binary-artifact-{platform}
+    - :publish-{name}-binary-artifact-{platform}
+    - :promote-{name}-binary-artifact-{platform}
+
+    Where platform is: linux-x86_64, linux-aarch64, darwin-x86_64,
+                       darwin-aarch64, windows-x86_64, windows-aarch64
+    """
+
+    # Base artifact target
+    _deno_binary_artifact(
+        name = "{}-binary-artifact".format(name),
+        binary = binary,
+        binary_name = name,
+        family = name,
+        variant = "binary",
+        author = author,
+        source_url = source_url,
+        license = license,
+        visibility = visibility,
+    )
+
+    # Base publish target
+    _artifact_publish(
+        name = "publish-{}-binary-artifact".format(name),
+        artifact = ":{}-binary-artifact".format(name),
+        destination = artifact_destination,
+        cname = artifact_cname,
+        visibility = visibility,
+    )
+
+    # Base promote target
+    _artifact_promote(
+        name = "promote-{}-binary-artifact".format(name),
+        family = name,
+        variant = "binary",
+        destination = artifact_destination,
+        cname = artifact_cname,
+        visibility = visibility,
+    )
+
+    # Platform-specific aliases
+    platforms = [
+        "linux-x86_64",
+        "linux-aarch64",
+        "darwin-x86_64",
+        "darwin-aarch64",
+        "windows-x86_64",
+        "windows-aarch64",
+    ]
+
+    for platform in platforms:
+        # Artifact alias
+        _alias(
+            name = "{}-binary-artifact-{}".format(name, platform),
+            actual = ":{}-binary-artifact".format(name),
+            default_target_platform = "prelude-si//platforms:{}".format(platform),
+            visibility = visibility,
+        )
+
+        # Publish alias
+        _alias(
+            name = "publish-{}-binary-artifact-{}".format(name, platform),
+            actual = ":publish-{}-binary-artifact".format(name),
+            default_target_platform = "prelude-si//platforms:{}".format(platform),
+            visibility = visibility,
+        )
+
+        # Promote alias
+        _alias(
+            name = "promote-{}-binary-artifact-{}".format(name, platform),
+            actual = ":promote-{}-binary-artifact".format(name),
+            default_target_platform = "prelude-si//platforms:{}".format(platform),
+            visibility = visibility,
+        )

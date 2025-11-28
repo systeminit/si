@@ -1,6 +1,8 @@
 ArtifactToolchainInfo = provider(fields = {
     "promote": typing.Any,
     "publish": typing.Any,
+    "generate_binary_metadata": typing.Any,
+    "create_binary_archive": typing.Any,
 })
 
 def artifact_toolchain_impl(ctx) -> list[[DefaultInfo, ArtifactToolchainInfo]]:
@@ -13,6 +15,8 @@ def artifact_toolchain_impl(ctx) -> list[[DefaultInfo, ArtifactToolchainInfo]]:
         ArtifactToolchainInfo(
             promote = ctx.attrs._promote,
             publish = ctx.attrs._publish,
+            generate_binary_metadata = ctx.attrs._generate_binary_metadata,
+            create_binary_archive = ctx.attrs._create_binary_archive,
         ),
     ]
 
@@ -24,6 +28,12 @@ artifact_toolchain = rule(
         ),
         "_publish": attrs.dep(
             default = "prelude-si//artifact:publish.py",
+        ),
+        "_generate_binary_metadata": attrs.dep(
+            default = "prelude-si//artifact:generate_binary_metadata.py",
+        ),
+        "_create_binary_archive": attrs.dep(
+            default = "prelude-si//artifact:create_binary_archive.py",
         ),
     },
     is_toolchain_rule = True,

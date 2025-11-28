@@ -7,9 +7,25 @@ load(
     "cmd_script",
 )
 load(
+    "//artifact:toolchain.bzl",
+    "ArtifactToolchainInfo",
+)
+load(
+    "@prelude-si//:artifact.bzl",
+    "ArtifactInfo",
+)
+load(
     "//deno:toolchain.bzl",
     "DenoToolchainInfo",
     "DenoWorkspaceInfo",
+)
+load(
+    "//git.bzl",
+    _git_info = "git_info",
+)
+load(
+    "//git:toolchain.bzl",
+    "GitToolchainInfo",
 )
 
 DenoTargetRuntimeInfo = provider(fields = {
@@ -517,6 +533,119 @@ deno_target_runtime = rule(
         "_deno_toolchain": attrs.toolchain_dep(
             default = "toolchains//:deno",
             providers = [DenoToolchainInfo],
+        ),
+    },
+)
+
+def _deno_binary_artifact_impl(ctx):
+    """Implementation for deno_binary_artifact rule."""
+    binary = ctx.attrs.binary[DefaultInfo].default_outputs[0]
+    git_info = _git_info(ctx)
+
+    deno_toolchain = ctx.attrs._deno_toolchain[DenoToolchainInfo]
+    artifact_toolchain = ctx.attrs._artifact_toolchain[ArtifactToolchainInfo]
+
+    # Get platform information from Deno toolchain
+    target_os = deno_toolchain.target_os
+    target_arch = deno_toolchain.target_arch
+
+    # Generate metadata
+    build_metadata = ctx.actions.declare_output("build_metadata.json")
+
+    metadata_cmd = cmd_args(
+        ctx.attrs._python_toolchain[PythonToolchainInfo].interpreter,
+        artifact_toolchain.generate_binary_metadata[DefaultInfo].default_outputs,
+        "--binary",
+        binary,
+        "--git-info-json",
+        git_info.file,
+        "--build-metadata-out-file",
+        build_metadata.as_output(),
+        "--name",
+        ctx.attrs.binary_name,
+        "--arch",
+        target_arch,
+        "--os",
+        target_os,
+        "--author",
+        ctx.attrs.author,
+        "--source-url",
+        ctx.attrs.source_url,
+        "--license",
+        ctx.attrs.license,
+    )
+
+    ctx.actions.run(metadata_cmd, category = "binary_metadata")
+
+    # Create archive (tar.gz for unix, zip for Windows)
+    archive_ext = ".zip" if target_os == "windows" else ".tar.gz"
+    archive = ctx.actions.declare_output("{}{}".format(ctx.attrs.binary_name, archive_ext))
+
+    archive_cmd = cmd_args(
+        ctx.attrs._python_toolchain[PythonToolchainInfo].interpreter,
+        artifact_toolchain.create_binary_archive[DefaultInfo].default_outputs,
+        "--binary",
+        binary,
+        "--metadata",
+        build_metadata,
+        "--output",
+        archive.as_output(),
+        "--os",
+        target_os,
+        # Note: no --usr-local-bin flag, using flat layout
+    )
+
+    ctx.actions.run(archive_cmd, category = "binary_archive")
+
+    return [
+        DefaultInfo(default_output = archive),
+        ArtifactInfo(
+            artifact = archive,
+            metadata = build_metadata,
+            family = ctx.attrs.family,
+            variant = ctx.attrs.variant,
+        ),
+    ]
+
+deno_binary_artifact = rule(
+    impl = _deno_binary_artifact_impl,
+    attrs = {
+        "binary": attrs.dep(
+            doc = "The built deno_binary target.",
+        ),
+        "binary_name": attrs.string(
+            doc = "Artifact name.",
+        ),
+        "family": attrs.string(
+            doc = "Artifact family name.",
+        ),
+        "variant": attrs.string(
+            doc = "Artifact variant.",
+        ),
+        "author": attrs.string(
+            doc = "Author to be used in artifact metadata.",
+        ),
+        "source_url": attrs.string(
+            doc = "Source code URL to be used in artifact metadata.",
+        ),
+        "license": attrs.string(
+            doc = "License string to be used in artifact metadata.",
+        ),
+        "_git_toolchain": attrs.toolchain_dep(
+            default = "toolchains//:git",
+            providers = [GitToolchainInfo],
+        ),
+        "_python_toolchain": attrs.toolchain_dep(
+            default = "toolchains//:python",
+            providers = [PythonToolchainInfo],
+        ),
+        "_deno_toolchain": attrs.toolchain_dep(
+            default = "toolchains//:deno",
+            providers = [DenoToolchainInfo],
+        ),
+        "_artifact_toolchain": attrs.toolchain_dep(
+            default = "toolchains//:artifact",
+            providers = [ArtifactToolchainInfo],
         ),
     },
 )
