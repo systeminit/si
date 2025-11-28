@@ -48,10 +48,11 @@ export type WorkspaceLookup = {
 };
 
 export type RumReportEntry = {
-  ownerPk: string;
-  ownerEmail: string;
-  ownerName: string;
-  totalRum: number;
+  id: string;
+  email: string;
+  nickname: string;
+  signupAt: string;
+  maxRum: number;
 };
 
 export const useWorkspacesStore = defineStore("workspaces", {

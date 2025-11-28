@@ -46,7 +46,8 @@
                 >
                   <th scope="col">Owner Name</th>
                   <th scope="col">Owner Email</th>
-                  <th scope="col">Total RUM</th>
+                  <th scope="col">Signup Date</th>
+                  <th scope="col">Max RUM During Month</th>
                   <th scope="col">Owner ID</th>
                 </tr>
               </thead>
@@ -55,23 +56,26 @@
               >
                 <tr
                   v-for="entry in rumReport"
-                  :key="entry.ownerPk"
+                  :key="entry.id"
                   class="children:px-md children:py-sm children:truncate text-sm font-medium text-neutral-800 dark:text-neutral-200"
                 >
                   <td class="normal-case">
-                    {{ entry.ownerName }}
+                    {{ entry.nickname }}
                   </td>
                   <td class="normal-case">
-                    {{ entry.ownerEmail }}
+                    {{ entry.email }}
+                  </td>
+                  <td class="normal-case">
+                    {{ entry.signupAt }}
                   </td>
                   <td class="normal-case font-mono">
-                    {{ entry.totalRum }}
+                    {{ entry.maxRum }}
                   </td>
                   <td class="">
                     <div
                       class="xl:max-w-[800px] lg:max-w-[60vw] md:max-w-[50vw] sm:max-w-[40vw] max-w-[150px] truncate font-mono text-xs"
                     >
-                      {{ entry.ownerPk }}
+                      {{ entry.id }}
                     </div>
                   </td>
                 </tr>

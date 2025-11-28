@@ -151,13 +151,6 @@ router.patch("/workspaces/:workspaceId/quarantine", async (ctx) => {
   ctx.body = await getUserWorkspaces(authUser.id);
 });
 
-export type RumReportEntry = {
-  ownerPk: string;
-  ownerEmail: string;
-  ownerName: string;
-  totalRum: number;
-};
-
 router.get("/rum-report", async (ctx) => {
   extractAdminAuthUser(ctx);
 
@@ -184,30 +177,36 @@ router.get("/rum-report", async (ctx) => {
   );
 
   // Query with raw SQL for efficient join, group, and sum
-  const report = await prisma.$queryRaw<RumReportEntry[]>`
-    SELECT
-      u.id as "ownerPk",
-      u.email as "ownerEmail",
-      COALESCE(u.nickname, u.email) as "ownerName",
-      SUM(wrm.max_rum)::int as "totalRum"
-    FROM workspace_rum_months wrm
-    JOIN workspaces w ON wrm.workspace_id = w.id
-    JOIN users u ON w.creator_user_id = u.id
-    WHERE wrm.month = ${monthStart}
-    GROUP BY u.id, u.email, u.nickname
-    ORDER BY "totalRum" DESC
+  const report = await prisma.$queryRaw<
+  {
+    id: string;
+    email: string;
+    nickname: string;
+    signup_at: string;
+    max_rum: number;
+  }[]
+  >`
+    SELECT u.id,
+           u.email,
+           u.nickname,
+           u.signup_at,
+           MAX(e.owner_rum)::int AS max_rum
+      FROM rum_change_events e
+      JOIN users u ON u.id = e.owner_id
+     WHERE (e.next_owner_event_timestamp <= ${monthStart} OR e.next_owner_event_timestamp IS NULL)
+       AND (${monthStart} + INTERVAL '1 month' MONTH) > e.event_timestamp
+    GROUP BY u.id, u.email, u.nickname, u.signup_at
+    ORDER BY max_rum DESC, u.signup_at DESC
   `;
 
-  ctx.body = report;
+  ctx.body = report.map((entry) => ({
+    id: entry.id,
+    email: entry.email,
+    nickname: entry.nickname,
+    signupAt: entry.signup_at,
+    maxRum: entry.max_rum,
+  }));
 });
-
-export type WorkspaceRumData = {
-  workspaceId: string;
-  month: string; // ISO date string for first of month
-  maxRum: number;
-  maxRumDataEnd: string; // ISO date string
-  rumDate: string; // ISO date string
-};
 
 router.post("/rum-data/bulk-upsert", async (ctx) => {
   extractAdminAuthUser(ctx);
@@ -217,11 +216,18 @@ router.post("/rum-data/bulk-upsert", async (ctx) => {
     z.object({
       data: z.array(
         z.object({
+          eventTimestamp: z.string(),
+          rumChange: z.number(),
+
           workspaceId: z.string(),
-          month: z.string(),
-          maxRum: z.number(),
-          maxRumDataEnd: z.string(),
-          rumDate: z.string(),
+          workspaceRum: z.number(),
+          nextWorkspaceEventTimestamp: z.string().nullable(),
+          prevWorkspaceEventTimestamp: z.string().nullable(),
+
+          ownerId: z.string(),
+          ownerRum: z.number(),
+          nextOwnerEventTimestamp: z.string().nullable(),
+          prevOwnerEventTimestamp: z.string().nullable(),
         }),
       ),
     }),
@@ -230,24 +236,37 @@ router.post("/rum-data/bulk-upsert", async (ctx) => {
   // Upsert each record
   const results = await Promise.all(
     reqBody.data.map((entry) => {
-      return prisma.workspaceRumMonth.upsert({
+      const workspaceId_eventTimestamp = {
+        workspaceId: entry.workspaceId,
+        eventTimestamp: new Date(entry.eventTimestamp),
+      };
+      const update = {
+        rumChange: entry.rumChange,
+        workspaceRum: entry.workspaceRum,
+        nextWorkspaceEventTimestamp: entry.nextWorkspaceEventTimestamp
+          ? new Date(entry.nextWorkspaceEventTimestamp)
+          : null,
+        prevWorkspaceEventTimestamp: entry.prevWorkspaceEventTimestamp
+          ? new Date(entry.prevWorkspaceEventTimestamp)
+          : null,
+        ownerId: entry.ownerId,
+        ownerRum: entry.ownerRum,
+        nextOwnerEventTimestamp: entry.nextOwnerEventTimestamp
+          ? new Date(entry.nextOwnerEventTimestamp)
+          : null,
+        prevOwnerEventTimestamp: entry.prevOwnerEventTimestamp
+          ? new Date(entry.prevOwnerEventTimestamp)
+          : null,
+      };
+
+      return prisma.rumChangeEvent.upsert({
         where: {
-          workspaceId_month: {
-            workspaceId: entry.workspaceId,
-            month: new Date(entry.month),
-          },
+          workspaceId_eventTimestamp,
         },
-        update: {
-          maxRum: entry.maxRum,
-          maxRumDataEnd: new Date(entry.maxRumDataEnd),
-          maxRumDate: new Date(entry.rumDate),
-        },
+        update,
         create: {
-          workspaceId: entry.workspaceId,
-          month: new Date(entry.month),
-          maxRum: entry.maxRum,
-          maxRumDataEnd: new Date(entry.maxRumDataEnd),
-          maxRumDate: new Date(entry.rumDate),
+          ...workspaceId_eventTimestamp,
+          ...update,
         },
       });
     }),
