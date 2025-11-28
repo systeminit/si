@@ -8,7 +8,7 @@
  * via `si mcp-server stdio`.
  */
 
-import { run } from "../si/src/mcp-server/cli.ts";
+import { run } from "../si/src/ai-agent/mcp-server/cli.ts";
 
 if (import.meta.main) {
   await run();

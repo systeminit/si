@@ -2,7 +2,7 @@ import { ComponentsApi, SearchApi } from "@systeminit/api-client";
 import type { TemplateContext } from "./context.ts";
 import { filterComponentAttributes } from "./context.ts";
 import type { ExistingSetComponent } from "./converge_types.ts";
-import { logComponentWithSchema } from "../helpers.ts";
+import { logComponentWithSchema } from "./helpers.ts";
 
 /**
  * Query SI for components created by this template using tag search.

@@ -1,5 +1,5 @@
 import type { TemplateContext } from "../src/template/context.ts";
-import type { SubscriptionInputType as _SubscriptionInputType } from "../src/template.ts";
+import type { SubscriptionInputType as _SubscriptionInputType } from "../src/template/run.ts";
 import type { z } from "zod";
 
 export default function (c: TemplateContext) {

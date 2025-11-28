@@ -1,6 +1,6 @@
 import { Configuration } from "@systeminit/api-client";
-import { AuthApiClient, type WorkspaceDetails } from "../auth-api-client.ts";
-import { extractConfig } from "../config.ts";
+import { AuthApiClient, type WorkspaceDetails } from "./auth.ts";
+import { extractConfig } from "./config.ts";
 import type { Context } from "../context.ts";
 
 /// From the environment variables, extract the configuration needed to run auth commands

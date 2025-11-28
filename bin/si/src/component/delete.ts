@@ -12,7 +12,7 @@
 import { ComponentsApi } from "@systeminit/api-client";
 import { Context } from "../context.ts";
 import { apiConfig, WORKSPACE_ID } from "../si_client.ts";
-import { resolveChangeSet } from "../change_set_utils.ts";
+import { resolveChangeSet } from "./change_set.ts";
 
 /**
  * Options for the component delete command
@@ -37,7 +37,7 @@ export interface ComponentDeleteOptions {
  * @param options - Command options including changeSet and dryRun
  * @throws Error if API configuration is not initialized or component not found
  */
-export async function deleteComponent(
+export async function callComponentDelete(
   componentIdOrName: string,
   options: ComponentDeleteOptions,
 ): Promise<void> {

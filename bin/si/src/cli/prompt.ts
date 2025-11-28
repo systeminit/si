@@ -26,7 +26,7 @@
 
 import { Input } from "@cliffy/prompt";
 import type { InputOptions } from "@cliffy/prompt/input";
-import { Project } from "../project.ts";
+import { Project } from "../schema/project.ts";
 import { isInteractive } from "../logger.ts";
 import { ValidationError } from "@cliffy/command";
 

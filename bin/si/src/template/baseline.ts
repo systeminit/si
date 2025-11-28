@@ -5,7 +5,7 @@ import { componentViewToTemplateComponent } from "./context.ts";
 import { loadDataFromFile } from "./input.ts";
 import type { BaselineCache } from "./cache.ts";
 import { getHeadChangeSetId } from "../si_client.ts";
-import { logComponentWithSchema } from "../helpers.ts";
+import { logComponentWithSchema } from "./helpers.ts";
 
 /**
  * Set baseline data by searching for components using the context's search strings.

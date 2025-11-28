@@ -9,9 +9,6 @@
     "directory": "bin/si"
   },
   "homepage": "https://docs.systeminit.com",
-  "exports": {
-    ".": "./src/template.ts"
-  },
   "publish": {
     "exclude": [
       "**/*_test.ts",

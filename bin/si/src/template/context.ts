@@ -2,7 +2,7 @@ import type { Logger } from "@logtape/logtape";
 import { Context } from "../context.ts";
 import { basename } from "@std/path";
 import { z } from "zod";
-import { SubscriptionInput, type SubscriptionInputType } from "../template.ts";
+import { SubscriptionInput, type SubscriptionInputType } from "./run.ts";
 import {
   ComponentsApi,
   type ComponentViewV1,
@@ -26,12 +26,12 @@ import {
   cachedGetComponent,
   cachedGetSchema,
   cachedGetSchemaIdByName,
-} from "../cache.ts";
+} from "../component/cache_api.ts";
 import {
   resolveComponentReference,
   resolveSearchQuery,
   type SearchFunction,
-} from "../subscription_resolver.ts";
+} from "../component/subscription_utils.ts";
 
 /**
  * Configuration options for creating a TemplateContext and running a template.
