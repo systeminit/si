@@ -204,8 +204,10 @@ jobs:
           done
 
           # Fail if still not up after 30 min
-          if ! nc -z localhost 8080; then
-            echo "❌ Timed out waiting for web app on port 8080"
+          if ! curl --fail --silent --max-time 2 http://localhost:8080/health; then
+            echo "❌ Timed out waiting for web app health endpoint to respond"
+            echo "📋 Checking cloud-init logs for debugging..."
+            ssh -o StrictHostKeyChecking=no -o ConnectTimeout=30 -i ssh-key.pem "arch@$remote_ip" "tail -50 /var/log/cloud-init-output.log" || echo "⚠️  Could not retrieve cloud-init logs"
             exit 1
           fi
         env:
@@ -299,8 +301,10 @@ jobs:
           done
 
           # Fail if still not up after 30 min
-          if ! nc -z localhost 8080; then
-            echo "❌ Timed out waiting for web app on port 8080"
+          if ! curl --fail --silent --max-time 2 http://localhost:8080/health; then
+            echo "❌ Timed out waiting for web app health endpoint to respond"
+            echo "📋 Checking cloud-init logs for debugging..."
+            ssh -o StrictHostKeyChecking=no -o ConnectTimeout=30 -i ssh-key.pem "arch@$remote_ip" "tail -50 /var/log/cloud-init-output.log" || echo "⚠️  Could not retrieve cloud-init logs"
             exit 1
           fi
         env:
