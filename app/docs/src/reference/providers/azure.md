@@ -5,7 +5,7 @@ outline:
 
 # Azure Support in System Initiative
 
-Updated November 17, 2025.
+Updated November 26, 2025.
 
 System Initiative supports Azure resources through the
 [Azure Resource Manager (ARM) REST API Specification](https://github.com/Azure/azure-rest-api-specs).
@@ -25,7 +25,4 @@ or send an email to <help@systeminit.com> so we can extend support as needed.
 
 In order to use Azure from within System Initiative, you need to use a
 `Microsoft Credential` component. Creating that component will then prompt you
-for a `ClientId`, `ClientSecret` and a `TenantId` that you can use to create or
-discover your existing infrastructure. We suggest the use of
-`Microsoft.Resources/subscription` component in the workspace as a
-subscriptionID is a key part of a resource ID in Azure.
+for the credential setup supported above.

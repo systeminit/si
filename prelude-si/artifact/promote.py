@@ -40,6 +40,7 @@ class PlatformArch(BaseEnum):
 class PlatformOS(BaseEnum):
     Darwin = "darwin"
     Linux = "linux"
+    Windows = "windows"
 
 
 Target = Tuple[PlatformOS, PlatformArch]
@@ -305,7 +306,13 @@ def artifact_name(md: ArtifactMetadata) -> str:
 
     match md.variant:
         case Variant.Binary:
-            return f"{prefix}.tar.gz"
+            match md.os:
+                case PlatformOS.Darwin | PlatformOS.Linux:
+                    return f"{prefix}.tar.gz"
+                case PlatformOS.Windows:
+                    return f"{prefix}.zip"
+                case _:
+                    raise TypeError(f"unsupport Platform type: {md.os}")
         case Variant.Omnibus:
             return f"{prefix}.tar.gz"
         case Variant.Rootfs:

@@ -91,7 +91,6 @@ members = [
   "lib/si-frontend-mv-types-macros",
   "lib/si-frontend-mv-types-rs",
   "lib/si-frontend-types-rs",
-  "lib/si-generate-template",
   "lib/si-hash",
   "lib/si-id",
   "lib/si-jwt-public-key",

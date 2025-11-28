@@ -13,7 +13,7 @@ pacman-key --init
 pacman-key --populate archlinux
 
 # 2. Install tools:
-pacman -S --noconfirm base-devel git wget postgresql docker
+pacman -S --noconfirm base-devel git wget postgresql docker libxml2-legacy
 
 # 2(a) install yay for aur repo usage for us to grab ssm-agent
 #git clone https://aur.archlinux.org/yay.git

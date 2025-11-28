@@ -5,7 +5,7 @@ import logging
 
 from si_lambda import SiLambda, SiLambdaEnv
 from si_lago_api import ExternalSubscriptionId, LagoEvent
-from si_types import SqlDatetime
+from si_types import SqlTimestamp
 
 billable_metric_code = "resource-hours"
 cost_per_resource_hour = 0.007
@@ -30,7 +30,7 @@ class UploadBillingHours(SiLambda):
             next_uninvoiced_month = (next_uninvoiced_month - timedelta(days=1)).replace(day=1)
         return next_uninvoiced_month
 
-    def format_event(self, event: tuple[ExternalSubscriptionId, SqlDatetime, int]) -> LagoEvent:
+    def format_event(self, event: tuple[ExternalSubscriptionId, SqlTimestamp, int]) -> LagoEvent:
         [external_subscription_id, hour_start, resource_count] = event
 
         event_time = datetime.strptime(hour_start, "%Y-%m-%d %H:%M:%S").replace(
@@ -64,7 +64,7 @@ class UploadBillingHours(SiLambda):
             # Upload events by hour
             #
             all_events = cast(
-                Iterable[tuple[ExternalSubscriptionId, SqlDatetime, int]],
+                Iterable[tuple[ExternalSubscriptionId, SqlTimestamp, int]],
                 self.redshift.query_raw(
                     f"""
                     SELECT external_subscription_id, hour_start, resource_count

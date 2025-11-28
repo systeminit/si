@@ -8187,6 +8187,48 @@ export const SchemasApiAxiosParamCreator = function (configuration?: Configurati
     return {
         /**
          * 
+         * @summary Contribute the default variant of a schema to the module index
+         * @param {string} workspaceId Workspace identifier
+         * @param {string} changeSetId Change Set identifier
+         * @param {string} schemaId Schema identifier
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        contribute: async (workspaceId: string, changeSetId: string, schemaId: string, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'workspaceId' is not null or undefined
+            assertParamExists('contribute', 'workspaceId', workspaceId)
+            // verify required parameter 'changeSetId' is not null or undefined
+            assertParamExists('contribute', 'changeSetId', changeSetId)
+            // verify required parameter 'schemaId' is not null or undefined
+            assertParamExists('contribute', 'schemaId', schemaId)
+            const localVarPath = `/v1/w/{workspace_id}/change-sets/{change_set_id}/schemas/{schema_id}/contribute`
+                .replace(`{${"workspace_id"}}`, encodeURIComponent(String(workspaceId)))
+                .replace(`{${"change_set_id"}}`, encodeURIComponent(String(changeSetId)))
+                .replace(`{${"schema_id"}}`, encodeURIComponent(String(schemaId)));
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'POST', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+
+    
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         * 
          * @summary Create a schema and it\'s default variant
          * @param {string} workspaceId Workspace identifier
          * @param {string} changeSetId Change Set identifier
@@ -9259,6 +9301,21 @@ export const SchemasApiFp = function(configuration?: Configuration) {
     return {
         /**
          * 
+         * @summary Contribute the default variant of a schema to the module index
+         * @param {string} workspaceId Workspace identifier
+         * @param {string} changeSetId Change Set identifier
+         * @param {string} schemaId Schema identifier
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async contribute(workspaceId: string, changeSetId: string, schemaId: string, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.contribute(workspaceId, changeSetId, schemaId, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['SchemasApi.contribute']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         * 
          * @summary Create a schema and it\'s default variant
          * @param {string} workspaceId Workspace identifier
          * @param {string} changeSetId Change Set identifier
@@ -9628,6 +9685,16 @@ export const SchemasApiFactory = function (configuration?: Configuration, basePa
     return {
         /**
          * 
+         * @summary Contribute the default variant of a schema to the module index
+         * @param {SchemasApiContributeRequest} requestParameters Request parameters.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        contribute(requestParameters: SchemasApiContributeRequest, options?: RawAxiosRequestConfig): AxiosPromise<void> {
+            return localVarFp.contribute(requestParameters.workspaceId, requestParameters.changeSetId, requestParameters.schemaId, options).then((request) => request(axios, basePath));
+        },
+        /**
+         * 
          * @summary Create a schema and it\'s default variant
          * @param {SchemasApiCreateSchemaRequest} requestParameters Request parameters.
          * @param {*} [options] Override http request option.
@@ -9857,6 +9924,16 @@ export const SchemasApiFactory = function (configuration?: Configuration, basePa
 export interface SchemasApiInterface {
     /**
      * 
+     * @summary Contribute the default variant of a schema to the module index
+     * @param {SchemasApiContributeRequest} requestParameters Request parameters.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof SchemasApiInterface
+     */
+    contribute(requestParameters: SchemasApiContributeRequest, options?: RawAxiosRequestConfig): AxiosPromise<void>;
+
+    /**
+     * 
      * @summary Create a schema and it\'s default variant
      * @param {SchemasApiCreateSchemaRequest} requestParameters Request parameters.
      * @param {*} [options] Override http request option.
@@ -10075,6 +10152,34 @@ export interface SchemasApiInterface {
      */
     updateSchemaVariant(requestParameters: SchemasApiUpdateSchemaVariantRequest, options?: RawAxiosRequestConfig): AxiosPromise<GetSchemaVariantV1Response>;
 
+}
+
+/**
+ * Request parameters for contribute operation in SchemasApi.
+ * @export
+ * @interface SchemasApiContributeRequest
+ */
+export interface SchemasApiContributeRequest {
+    /**
+     * Workspace identifier
+     * @type {string}
+     * @memberof SchemasApiContribute
+     */
+    readonly workspaceId: string
+
+    /**
+     * Change Set identifier
+     * @type {string}
+     * @memberof SchemasApiContribute
+     */
+    readonly changeSetId: string
+
+    /**
+     * Schema identifier
+     * @type {string}
+     * @memberof SchemasApiContribute
+     */
+    readonly schemaId: string
 }
 
 /**
@@ -10903,6 +11008,18 @@ export interface SchemasApiUpdateSchemaVariantRequest {
  * @extends {BaseAPI}
  */
 export class SchemasApi extends BaseAPI implements SchemasApiInterface {
+    /**
+     * 
+     * @summary Contribute the default variant of a schema to the module index
+     * @param {SchemasApiContributeRequest} requestParameters Request parameters.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof SchemasApi
+     */
+    public contribute(requestParameters: SchemasApiContributeRequest, options?: RawAxiosRequestConfig) {
+        return SchemasApiFp(this.configuration).contribute(requestParameters.workspaceId, requestParameters.changeSetId, requestParameters.schemaId, options).then((request) => request(this.axios, this.basePath));
+    }
+
     /**
      * 
      * @summary Create a schema and it\'s default variant

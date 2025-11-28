@@ -69,7 +69,6 @@ pub mod duplicate_components;
 pub mod erase_component;
 pub mod execute_management_function;
 pub mod find_component;
-pub mod generate_template;
 pub mod get_component;
 pub mod get_component_resource;
 pub mod list_components;
@@ -122,8 +121,6 @@ pub enum ComponentsError {
     DuplicateManagementFunctionName(String),
     #[error("func error: {0}")]
     Func(#[from] dal::FuncError),
-    #[error("generate template error: {0}")]
-    GenerateTemplate(#[from] sdf_core::generate_template::GenerateTemplateError),
     #[error("input socket error: {0}")]
     InputSocket(#[from] dal::socket::input::InputSocketError),
     #[error("invalid secret value: {0}")]
@@ -636,10 +633,6 @@ pub fn routes() -> Router<AppState> {
         .route("/", get(list_components::list_components))
         .route("/find", get(find_component::find_component))
         .route("/search", post(search_components::search_components))
-        .route(
-            "/generate_template",
-            post(generate_template::generate_template),
-        )
         .route(
             "/duplicate",
             post(duplicate_components::duplicate_components),

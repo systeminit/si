@@ -25,7 +25,6 @@ export const DEBUG_MODE = false;
       ref="deleteModalRef"
       @delete="(mode) => componentsFinishDelete(mode)"
     />
-    <CreateTemplateModal ref="createTemplateModalRef" />
     <DuplicateComponentsModal
       ref="duplicateComponentsModalRef"
       @confirm="duplicateComponentsFinish"
@@ -49,7 +48,6 @@ import {
   EntityKind,
   SchemaVariant,
 } from "@/workers/types/entity_kind_types";
-import CreateTemplateModal from "@/newhotness/CreateTemplateModal.vue";
 import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import EraseModal from "./EraseModal.vue";
 import DeleteModal, { DeleteMode } from "./DeleteModal.vue";
@@ -271,17 +269,6 @@ const rightClickMenuItems = computed(() => {
     icon: "clipboard-copy",
     onSelect: () => duplicateComponentStart(componentIds.value),
   });
-
-  // Can't create template with ghosted components
-  if (!atLeastOneGhostedComponent.value) {
-    items.push({
-      labelAsTooltip: false,
-      label: "Create Template",
-      shortcut: "T",
-      icon: "template-new",
-      onSelect: () => createTemplateStart(componentIds.value),
-    });
-  }
 
   // can erase so long as you have not selected a view
   items.push(eraseMenuItem);
@@ -648,13 +635,6 @@ const componentsUpgrade = async (componentIds: ComponentId[]) => {
   close();
 };
 
-const createTemplateModalRef = ref<InstanceType<typeof CreateTemplateModal>>();
-
-const createTemplateStart = (componentIds: ComponentId[]) => {
-  createTemplateModalRef.value?.open(componentIds, explore.viewId.value);
-  close();
-};
-
 // eslint-disable-next-line @typescript-eslint/ban-types
 const anchor = ref<HTMLElement | object | undefined>(undefined);
 
@@ -707,7 +687,6 @@ defineExpose({
   contextMenuRef,
   componentsStartDelete,
   componentsRestore,
-  createTemplateStart,
   focusFirstItem,
   setSelectedComponents,
 });

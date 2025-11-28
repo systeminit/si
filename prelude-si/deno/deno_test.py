@@ -14,10 +14,10 @@ from typing import List
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
-        "--deno-binary",
+        "--deno-exe",
         required=True,
         type=pathlib.Path,
-        help="The path to the deno binary",
+        help="The path to the deno executable",
     )
     parser.add_argument(
         "--input",
@@ -200,7 +200,7 @@ def main() -> int:
         flags_list = parse_unstable_flags(args.unstable_flags)
 
         run_tests(
-            args.deno_binary,
+            args.deno_exe,
             input_paths,
             args.filter,
             flags_list,

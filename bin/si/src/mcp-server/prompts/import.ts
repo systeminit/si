@@ -1,6 +1,6 @@
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod-v3";
-import { GetPromptResult } from "@modelcontextprotocol/sdk/types.js";
+import type { GetPromptResult } from "@modelcontextprotocol/sdk/types.js";
 
 const PromptSchemaRaw = {
   resourceId: z.string().optional().describe("The resource id to import"),

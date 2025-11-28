@@ -1,3 +1,0 @@
-[[escaper]]
-path = "askama::filters::Text"
-extensions = ["ts"]

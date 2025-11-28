@@ -3,6 +3,36 @@ CREATE SCHEMA IF NOT EXISTS workspace_operations;
 GRANT USAGE ON SCHEMA workspace_operations TO lambda_user;
 GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA workspace_operations TO lambda_user;
 
+-- Workspace owners. There may be multiple records per workspace, in which case the latest one is authoritative.
+CREATE TABLE workspace_operations.workspace_owners (
+    owner_pk character varying(255) NOT NULL ENCODE lzo,
+    workspace_id character varying(255) NOT NULL ENCODE lzo,
+    record_timestamp timestamp without time zone NOT NULL DEFAULT ('now':: text):: timestamp with time zone ENCODE az64,
+    PRIMARY KEY (owner_pk, workspace_id)
+);
+
+-- Owner subscriptions imported from Lago. There may be multiple sets of records per workspace, in which case the latest *set* of records (by timestamp) is authoritative.
+CREATE TABLE workspace_operations.workspace_owner_subscriptions (
+    owner_pk character varying(255) NOT NULL ENCODE lzo,
+    subscription_id character varying(255) NOT NULL ENCODE lzo,
+    subscription_start_date timestamp without time zone ENCODE az64,
+    subscription_end_date timestamp without time zone ENCODE az64,
+    plan_code character varying(255) NOT NULL ENCODE raw,
+    record_timestamp timestamp without time zone NOT NULL DEFAULT ('now':: text):: timestamp with time zone ENCODE az64,
+    external_id character varying(255) ENCODE lzo,
+    PRIMARY KEY (owner_pk, subscription_id)
+) SORTKEY (plan_code);
+
+-- CURRENT workspace owners. If there are multiple records for a workspace, this will only return the latest one.
+CREATE OR REPLACE VIEW workspace_operations.current_workspace_owners AS
+    WITH workspace_owners_with_is_current AS (
+      SELECT *, ROW_NUMBER() OVER (PARTITION BY workspace_id ORDER BY record_timestamp DESC) = 1 AS is_current
+        FROM workspace_operations.workspace_owners
+    )
+    SELECT owner_pk, workspace_id, record_timestamp
+      FROM workspace_owners_with_is_current
+     WHERE is_current;
+
 -- Used to track upload progress for various billing uploads
 CREATE TABLE IF NOT EXISTS workspace_operations.upload_progress (
     -- The type of upload (e.g. "posthog-workspace_resource_hours")
@@ -21,22 +51,13 @@ CREATE OR REPLACE FUNCTION workspace_operations.parse_timestamp(TEXT)
         SELECT SUBSTRING($1, 1, 26)::timestamp
     $$ LANGUAGE SQL;
 
--- Imported mapping from a workspace to its owner.
--- This table creation is untested (it was created manually and this description extracted)
-CREATE TABLE IF NOT EXISTS workspace_operations.workspace_owners (
-    owner_pk VARCHAR(255),
-    workspace_id VARCHAR(255),
-    record_timestamp TIMESTAMP NOT NULL DEFAULT now(),
-    PRIMARY KEY (owner_pk, workspace_id)
-);
-
 -- Generates a list of all hours from Sep. 2024 until now
 CREATE OR REPLACE VIEW workspace_operations.si_hours AS
     WITH
-        RECURSIVE hour_generator (hour_start) AS (
-            SELECT workspace_operations.parse_timestamp('2024-09-01T00:00:00.000000000Z')
+        RECURSIVE hour_generator (hour_start, hour_end) AS (
+            SELECT DATE_TRUNC('month', (SELECT launch_start FROM workspace_operations.workspace_update_events_summary)) AS hour_start, hour_start + INTERVAL '1 month' MONTH AS hour_end
             UNION ALL (
-                SELECT hour_start + INTERVAL '1 hour' HOUR
+                SELECT hour_end AS hour_start, hour_end + INTERVAL '1 hour' HOUR AS hour_end
                 FROM hour_generator
                 WHERE hour_start < getdate()
             )
@@ -45,21 +66,21 @@ CREATE OR REPLACE VIEW workspace_operations.si_hours AS
 
 -- List of all owners (one row per owner)
 CREATE OR REPLACE VIEW workspace_operations.owners AS
-    SELECT
-        owner_pk,
-        MIN(record_timestamp) AS first_timestamp,
-        DATE_TRUNC('hour', first_timestamp) AS first_hour,
-        COUNT(DISTINCT workspace_id) AS workspace_count
-      FROM workspace_operations.workspace_owners GROUP BY owner_pk;
+    SELECT owner_pk,
+           MIN(record_timestamp) AS first_timestamp,
+           DATE_TRUNC('hour', first_timestamp) AS first_hour,
+           COUNT(DISTINCT workspace_id) AS workspace_count
+      FROM workspace_operations.workspace_owners
+     GROUP BY owner_pk;
 
 -- List of all workspaces (one row per workspace)
 CREATE OR REPLACE VIEW workspace_operations.workspaces AS
-    SELECT
-        workspace_id,
-        MIN(record_timestamp) AS first_timestamp,
-        DATE_TRUNC('hour', first_timestamp) AS first_hour,
-        COUNT(DISTINCT owner_pk) AS owner_count
-      FROM workspace_operations.workspace_owners GROUP BY workspace_id;
+    SELECT workspace_id,
+           MIN(record_timestamp) AS first_timestamp,
+           DATE_TRUNC('hour', first_timestamp) AS first_hour,
+           COUNT(DISTINCT owner_pk) AS owner_count
+      FROM workspace_operations.workspace_owners
+     GROUP BY workspace_id;
 
 -- One row per owner per hour from Sep. 2024 until now (excluding hours where an owner had no workspace)
 CREATE OR REPLACE VIEW workspace_operations.workspace_si_hours AS
@@ -145,7 +166,8 @@ CREATE OR REPLACE VIEW workspace_operations.workspace_resource_counts AS
            event_timestamp,
            resource_count,
            prev_resource_count,
-           LEAD(event_timestamp) OVER (PARTITION BY workspace_id ORDER BY event_timestamp) AS next_event_timestamp
+           LEAD(event_timestamp) OVER (PARTITION BY workspace_id ORDER BY event_timestamp) AS next_event_timestamp,
+           LAG(event_timestamp) OVER (PARTITION BY workspace_id ORDER BY event_timestamp) AS prev_event_timestamp
       FROM workspace_resource_count_events
      WHERE resource_count != prev_resource_count OR prev_resource_count IS NULL
 WITH NO SCHEMA BINDING;
@@ -293,4 +315,66 @@ CREATE OR REPLACE VIEW workspace_operations.owner_resource_hours_with_subscripti
       LEFT OUTER JOIN workspace_operations.owner_si_hours_with_subscriptions USING (owner_pk, hour_start)
         -- Include data after launch even if it doesn't have a subscription so we can find issues
      WHERE hour_start >= '2024-09-25'::timestamp OR subscription_exists
+    WITH NO SCHEMA BINDING;
+
+-- Get RUM for each workspace, each time it changes
+CREATE OR REPLACE VIEW workspace_operations.workspace_rum_changes AS
+    -- Get only events with actual resource_counts recorded, as well as their previous value (if any)
+    WITH workspace_resource_count_events AS (
+        SELECT *,
+               LAG(resource_count) OVER (PARTITION BY workspace_id ORDER BY event_timestamp) AS prev_resource_count
+          FROM workspace_operations.workspace_update_events_clean
+         WHERE resource_count IS NOT NULL
+    )
+    SELECT event_timestamp,
+           workspace_id,
+           resource_count AS workspace_rum,
+           resource_count - COALESCE(prev_resource_count, 0) AS rum_change,
+           LAG(event_timestamp) OVER (PARTITION BY workspace_id ORDER BY event_timestamp ASC) AS prev_workspace_event_timestamp,
+           LEAD(event_timestamp) OVER (PARTITION BY workspace_id ORDER BY event_timestamp ASC) AS next_workspace_event_timestamp
+        FROM workspace_resource_count_events
+        WHERE rum_change <> 0 OR prev_resource_count IS NULL
+    WITH NO SCHEMA BINDING;
+
+-- Get RUM for each workspace and owner, each time it changes
+CREATE OR REPLACE VIEW workspace_operations.rum_changes AS
+    -- Once we have only events with resource counts, get the ones where it changed
+    SELECT *,
+           SUM(rum_change) OVER (PARTITION BY owner_pk ORDER BY event_timestamp ROWS UNBOUNDED PRECEDING) AS owner_rum,
+           LAG(event_timestamp) OVER (PARTITION BY owner_pk ORDER BY event_timestamp ASC) AS prev_owner_event_timestamp,
+           LEAD(event_timestamp) OVER (PARTITION BY owner_pk ORDER BY event_timestamp ASC) AS next_owner_event_timestamp
+      FROM workspace_operations.workspace_rum_changes
+      LEFT OUTER JOIN workspace_operations.current_workspace_owners USING (workspace_id)
+    WITH NO SCHEMA BINDING;
+
+-- Generates a list of all months from Sep. 2024 until now, so we can get monthly RUM
+CREATE OR REPLACE VIEW workspace_operations.si_months AS
+    WITH
+        RECURSIVE last_month (month_start, month_end) AS (
+            (
+                -- First month (launch month)
+                SELECT DATE_TRUNC('month', launch_start)      AS month_start,
+                       month_start + INTERVAL '1 month' MONTH AS month_end
+                  FROM workspace_operations.workspace_update_events_summary
+            ) UNION ALL (
+                -- Get the next month from the previous month, until we hit the current month
+                SELECT last_month.month_end                              AS month_start,
+                       last_month.month_end   + INTERVAL '1 month' MONTH AS month_end
+                  FROM last_month
+                 WHERE last_month.month_end < getdate()
+            )
+        )
+        SELECT month_start, month_end FROM last_month;
+
+-- Gets monthly RUM for each owner, for each month since they first had a workspace
+CREATE OR REPLACE VIEW workspace_operations.owner_rum_months AS
+    SELECT owner_pk,
+           month_start,
+           MAX(owner_rum) AS max_rum
+      FROM workspace_operations.si_months
+     CROSS JOIN workspace_operations.owners
+      JOIN workspace_operations.rum_changes USING (owner_pk)
+     WHERE (next_owner_event_timestamp >= month_start OR next_owner_event_timestamp IS NULL)
+       AND event_timestamp < month_end
+     GROUP BY owner_pk, month_start
     WITH NO SCHEMA BINDING;

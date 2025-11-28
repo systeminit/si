@@ -1,5 +1,5 @@
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
+import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod-v3";
 import { ChangeSetsApi } from "@systeminit/api-client";
 import { ComponentsApi } from "@systeminit/api-client";
@@ -176,6 +176,7 @@ interface LinkConfig {
 }
 
 function createLinkConfig(): LinkConfig {
+  // deno-lint-ignore si-rules/no-deno-env-get
   const baseUrl = Deno.env.get("SI_BASE_URL") || "https://api.systeminit.com";
   const webUrl = baseUrl.replace("api", "app");
 

@@ -23,7 +23,7 @@ WORKDIR /workdir
 
 COPY --from=buck2 /bin/buck2 /usr/local/bin/buck2
 
-RUN buck2 build bin/$BIN:$BIN \
+RUN buck2 build @//mode/release bin/$BIN:$BIN \
     --config rbe.enabled=true \
     --out /tmp/local-bin/$BIN
 
@@ -50,4 +50,4 @@ COPY --from=builder /tmp/local-bin/* /usr/local/bin/
 COPY --from=builder /workdir/config/keys/prod.jwt_signing_public_key.pem /run/module-index
 
 USER app
-ENTRYPOINT "/usr/local/bin/$BIN --jwt-public-key /run/module-index/prod.jwt_signing_public_key.pem
+ENTRYPOINT "/usr/local/bin/$BIN" --jwt-public-key /run/module-index/prod.jwt_signing_public_key.pem

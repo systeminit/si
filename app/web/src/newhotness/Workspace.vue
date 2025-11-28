@@ -318,7 +318,6 @@ const approvers = ref<string[]>([]);
 const onboardingCompleted = ref(false);
 const onboardingIsReopened = ref(false);
 const reopenOnboarding = () => {
-  trackEvent("started_onboarding_manual");
   onboardingIsReopened.value = true;
   onboardingCompleted.value = false;
 };
@@ -508,8 +507,9 @@ const showOnboarding = computed(() => {
   // If null (endpoint failed), skip onboarding to avoid blocking the user
   if (componentsOnHead.value === null) return false;
 
-  // If true (components exist on HEAD), skip onboarding
-  if (componentsOnHead.value === true) return false;
+  // If components exist on HEAD and onboarding has not been reopened, skip onboarding
+  if (componentsOnHead.value === true && onboardingIsReopened.value === false)
+    return false;
 
   return !onboardingCompleted.value;
 });

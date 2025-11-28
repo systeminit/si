@@ -167,15 +167,6 @@
       </div>
       <div>
         <div class="keys">
-          <div class="key">T</div>
-        </div>
-        <div>
-          Press <TextPill tighter variant="key">T</TextPill>
-          to create a template from the selected components.
-        </div>
-      </div>
-      <div>
-        <div class="keys">
           <div class="key">U</div>
         </div>
         <div>

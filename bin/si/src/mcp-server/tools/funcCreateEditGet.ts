@@ -1,4 +1,4 @@
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod-v3";
 import { validateFunctionCode } from "../validators/funcValidator.ts";
 import { FuncsApi, SchemasApi } from "@systeminit/api-client";

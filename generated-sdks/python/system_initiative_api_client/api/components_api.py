@@ -4482,6 +4482,7 @@ class ComponentsApi:
             '200': "SearchComponentsV1Response",
             '401': None,
             '404': None,
+            '424': None,
             '500': "ApiError",
         }
         response_data = self.api_client.call_api(
@@ -4559,6 +4560,7 @@ class ComponentsApi:
             '200': "SearchComponentsV1Response",
             '401': None,
             '404': None,
+            '424': None,
             '500': "ApiError",
         }
         response_data = self.api_client.call_api(
@@ -4636,6 +4638,7 @@ class ComponentsApi:
             '200': "SearchComponentsV1Response",
             '401': None,
             '404': None,
+            '424': None,
             '500': "ApiError",
         }
         response_data = self.api_client.call_api(

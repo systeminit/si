@@ -1,5 +1,5 @@
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
+import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod-v3";
 import { ComponentsApi } from "@systeminit/api-client";
 import { apiConfig, WORKSPACE_ID } from "../si_client.ts";
@@ -9,7 +9,7 @@ import {
   successResponse,
   withAnalytics,
 } from "./commonBehavior.ts";
-import _ from "lodash";
+import type _ from "lodash";
 
 const name = "component-enqueue-action";
 const title = "Enqueue an action to run for a component in a change set";

@@ -30,6 +30,6 @@ rust_library(
         "//third-party/rust:tracing-subscriber",
     ],
     test_unit_resources = {
-        "lang-js": "//bin/lang-js:bin",
+        "lang-js": "//bin/lang-js:lang-js",
     },
 )

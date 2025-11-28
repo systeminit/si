@@ -38,7 +38,7 @@
     "debug": "^4.3.4",
     "dotenv": "^16.0.3",
     "exit-hook": "^3.2.0",
-    "glob": "^11.0.3",
+    "glob": "^11.1.0",
     "ioredis": "^5.3.1",
     "is-promise": "^4.0.0",
     "jsonwebtoken": "^9.0.2",

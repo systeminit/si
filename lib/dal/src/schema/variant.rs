@@ -411,32 +411,7 @@ pub struct SchemaVariantReplacedPayload {
     change_set_id: ChangeSetId,
 }
 
-#[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
-#[serde(rename_all = "camelCase")]
-pub struct TemplateGeneratedPayload {
-    schema_id: SchemaId,
-    schema_variant_id: SchemaVariantId,
-    func_id: FuncId,
-    asset_name: String,
-}
-
 impl WsEvent {
-    pub async fn template_generated(
-        ctx: &DalContext,
-        schema_id: SchemaId,
-        schema_variant_id: SchemaVariantId,
-        func_id: FuncId,
-        asset_name: String,
-    ) -> WsEventResult<Self> {
-        let payload = TemplateGeneratedPayload {
-            schema_id,
-            schema_variant_id,
-            func_id,
-            asset_name,
-        };
-        WsEvent::new(ctx, WsPayload::TemplateGenerated(payload)).await
-    }
-
     pub async fn schema_variant_created(
         ctx: &DalContext,
         schema_id: SchemaId,

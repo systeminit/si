@@ -1,33 +1,30 @@
 load(
     "@prelude-si//:deno.bzl",
-    "deno_compile",
     "deno_format",
     "deno_test",
 )
 load(
     "@prelude-si//:macros.bzl",
     "alias",
+    "deno_binary",
     "docker_image",
     "export_file",
 )
 
-deno_compile(
+deno_binary(
     name = "si-function-tester-server",
     main = "server.ts",
-    out = "si-function-tester-server",
     srcs = glob([
         "*.ts",
     ]),
     permissions = [
         "allow-all",
     ],
-    visibility = ["PUBLIC"],
 )
 
-deno_compile(
+deno_binary(
     name = "si-function-tester-client",
     main = "client.ts",
-    out = "si-function-tester-client",
     srcs = glob([
         "*.ts",
     ]),
@@ -35,7 +32,6 @@ deno_compile(
         "allow-read",
         "allow-net",
     ],
-    visibility = ["PUBLIC"],
 )
 
 deno_format(

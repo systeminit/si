@@ -181,96 +181,13 @@ function buildCommand() {
     // deno-lint-ignore no-explicit-any
     .command("ai-agent", buildAiAgentCommand() as any)
     // deno-lint-ignore no-explicit-any
-    .command("mcp-server", buildMcpServerCommand().hidden() as any)
-    // deno-lint-ignore no-explicit-any
     .command("component", buildComponentCommand() as any)
-    // deno-lint-ignore no-explicit-any
-    .command("project", buildProjectCommand() as any)
-    // deno-lint-ignore no-explicit-any
-    .command("remote", buildRemoteCommand() as any)
-    // deno-lint-ignore no-explicit-any
-    .command("run", buildRunCommand() as any)
     // deno-lint-ignore no-explicit-any
     .command("schema", buildSchemaCommand() as any)
     // deno-lint-ignore no-explicit-any
     .command("template", buildTemplateCommand() as any)
     // deno-lint-ignore no-explicit-any
     .command("whoami", buildWhoamiCommand() as any);
-}
-
-/**
- * Builds the mcp-server command.
- * Runs the vendored MCP server (bundled in the si binary).
- *
- * @returns A SubCommand configured for running the MCP server
- * @internal
- */
-function buildMcpServerCommand() {
-  return createSubCommand()
-    .description("Run the MCP server (internal use by AI tools - for debugging only)")
-    .arguments("<mode:string>")
-    .action(async (_options, mode) => {
-      if (mode !== "stdio") {
-        throw new Error(`Unknown mode: ${mode}. Only 'stdio' is supported.`);
-      }
-
-      // Dynamic import to avoid loading MCP server code until needed
-      const { start_stdio } = await import("./mcp-server/stdio_transport.ts");
-      const { createServer } = await import("./mcp-server/server.ts");
-      const { analytics } = await import("./mcp-server/analytics.ts");
-      const { setAiAgentUserFlag } = await import("./mcp-server/user_state.ts");
-
-      // Start the MCP server directly
-      await analytics.trackServerStart();
-      await setAiAgentUserFlag();
-
-      const server = createServer();
-
-      let ended = false;
-      const shutdown = async (reason: string, exitCode: number | null = 0) => {
-        if (ended) return;
-        ended = true;
-        console.log("MCP server shutdown:", reason);
-        try {
-          analytics.trackServerEnd();
-        } catch {
-          // ignore
-        }
-        await new Promise((r) => setTimeout(r, 25));
-        if (exitCode !== null) Deno.exit(exitCode);
-      };
-
-      const onSigInt = () => shutdown("SIGINT", 0);
-      const onSigTerm = () => shutdown("SIGTERM", 0);
-      Deno.addSignalListener("SIGINT", onSigInt);
-      Deno.addSignalListener("SIGTERM", onSigTerm);
-
-      try {
-        await start_stdio(server);
-        await shutdown("transport_closed", null);
-      } catch (err: unknown) {
-        const name = err instanceof Error ? err.name : "unknown";
-        await shutdown(`uncaught_error:${name}`, 1);
-      } finally {
-        Deno.removeSignalListener("SIGINT", onSigInt);
-        Deno.removeSignalListener("SIGTERM", onSigTerm);
-      }
-    });
-}
-
-/**
- * Builds the project command group with all subcommands.
- *
- * @returns A SubCommand configured for project operations
- * @internal
- */
-function buildProjectCommand() {
-  return createSubCommand()
-    .description("Manages project initialization and configuration")
-    .action(function () {
-      this.showHelp();
-    })
-    .command("init", buildProjectInitCommand());
 }
 
 /**
@@ -281,59 +198,13 @@ function buildProjectCommand() {
  */
 function buildSchemaCommand() {
   return createSubCommand()
-    .description("Generates schema definitions and functions")
+    .description("Manage schemas: initialize project, generate functions locally, pull from and push to remote workspaces")
     .action(function () {
       this.showHelp();
     })
-    .command("action", buildSchemaActionCommand())
-    .command("authentication", buildSchemaAuthenticationCommand())
-    .command("codegen", buildSchemaCodegenCommand())
-    .command("management", buildSchemaManagementCommand())
-    .command("qualification", buildSchemaQualificationCommand())
-    .command("scaffold", buildSchemaScaffoldCommand())
-    .command("overlay", buildOverlayCommand());
-}
-
-function buildOverlayCommand() {
-  return createSubCommand()
-    .description("Generates overlay functions")
-    .action(function () {
-      this.showHelp();
-    })
-    .command("action", buildSchemaActionCommand({ isOverlay: true }))
-    .command(
-      "authentication",
-      buildSchemaAuthenticationCommand({ isOverlay: true }),
-    )
-    .command("codegen", buildSchemaCodegenCommand({ isOverlay: true }))
-    .command("management", buildSchemaManagementCommand({ isOverlay: true }))
-    .command(
-      "qualification",
-      buildSchemaQualificationCommand({ isOverlay: true }),
-    );
-}
-
-/**
- * Builds the remote command group with all subcommands.
- *
- * @returns A SubCommand configured for remote operations
- * @internal
- */
-function buildRemoteCommand() {
-  return createSubCommand()
-    .description("Interacts with remote workspaces")
-    .action(function () {
-      this.showHelp();
-    })
-    .command("schema", buildRemoteSchemaCommand());
-}
-
-function buildRemoteSchemaCommand() {
-  return createSubCommand()
-    .description("Interacts with remote workspace schemas")
-    .action(function () {
-      this.showHelp();
-    })
+    .command("init", buildInitCommand())
+    .command("generate", buildSchemaGenerateCommand())
+    .command("overlay", buildOverlayCommand())
     .command(
       "pull",
       createSubCommand()
@@ -393,16 +264,30 @@ function buildRemoteSchemaCommand() {
             skipConfirmation,
           );
         }),
-    )
-    .command("overlay", buildRemoteSchemaOverlayCommand());
+    );
 }
 
-function buildRemoteSchemaOverlayCommand() {
+function buildSchemaGenerateCommand() {
   return createSubCommand()
-    .description("Interacts with overlays for remote workspace schemas")
+    .description("Generate schema function definitions for actions, authentication, code generation, and more")
     .action(function () {
       this.showHelp();
     })
+    .command("action", buildSchemaActionCommand())
+    .command("authentication", buildSchemaAuthenticationCommand())
+    .command("codegen", buildSchemaCodegenCommand())
+    .command("management", buildSchemaManagementCommand())
+    .command("qualification", buildSchemaQualificationCommand())
+    .command("scaffold", buildSchemaScaffoldCommand());
+}
+
+function buildOverlayCommand() {
+  return createSubCommand()
+    .description("Manage schema overlays: generate overlay functions and push them to remote workspaces")
+    .action(function () {
+      this.showHelp();
+    })
+    .command("generate", buildOverlayGenerateCommand())
     .command(
       "push",
       createSubCommand()
@@ -424,6 +309,26 @@ function buildRemoteSchemaOverlayCommand() {
         }),
     );
 }
+
+function buildOverlayGenerateCommand() {
+  return createSubCommand()
+    .description("Generate overlay function definitions that customize or extend existing schemas")
+    .action(function () {
+      this.showHelp();
+    })
+    .command("action", buildSchemaActionCommand({ isOverlay: true }))
+    .command(
+      "authentication",
+      buildSchemaAuthenticationCommand({ isOverlay: true }),
+    )
+    .command("codegen", buildSchemaCodegenCommand({ isOverlay: true }))
+    .command("management", buildSchemaManagementCommand({ isOverlay: true }))
+    .command(
+      "qualification",
+      buildSchemaQualificationCommand({ isOverlay: true }),
+    );
+}
+
 
 /**
  * Builds the whoami command.
@@ -506,19 +411,67 @@ function buildAiAgentCommand() {
         .action(async (options) => {
           await callAiAgentConfig(Context.instance(), options as AiAgentConfigOptions);
         }),
+    )
+    .command(
+      "stdio",
+      createSubCommand()
+        .description("Run MCP server in stdio mode (for external AI tools to connect)")
+        .action(async () => {
+          // Dynamic import to avoid loading MCP server code until needed
+          const { start_stdio } = await import("./mcp-server/stdio_transport.ts");
+          const { createServer } = await import("./mcp-server/server.ts");
+          const { analytics } = await import("./mcp-server/analytics.ts");
+          const { setAiAgentUserFlag } = await import("./mcp-server/user_state.ts");
+
+          // Start the MCP server directly
+          await analytics.trackServerStart();
+          await setAiAgentUserFlag();
+
+          const server = createServer();
+
+          let ended = false;
+          const shutdown = async (reason: string, exitCode: number | null = 0) => {
+            if (ended) return;
+            ended = true;
+            console.log("MCP server shutdown:", reason);
+            try {
+              analytics.trackServerEnd();
+            } catch {
+              // ignore
+            }
+            await new Promise((r) => setTimeout(r, 25));
+            if (exitCode !== null) Deno.exit(exitCode);
+          };
+
+          const onSigInt = () => shutdown("SIGINT", 0);
+          const onSigTerm = () => shutdown("SIGTERM", 0);
+          Deno.addSignalListener("SIGINT", onSigInt);
+          Deno.addSignalListener("SIGTERM", onSigTerm);
+
+          try {
+            await start_stdio(server);
+            await shutdown("transport_closed", null);
+          } catch (err: unknown) {
+            const name = err instanceof Error ? err.name : "unknown";
+            await shutdown(`uncaught_error:${name}`, 1);
+          } finally {
+            Deno.removeSignalListener("SIGINT", onSigInt);
+            Deno.removeSignalListener("SIGTERM", onSigTerm);
+          }
+        }),
     );
 }
 
 /**
- * Builds the project init subcommands.
+ * Builds the init command for initializing new SI projects.
  *
- * @returns A SubCommand configured for project operations
+ * @returns A SubCommand configured for project initialization
  * @internal
  */
-function buildProjectInitCommand() {
+function buildInitCommand() {
   return createSubCommand()
     .description(
-      "Initializes a new SI project with a .siroot marker file",
+      "Initialize a new System Initiative project in the current or specified directory",
     )
     .action(function () {
       this.showHelp();
@@ -821,57 +774,6 @@ function buildSchemaScaffoldCommand() {
           );
         }),
     );
-}
-
-/**
- * Builds the run command for executing templates.
- *
- * @returns A SubCommand configured for running templates
- * @internal
- */
-function buildRunCommand() {
-  return createSubCommand()
-    .description("Run a SI template file")
-    .arguments("<template:string>")
-    .env("SI_API_TOKEN=<value:string>", "A System Initiative API Token", {
-      required: true,
-    })
-    .env(
-      "SI_BASE_URL=<url:string>",
-      "The System Initiative Base URL for your workspace",
-    )
-    .option(
-      "-k, --key <invocationKey:string>",
-      "the invocation key for the template; used for idempotency",
-      { required: true },
-    )
-    .option(
-      "-i, --input <file:string>",
-      "path to input data file (JSON or YAML); validated against template's input schema",
-    )
-    .option(
-      "-b, --baseline <file:string>",
-      "path to baseline data file (JSON or YAML)",
-    )
-    .option(
-      "-c, --cache-baseline <file:string>",
-      "path to cache baseline results; format (JSON/YAML) determined by file extension (.json, .yaml, .yml)",
-    )
-    .option(
-      "--cache-baseline-only",
-      "exit after writing baseline cache (requires --cache-baseline)",
-    )
-    .option(
-      "--dry-run",
-      "Show planned changes without executing them",
-    )
-    .action(async (options, template) => {
-      await callRunTemplate(
-        Context.instance(),
-        template as string,
-        options as TemplateContextOptions,
-      );
-    });
 }
 
 /**

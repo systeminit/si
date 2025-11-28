@@ -1,4 +1,4 @@
-from typing import Iterable, NotRequired, Optional, cast
+from typing import Iterable, NotRequired, Optional, TypedDict, cast
 import logging
 
 from si_lambda import SiLambda, SiLambdaEnv
@@ -8,10 +8,13 @@ from si_types import OwnerPk, SqlTimestamp, WorkspaceId, sql_to_iso_timestamp
 class UploadPosthogBillingDataEnv(SiLambdaEnv):
     batch_hours: NotRequired[int]
 
+UPLOAD_PROGRESS_TYPE = 'posthog-billing-rum-changed'
+POSTHOG_EVENT_TYPE = 'billing-rum-changed'
+
 class UploadPosthogBillingData(SiLambda):
     def __init__(self, event: UploadPosthogBillingDataEnv):
         super().__init__(event)
-        self.batch_hours = int(event.get("batch_hours", 24*10))
+        self.batch_hours = int(event.get("batch_hours", 24*30))
         assert self.batch_hours > 0
 
     def run(self):
@@ -36,41 +39,14 @@ class UploadPosthogBillingData(SiLambda):
         # We run the queries in parallel because they individually take 2+ minutes each, and
         # their results don't depend on each other
         rum_changes = cast(
-            Iterable[tuple[OwnerPk, SqlTimestamp, int, Optional[int]]],
-            self.redshift.query_raw(
+            Iterable[RumChange],
+            self.redshift.query(
                 f"""
-                    SELECT owner_pk, sample_time, resource_count, prev_resource_count
-                      FROM workspace_operations.owner_resource_hours
-                     WHERE (resource_count <> prev_resource_count OR prev_resource_count IS NULL)
-                       AND :batch_start <= hour_start
-                       AND hour_start < :batch_end
-                """,
-                batch_start=batch_start,
-                batch_end=batch_end,
-            )
-        )
-        owner_billing_months = cast(
-            Iterable[tuple[OwnerPk, SqlTimestamp, int, int, int]],
-            self.redshift.query_raw(
-                f"""
-                    SELECT owner_pk, month, max_resource_count, resource_hours, is_free
-                      FROM workspace_operations.owner_billing_months
-                     WHERE :batch_start <= month AND month < :batch_end
-                """,
-                batch_start=batch_start,
-                batch_end=batch_end,
-            )
-        )
-        # TODO remove and stop uploading these when reports have migrated off them
-        workspace_resource_hours = cast(
-            Iterable[tuple[WorkspaceId, SqlTimestamp, int, OwnerPk, SqlTimestamp, str]],
-            self.redshift.query_raw(
-                f"""
-                    SELECT workspace_id, hour_start, resource_count, owner_pk, event_timestamp, owner_si_hours_with_subscriptions.plan_code
-                      FROM workspace_operations.workspace_resource_hours
-                      LEFT OUTER JOIN workspace_operations.owner_si_hours_with_subscriptions USING (owner_pk, hour_start)
-                     WHERE :batch_start <= hour_start AND hour_start < :batch_end
-                       AND resource_count > 0
+                    SELECT *
+                      FROM workspace_operations.rum_changes
+                     WHERE :batch_start <= event_timestamp
+                       AND event_timestamp < :batch_end
+                     ORDER BY owner_pk, event_timestamp ASC
                 """,
                 batch_start=batch_start,
                 batch_end=batch_end,
@@ -79,57 +55,37 @@ class UploadPosthogBillingData(SiLambda):
 
         rum_change_events: list[PosthogApi.BatchEvent] = [
             {
-                "event": "billing-rum_changed",
+                "event": POSTHOG_EVENT_TYPE,
                 "properties": {
-                    "distinct_id": str(owner_pk),
-                    "resource_count": resource_count,
-                    "prev_resource_count": prev_resource_count
+                    "distinct_id": str(rum_change["owner_pk"]),
+                    "rum_change": rum_change["rum_change"],
+                    "owner_rum": rum_change["owner_rum"],
+                    "$set": { "rum": rum_change["owner_rum"] },
+                    # We don't report the next change time, because we can't update the event after the fact and we might
+                    # not *know* the next change time yet. But the previous change time is still useful.
+                    "prev_owner_rum_change": sql_to_iso_timestamp(rum_change["prev_owner_event_timestamp"]),
+                    "workspace_id": str(rum_change["workspace_id"]),
+                    "workspace_rum": rum_change["workspace_rum"],
+                    "prev_workspace_rum_change": sql_to_iso_timestamp(rum_change["prev_workspace_event_timestamp"]),
                 },
-                "timestamp": sql_to_iso_timestamp(sample_time),
+                "timestamp": sql_to_iso_timestamp(rum_change["event_timestamp"]),
             }
-            for [owner_pk, sample_time, resource_count, prev_resource_count] in rum_changes
+            for rum_change in rum_changes
+            if rum_change["owner_pk"] is not None
         ]
-        logging.info(f"Got {len(rum_change_events)} billing-rum_changed events.")
-        owner_billing_month_events: list[PosthogApi.BatchEvent] = [
-            {
-                "event": "billing-owner_billing_month",
-                "properties": {
-                    "distinct_id": str(owner_pk),
-                    "max_resource_count": max_resource_count,
-                    "resource_hours": resource_hours,
-                    "is_free": bool(is_free),
-                },
-                "timestamp": sql_to_iso_timestamp(month),
-            }
-            for [owner_pk, month, max_resource_count, resource_hours, is_free] in owner_billing_months
-        ]
-        logging.info(f"Got {len(owner_billing_month_events)} billing-owner_billing_month events.")
-        workspace_resource_hours_events: list[PosthogApi.BatchEvent] = [
-            {
-                "event": "billing-workspace_resource_hours",
-                "properties": {
-                    "distinct_id": str(owner_pk),
-                    "workspace_id": str(workspace_id),
-                    "resource_count": resource_count,
-                    "event_timestamp": sql_to_iso_timestamp(event_timestamp),
-                    "plan_code": plan_code,
-                },
-                "timestamp": sql_to_iso_timestamp(hour_start),
-            }
-            for [workspace_id, hour_start, resource_count, owner_pk, event_timestamp, plan_code] in workspace_resource_hours
-        ]
-        logging.info(f"Got {len(workspace_resource_hours_events)} billing-workspace_resource_hours events.")
+        logging.info(f"Got {len(rum_change_events)} {POSTHOG_EVENT_TYPE} events.")
 
         #
         # Upload the events to Posthog
         #
-        all_events = rum_change_events + owner_billing_month_events + workspace_resource_hours_events
+        all_events = rum_change_events
         logging.info(f"Got {len(all_events)} events. Uploading to Posthog ...")
         historical_migration = batch_end != last_complete_hour_end
-        self.posthog.post("/batch", {
-            "historical_migration": historical_migration,
-            "batch": all_events
-        })
+        if len(all_events) > 0:
+            self.posthog.post("/batch", {
+                "historical_migration": historical_migration,
+                "batch": all_events
+            })
 
         self.update_progress(batch_end)
 
@@ -143,7 +99,7 @@ class UploadPosthogBillingData(SiLambda):
             for row in self.redshift.query_raw(
                 f"""
                     SELECT DATE_TRUNC('hour', first_event) AS first_hour_start, last_complete_hour_end
-                    FROM workspace_operations.workspace_update_events_summary
+                      FROM workspace_operations.workspace_update_events_summary
                 """)
         ][0]
         return (first_hour_start, last_complete_hour_end)
@@ -152,11 +108,14 @@ class UploadPosthogBillingData(SiLambda):
         # Start the upload where we last left off, or at the beginning of time
         uploaded_to = [
             cast(SqlTimestamp, uploaded_to)
-            for [uploaded_to] in self.redshift.query_raw(f"""
-                SELECT uploaded_to
-                FROM workspace_operations.upload_progress
-                WHERE upload_type = 'posthog-workspace_resource_counts'
-            """)
+            for [uploaded_to] in self.redshift.query_raw(
+                f"""
+                    SELECT uploaded_to
+                    FROM workspace_operations.upload_progress
+                    WHERE upload_type = :upload_type
+                """,
+                upload_type=UPLOAD_PROGRESS_TYPE
+            )
         ]
         batch_start = uploaded_to[0] if len(uploaded_to) > 0 else first_hour_start
         # End the batch at the last complete hour, or the max batch size, whichever comes first
@@ -164,12 +123,10 @@ class UploadPosthogBillingData(SiLambda):
             cast(SqlTimestamp, batch_end)
             for [batch_end] in self.redshift.query_raw(
                 f"""
-                    -- I can't believe this is the simplest way to get the maximum of two values
-                    SELECT MIN(batch_end) AS batch_end FROM (
-                        SELECT DATEADD(HOUR, {self.batch_hours}, :batch_start::timestamp) AS batch_end
-                        UNION
-                        SELECT :last_complete_hour_end::timestamp AS batch_end
-                    )
+                    SELECT LEAST(
+                               DATEADD(HOUR, {self.batch_hours}, :batch_start::timestamp),
+                               :last_complete_hour_end::timestamp
+                           ) AS batch_end
                 """,
                 batch_start=batch_start,
                 last_complete_hour_end=last_complete_hour_end
@@ -178,19 +135,35 @@ class UploadPosthogBillingData(SiLambda):
         return (batch_start, batch_end)
 
     def update_progress(self, uploaded_to: SqlTimestamp):
-       self.redshift.execute(
-           f"""
+        if self.dry_run:
+            logging.info(f"Dry run: not updating upload progress to {uploaded_to}")
+            return
+        self.redshift.execute(
+            f"""
                 -- There doesn't seem to be a nicer way to INSERT OR UPDATE in Redshift
                 MERGE INTO workspace_operations.upload_progress
                     USING (SELECT
-                        'posthog-workspace_resource_counts' AS upload_type,
+                        :upload_type::text AS upload_type,
                         :uploaded_to::timestamp AS uploaded_to
                     ) AS my_source
                     ON upload_progress.upload_type = my_source.upload_type
                     WHEN MATCHED THEN UPDATE SET uploaded_to = my_source.uploaded_to
                     WHEN NOT MATCHED THEN INSERT (upload_type, uploaded_to) VALUES (my_source.upload_type, my_source.uploaded_to)
             """,
+            upload_type=UPLOAD_PROGRESS_TYPE,
             uploaded_to=uploaded_to
         )
 
 lambda_handler = UploadPosthogBillingData.lambda_handler
+
+class RumChange(TypedDict):
+    event_timestamp: SqlTimestamp
+    rum_change: int
+    workspace_id: WorkspaceId
+    workspace_rum: int
+    prev_workspace_event_timestamp: Optional[SqlTimestamp]
+    next_workspace_event_timestamp: Optional[SqlTimestamp]
+    owner_pk: Optional[OwnerPk]
+    owner_rum: int
+    prev_owner_event_timestamp: Optional[SqlTimestamp]
+    next_owner_event_timestamp: Optional[SqlTimestamp]

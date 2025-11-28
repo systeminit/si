@@ -22,6 +22,55 @@ execution_platform(
     use_windows_path_separators = host_info().os.is_windows,
 )
 
+# Cross-compilation target platforms
+execution_platform(
+    name = "linux-x86_64",
+    cpu_configuration = "prelude//cpu:x86_64",
+    os_configuration = "prelude//os:linux",
+    rust_build_mode = _rust_build_mode_constraint,
+    use_windows_path_separators = False,
+)
+
+execution_platform(
+    name = "linux-aarch64",
+    cpu_configuration = "prelude//cpu:arm64",
+    os_configuration = "prelude//os:linux",
+    rust_build_mode = _rust_build_mode_constraint,
+    use_windows_path_separators = False,
+)
+
+execution_platform(
+    name = "darwin-x86_64",
+    cpu_configuration = "prelude//cpu:x86_64",
+    os_configuration = "prelude//os:macos",
+    rust_build_mode = _rust_build_mode_constraint,
+    use_windows_path_separators = False,
+)
+
+execution_platform(
+    name = "darwin-aarch64",
+    cpu_configuration = "prelude//cpu:arm64",
+    os_configuration = "prelude//os:macos",
+    rust_build_mode = _rust_build_mode_constraint,
+    use_windows_path_separators = False,
+)
+
+execution_platform(
+    name = "windows-x86_64",
+    cpu_configuration = "prelude//cpu:x86_64",
+    os_configuration = "prelude//os:windows",
+    rust_build_mode = _rust_build_mode_constraint,
+    use_windows_path_separators = True,
+)
+
+execution_platform(
+    name = "windows-aarch64",
+    cpu_configuration = "prelude//cpu:arm64",
+    os_configuration = "prelude//os:windows",
+    rust_build_mode = _rust_build_mode_constraint,
+    use_windows_path_separators = True,
+)
+
 prelude.constraint_setting(
     name = "runs_remote",
 )
