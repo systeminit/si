@@ -2791,6 +2791,7 @@ dependencies = [
  "edda-server",
  "innit-client",
  "si-service",
+ "si-service-build",
 ]
 
 [[package]]
@@ -8340,6 +8341,10 @@ dependencies = [
  "tokio",
  "tokio-util",
 ]
+
+[[package]]
+name = "si-service-build"
+version = "0.1.0"
 
 [[package]]
 name = "si-settings"

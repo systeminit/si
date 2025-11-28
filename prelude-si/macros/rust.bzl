@@ -1,4 +1,13 @@
 load(
+    "@prelude-si//:artifact.bzl",
+    _artifact_promote = "artifact_promote",
+    _artifact_publish = "artifact_publish",
+)
+load(
+    "@prelude-si//:build_metadata.bzl",
+    _rust_git_metadata_outdir = "rust_git_metadata_outdir",
+)
+load(
     "@prelude-si//:cargo.bzl",
     _cargo_clippy_fix = "cargo_clippy_fix",
     _cargo_doc = "cargo_doc",
@@ -8,23 +17,18 @@ load(
 load(
     "@prelude-si//:rust.bzl",
     _clippy_check = "clippy_check",
-    _rustfmt_check = "rustfmt_check",
     _rust_binary_artifact = "rust_binary_artifact",
-)
-load(
-    "@prelude-si//macros:native.bzl",
-    _alias = "alias",
-    _test_suite = "test_suite",
-)
-load(
-    "@prelude-si//:artifact.bzl",
-    _artifact_promote = "artifact_promote",
-    _artifact_publish = "artifact_publish",
+    _rustfmt_check = "rustfmt_check",
 )
 load(
     "@prelude-si//:toml.bzl",
     _toml_format = "toml_format",
     _toml_format_check = "toml_format_check",
+)
+load(
+    "@prelude-si//macros:native.bzl",
+    _alias = "alias",
+    _test_suite = "test_suite",
 )
 
 def rust_binary(
@@ -41,8 +45,25 @@ def rust_binary(
         test_unit_resources = {},
         extra_test_targets = [],
         toml_srcs = ["Cargo.toml"],
+        git_metadata = True,
         visibility = ["PUBLIC"],
         **kwargs):
+    base_env = {
+        # Automatically set the bin name, as used by some crates that are only Cargo-aware
+        "CARGO_BIN_NAME": name,
+    }
+
+    # If Git metadata is enabled, generate OUT_DIR with git metadata
+    if git_metadata:
+        git_metadata_target = "{}-git-metadata-outdir".format(name)
+        _rust_git_metadata_outdir(
+            name = git_metadata_target,
+            git_metadata = "prelude-si//build_metadata:git",
+            visibility = visibility,
+        )
+        # Automatically wire Git metadata OUT_DIR for version stamping
+        base_env["OUT_DIR"] = "$(location :{})".format(git_metadata_target)
+
     native.rust_binary(
         name = name,
         edition = edition,
@@ -50,7 +71,7 @@ def rust_binary(
         deps = deps,
         crate_root = crate_root,
         resources = resources,
-        env = env,
+        env = base_env | env,
         visibility = visibility,
         **kwargs
     )
@@ -75,7 +96,7 @@ def rust_binary(
             deps = deps + test_unit_deps,
             crate_root = crate_root,
             resources = test_unit_resources,
-            env = env | test_unit_env,
+            env = base_env | env | test_unit_env,
             visibility = visibility,
             **kwargs
         )
@@ -165,7 +186,6 @@ def rust_binary(
         visibility = visibility,
     )
 
-
     if toml_srcs:
         _toml_format(
             name = "fix-format-toml",
@@ -186,7 +206,6 @@ def rust_binary(
         srcs = srcs,
         visibility = visibility,
     )
-
 
 def rust_library(
         name,
@@ -372,7 +391,6 @@ def rust_binary_pkg(
         artifact_destination = "s3://si-artifacts-prod",
         artifact_cname = "artifacts.systeminit.com",
         visibility = ["PUBLIC"]):
-
     _rust_binary_artifact(
         name = "{}-artifact-info".format(name),
         binary = binary,

@@ -16,6 +16,8 @@ rust_binary(
     ],
     srcs = glob(["src/**/*.rs"]),
     env = {"CARGO_BIN_NAME": "innitctl"},
+    # TODO(fnichol): For now, disable Git metadata for Docker builds (no .git directory available)
+    git_metadata = False,
 )
 
 docker_image(

@@ -28,6 +28,7 @@ import { unknownValueToErrorMessage } from "./helpers.ts";
 import { Context } from "./context.ts";
 import * as jwt from "./cli/jwt.ts";
 import { FunctionKind, Project } from "./schema/project.ts";
+import { VERSION } from "./git_metadata.ts";
 import {
   callRemoteSchemaOverlaysPush,
   callRemoteSchemaPush,
@@ -54,9 +55,6 @@ import {
   callAiAgentConfig,
   type AiAgentConfigOptions,
 } from "./ai-agent/config.ts";
-
-/** Current version of the SI CLI */
-const VERSION = "0.1.0";
 
 /**
  * Global options available to all commands

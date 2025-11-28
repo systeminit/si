@@ -18,6 +18,7 @@ load("@prelude-si//toolchains:rust_distribution.bzl", "download_rust_distributio
 load("@prelude-si//toolchains:python_distribution.bzl", "download_python_distribution", "hermetic_python_toolchain", "hermetic_python_bootstrap_toolchain")
 load("@prelude-si//artifact:toolchain.bzl", "artifact_toolchain")
 load("@prelude-si//build_context:toolchain.bzl", "build_context_toolchain")
+load("@prelude-si//build_metadata:toolchain.bzl", "build_metadata_toolchain")
 load("@prelude-si//docker:toolchain.bzl", "docker_toolchain")
 load("@prelude-si//e2e:toolchain.bzl", "e2e_toolchain")
 load("@prelude-si//git:toolchain.bzl", "git_toolchain")
@@ -120,7 +121,7 @@ hermetic_rust_toolchain(
         "DEFAULT": [
             # On Darwin, use system linker for better SDK integration
         ],
-    }) 
+    })
 )
 
 hermetic_rust_toolchain(
@@ -159,6 +160,11 @@ toolchain_alias(
 
 build_context_toolchain(
     name = "build_context",
+    visibility = ["PUBLIC"],
+)
+
+build_metadata_toolchain(
+    name = "build_metadata",
     visibility = ["PUBLIC"],
 )
 

@@ -1,0 +1,36 @@
+load(
+    "@prelude-si//:macros.bzl",
+    "export_file",
+    "test_suite",
+    "yapf_check",
+)
+load("//build_metadata.bzl", "git_metadata")
+
+git_metadata(
+    name = "git",
+    visibility = ["PUBLIC"],
+)
+
+export_file(
+    name = "generate_git_metadata.py",
+)
+
+export_file(
+    name = "generate_git_metadata_typescript.py",
+)
+
+export_file(
+    name = "generate_git_metadata_rust.py",
+)
+
+yapf_check(
+    name = "check-format-python",
+    srcs = glob(["**/*.py"]),
+)
+
+test_suite(
+    name = "check-format",
+    tests = [
+        ":check-format-python",
+    ],
+)

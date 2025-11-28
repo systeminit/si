@@ -22,6 +22,8 @@ rust_binary(
         "prod.jwt_signing_public_key.pem": "//config/keys:prod.jwt_signing_public_key.pem",
         "dev.postgres.root.crt": "//config/keys:dev.postgres.root.crt",
     },
+    # TODO(fnichol): For now, disable Git metadata for Docker builds (no .git directory available)
+    git_metadata = False,
 )
 
 docker_image(
@@ -30,7 +32,7 @@ docker_image(
     build_args = {
         "BASE_VERSION": "bookworm",
         "BIN": "module-index",
-        "SI_RBE_TOKEN": ""
+        "SI_RBE_TOKEN": "",
     },
     build_deps = ["//bin/module-index:module-index"],
     # TODO(fnichol): revisit post 2025-02-01
