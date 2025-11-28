@@ -16,26 +16,28 @@ import {
   RootPathType,
 } from "./cli/root-path.ts";
 import { initializeCliContextWithAuth } from "./cli/helpers.ts";
-import { callWhoami } from "./command/whoami.ts";
-import { callProjectInit } from "./command/project/init.ts";
-import { callRemoteSchemaPull } from "./command/remote/schema/pull.ts";
-import { callSchemaScaffoldGenerate } from "./command/schema/scaffold/generate.ts";
-import { type ApiContext, apiContext } from "./api.ts";
+import { callWhoami } from "./whoami.ts";
+import { callProjectInit } from "./schema/init.ts";
+import { callRemoteSchemaPull } from "./schema/pull.ts";
+import {
+  callSchemaFuncGenerate,
+  callSchemaScaffoldGenerate,
+} from "./schema/generate.ts";
+import { type ApiContext, apiContext } from "./cli/api.ts";
 import { unknownValueToErrorMessage } from "./helpers.ts";
 import { Context } from "./context.ts";
-import * as jwt from "./jwt.ts";
-import { FunctionKind, Project } from "./project.ts";
+import * as jwt from "./cli/jwt.ts";
+import { FunctionKind, Project } from "./schema/project.ts";
 import {
   callRemoteSchemaOverlaysPush,
   callRemoteSchemaPush,
-} from "./command/remote/schema/push.ts";
-import { callSchemaFuncGenerate } from "./command/schema/func/generate.ts";
-import { callRunTemplate } from "./command/template/run.ts";
-import { callComponentGet } from "./command/component/get.ts";
-import { callComponentUpdate } from "./command/component/update.ts";
-import { callComponentDelete } from "./command/component/delete.ts";
-import { callComponentSearch } from "./command/component/search.ts";
-import type { TemplateContextOptions } from "./template.ts";
+} from "./schema/push.ts";
+import { callRunTemplate } from "./template/run.ts";
+import { callComponentGet } from "./component/get.ts";
+import { callComponentUpdate } from "./component/update.ts";
+import { callComponentDelete } from "./component/delete.ts";
+import { callComponentSearch } from "./component/search.ts";
+import type { TemplateContextOptions } from "./template/run.ts";
 import type { ComponentGetOptions } from "./component/get.ts";
 import type { ComponentUpdateOptions } from "./component/update.ts";
 import type { ComponentDeleteOptions } from "./component/delete.ts";
@@ -43,15 +45,15 @@ import type { ComponentSearchOptions } from "./component/search.ts";
 import {
   callAiAgentInit,
   type AiAgentInitOptions,
-} from "./command/ai-agent/init.ts";
+} from "./ai-agent/init.ts";
 import {
   callAiAgentStart,
   type AiAgentStartOptions,
-} from "./command/ai-agent/start.ts";
+} from "./ai-agent/start.ts";
 import {
   callAiAgentConfig,
   type AiAgentConfigOptions,
-} from "./command/ai-agent/config.ts";
+} from "./ai-agent/config.ts";
 
 /** Current version of the SI CLI */
 const VERSION = "0.1.0";
@@ -418,10 +420,10 @@ function buildAiAgentCommand() {
         .description("Run MCP server in stdio mode (for external AI tools to connect)")
         .action(async () => {
           // Dynamic import to avoid loading MCP server code until needed
-          const { start_stdio } = await import("./mcp-server/stdio_transport.ts");
-          const { createServer } = await import("./mcp-server/server.ts");
-          const { analytics } = await import("./mcp-server/analytics.ts");
-          const { setAiAgentUserFlag } = await import("./mcp-server/user_state.ts");
+          const { start_stdio } = await import("./ai-agent/mcp-server/stdio_transport.ts");
+          const { createServer } = await import("./ai-agent/mcp-server/server.ts");
+          const { analytics } = await import("./ai-agent/mcp-server/analytics.ts");
+          const { setAiAgentUserFlag } = await import("./ai-agent/mcp-server/user_state.ts");
 
           // Start the MCP server directly
           await analytics.trackServerStart();
@@ -827,7 +829,6 @@ function buildTemplateCommand() {
         )
         .action(async (options, template) => {
           await callRunTemplate(
-            Context.instance(),
             template as string,
             options as TemplateContextOptions,
           );
@@ -882,7 +883,6 @@ function buildComponentCommand() {
         )
         .action(async (options, component) => {
           await callComponentGet(
-            Context.instance(),
             component as string,
             options as ComponentGetOptions,
           );
@@ -921,7 +921,6 @@ function buildComponentCommand() {
         )
         .action(async (options, inputFile) => {
           await callComponentUpdate(
-            Context.instance(),
             inputFile as string,
             options as ComponentUpdateOptions,
           );
@@ -956,7 +955,6 @@ function buildComponentCommand() {
         )
         .action(async (options, component) => {
           await callComponentDelete(
-            Context.instance(),
             component as string,
             options as ComponentDeleteOptions,
           );
@@ -1000,7 +998,6 @@ function buildComponentCommand() {
         )
         .action(async (options, query) => {
           await callComponentSearch(
-            Context.instance(),
             query as string,
             options as ComponentSearchOptions,
           );

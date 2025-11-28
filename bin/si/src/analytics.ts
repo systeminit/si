@@ -12,7 +12,7 @@
  * @example
  * ```ts
  * import { Analytics } from "./analytics.ts";
- * import type { UserData } from "./jwt.ts";
+ * import type { UserData } from "./cli/jwt.ts";
  *
  * const userData: UserData = { userId: "user123", workspaceId: "ws456" };
  * const analytics = new Analytics("myapp", userData);
@@ -28,7 +28,7 @@
  */
 
 import { PostHog } from "posthog-node";
-import type { UserData } from "./jwt.ts";
+import type { UserData } from "./cli/jwt.ts";
 
 /**
  * PostHog production API key.

@@ -14,7 +14,7 @@ import {
   resolveComponentReference,
   resolveSearchQuery,
   type SearchFunction,
-} from "../subscription_resolver.ts";
+} from "./subscription_utils.ts";
 
 /**
  * Resolves all subscription references in attributes to component IDs.

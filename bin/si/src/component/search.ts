@@ -20,10 +20,10 @@ import {
 import { stringify as stringifyYaml } from "@std/yaml";
 import { Context } from "../context.ts";
 import { apiConfig, getHeadChangeSetId, WORKSPACE_ID } from "../si_client.ts";
-import { resolveChangeSet } from "../change_set_utils.ts";
+import { resolveChangeSet } from "./change_set.ts";
 import { cleanForYaml, type ComponentGetCache } from "./cache.ts";
 import { displayAttributes, displayComponentInfo } from "./get.ts";
-import { cachedGetComponent, cachedGetSchema } from "../cache.ts";
+import { cachedGetComponent, cachedGetSchema } from "./cache_api.ts";
 import { isSubscription } from "../template/attribute_diff.ts";
 import { filterAttributes } from "./attribute_utils.ts";
 
@@ -304,7 +304,7 @@ interface SearchResultOutput {
  * @param query - Search query string
  * @param options - Command options
  */
-export async function componentSearch(
+export async function callComponentSearch(
   query: string,
   options: ComponentSearchOptions,
 ): Promise<void> {
