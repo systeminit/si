@@ -95,7 +95,7 @@ services:
       - "-c"
       - |
         /usr/local/bin/init-buckets.sh &&
-        exec /app/versitygw --port :9200 --access siadmin --secret bugbear posix /data
+        exec /usr/local/bin/versitygw --port :9200 --access siadmin --secret bugbear posix /data
     environment:
       - "VGW_DATA_DIR=/data"
     ports:
