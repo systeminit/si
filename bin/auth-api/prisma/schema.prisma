@@ -56,7 +56,8 @@ model User {
     suspendedAt DateTime? @map("suspended_at")
 
     /// List of automation tokens a user has created
-    tokens AuthToken[]
+    tokens          AuthToken[]
+    rumChangeEvents RumChangeEvent[]
 
     @@index(fields: [email])
     @@map("users")
@@ -114,8 +115,8 @@ model Workspace {
     // how the UI reacts
     approvalsEnabled Boolean @default(false) @map("approvals_enabled")
 
-    tokens             AuthToken[]
-    workspaceRumMonths WorkspaceRumMonth[]
+    tokens          AuthToken[]
+    rumChangeEvents RumChangeEvent[]
 
     @@index(fields: [creatorUserId])
     @@map("workspaces")
@@ -194,24 +195,36 @@ model AuthToken {
     lastUsedIp String?
 }
 
-/// Resources Under Management for a workspace, for a given month
-model WorkspaceRumMonth {
-    /// id of workspace this RUM entry is for
-    workspaceId String    @map("workspace_id")
-    /// Workspace this RUM entry is for
-    workspace   Workspace @relation(fields: [workspaceId], references: [id])
-    /// Month for this RUM entry
-    month       DateTime
+model RumChangeEvent {
+    /// timestamp of event
+    eventTimestamp DateTime @map("event_timestamp")
+    /// Amount RUM has changed since the last event (same for both owner and workspace)
+    rumChange      Int      @map("rum_change")
 
-    /// Max number of resources under management for this workspace, this month
-    maxRum        Int      @map("max_rum")
-    /// The end of the data for this entry, exclusive.  If we haven't processed RUM for the
-    /// full month yet, this will reflect that. If we have, end_date will be the start of the
-    /// next month.)
-    maxRumDataEnd DateTime @map("max_rum_data_end")
-    /// The date the max rum was reached. Might not be during this month!
-    maxRumDate    DateTime @map("rum_date")
+    /// id of workspace
+    workspaceId                 String    @map("workspace_id")
+    /// workspace
+    workspace                   Workspace @relation(fields: [workspaceId], references: [id])
+    /// New RUM value for workspace
+    workspaceRum                Int       @map("workspace_rum")
+    /// timestamp of previous rum change for workspace
+    prevWorkspaceEventTimestamp DateTime? @map("prev_workspace_event_timestamp")
+    /// timestamp of next rum change for workspace
+    nextWorkspaceEventTimestamp DateTime? @map("next_workspace_event_timestamp")
 
-    @@id([workspaceId, month])
-    @@map("workspace_rum_months")
+    /// id of user who owns workspace (according to billing! They should be the same in principle,
+    /// but if the systems are out of sync, the ownerId here is the one we use for billing)
+    ownerId                 String    @map("owner_id")
+    /// user who owns workspace
+    owner                   User      @relation(fields: [ownerId], references: [id])
+    /// New RUM value for owner at the time of this event
+    ownerRum                Int       @map("owner_rum")
+    /// timestamp of previous event for owner
+    prevOwnerEventTimestamp DateTime? @map("prev_owner_event_timestamp")
+    /// timestamp of next event for owner
+    nextOwnerEventTimestamp DateTime? @map("next_owner_event_timestamp")
+
+    @@id([workspaceId, eventTimestamp])
+    @@index([ownerId, eventTimestamp])
+    @@map("rum_change_events")
 }
