@@ -41,7 +41,22 @@ export const ACTION_FUNC_SPECS = {
   FuncSpecInfo & { actionKind: ActionFuncSpecKind }
 >;
 
-export const CODE_GENERATION_FUNC_SPECS = {} as const satisfies Record<
+export const CODE_GENERATION_FUNC_SPECS = {
+  "DigitalOcean Create Code Gen": {
+    id: "d7g8i9t0a1l2o3c4e5a6n7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8",
+    backendKind: "jsAttribute",
+    responseType: "codeGeneration",
+    displayName: "Code Gen for creating a DigitalOcean Asset",
+    path: "./src/pipelines/digitalocean/funcs/code-gen/digitalOceanCodeGenCreate.ts",
+  },
+  "DigitalOcean Update Code Gen": {
+    id: "d8g9i0t1a2l3o4c5e6a7n8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9",
+    backendKind: "jsAttribute",
+    responseType: "codeGeneration",
+    displayName: "Code Gen for updating a DigitalOcean Asset",
+    path: "./src/pipelines/digitalocean/funcs/code-gen/digitalOceanCodeGenUpdate.ts",
+  },
+} as const satisfies Record<
   string,
   FuncSpecInfo
 >;
