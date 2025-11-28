@@ -30,11 +30,13 @@ filegroup(
 deno_binary(
     name = "si-mcp-server",
     srcs = [
-        "//bin/si:mcp-server-src",  # Use vendored source from si (source of truth)
         "main.ts",
         "deno.json",
         "deno.lock",
     ],
+    extra_srcs = {
+        "../si": "//bin/si:mcp-server-src",
+    },
     permissions = [
         "allow-all",
     ],

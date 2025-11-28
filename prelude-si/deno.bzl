@@ -48,12 +48,32 @@ def deno_binary_impl(ctx: AnalysisContext) -> list[Provider]:
         deno_toolchain.deno_exe,
         "--input",
         ctx.attrs.main,
-        "--extra-srcs",
-        ctx.attrs.extra_srcs,
         "--output",
         out.as_output(),
         hidden = hidden_deps,
     )
+
+    # Add explicit source mappings (following pnpm pattern)
+    # Buck2's {} placeholder expands to the artifact path, we prepend the destination
+    for src in ctx.attrs.srcs:
+        cmd.add("--src")
+        cmd.add(cmd_args(src, format = "{}"))
+
+    # Add deno.json if provided
+    if ctx.attrs.deno_json:
+        cmd.add("--deno-json", ctx.attrs.deno_json)
+        hidden_deps.append(ctx.attrs.deno_json)
+
+    # Add deno.lock if provided
+    if ctx.attrs.deno_lock:
+        cmd.add("--deno-lock", ctx.attrs.deno_lock)
+        hidden_deps.append(ctx.attrs.deno_lock)
+
+    # Add extra_srcs as destination=source pairs
+    for (dest, src) in ctx.attrs.extra_srcs.items():
+        cmd.add("--extra-src")
+        cmd.add(cmd_args(src, format = dest + "={}"))
+        hidden_deps.append(src)
 
     if ctx.attrs.deno_cache:
         deno_cache_provider = ctx.attrs.deno_cache[DenoWorkspaceInfo]
@@ -71,7 +91,7 @@ def deno_binary_impl(ctx: AnalysisContext) -> list[Provider]:
         cmd.add("--unstable-flags", *ctx.attrs.unstable_flags)
 
     # Add includes for JavaScript files from extra_srcs (generated files)
-    for src in ctx.attrs.extra_srcs:
+    for src in ctx.attrs.extra_srcs.values():
         if src.basename.endswith(".js"):
             cmd.add("--includes", src)
 
@@ -91,11 +111,22 @@ deno_binary = rule(
             default = [],
             doc = "All source files that are part of the compilation",
         ),
-        "out": attrs.string(doc = "The name of the output binary"),
-        "extra_srcs": attrs.list(
+        "deno_json": attrs.option(
             attrs.source(),
-            default = [],
-            doc = "Sources from other targets",
+            default = None,
+            doc = "The deno.json configuration file",
+        ),
+        "deno_lock": attrs.option(
+            attrs.source(),
+            default = None,
+            doc = "The deno.lock file for reproducible builds",
+        ),
+        "out": attrs.string(doc = "The name of the output binary"),
+        "extra_srcs": attrs.dict(
+            key = attrs.string(),
+            value = attrs.source(),
+            default = {},
+            doc = "Mapping of destination paths (relative to input file's parent) to source artifacts",
         ),
         "deno_cache": attrs.option(attrs.dep(providers = [DenoWorkspaceInfo]), default = None),
         "permissions": attrs.list(
@@ -263,7 +294,7 @@ def deno_test_impl(ctx: AnalysisContext) -> list[Provider]:
     # Build list of hidden inputs
     hidden_inputs = list(ctx.attrs.srcs)
     if ctx.attrs.extra_srcs:
-        hidden_inputs.extend(ctx.attrs.extra_srcs)
+        hidden_inputs.extend(ctx.attrs.extra_srcs.values())
 
     cmd = cmd_args(
         ctx.attrs._python_toolchain[PythonToolchainInfo].interpreter,
@@ -276,8 +307,10 @@ def deno_test_impl(ctx: AnalysisContext) -> list[Provider]:
     for src in ctx.attrs.srcs:
         cmd.add("--input", src)
 
-    if ctx.attrs.extra_srcs:
-        cmd.add("--extra-srcs", *ctx.attrs.extra_srcs)
+    # Add extra_srcs as destination=source pairs
+    for (dest, src) in ctx.attrs.extra_srcs.items():
+        cmd.add("--extra-src")
+        cmd.add(cmd_args(src, format = dest + "={}"))
 
     if ctx.attrs.filter:
         cmd.add("--filter", ctx.attrs.filter)
@@ -323,10 +356,11 @@ deno_test = rule(
             default = [],
             doc = "The test files to run",
         ),
-        "extra_srcs": attrs.list(
-            attrs.source(),
-            default = [],
-            doc = "Additional source files needed but not to be tested",
+        "extra_srcs": attrs.dict(
+            key = attrs.string(),
+            value = attrs.source(),
+            default = {},
+            doc = "Mapping of destination paths (relative to test directory) to source artifacts",
         ),
         "filter": attrs.option(
             attrs.string(),

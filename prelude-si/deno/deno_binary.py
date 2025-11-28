@@ -9,6 +9,7 @@ import shutil
 import stat
 import subprocess
 import sys
+import tempfile
 from typing import List, Optional
 
 # Target mapping: canonical target string -> Deno target triple
@@ -37,10 +38,29 @@ def parse_args() -> argparse.Namespace:
         help="The path to compile, relative to the project root.",
     )
     parser.add_argument(
-        "--extra-srcs",
-        nargs='*',
+        "--src",
+        action="append",
+        help="Add a source file into the workspace (Buck2 materialized path)",
+    )
+    parser.add_argument(
+        "--extra-src",
+        action="append",
         default=[],
-        help="Sources that will be copied into the source tree",
+        metavar="DST=SRC",
+        help=
+        "Extra source file to copy into the workspace (format: src/file.ts=/path/to/file.ts)",
+    )
+    parser.add_argument(
+        "--deno-json",
+        type=pathlib.Path,
+        default=None,
+        help="Path to deno.json configuration file",
+    )
+    parser.add_argument(
+        "--deno-lock",
+        type=pathlib.Path,
+        default=None,
+        help="Path to deno.lock file",
     )
     parser.add_argument(
         "--output",
@@ -155,39 +175,132 @@ def run_compile(
 
 
 def main() -> int:
+    tempdir = None
     try:
         args = parse_args()
-        # Copy extra sources to the same directory as the input file
-        # When using workspace, we need to copy to workspace + input_dir
-        if args.workspace_dir:
-            input_dir = args.workspace_dir / args.input.parent
+
+        # Determine if we need to create a temporary workspace
+        if not args.workspace_dir:
+            # Create temporary build workspace
+            tempdir = tempfile.mkdtemp(prefix="deno_build_")
+            workspace_path = pathlib.Path(tempdir)
+
+            # Copy deno.json to workspace root (if provided)
+            if args.deno_json:
+                shutil.copy2(args.deno_json, workspace_path / "deno.json")
+
+            # Copy deno.lock to workspace root (if provided)
+            if args.deno_lock:
+                shutil.copy2(args.deno_lock, workspace_path / "deno.lock")
+
+            # Copy all source files into workspace
+            # Infer destination from source path (relative to cell root)
+            cell_root = pathlib.Path.cwd()
+            for src_path_str in (args.src or []):
+                src_path = pathlib.Path(src_path_str).resolve()
+
+                # Make relative to cell root to get destination path
+                try:
+                    rel_path = src_path.relative_to(cell_root)
+                except ValueError:
+                    # Source is outside cell root (shouldn't happen), use basename
+                    rel_path = src_path.name
+                dst_path = workspace_path / rel_path
+                dst_path.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(src_path, dst_path)
+
+            # Copy extra_src files/directories into workspace using DST=SRC mapping
+            input_parent = workspace_path / args.input.parent
+            for extra_src_mapping in (args.extra_src or []):
+                dest, src = extra_src_mapping.split("=", 1)
+                src_path = pathlib.Path(src)
+                # Destination is relative to input file's parent directory
+                dest_path = input_parent / dest
+                dest_path.parent.mkdir(parents=True, exist_ok=True)
+
+                # Handle both files and directories
+                if src_path.is_dir():
+                    shutil.copytree(src_path, dest_path, dirs_exist_ok=True)
+                else:
+                    shutil.copy2(src_path, dest_path)
+
+            # Set workspace and input for compilation
+            workspace_dir = workspace_path
+            input_path = args.input  # Relative path within workspace
         else:
-            input_dir = args.input.resolve().parent
+            # Workspace provided - use existing approach
+            workspace_dir = args.workspace_dir
+            input_path = args.input
 
-        input_dir.mkdir(parents=True, exist_ok=True)
-        for src in args.extra_srcs:
-            shutil.copy2(src, input_dir)
+            # Copy deno.json and deno.lock if provided
+            if args.deno_json:
+                shutil.copy2(args.deno_json, workspace_dir / "deno.json")
+            if args.deno_lock:
+                shutil.copy2(args.deno_lock, workspace_dir / "deno.lock")
 
+            # Copy source files/directories into workspace
+            cell_root = pathlib.Path.cwd()
+            for src_path_str in (args.src or []):
+                src_path = pathlib.Path(src_path_str).resolve()
+                try:
+                    rel_path = src_path.relative_to(cell_root)
+                except ValueError:
+                    rel_path = src_path.name
+                dst_path = workspace_dir / rel_path
+                dst_path.parent.mkdir(parents=True, exist_ok=True)
+
+                # Handle both files and directories
+                if src_path.is_dir():
+                    shutil.copytree(src_path, dst_path, dirs_exist_ok=True)
+                else:
+                    shutil.copy2(src_path, dst_path)
+
+            # Copy extra_src files/directories using DST=SRC mapping
+            input_parent = workspace_dir / args.input.parent
+            for extra_src_mapping in (args.extra_src or []):
+                dest, src = extra_src_mapping.split("=", 1)
+                src_path = pathlib.Path(src)
+                # Destination is relative to input file's parent directory
+                dest_path = input_parent / dest
+                dest_path.parent.mkdir(parents=True, exist_ok=True)
+
+                # Handle both files and directories
+                if src_path.is_dir():
+                    shutil.copytree(src_path, dest_path, dirs_exist_ok=True)
+                else:
+                    shutil.copy2(src_path, dest_path)
+
+        # Build include files list for deno compile --include
+        # Use the destination paths from the DST=SRC mappings
         include_files = [
-            str(args.input.parent / os.path.basename(src))
-            for src in args.extra_srcs
+            str(args.input.parent / mapping.split("=", 1)[0])
+            for mapping in (args.extra_src or [])
         ]
 
+        # Run compilation
         run_compile(
             args.deno_exe,
-            args.input,
+            input_path,
             args.output,
             args.permissions,
             args.unstable_flags,
             args.deno_dir,
-            args.workspace_dir,
+            workspace_dir,
             include_files,
             args.target,
         )
 
         args.output.resolve().chmod(0o775)
+
+        # Cleanup temp workspace if we created it
+        if tempdir:
+            shutil.rmtree(tempdir)
+
         return 0
     except Exception as e:
+        # Cleanup temp directory on error
+        if tempdir:
+            shutil.rmtree(tempdir, ignore_errors=True)
         print(f"Error: {str(e)}", file=sys.stderr)
         return 1
 
