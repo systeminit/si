@@ -13,10 +13,10 @@ from typing import List
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
-        "--deno-binary",
+        "--deno-exe",
         required=True,
         type=pathlib.Path,
-        help="The path to the deno binary",
+        help="The path to the deno executable",
     )
     parser.add_argument(
         "--input",
@@ -80,7 +80,7 @@ def main() -> int:
                 return 1
             input_paths.append(abs_path)
 
-        run_format(args.deno_binary, input_paths, args.check, args.ignore)
+        run_format(args.deno_exe, input_paths, args.check, args.ignore)
 
         if args.check:
             print("Format check completed successfully.")

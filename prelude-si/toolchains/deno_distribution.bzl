@@ -4,8 +4,18 @@ Downloads pre-packaged Deno toolchains from si-artifacts-prod.
 Much simpler than the original - no complex extraction needed.
 """
 
-load("@prelude-si//toolchains:common.bzl", "get_toolchain_checksum", "host_target", "target_to_os_arch", "create_download_distribution_function", "create_distribution_provider")
-load("@prelude-si//toolchains:extraction.bzl", "ToolchainExtractionInfo")
+load(
+    "@prelude-si//toolchains:common.bzl",
+    "create_distribution_provider",
+    "create_download_distribution_function",
+    "get_toolchain_checksum",
+    "host_target",
+    "target_to_os_arch",
+)
+load(
+    "@prelude-si//toolchains:extraction.bzl",
+    "ToolchainExtractionInfo",
+)
 
 # Deno version checksums for our S3 artifacts
 _DENO_S3_CHECKSUMS = {
@@ -31,13 +41,13 @@ def _deno_field_mapper(ctx: AnalysisContext, extraction):
     return {
         "version": ctx.attrs.version,
         "target": ctx.attrs.target,
-        "deno": cmd_args(extraction.bin_dir, "/deno", delimiter=""),
+        "deno": cmd_args(extraction.bin_dir, "/deno", delimiter = ""),
     }
 
 def _deno_distribution_impl(ctx: AnalysisContext) -> list[Provider]:
     """Create Deno distribution from extracted S3 toolchain."""
     extraction = ctx.attrs.extraction[ToolchainExtractionInfo]
-    
+
     return [
         DefaultInfo(),
         DenoDistributionInfo(**_deno_field_mapper(ctx, extraction)),
@@ -47,7 +57,7 @@ deno_distribution = rule(
     impl = _deno_distribution_impl,
     attrs = {
         "version": attrs.string(),
-        "target": attrs.string(), 
+        "target": attrs.string(),
         "extraction": attrs.dep(providers = [ToolchainExtractionInfo]),
     },
 )
@@ -57,6 +67,5 @@ download_deno_distribution = create_download_distribution_function(
     family = "deno",
     checksums_dict = _DENO_S3_CHECKSUMS,
     distribution_rule = deno_distribution,
-    toolchain_name = "Deno"
+    toolchain_name = "Deno",
 )
-

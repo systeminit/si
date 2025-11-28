@@ -28,10 +28,10 @@ def parse_args() -> argparse.Namespace:
         help="The output directory for the workspace.",
     )
     parser.add_argument(
-        "--deno-binary",
+        "--deno-exe",
         required=True,
         type=pathlib.Path,
-        help="The path to the deno binary or wrapper script.",
+        help="The path to the deno executable or wrapper script.",
     )
     parser.add_argument(
         "--deno-dir",
@@ -143,7 +143,7 @@ def main() -> int:
         abs_deno_dir.mkdir(parents=True, exist_ok=True)
 
         run_cache(
-            args.deno_binary.absolute(),
+            args.deno_exe.absolute(),
             abs_deno_dir,
             workspace_dir,
             files_to_cache_relative,

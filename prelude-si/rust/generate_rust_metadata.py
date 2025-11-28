@@ -35,6 +35,7 @@ class PlatformArchitecture(BaseEnum):
 class PlatformOS(BaseEnum):
     Darwin = "darwin"
     Linux = "linux"
+    Windows = "windows"
 
 
 VARIANT = "binary"
@@ -131,16 +132,19 @@ def detect_architecture() -> PlatformArchitecture:
 def detect_os() -> PlatformOS:
     platform_os = os.uname().sysname
 
-    if (platform_os == "Darwin"):
-        return PlatformOS.Darwin
-    elif (platform_os == "Linux"):
-        return PlatformOS.Linux
-    else:
-        print(
-            f"xxx Failed to determine operating system or unsupported: {platform_os}",
-            file=sys.stderr,
-        )
-        sys.exit(1)
+    match platform_os:
+        case "Darwin":
+            return PlatformOS.Darwin
+        case "Linux":
+            return PlatformOS.Linux
+        case "Windows":
+            return PlatformOS.Windows
+        case _:
+            print(
+                f"xxx Failed to determine operating system or unsupported: {platform_os}",
+                file=sys.stderr,
+            )
+            sys.exit(1)
 
 
 def load_git_info(git_info_file: str) -> Dict[str, str | int | bool]:

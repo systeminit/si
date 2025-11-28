@@ -4,9 +4,20 @@ Downloads pre-packaged Rust toolchains from si-artifacts-prod.
 Much simpler than the original - no complex extraction or wrapper scripts needed.
 """
 
-load("@prelude//rust:rust_toolchain.bzl", "PanicRuntime", "RustToolchainInfo")
-load("@prelude-si//toolchains:common.bzl", "create_download_distribution_function", "create_distribution_provider")
-load("@prelude-si//toolchains:extraction.bzl", "ToolchainExtractionInfo")
+load(
+    "@prelude//rust:rust_toolchain.bzl",
+    "PanicRuntime",
+    "RustToolchainInfo",
+)
+load(
+    "@prelude-si//toolchains:common.bzl",
+    "create_distribution_provider",
+    "create_download_distribution_function",
+)
+load(
+    "@prelude-si//toolchains:extraction.bzl",
+    "ToolchainExtractionInfo",
+)
 
 # Rust version checksums for our S3 artifacts
 _RUST_S3_CHECKSUMS = {
@@ -49,11 +60,11 @@ def _rust_distribution_impl(ctx: AnalysisContext) -> list[Provider]:
     extraction_default = ctx.attrs.extraction[DefaultInfo]
 
     # With unified structure, binaries are directly available
-    rustc = cmd_args(extraction.bin_dir, "/rustc", delimiter="")
-    cargo = cmd_args(extraction.bin_dir, "/cargo", delimiter="")
-    rustdoc = cmd_args(extraction.bin_dir, "/rustdoc", delimiter="")
-    clippy = cmd_args(extraction.bin_dir, "/clippy-driver", delimiter="")
-    rustfmt = cmd_args(extraction.bin_dir, "/rustfmt", delimiter="")
+    rustc = cmd_args(extraction.bin_dir, "/rustc", delimiter = "")
+    cargo = cmd_args(extraction.bin_dir, "/cargo", delimiter = "")
+    rustdoc = cmd_args(extraction.bin_dir, "/rustdoc", delimiter = "")
+    clippy = cmd_args(extraction.bin_dir, "/clippy-driver", delimiter = "")
+    rustfmt = cmd_args(extraction.bin_dir, "/rustfmt", delimiter = "")
     std_lib = extraction.lib_dir
 
     return [
@@ -84,7 +95,7 @@ download_rust_distribution = create_download_distribution_function(
     family = "rust",
     checksums_dict = _RUST_S3_CHECKSUMS,
     distribution_rule = rust_distribution,
-    toolchain_name = "Rust"
+    toolchain_name = "Rust",
 )
 
 def _hermetic_rust_toolchain_impl(ctx: AnalysisContext) -> list[Provider]:

@@ -55,6 +55,6 @@ rust_test(
     resources = {
         "cyclone": "//bin/cyclone:cyclone",
         "dev.decryption.key": "//lib/veritech-server:dev.decryption.key",
-        "lang-js": "//bin/lang-js:bin",
+        "lang-js": "//bin/lang-js:lang-js",
     },
 )

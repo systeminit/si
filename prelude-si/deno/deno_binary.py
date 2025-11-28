@@ -11,14 +11,24 @@ import subprocess
 import sys
 from typing import List, Optional
 
+# Target mapping: canonical target string -> Deno target triple
+TARGET_TO_DENO_TRIPLE = {
+    "linux-x86_64": "x86_64-unknown-linux-gnu",
+    "linux-aarch64": "aarch64-unknown-linux-gnu",
+    "darwin-x86_64": "x86_64-apple-darwin",
+    "darwin-aarch64": "aarch64-apple-darwin",
+    "windows-x86_64": "x86_64-pc-windows-msvc",
+    "windows-aarch64": "aarch64-pc-windows-msvc",
+}
+
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
-        "--deno-binary",
+        "--deno-exe",
         required=True,
         type=pathlib.Path,
-        help="The path to the deno binary",
+        help="The path to the deno executable",
     )
     parser.add_argument(
         "--input",
@@ -68,7 +78,23 @@ def parse_args() -> argparse.Namespace:
         default=[],
         help="List of files to include in the compilation.",
     )
+    parser.add_argument(
+        "--target",
+        type=str,
+        default=None,
+        help=
+        "Target platform string for cross-compilation (e.g., linux-x86_64, darwin-aarch64)",
+    )
     return parser.parse_args()
+
+
+def target_to_deno_triple(target_str: str) -> str:
+    """Convert canonical target string to Deno's target triple format."""
+    if target_str not in TARGET_TO_DENO_TRIPLE:
+        raise ValueError(
+            f"Unsupported target: {target_str}. "
+            f"Valid targets: {', '.join(TARGET_TO_DENO_TRIPLE.keys())}")
+    return TARGET_TO_DENO_TRIPLE[target_str]
 
 
 def run_compile(
@@ -80,6 +106,7 @@ def run_compile(
     deno_dir: Optional[pathlib.Path],
     workspace_dir: Optional[pathlib.Path],
     includes: List[str] = None,
+    target: Optional[str] = None,
 ) -> None:
     """Run deno compile with the specified arguments."""
     deno_binary_abs = deno_binary.resolve()
@@ -88,6 +115,11 @@ def run_compile(
     cwd = workspace_dir.resolve() if workspace_dir else pathlib.Path.cwd()
 
     cmd = [str(deno_binary_abs), "compile", "--output", str(output_path_abs)]
+
+    # Add target flag for cross-compilation
+    if target:
+        deno_triple = target_to_deno_triple(target)
+        cmd.extend(["--target", deno_triple])
 
     cmd.extend([f"--{p}" for p in permissions])
     cmd.extend([f"--unstable-{f}" for f in flags])
@@ -142,7 +174,7 @@ def main() -> int:
         ]
 
         run_compile(
-            args.deno_binary,
+            args.deno_exe,
             args.input,
             args.output,
             args.permissions,
@@ -150,6 +182,7 @@ def main() -> int:
             args.deno_dir,
             args.workspace_dir,
             include_files,
+            args.target,
         )
 
         args.output.resolve().chmod(0o775)

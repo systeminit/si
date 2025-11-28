@@ -65,7 +65,7 @@ docker_image(
     build_deps = [
         "//bin/cyclone:docker-entrypoint.sh",
         "//bin/cyclone:cyclone",
-        "//bin/lang-js:bin",
+        "//bin/lang-js:lang-js",
     ],
 )
 
@@ -75,6 +75,6 @@ rootfs(
     rootfs_name = "cyclone-rootfs",
     build_deps = [
         ":cyclone",
-        "//bin/lang-js:bin",
+        "//bin/lang-js:lang-js",
     ],
 )

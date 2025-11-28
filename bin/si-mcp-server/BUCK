@@ -1,14 +1,14 @@
 load(
-    "@prelude-si//:macros.bzl",
-    "alias",
-    "docker_image",
-    "export_file",
-)
-load(
     "@prelude-si//:deno.bzl",
-    "deno_compile",
     "deno_format",
     "deno_test",
+)
+load(
+    "@prelude-si//:macros.bzl",
+    "alias",
+    "deno_binary",
+    "docker_image",
+    "export_file",
 )
 
 export_file(
@@ -27,10 +27,8 @@ filegroup(
     visibility = ["PUBLIC"],
 )
 
-deno_compile(
-    name = "build",
-    main = "main.ts",
-    out = "si-mcp-server",
+deno_binary(
+    name = "si-mcp-server",
     srcs = [
         "//bin/si:mcp-server-src",  # Use vendored source from si (source of truth)
         "main.ts",
@@ -40,7 +38,6 @@ deno_compile(
     permissions = [
         "allow-all",
     ],
-    visibility = ["PUBLIC"],
 )
 
 deno_format(
@@ -59,7 +56,7 @@ deno_format(
 # suite which will force a lint and basic compile correctness check.
 alias(
     name = "test-unit",
-    actual = ":build",
+    actual = ":si-mcp-server",
 )
 
 docker_image(
@@ -67,6 +64,6 @@ docker_image(
     image_name = "si-mcp-server",
     flake_lock = "//:flake.lock",
     build_deps = [
-        "//bin/si-mcp-server:build",
+        "//bin/si-mcp-server:si-mcp-server",
     ],
 )
