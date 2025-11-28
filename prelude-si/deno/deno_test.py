@@ -27,10 +27,11 @@ def parse_args() -> argparse.Namespace:
         help="The test file to run (can be specified multiple times)",
     )
     parser.add_argument(
-        "--extra-srcs",
-        nargs='*',
+        "--extra-src",
+        action="append",
         default=[],
-        help="Sources that will be copied into the source tree",
+        metavar="DST=SRC",
+        help="Extra source file to copy (format: src/file.ts=/path/to/file.ts)",
     )
     parser.add_argument(
         "--filter",
@@ -158,9 +159,9 @@ def main() -> int:
     try:
         args = parse_args()
 
-        # Copy extra sources to src/ directory relative to project root
-        # This makes generated files (like bundle.js) available to source files
-        if args.extra_srcs and args.input:
+        # Copy extra sources using DST=SRC mappings relative to project root
+        # This makes generated files available to source files
+        if args.extra_src and args.input:
             # Find the project root by locating deno.json
             test_file = pathlib.Path(args.input[0]).resolve()
             project_root = None
@@ -173,19 +174,22 @@ def main() -> int:
                 current_dir = current_dir.parent
 
             if project_root:
-                # Copy extra sources to the src/ directory
-                src_dir = project_root / "src"
-                src_dir.mkdir(parents=True, exist_ok=True)
-                for src in args.extra_srcs:
-                    src_path = pathlib.Path(src)
-                    target_path = src_dir / src_path.name
-                    shutil.copy2(src, target_path)
+                # Copy extra sources using DST=SRC mappings
+                for extra_src_mapping in args.extra_src:
+                    dest, src = extra_src_mapping.split("=", 1)
+                    # Destination is relative to project root
+                    dest_path = project_root / dest
+                    dest_path.parent.mkdir(parents=True, exist_ok=True)
+                    shutil.copy2(src, dest_path)
             else:
-                # Fallback to old behavior if no deno.json found
+                # Fallback: copy to input directory if no deno.json found
                 input_dir = pathlib.Path(args.input[0]).resolve().parent
                 input_dir.mkdir(parents=True, exist_ok=True)
-                for src in args.extra_srcs:
-                    shutil.copy2(src, input_dir)
+                for extra_src_mapping in args.extra_src:
+                    dest, src = extra_src_mapping.split("=", 1)
+                    dest_path = input_dir / dest
+                    dest_path.parent.mkdir(parents=True, exist_ok=True)
+                    shutil.copy2(src, dest_path)
 
         input_paths = []
         for input_path in args.input:

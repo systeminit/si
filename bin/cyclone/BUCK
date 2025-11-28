@@ -42,6 +42,8 @@ rust_binary(
     }),
     srcs = glob(["src/**/*.rs"]),
     env = {"CARGO_BIN_NAME": "cyclone"},
+    # TODO(fnichol): For now, disable Git metadata for Docker builds (no .git directory available)
+    git_metadata = False,
 )
 
 export_file(

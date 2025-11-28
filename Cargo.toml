@@ -100,6 +100,7 @@ members = [
   "lib/si-posthog-rs",
   "lib/si-runtime-rs",
   "lib/si-service",
+  "lib/si-service-build",
   "lib/si-settings",
   "lib/si-split-graph",
   "lib/si-std",

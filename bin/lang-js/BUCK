@@ -43,9 +43,9 @@ deno_binary(
         "src/**/*.ts",
         "src/**/*.js",
     ]),
-    extra_srcs = [
-        ":bundle",
-    ],
+    extra_srcs = {
+        "bundle.js": ":bundle",
+    },
     permissions = [
         "allow-all",
     ],
@@ -70,9 +70,9 @@ deno_format(
 #deno_test(
 #    name = "test-unit",
 #    srcs = glob(["**/tests/**/*.ts"]),
-#    extra_srcs = [
-#        ":bundle",
-#    ],
+#    extra_srcs = {
+#        "bundle.js": ":bundle",
+#    },
 #    ignore = ["node_modules"],
 #    permissions = [
 #        "allow-all",

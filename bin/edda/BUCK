@@ -13,7 +13,6 @@ rust_binary(
         "//third-party/rust:clap",
     ],
     srcs = glob(["src/**/*.rs"]),
-    env = {"CARGO_BIN_NAME": "edda"},
     resources = {
         "dev.encryption.key": "//lib/veritech-server:dev.encryption.key",
         "dev.donkey.key": "//lib/dal:dev.donkey.key",
