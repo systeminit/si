@@ -1,5 +1,5 @@
 import { normalizeProperty } from "../../cfDb.ts";
-import { ExpandedPropSpecFor } from "../../spec/props.ts";
+import { ExpandedPropSpecFor, OnlyProperties } from "../../spec/props.ts";
 import {
   PipelineOptions,
   PROVIDER_REGISTRY,
@@ -17,6 +17,9 @@ import {
 } from "./funcs.ts";
 import { generateAwsSpecs } from "./pipeline.ts";
 import { JSONSchema } from "../draft_07.ts";
+import { getAwsExtraAssetFuncs, loadAwsExtraAssets } from "./extraAssets.ts";
+import { normalizeOnlyProperties } from "../generic/index.ts";
+import { CfSchema } from "./schema.ts";
 
 function cfCategory(schema: SuperSchema): string {
   const [metaCategory, category] = schema.typeName.split("::");
@@ -65,6 +68,27 @@ function awsIsChildRequired(
   return true;
 }
 
+function awsClassifyProperties(schema: SuperSchema): OnlyProperties {
+  // For CloudFormation schemas, we have explicit property classifications
+  if ("createOnlyProperties" in schema && "readOnlyProperties" in schema) {
+    const cfSchema = schema as CfSchema;
+    return {
+      createOnly: normalizeOnlyProperties(cfSchema.createOnlyProperties),
+      readOnly: normalizeOnlyProperties(cfSchema.readOnlyProperties),
+      writeOnly: normalizeOnlyProperties(cfSchema.writeOnlyProperties),
+      primaryIdentifier: normalizeOnlyProperties(cfSchema.primaryIdentifier),
+    };
+  }
+
+  // Fallback for extra assets or other schemas
+  return {
+    createOnly: [],
+    readOnly: [],
+    writeOnly: [],
+    primaryIdentifier: [],
+  };
+}
+
 async function awsLoadSchemas(options: PipelineOptions) {
   return await generateAwsSpecs(options);
 }
@@ -107,6 +131,11 @@ export const AWS_PROVIDER_CONFIG: ProviderConfig = {
   },
   normalizeProperty: awsNormalizeProperty,
   isChildRequired: awsIsChildRequired,
+  classifyProperties: awsClassifyProperties,
+  extraAssets: {
+    loadSchemas: loadAwsExtraAssets,
+    customFuncs: getAwsExtraAssetFuncs(),
+  },
   overrides: {
     propOverrides: AWS_PROP_OVERRIDES,
     schemaOverrides: AWS_SCHEMA_OVERRIDES,

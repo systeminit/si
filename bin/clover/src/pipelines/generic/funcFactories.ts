@@ -1,5 +1,6 @@
 import { ActionFuncSpecKind } from "../../bindings/ActionFuncSpecKind.ts";
 import { FuncSpec } from "../../bindings/FuncSpec.ts";
+import { FuncArgumentSpec } from "../../bindings/FuncArgumentSpec.ts";
 import { createDefaultFuncSpec, FuncSpecInfo } from "../../spec/funcs.ts";
 import { CfHandlerKind } from "../types.ts";
 
@@ -83,4 +84,37 @@ export function createQualificationFuncs(
       },
     ])
   );
+}
+
+/**
+ * Generic implementation for creating attribute funcs from provider spec data.
+ * Attribute functions compute or query values based on input bindings.
+ * All providers use this same logic, just with different spec definitions.
+ *
+ * @param attributeSpecs - Map of function names to their specs
+ * @param bindings - Function argument bindings. Can be:
+ *   - FuncArgumentSpec[] - Same bindings for all functions
+ *   - Record<string, FuncArgumentSpec[]> - Custom bindings per function name
+ *   - (funcName: string) => FuncArgumentSpec[] - Generator function
+ */
+export function createAttributeFuncs(
+  attributeSpecs: Record<string, FuncSpecInfo>,
+  bindings:
+    | FuncArgumentSpec[]
+    | Record<string, FuncArgumentSpec[]>
+    | ((funcName: string) => FuncArgumentSpec[]),
+): FuncSpec[] {
+  return Object.entries(attributeSpecs).map(([funcName, spec]) => {
+    let funcBindings: FuncArgumentSpec[];
+
+    if (typeof bindings === "function") {
+      funcBindings = bindings(funcName);
+    } else if (Array.isArray(bindings)) {
+      funcBindings = bindings;
+    } else {
+      funcBindings = bindings[funcName] || [];
+    }
+
+    return createDefaultFuncSpec(funcName, spec, funcBindings);
+  });
 }

@@ -2,7 +2,10 @@ import type { JSONSchema } from "./draft_07.ts";
 import type { Extend } from "../extend.ts";
 import { ActionFuncSpecKind } from "../bindings/ActionFuncSpecKind.ts";
 import { FuncSpecInfo } from "../spec/funcs.ts";
-import { ExpandedPkgSpec } from "../spec/pkgs.ts";
+import {
+  ExpandedPkgSpec,
+  ExpandedSchemaVariantSpec,
+} from "../spec/pkgs.ts";
 import { ExpandedPropSpec, ExpandedPropSpecFor } from "../spec/props.ts";
 import { Provider } from "../types.ts";
 
@@ -288,6 +291,141 @@ export interface ProviderConfig {
   fetchSchema: (options: FetchSchemaOptions) => Promise<void>;
 
   /**
+   * Optional: Extra assets that are manually defined and not generated from API specs.
+   * These assets will be merged with auto-generated assets during the pipeline.
+   * Useful for adding custom resources that don't exist in the provider's API specs
+   * or for resources you want full manual control over.
+   *
+   * Extra assets are processed through the same pipeline as auto-generated assets,
+   * including overrides, so you can use the same override system to customize them.
+   */
+  extraAssets?: {
+    /**
+     * Function to load extra asset schema definitions
+     * @returns Array of schemas to be added to the provider
+     */
+    loadSchemas: () => Promise<SuperSchema[]> | SuperSchema[];
+
+    /**
+     * Optional: Function to classify properties for extra assets
+     * If not provided, falls back to the provider's classifyProperties function
+     */
+    classifyProperties?: (schema: SuperSchema) => {
+      createOnly: string[];
+      readOnly: string[];
+      writeOnly: string[];
+      primaryIdentifier: string[];
+    };
+
+    /**
+     * Optional: Custom function specs for specific extra assets
+     * Map of schema typeName to custom function specs
+     *
+     * This allows extra assets to have their own implementation of actions,
+     * qualifications, management functions, etc. that are different from
+     * the provider's default functions.
+     *
+     * Example:
+     * {
+     *   "AWS::ControlTower::LandingZone": {
+     *     actions: { "Create": {...}, "Update": {...}, "Delete": {...} },
+     *     management: { "Discover": {...} },
+     *     attribute: { "Query Value": {...} },
+     *     attributeBindings: [{ name: "domain", kind: "object", ... }]
+     *   }
+     * }
+     */
+    customFuncs?: Record<
+      string,
+      {
+        metadata?: {
+          displayName?: string;
+          category?: string;
+          color?: string;
+          description?: string;
+        };
+        actions?: Record<
+          string,
+          FuncSpecInfo & { actionKind: ActionFuncSpecKind }
+        >;
+        codeGeneration?: Record<string, FuncSpecInfo>;
+        management?: Record<
+          string,
+          FuncSpecInfo & { handlers: CfHandlerKind[] }
+        >;
+        qualification?: Record<string, FuncSpecInfo>;
+        attribute?: Record<string, FuncSpecInfo>;
+        /**
+         * Optional: Configuration for how attribute functions are attached to properties.
+         *
+         * This callback receives the variant (with resolved property uniqueIds) and returns
+         * a configuration object that specifies:
+         * 1. Which property each attribute function should be attached to
+         * 2. Which domain properties should be passed as inputs to the function
+         *
+         * The system will automatically:
+         * - Create FuncArgumentSpec bindings for the function
+         * - Attach the function to the specified property
+         * - Set up the property's inputs with correct prop_paths
+         * - Handle nested property paths using dot notation
+         *
+         * Property paths support:
+         * - Simple names: "region", "ImageId"
+         * - Nested object properties: "Config.MaxRetries", "Settings.Timeout.Seconds"
+         *
+         * Important notes about arrays:
+         * - For "attachTo": Use the array itself ("Tags") or a nested object property ("Config.Tags")
+         * - For "inputs": Can reference array element properties ("Tags.Key") to pass type information
+         * - Cannot attach functions to array element properties ("Tags.Key") as attachTo target
+         *
+         * @example
+         * ```typescript
+         * attributeFunctions: (variant) => {
+         *   return {
+         *     "Query AMI ID": {
+         *       attachTo: "ImageId",  // Property to attach function to
+         *       inputs: ["region", "UseMostRecent", "Owners", "Filters"]  // Simple properties
+         *     },
+         *     "Calculate Timeout": {
+         *       attachTo: "TotalTimeout",
+         *       inputs: ["Config.Timeout", "Config.MaxRetries"]  // Nested properties
+         *     }
+         *   };
+         * }
+         * ```
+         */
+        attributeFunctions?: (
+          variant: ExpandedSchemaVariantSpec,
+        ) => Record<
+          string,
+          {
+            attachTo: string;  // Name or path of the property to attach the function to
+            inputs: string[];  // Names or paths of domain properties to pass as inputs (supports dot notation)
+          }
+        >;
+        /**
+         * Optional: Callback to configure properties after variant creation.
+         *
+         * Use this to:
+         * - Add suggest sources/targets (suggestSource, suggestAsSourceFor)
+         * - Set up doc links and documentation
+         * - Move properties between domain/secrets/resource_value
+         * - Configure widget options and other UI settings
+         *
+         * @example
+         * ```typescript
+         * configureProperties: (variant) => {
+         *   const regionProp = variant.domain.entries.find(p => p.name === "region");
+         *   addPropSuggestSource(regionProp, { schema: "Region", prop: "/domain/region" });
+         * }
+         * ```
+         */
+        configureProperties?: (variant: ExpandedSchemaVariantSpec) => void;
+      }
+    >;
+  };
+
+  /**
    * Visual and descriptive metadata for the provider
    * Used for UI display and documentation
    */
@@ -326,6 +464,17 @@ export interface ProviderConfig {
     parentProp: ExpandedPropSpecFor["object" | "array" | "map"] | undefined,
     childName: string,
   ) => boolean;
+
+  /**
+   * Optional: Function to classify properties by mutability (createOnly, readOnly, etc.)
+   * If not provided, the pipeline will attempt to infer from schema metadata
+   */
+  classifyProperties?: (schema: SuperSchema) => {
+    createOnly: string[];
+    readOnly: string[];
+    writeOnly: string[];
+    primaryIdentifier: string[];
+  };
 
   /**
    * Required provider-specific asset and property overrides

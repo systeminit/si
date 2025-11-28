@@ -1,6 +1,9 @@
 import { loadCfDatabase } from "../../cfDb.ts";
 import { AWS_PROVIDER_CONFIG } from "./provider.ts";
-import { generateDefaultFuncsFromConfig } from "../generic/index.ts";
+import {
+  generateDefaultFuncsFromConfig,
+  loadExtraAssets,
+} from "../generic/index.ts";
 import { addDefaultPropsAndSockets } from "./pipeline-steps/addDefaultPropsAndSockets.ts";
 import { generateIntrinsicFuncs } from "./../generic/generateIntrinsicFuncs.ts";
 import { getExistingSpecs } from "../../specUpdates.ts";
@@ -55,11 +58,18 @@ export async function generateAwsSpecs(options: {
   // using cf
   specs = pruneCfAssets(specs);
 
+  // Load extra assets BEFORE generating asset funcs so they're included
+  // Extra assets skip AWS-specific transformations since they're manually defined
+  specs = await loadExtraAssets(specs, AWS_PROVIDER_CONFIG);  
+  
   // Apply provider-specific overrides
   specs = applyAssetOverrides(specs, AWS_PROVIDER_CONFIG);
 
   // These need everything to be complete
   specs = reorderProps(specs);
+
+  // Generate asset funcs (schemaVariantDefinition) for ALL assets
+  // This must happen after loadExtraAssets so extra assets are included
   specs = generateAssetFuncs(specs);
   specs = updateSchemaIdsForExistingSpecs(existing_specs, specs);
 
