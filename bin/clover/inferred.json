@@ -1553,6 +1553,13 @@
       "SPECIFIED_REGIONS"
     ]
   },
+  "The type of capability to create. Valid values are: ACK (AWS Controllers for Kubernetes, which lets you manage AWS resources directly from Kubernetes), ARGOCD (Argo CD for GitOps-based continuous delivery), or KRO (Kube Resource Orchestrator for composing and managing custom Kubernetes resources).": {
+    "enum": [
+      "ACK",
+      "ARGOCD",
+      "KRO"
+    ]
+  },
   "Specifies whether to create standby DB shard groups for the DB shard group. Valid values are the following:\n  +  0 - Creates a DB shard group without a standby DB shard group. This is the default value.\n  +  1 - Creates a DB shard group with a standby DB shard group in a different Availability Zone (AZ).\n  +  2 - Creates a DB shard group with two standby DB shard groups in two different AZs.": {
     "enum": [
       "0",
@@ -2927,6 +2934,11 @@
   "The type of resource for the publishing destination. Currently only Amazon S3 buckets are supported.": {
     "enum": [
       "S3"
+    ]
+  },
+  "Specifies how Kubernetes resources managed by the capability should be handled when the capability is deleted. Currently, the only supported value is RETAIN which retains all Kubernetes resources managed by the capability when the capability is deleted.": {
+    "enum": [
+      "RETAIN"
     ]
   },
   "The FHIR version. Only R4 version data is supported.": {
@@ -4349,6 +4361,9 @@
     "enum": null
   },
   "A unique name for the CIDR collection.": {
+    "enum": null
+  },
+  "A unique name for the capability. The name must be unique within your cluster and can contain alphanumeric characters, hyphens, and underscores.": {
     "enum": null
   },
   "A unique name for the environment.": {
@@ -8332,6 +8347,9 @@
   "The ARN of the IAM Identity Center instance to create the Studio application.": {
     "enum": null
   },
+  "The ARN of the IAM Identity Center instance to use for authentication.": {
+    "enum": null
+  },
   "The ARN of the IAM Identity Center instance used to integrate with OpenSearch Serverless": {
     "enum": null
   },
@@ -9086,6 +9104,9 @@
     "enum": null
   },
   "The Amazon Resource Name (ARN) of the IAM role that the browser uses to access resources.": {
+    "enum": null
+  },
+  "The Amazon Resource Name (ARN) of the IAM role that the capability uses to interact with AWS services. This role must have a trust policy that allows the EKS service principal to assume it, and it must have the necessary permissions for the capability type you're creating.": {
     "enum": null
   },
   "The Amazon Resource Name (ARN) of the IAM role that the proxy uses to access secrets in AWS Secrets Manager.": {
@@ -10759,6 +10780,9 @@
   "The Kubernetes namespace that the pod identity association is created for.": {
     "enum": null
   },
+  "The Kubernetes namespace where Argo CD resources will be created. If not specified, the default namespace is used.": {
+    "enum": null
+  },
   "The Kubernetes service account that the pod identity association is created for.": {
     "enum": null
   },
@@ -10853,6 +10877,9 @@
     "enum": null
   },
   "The Region code for the accepter VPC, if the accepter VPC is located in a Region other than the Region in which you make the request.": {
+    "enum": null
+  },
+  "The Region where your IAM Identity Center instance is located.": {
     "enum": null
   },
   "The Resolver endpoint IP address type.": {
@@ -14099,6 +14126,9 @@
     "enum": null
   },
   "The name of the Database that the Table resides in.": {
+    "enum": null
+  },
+  "The name of the EKS cluster where you want to create the capability.": {
     "enum": null
   },
   "The name of the Elastic Beanstalk application that is associated with this application version. ": {
