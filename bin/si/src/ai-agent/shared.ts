@@ -11,8 +11,55 @@ import { ensureDir } from "@std/fs";
 import { join } from "@std/path";
 import type { Logger } from "../logger.ts";
 
+/** SI Agent Context template - lazy loaded to avoid top-level await in tests */
+let _cachedTemplate: string | null = null;
+
+async function getAgentContextTemplate(): Promise<string> {
+  if (_cachedTemplate) {
+    return _cachedTemplate;
+  }
+
+  // Try multiple paths to find the template
+  const possiblePaths = [
+    // When running from source
+    new URL("../../data/templates/SI_Agent_Context.md.tmpl", import.meta.url).pathname,
+    // Relative to current working directory
+    join(Deno.cwd(), "data/templates/SI_Agent_Context.md.tmpl"),
+    // Relative to binary location
+    join(Deno.execPath(), "..", "data/templates/SI_Agent_Context.md.tmpl"),
+  ];
+
+  for (const path of possiblePaths) {
+    try {
+      _cachedTemplate = await Deno.readTextFile(path);
+      return _cachedTemplate;
+    } catch {
+      // Try next path
+    }
+  }
+
+  // Fallback: minimal template
+  _cachedTemplate = `# System Initiative Assistant Guide
+
+This is a repo for working with System Initiative infrastructure through the MCP server.
+
+## Interacting with System Initiative
+
+The only way to interact with System Initiative is through the system-initiative MCP server.
+All infrastructure operations should use the MCP tools.
+
+## Available MCP Tools
+
+Use MCP tools to discover schemas, create components, and manage infrastructure.
+
+For full documentation, see: https://docs.systeminit.com
+`;
+
+  return _cachedTemplate;
+}
+
 /** Supported AI coding tools */
-export type AiTool = "claude";
+export type AiTool = "claude" | "codex";
 
 /** Configuration for the AI Agent */
 export interface AiAgentConfig {
@@ -29,6 +76,7 @@ export const DEFAULT_CONFIG: Omit<AiAgentConfig, "apiToken"> = {
 /** Tool-specific commands */
 export const TOOL_COMMANDS: Record<AiTool, string> = {
   claude: "claude",
+  codex: "codex",
 };
 
 /** MCP server configuration structure */
@@ -72,7 +120,7 @@ function migrateDockerConfig(
       "system-initiative": {
         type: "stdio",
         command: newCommand,
-        args: ["mcp-server", "stdio"],
+        args: ["ai-agent", "stdio"],
         env: {
           SI_API_TOKEN: apiToken,
         },
@@ -180,7 +228,7 @@ export async function createMcpConfig(
           "system-initiative": {
             type: "stdio",
             command: siBinaryPath,
-            args: ["mcp-server", "stdio"],
+            args: ["ai-agent", "stdio"],
             env: {
               SI_API_TOKEN: apiToken,
             },
@@ -201,7 +249,7 @@ export async function createMcpConfig(
         "system-initiative": {
           type: "stdio",
           command: siBinaryPath,
-          args: ["mcp-server", "stdio"],
+          args: ["ai-agent", "stdio"],
           env: {
             SI_API_TOKEN: apiToken,
           },
@@ -243,7 +291,7 @@ export async function createClaudeSettings(targetDir: string): Promise<string> {
         "mcp__system-initiative__component-enqueue-action",
         "mcp__system-initiative__component-discover",
         "mcp__system-initiative__component-restore",
-        "mcp__system-initiative__component-update",
+        "mcp__system-initiative__component-import",
         "mcp__system-initiative__generate-si-url",
         "mcp__system-initiative__upgrade-components",
         "mcp__system-initiative__template-generate",
@@ -266,21 +314,191 @@ export async function createClaudeSettings(targetDir: string): Promise<string> {
 export async function createClaudeMd(targetDir: string): Promise<string> {
   const claudeMdPath = join(targetDir, "CLAUDE.md");
 
-  // Get the path to the bundled CLAUDE.md template file
-  // When running from source: bin/si/data/templates/Claude.md.tmpl
-  // When compiled: the file is included via --include flag and accessible via import.meta.url
-  const templatePath = new URL(
-    "../data/templates/Claude.md.tmpl",
-    import.meta.url,
-  ).pathname;
-
-  // Read the template content
-  const content = await Deno.readTextFile(templatePath);
+  // Load the SI Agent Context template (shared with Codex)
+  const content = await getAgentContextTemplate();
 
   // Write to target directory
   await Deno.writeTextFile(claudeMdPath, content);
 
   return claudeMdPath;
+}
+
+/**
+ * Get the Codex config directory
+ */
+function getCodexConfigDir(): string {
+  // deno-lint-ignore si-rules/no-deno-env-get
+  const home = Deno.env.get("HOME") || Deno.env.get("USERPROFILE");
+  if (!home) {
+    throw new Error("Could not determine home directory");
+  }
+  return join(home, ".codex");
+}
+
+/**
+ * Get the Codex config file path
+ */
+function getCodexConfigPath(): string {
+  return join(getCodexConfigDir(), "config.toml");
+}
+
+/**
+ * Escape a string for TOML format
+ */
+function escapeTomlString(str: string): string {
+  return str
+    .replace(/\\/g, "\\\\")
+    .replace(/"/g, '\\"')
+    .replace(/\n/g, "\\n")
+    .replace(/\r/g, "\\r")
+    .replace(/\t/g, "\\t");
+}
+
+/**
+ * Generate TOML configuration for an MCP server
+ */
+function generateMcpServerToml(
+  serverName: string,
+  command: string,
+  args: string[],
+  env: Record<string, string>,
+  envVars: string[],
+  enabledTools?: string[],
+): string {
+  let toml = `\n[mcp_servers.${serverName}]\n`;
+  toml += `command = "${escapeTomlString(command)}"\n`;
+
+  // Format args array
+  toml += `args = [`;
+  if (args.length > 0) {
+    toml += args.map((arg) => `"${escapeTomlString(arg)}"`).join(", ");
+  }
+  toml += `]\n`;
+
+  // Format env object (for hardcoded values)
+  if (Object.keys(env).length > 0) {
+    toml += `env = { `;
+    const envEntries = Object.entries(env).map(
+      ([key, value]) => `${key} = "${escapeTomlString(value)}"`,
+    );
+    toml += envEntries.join(", ");
+    toml += ` }\n`;
+  }
+
+  // Format env_vars array (for pass-through from shell environment)
+  if (envVars.length > 0) {
+    toml += `env_vars = [`;
+    toml += envVars.map((varName) => `"${varName}"`).join(", ");
+    toml += `]\n`;
+  }
+
+  // Add enabled_tools if specified
+  if (enabledTools && enabledTools.length > 0) {
+    toml += `enabled_tools = [`;
+    toml += enabledTools.map((tool) => `"${escapeTomlString(tool)}"`).join(
+      ", ",
+    );
+    toml += `]\n`;
+  }
+
+  return toml;
+}
+
+/**
+ * Create or update the Codex config.toml file with SI MCP server
+ * Codex uses TOML format at ~/.codex/config.toml
+ */
+export async function createCodexConfig(
+  apiToken: string,
+  targetDir?: string,
+): Promise<string> {
+  const codexConfigDir = getCodexConfigDir();
+  await ensureDir(codexConfigDir);
+
+  const configPath = getCodexConfigPath();
+  const siBinaryPath = Deno.execPath();
+
+  // List of SI MCP tools to enable (same as Claude permissions)
+  const enabledSiTools = [
+    "schema-find",
+    "schema-attributes-list",
+    "schema-attributes-documentation",
+    "schema-create-edit-get",
+    "validate-credentials",
+    "change-set-list",
+    "change-set-create",
+    "action-list",
+    "action-update-status",
+    "func-run-get",
+    "func-create-edit-get",
+    "component-list",
+    "component-get",
+    "component-create",
+    "component-update",
+    "component-restore",
+    "component-enqueue-action",
+    "component-discover",
+    "component-import",
+    "generate-si-url",
+    "upgrade-components",
+    "template-generate",
+    "template-list",
+    "template-run",
+  ];
+
+  // Generate the SI MCP server configuration
+  // NOTE: Unlike Claude which uses project-level .mcp.json, Codex uses
+  // a global ~/.codex/config.toml. To support workspace-specific tokens:
+  // 1. Create a project-level .env file with SI_API_TOKEN
+  // 2. Users source it before running codex: `source .codex-env && codex`
+  // 3. env_vars tells Codex to pass through SI_API_TOKEN from shell environment
+  const siMcpConfig = generateMcpServerToml(
+    "system-initiative",
+    siBinaryPath,
+    ["ai-agent", "stdio"], // Correct command: ai-agent stdio, not mcp-server stdio
+    // Don't hardcode token - let it come from environment
+    // This allows different workspaces to use different tokens
+    {},
+    ["SI_API_TOKEN"], // Tell Codex to pass through this env var from shell
+    enabledSiTools, // Explicitly allow these SI tools
+  );
+
+  // Create project-level .env file for workspace-specific token
+  if (targetDir) {
+    try {
+      const envPath = join(targetDir, ".codex-env");
+      const envContent = `# System Initiative API Token for this workspace
+# Source this file before running Codex to use workspace-specific token:
+#   source .codex-env && codex
+export SI_API_TOKEN="${apiToken}"
+`;
+      await Deno.writeTextFile(envPath, envContent);
+    } catch {
+      // Silently fail if we can't create .env file
+    }
+  }
+
+  return configPath;
+}
+
+/**
+ * Create the AGENTS.md file with System Initiative context for Codex
+ * This provides Codex with context about working with SI infrastructure
+ * Codex reads AGENTS.md from the project root for project-specific instructions
+ */
+export async function createAgentsMd(targetDir: string): Promise<string> {
+  // Ensure target directory exists
+  await ensureDir(targetDir);
+
+  const agentsMdPath = join(targetDir, "AGENTS.md");
+
+  // Load the SI Agent Context template (shared with Claude)
+  const content = await getAgentContextTemplate();
+
+  // Write to target directory as AGENTS.md (Codex's project context file)
+  await Deno.writeTextFile(agentsMdPath, content);
+
+  return agentsMdPath;
 }
 
 /**

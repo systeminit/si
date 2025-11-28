@@ -376,7 +376,7 @@ function buildAiAgentCommand() {
         )
         .option(
           "--tool <name:string>",
-          "AI tool to use: claude (default), cursor, windsurf, or none",
+          "AI tool to use: claude (default), codex",
         )
         .action(async (options) => {
           await callAiAgentInit(Context.instance(), options as AiAgentInitOptions);
