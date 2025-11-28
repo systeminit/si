@@ -73,7 +73,7 @@ export function actionListTool(server: McpServer) {
         const siApi = new ActionsApi(apiConfig);
         try {
           const response = await siApi.getActions({
-            workspaceId: WORKSPACE_ID!,
+            workspaceId: WORKSPACE_ID,
             changeSetId: changeSetId,
           });
           const actionList: Array<ActionList> = [];
@@ -85,7 +85,7 @@ export function actionListTool(server: McpServer) {
               try {
                 const compApi = new ComponentsApi(apiConfig);
                 const comp = await compApi.getComponent({
-                  workspaceId: WORKSPACE_ID!,
+                  workspaceId: WORKSPACE_ID,
                   changeSetId,
                   componentId: action.componentId,
                 });
@@ -94,7 +94,7 @@ export function actionListTool(server: McpServer) {
                 try {
                   const schemaApi = new SchemasApi(apiConfig);
                   const schema = await schemaApi.getSchema({
-                    workspaceId: WORKSPACE_ID!,
+                    workspaceId: WORKSPACE_ID,
                     changeSetId,
                     schemaId: compSchemaId,
                   });

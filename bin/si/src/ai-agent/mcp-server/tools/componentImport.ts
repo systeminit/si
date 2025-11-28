@@ -84,14 +84,14 @@ export function componentImportTool(server: McpServer) {
         const siFuncsApi = new FuncsApi(apiConfig);
         try {
           const findSchemaResponse = await siSchemasApi.findSchema({
-            workspaceId: WORKSPACE_ID!,
+            workspaceId: WORKSPACE_ID,
             changeSetId: changeSetId,
             schema: schemaName,
           });
           const schemaId = findSchemaResponse.data.schemaId;
 
           const response = await siApi.createComponent({
-            workspaceId: WORKSPACE_ID!,
+            workspaceId: WORKSPACE_ID,
             changeSetId: changeSetId,
             createComponentV1Request: {
               name: resourceId,
@@ -108,7 +108,7 @@ export function componentImportTool(server: McpServer) {
 
           // Now get the variantFuncs so we can decide on the import function
           const defaultVariantResponse = await siSchemasApi.getDefaultVariant({
-            workspaceId: WORKSPACE_ID!,
+            workspaceId: WORKSPACE_ID,
             changeSetId: changeSetId,
             schemaId,
           });
@@ -128,7 +128,7 @@ export function componentImportTool(server: McpServer) {
           }
 
           const importFuncResponse = await siFuncsApi.getFunc({
-            workspaceId: WORKSPACE_ID!,
+            workspaceId: WORKSPACE_ID,
             changeSetId: changeSetId,
             funcId: importFunc.id,
           });
@@ -137,7 +137,7 @@ export function componentImportTool(server: McpServer) {
 
           try {
             const importResponse = await siApi.executeManagementFunction({
-              workspaceId: WORKSPACE_ID!,
+              workspaceId: WORKSPACE_ID,
               changeSetId,
               componentId: result["componentId"],
               executeManagementFunctionV1Request: {
@@ -160,7 +160,7 @@ export function componentImportTool(server: McpServer) {
               }
               try {
                 const status = await mgmtApi.getManagementFuncRunState({
-                  workspaceId: WORKSPACE_ID!,
+                  workspaceId: WORKSPACE_ID,
                   changeSetId,
                   managementFuncJobStateId:
                     importResponse.data.managementFuncJobStateId,

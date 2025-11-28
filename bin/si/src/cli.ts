@@ -171,7 +171,14 @@ function buildCommand() {
     )
     .globalOption("--no-color", "Disable colored output")
     .globalAction(async (options) => {
-      const userData = jwt.getUserDataFromToken(options.apiToken);
+      let userData: ReturnType<typeof jwt.getUserDataFromToken>;
+      try {
+        userData = jwt.getUserDataFromToken(options.apiToken);
+      } catch (error) {
+        // If token decode fails, just continue without user data
+        // This allows MCP server commands to run even with invalid tokens in env
+        userData = undefined;
+      }
       await Context.init({ ...options, userData });
     })
     .action(function () {
@@ -374,7 +381,7 @@ function buildAiAgentCommand() {
         )
         .option(
           "--tool <name:string>",
-          "AI tool to use: claude (default), cursor, windsurf, or none",
+          "AI tool to use: claude (default), codex",
         )
         .action(async (options) => {
           await callAiAgentInit(Context.instance(), options as AiAgentInitOptions);
@@ -418,6 +425,7 @@ function buildAiAgentCommand() {
         .description("Run MCP server in stdio mode (for external AI tools to connect)")
         .action(async () => {
           // Dynamic import to avoid loading MCP server code until needed
+          // Token validation happens in si_client.ts when modules are loaded
           const { start_stdio } = await import("./ai-agent/mcp-server/stdio_transport.ts");
           const { createServer } = await import("./ai-agent/mcp-server/server.ts");
           const { analytics } = await import("./ai-agent/mcp-server/analytics.ts");

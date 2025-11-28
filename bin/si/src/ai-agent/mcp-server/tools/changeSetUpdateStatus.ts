@@ -61,7 +61,7 @@ export function changeSetUpdateTool(server: McpServer) {
         const siApi = new ChangeSetsApi(apiConfig);
         try {
           const response = await siApi.getChangeSet({
-            workspaceId: WORKSPACE_ID!,
+            workspaceId: WORKSPACE_ID,
             changeSetId,
           });
           if (response.data.changeSet.isHead) {
@@ -77,12 +77,12 @@ export function changeSetUpdateTool(server: McpServer) {
         try {
           // Confirm the change set you want to manipulate isn't HEAD
           const response = await siApi.requestApproval({
-            workspaceId: WORKSPACE_ID!,
+            workspaceId: WORKSPACE_ID,
             changeSetId,
           });
           try {
             const newResponse = await siApi.getChangeSet({
-              workspaceId: WORKSPACE_ID!,
+              workspaceId: WORKSPACE_ID,
               changeSetId,
             });
             if (newResponse.data.changeSet.status == "NeedsApproval") {

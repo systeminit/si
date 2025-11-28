@@ -105,7 +105,7 @@ export function execDebugFunc(server: McpServer) {
 
         const debugFuncsApi = new DebugFuncsApi(apiConfig);
         const execFuncRequest: DebugFuncsApiExecDebugFuncRequest = {
-          workspaceId: WORKSPACE_ID!,
+          workspaceId: WORKSPACE_ID,
           changeSetId,
           execDebugFuncV1Request: {
             code: debugFunc,
@@ -131,7 +131,7 @@ export function execDebugFunc(server: McpServer) {
 
           while (pollCount < MAX_POLLS) {
             const jobStateRequest: DebugFuncsApiGetDebugFuncStateRequest = {
-              workspaceId: WORKSPACE_ID!,
+              workspaceId: WORKSPACE_ID,
               changeSetId,
               debugFuncJobStateId,
             };

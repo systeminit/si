@@ -79,14 +79,14 @@ export function templateRunTool(server: McpServer) {
           const siSchemasApi = new SchemasApi(apiConfig);
 
           const findSchemaResponse = await siSchemasApi.findSchema({
-            workspaceId: WORKSPACE_ID!,
+            workspaceId: WORKSPACE_ID,
             changeSetId,
             schema: schemaName,
           });
           const schemaId = findSchemaResponse.data.schemaId;
 
           const defaultVariantResponse = await siSchemasApi.getDefaultVariant({
-            workspaceId: WORKSPACE_ID!,
+            workspaceId: WORKSPACE_ID,
             changeSetId,
             schemaId,
           });
@@ -156,7 +156,7 @@ export function templateRunTool(server: McpServer) {
 
           const createComponentResponse = await siComponentsApi.createComponent(
             {
-              workspaceId: WORKSPACE_ID!,
+              workspaceId: WORKSPACE_ID,
               changeSetId: changeSetId,
               createComponentV1Request: {
                 name: templateName,
@@ -169,7 +169,7 @@ export function templateRunTool(server: McpServer) {
           const managementFunction = { function: "Run Template" };
           const executeResponse = await siComponentsApi
             .executeManagementFunction({
-              workspaceId: WORKSPACE_ID!,
+              workspaceId: WORKSPACE_ID,
               changeSetId,
               componentId: createComponentResponse.data.component.id,
               executeManagementFunctionV1Request: {

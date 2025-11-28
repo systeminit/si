@@ -98,14 +98,14 @@ export function componentDiscoverTool(server: McpServer) {
         const siFuncsApi = new FuncsApi(apiConfig);
         try {
           const findSchemaResponse = await siSchemasApi.findSchema({
-            workspaceId: WORKSPACE_ID!,
+            workspaceId: WORKSPACE_ID,
             changeSetId: changeSetId,
             schema: schemaName,
           });
           const schemaId = findSchemaResponse.data.schemaId;
 
           const discoverTemplateResponse = await siApi.createComponent({
-            workspaceId: WORKSPACE_ID!,
+            workspaceId: WORKSPACE_ID,
             changeSetId: changeSetId,
             createComponentV1Request: {
               name: `Discover ${schemaName} - Temporary`,
@@ -121,7 +121,7 @@ export function componentDiscoverTool(server: McpServer) {
 
           // Now get the variantFuncs so we can decide on the discovery function
           let defaultVariantResponse = await siSchemasApi.getDefaultVariant({
-            workspaceId: WORKSPACE_ID!,
+            workspaceId: WORKSPACE_ID,
             changeSetId: changeSetId,
             schemaId,
           });
@@ -136,7 +136,7 @@ export function componentDiscoverTool(server: McpServer) {
               // Try again
               attempts++;
               defaultVariantResponse = await siSchemasApi.getDefaultVariant({
-                workspaceId: WORKSPACE_ID!,
+                workspaceId: WORKSPACE_ID,
                 changeSetId: changeSetId,
                 schemaId,
               });
@@ -169,7 +169,7 @@ export function componentDiscoverTool(server: McpServer) {
           }
 
           const discoverFuncResponse = await siFuncsApi.getFunc({
-            workspaceId: WORKSPACE_ID!,
+            workspaceId: WORKSPACE_ID,
             changeSetId: changeSetId,
             funcId: discoverFunc.id,
           });
@@ -179,12 +179,12 @@ export function componentDiscoverTool(server: McpServer) {
           // Lets dequeue any actions created for this component
           const actionsApi = new ActionsApi(apiConfig);
           const queuedDiscoveryComponentActions = await actionsApi.getActions({
-            workspaceId: WORKSPACE_ID!,
+            workspaceId: WORKSPACE_ID,
             changeSetId: changeSetId,
           });
           for (const action of queuedDiscoveryComponentActions.data.actions) {
             await actionsApi.cancelAction({
-              workspaceId: WORKSPACE_ID!,
+              workspaceId: WORKSPACE_ID,
               changeSetId: changeSetId,
               actionId: action.id,
             });
@@ -192,7 +192,7 @@ export function componentDiscoverTool(server: McpServer) {
 
           try {
             const discoverResponse = await siApi.executeManagementFunction({
-              workspaceId: WORKSPACE_ID!,
+              workspaceId: WORKSPACE_ID,
               changeSetId,
               componentId: discoverTemplateResult["componentId"],
               executeManagementFunctionV1Request: {
@@ -217,7 +217,7 @@ export function componentDiscoverTool(server: McpServer) {
               }
               try {
                 const status = await mgmtApi.getManagementFuncRunState({
-                  workspaceId: WORKSPACE_ID!,
+                  workspaceId: WORKSPACE_ID,
                   changeSetId,
                   managementFuncJobStateId:
                     discoverResponse.data.managementFuncJobStateId,
@@ -258,7 +258,7 @@ export function componentDiscoverTool(server: McpServer) {
             } else {
               // Let's cleanup the discovery component now that the management function is successful
               await siApi.deleteComponent({
-                workspaceId: WORKSPACE_ID!,
+                workspaceId: WORKSPACE_ID,
                 changeSetId: changeSetId,
                 componentId: discoverTemplateResult["componentId"],
               });

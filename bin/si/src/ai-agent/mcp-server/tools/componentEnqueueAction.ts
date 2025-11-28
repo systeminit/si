@@ -61,7 +61,7 @@ export function componentEnqueueActionTool(server: McpServer) {
         const siApi = new ComponentsApi(apiConfig);
         try {
           const response = await siApi.addAction({
-            workspaceId: WORKSPACE_ID!,
+            workspaceId: WORKSPACE_ID,
             changeSetId: changeSetId,
             componentId,
             addActionV1Request: {

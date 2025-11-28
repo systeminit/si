@@ -57,7 +57,7 @@ export function changeSetCreateTool(server: McpServer) {
         const siApi = new ChangeSetsApi(apiConfig);
         try {
           const response = await siApi.createChangeSet({
-            workspaceId: WORKSPACE_ID!,
+            workspaceId: WORKSPACE_ID,
             createChangeSetV1Request: { changeSetName },
           });
           return successResponse(

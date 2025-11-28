@@ -73,7 +73,7 @@ export function actionUpdateTool(server: McpServer) {
           // Confirm the change set you want to manipulate isn't HEAD
           if (newStatus == "on-hold") {
             const response = await siApi.putOnHold({
-              workspaceId: WORKSPACE_ID!,
+              workspaceId: WORKSPACE_ID,
               changeSetId,
               actionId,
             });
@@ -82,7 +82,7 @@ export function actionUpdateTool(server: McpServer) {
             );
           } else if (newStatus == "off-hold" || newStatus == "retry") {
             const response = await siApi.retryAction({
-              workspaceId: WORKSPACE_ID!,
+              workspaceId: WORKSPACE_ID,
               changeSetId,
               actionId,
             });
@@ -91,7 +91,7 @@ export function actionUpdateTool(server: McpServer) {
             );
           } else if (newStatus == "remove") {
             const response = await siApi.cancelAction({
-              workspaceId: WORKSPACE_ID!,
+              workspaceId: WORKSPACE_ID,
               changeSetId,
               actionId,
             });

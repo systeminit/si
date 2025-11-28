@@ -62,7 +62,7 @@ export function componentRestoreTool(server: McpServer) {
       const siApi = new ComponentsApi(apiConfig);
       try {
         await siApi.restoreComponent({
-          workspaceId: WORKSPACE_ID!,
+          workspaceId: WORKSPACE_ID,
           changeSetId: changeSetId,
           componentId,
         });

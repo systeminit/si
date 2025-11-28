@@ -231,7 +231,7 @@ export function schemaCreateEditGetTool(server: McpServer) {
 
             // first we need to make sure we have an unlocked schema variant
             const responseUnlock = await siSchemasApi.unlockSchema({
-              workspaceId: WORKSPACE_ID!,
+              workspaceId: WORKSPACE_ID,
               changeSetId,
               schemaId,
             });
@@ -240,7 +240,7 @@ export function schemaCreateEditGetTool(server: McpServer) {
 
             // then we need to get the info about that unlocked variant
             const responseGetVariant = await siSchemasApi.getVariant({
-              workspaceId: WORKSPACE_ID!,
+              workspaceId: WORKSPACE_ID,
               changeSetId,
               schemaId,
               schemaVariantId,
@@ -250,7 +250,7 @@ export function schemaCreateEditGetTool(server: McpServer) {
 
             // then we need to get the current asset func code
             const responseGetFunc = await siFuncsApi.getFunc({
-              workspaceId: WORKSPACE_ID!,
+              workspaceId: WORKSPACE_ID,
               changeSetId,
               funcId: assetFuncId,
             });
@@ -295,7 +295,7 @@ export function schemaCreateEditGetTool(server: McpServer) {
 
               // and finally we actually call the endpoint to edit the unlocked schema variant!
               await siSchemasApi.updateSchemaVariant({
-                workspaceId: WORKSPACE_ID!,
+                workspaceId: WORKSPACE_ID,
                 changeSetId,
                 schemaId,
                 schemaVariantId,
@@ -319,7 +319,7 @@ export function schemaCreateEditGetTool(server: McpServer) {
 
             // next we call the endpoint to create a new schema
             const responseCreate = await siSchemasApi.createSchema({
-              workspaceId: WORKSPACE_ID!,
+              workspaceId: WORKSPACE_ID,
               changeSetId: changeSetId,
               createSchemaV1Request: {
                 ...createOrEditSchemaV1Request,

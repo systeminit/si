@@ -61,7 +61,7 @@ export function changeSetAbandonTool(server: McpServer) {
         const siApi = new ChangeSetsApi(apiConfig);
         try {
           const response = await siApi.getChangeSet({
-            workspaceId: WORKSPACE_ID!,
+            workspaceId: WORKSPACE_ID,
             changeSetId,
           });
           if (response.data.changeSet.isHead) {
@@ -76,7 +76,7 @@ export function changeSetAbandonTool(server: McpServer) {
 
         try {
           const response = await siApi.abandonChangeSet({
-            workspaceId: WORKSPACE_ID!,
+            workspaceId: WORKSPACE_ID,
             changeSetId,
           });
           return successResponse(response.data);

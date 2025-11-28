@@ -117,7 +117,7 @@ export function generateSiUrlTool(server: McpServer) {
         const siApi = new ComponentsApi(apiConfig);
         try {
           await siApi.getComponent({
-            workspaceId: WORKSPACE_ID!,
+            workspaceId: WORKSPACE_ID,
             changeSetId: changeSetId,
             componentId,
           });
@@ -182,6 +182,6 @@ function createLinkConfig(): LinkConfig {
 
   return {
     baseUrl: webUrl,
-    workspaceId: WORKSPACE_ID!,
+    workspaceId: WORKSPACE_ID,
   };
 }

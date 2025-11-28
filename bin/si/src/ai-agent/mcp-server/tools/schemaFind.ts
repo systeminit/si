@@ -96,7 +96,7 @@ export function schemaFindTool(server: McpServer) {
           if (!isValid(schemaNameOrId)) {
             try {
               const response = await siApi.findSchema({
-                workspaceId: WORKSPACE_ID!,
+                workspaceId: WORKSPACE_ID,
                 changeSetId: changeSetId!,
                 schema: schemaNameOrId,
               });
@@ -115,7 +115,7 @@ export function schemaFindTool(server: McpServer) {
           }
 
           const response = await siApi.getDefaultVariant({
-            workspaceId: WORKSPACE_ID!,
+            workspaceId: WORKSPACE_ID,
             changeSetId: changeSetId!,
             schemaId: schemaId,
           });

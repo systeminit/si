@@ -173,7 +173,7 @@ export function templateGenerateTool(server: McpServer) {
             templateComponentIds = componentIds;
           } else if (!hasListOfIds && searchQuery) {
             const searchResponse = await siSearchApi.search({
-              workspaceId: WORKSPACE_ID!,
+              workspaceId: WORKSPACE_ID,
               changeSetId: changeSetId,
               q: searchQuery,
             });
@@ -198,7 +198,7 @@ export function templateGenerateTool(server: McpServer) {
           }
 
           const response = await siComponentsApi.generateTemplate({
-            workspaceId: WORKSPACE_ID!,
+            workspaceId: WORKSPACE_ID,
             changeSetId: changeSetId,
             generateTemplateV1Request: {
               componentIds: templateComponentIds,
@@ -208,7 +208,7 @@ export function templateGenerateTool(server: McpServer) {
           });
 
           const schemaResponse = await siSchemasApi.findSchema({
-            workspaceId: WORKSPACE_ID!,
+            workspaceId: WORKSPACE_ID,
             changeSetId: changeSetId,
             schemaId: response.data.schemaId,
           });

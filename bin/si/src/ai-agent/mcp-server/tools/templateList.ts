@@ -79,7 +79,7 @@ export function templateListTool(server: McpServer) {
           const schemasApi = new SchemasApi(apiConfig);
 
           const response = await schemasApi.searchSchemas({
-            workspaceId: WORKSPACE_ID!,
+            workspaceId: WORKSPACE_ID,
             changeSetId: changeSetId,
             searchSchemasV1Request: {
               category: "Templates",

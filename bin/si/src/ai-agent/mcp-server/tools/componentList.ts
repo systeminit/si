@@ -15,6 +15,7 @@ import {
   successResponse,
   withAnalytics,
 } from "./commonBehavior.ts";
+import { applyFilters } from "./componentFilters.ts";
 
 const name = "component-list";
 const title = "List components";
@@ -125,55 +126,6 @@ export function componentListTool(server: McpServer) {
   );
 }
 
-export function applyFilters(
-  components: Array<ListComponents["data"][number]>,
-  filters?: {
-    logic?: "AND" | "OR";
-    filterGroups: Array<{
-      responseField: "componentName" | "componentId" | "schemaName";
-      logic?: "AND" | "OR";
-      regularExpressions: string[];
-    }>;
-  },
-): Array<ListComponents["data"][number]> {
-  if (!filters || !filters.filterGroups || filters.filterGroups.length === 0) {
-    return components;
-  }
-
-  const betweenGroupsLogic = filters.logic || "AND";
-
-  return components.filter((component) => {
-    const groupResults = filters.filterGroups.map((filterGroup) => {
-      const fieldValue = component[filterGroup.responseField];
-      const withinGroupLogic = filterGroup.logic || "OR";
-
-      const regexResults = filterGroup.regularExpressions.map((regexStr) => {
-        try {
-          const regex = new RegExp(regexStr);
-          return regex.test(fieldValue);
-        } catch (error) {
-          // If regex is invalid, skip this regex
-          console.warn(`Invalid regex pattern: ${regexStr}`, error);
-          return false;
-        }
-      });
-
-      // Apply logic within the filter group
-      if (withinGroupLogic === "AND") {
-        return regexResults.every((result) => result);
-      } else {
-        return regexResults.some((result) => result);
-      }
-    });
-
-    // Apply logic between filter groups
-    if (betweenGroupsLogic === "AND") {
-      return groupResults.every((result) => result);
-    } else {
-      return groupResults.some((result) => result);
-    }
-  });
-}
 
 async function listAllComponents(
   apiConfig: Configuration,
@@ -188,14 +140,14 @@ async function listAllComponents(
   let args: ComponentsApiListComponentsRequest;
   if (cursor) {
     args = {
-      workspaceId: WORKSPACE_ID!,
+      workspaceId: WORKSPACE_ID,
       changeSetId: changeSetId,
       limit: "300",
       cursor,
     };
   } else {
     args = {
-      workspaceId: WORKSPACE_ID!,
+      workspaceId: WORKSPACE_ID,
       changeSetId: changeSetId,
       limit: "300",
     };
