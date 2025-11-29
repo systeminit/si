@@ -46,6 +46,100 @@ export function normalizeOnlyProperties(props: string[] | undefined): string[] {
   return newProps;
 }
 
+/**
+ * SI's property path separator - vertical tab character.
+ * Used to construct hierarchical property paths like "root\x0Bdomain\x0BpropertyName"
+ */
+export const PROP_PATH_SEPARATOR = "\x0B";
+
+/**
+ * Builds a property path string by joining parts with SI's separator.
+ *
+ * @param parts - Array of path segments (e.g., ["root", "domain", "propertyName"])
+ * @returns Property path string with parts joined by \x0B
+ *
+ * @example
+ * ```typescript
+ * buildPropPath(["root", "domain", "region"])
+ * // Returns: "root\x0Bdomain\x0Bregion"
+ * ```
+ */
+export function buildPropPath(parts: string[]): string {
+  return parts.join(PROP_PATH_SEPARATOR);
+}
+
+/**
+ * Creates a helper function to find properties by name or path within a schema variant.
+ * Supports both simple names and nested paths using dot notation.
+ *
+ * @param variant - The expanded schema variant containing domain entries
+ * @param schemaName - Optional schema name for better error messages
+ * @returns A function that takes a property name/path and returns the property or throws
+ *
+ * @example
+ * ```typescript
+ * const findProp = createPropFinder(variant, "AWS::EC2::AMI");
+ * const region = findProp("region");                    // Simple property
+ * const timeout = findProp("Config.Timeout");           // Nested property
+ * const filterName = findProp("Filters.Name");          // Array element property
+ * ```
+ */
+export function createPropFinder(
+  variant: ExpandedSchemaVariantSpec,
+  schemaName?: string,
+) {
+  return (path: string): any => {
+    const parts = path.split(".");
+    const schemaInfo = schemaName ? ` in ${schemaName}` : "";
+
+    // Find the root property
+    let currentProp: any = variant.domain.entries.find((p) => p.name === parts[0]);
+    if (!currentProp) {
+      throw new Error(
+        `Property ${parts[0]} not found${schemaInfo} domain. Available properties: ${
+          variant.domain.entries.map((p) => p.name).join(", ")
+        }`,
+      );
+    }
+
+    // Traverse nested properties if path has dots
+    for (let i = 1; i < parts.length; i++) {
+      const partName = parts[i];
+
+      if (currentProp.kind === "object" && currentProp.entries) {
+        const nextProp: any = currentProp.entries.find((e: any) => e.name === partName);
+        if (!nextProp) {
+          throw new Error(
+            `Property ${partName} not found in ${parts.slice(0, i).join(".")}${schemaInfo}. ` +
+            `Available properties: ${currentProp.entries.map((e: any) => e.name).join(", ")}`,
+          );
+        }
+        currentProp = nextProp;
+      } else if (currentProp.kind === "array" && currentProp.typeProp) {
+        if (currentProp.typeProp.kind === "object" && currentProp.typeProp.entries) {
+          const nextProp: any = currentProp.typeProp.entries.find((e: any) => e.name === partName);
+          if (!nextProp) {
+            throw new Error(
+              `Property ${partName} not found in array element type for ${parts.slice(0, i).join(".")}${schemaInfo}`,
+            );
+          }
+          currentProp = nextProp;
+        } else {
+          throw new Error(
+            `Cannot traverse into ${partName} - array element is not an object in ${parts.slice(0, i).join(".")}${schemaInfo}`,
+          );
+        }
+      } else {
+        throw new Error(
+          `Cannot traverse into ${partName} - ${parts.slice(0, i).join(".")} is not an object or array${schemaInfo}`,
+        );
+      }
+    }
+
+    return currentProp;
+  };
+}
+
 export function makeModule(
   schema: SuperSchema,
   description: string,
@@ -53,6 +147,7 @@ export function makeModule(
   providerConfig: ProviderConfig,
   domainProperties: Record<string, CfProperty>,
   resourceValueProperties: Record<string, CfProperty>,
+  secretProperties: Record<string, CfProperty> = {},
 ) {
   const { createDocLink: docFn, getCategory: categoryFn } =
     providerConfig.functions;
@@ -79,7 +174,7 @@ export function makeModule(
 
   const secrets = createDefaultPropFromJsonSchema(
     "secrets",
-    {},
+    secretProperties,
     schema,
     onlyProperties,
     docFn,
@@ -184,3 +279,7 @@ export function generateDefaultFuncsFromConfig(
 
   return specs;
 }
+
+// Re-export commonly used pipeline steps
+export { applyAssetOverrides } from "./applyAssetOverrides.ts";
+export { loadExtraAssets } from "./loadExtraAssets.ts";
