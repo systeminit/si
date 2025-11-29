@@ -22,7 +22,8 @@ print_usage() {
 	    -d, --destination=<DEST>  Destination directory for installation
 	                              [default: $default_dest]
 	    -p, --platform=<PLATFORM> Platform type to install
-	                              [examples: linux-x86_64, darwin-aarch64]
+	                              [examples: linux-x86_64, linux-aarch64,
+	                              darwin-x86_64, darwin-aarch64]
 	                              [default: $default_platform]
 	    -V, --version=<VERSION>   Release version to install
 	                              [examples: stable,
@@ -47,7 +48,7 @@ main() {
 
   local program bin
   program="install.sh"
-  bin="si-fs"
+  bin="si"
 
   setup_cleanups
   setup_traps trap_exit
@@ -76,8 +77,11 @@ main() {
   asset="$(basename "$asset_url")"
   download "$asset_url" "$tmpdir/$asset"
 
-  section "Installing '$asset'"
-  install_bin "$tmpdir/$asset" "$dest/$bin" "$bin"
+  section "Extracting '$asset'"
+  extract_archive "$tmpdir/$asset" "$tmpdir" "$bin"
+
+  section "Installing '$bin'"
+  install_bin "$tmpdir/$bin" "$dest/$bin" "$bin"
 
   section "Installation of '$bin' release '$version' complete"
   indent "$dest/$bin" --version
@@ -183,7 +187,7 @@ parse_cli_args() {
   shift "$((OPTIND - 1))"
 
   case "$PLATFORM" in
-    linux-x86_64 | linux-aarch64) ;;
+    linux-x86_64 | linux-aarch64 | darwin-x86_64 | darwin-aarch64) ;;
     *) die "Installation failed, unsupported platform: '$PLATFORM'" ;;
   esac
 
@@ -199,12 +203,46 @@ asset_url() {
   cpu_type="$4"
   platform="$5"
 
-  local type asset_url
+  local type asset_url extension
   type="binary"
+  extension="tar.gz"
+
   asset_url="https://artifacts.systeminit.com/$bin/$version/$type"
-  asset_url="$asset_url/$os_type/$cpu_type/$bin-$version-$type-$platform"
+  asset_url="$asset_url/$os_type/$cpu_type/$bin-$version-$type-$platform.$extension"
 
   echo "$asset_url"
+}
+
+extract_archive() {
+  local archive dest bin
+  archive="$1"
+  dest="$2"
+  bin="$3"
+
+  need_cmd tar
+
+  info_start "Extracting archive"
+  tar -xzf "$archive" -C "$dest"
+  info_end
+
+  # Verify the binary was extracted
+  if [ ! -f "$dest/$bin" ]; then
+    die "Failed to extract binary '$bin' from archive"
+  fi
+}
+
+remove_macos_quarantine() {
+  local file
+  file="$1"
+
+  if check_cmd xattr; then
+    info "Removing macOS quarantine attribute from '$file'"
+    # Remove the quarantine attribute - ignore errors if it doesn't exist
+    xattr -d com.apple.quarantine "$file" 2>/dev/null || true
+  else
+    warn "xattr command not found, skipping quarantine attribute removal"
+    warn "You may need to run: xattr -d com.apple.quarantine $file"
+  fi
 }
 
 install_bin() {
@@ -221,6 +259,11 @@ install_bin() {
   mkdir -p "$(dirname "$dest")"
   install -p -m 755 "$src" "$dest"
   info_end
+
+  # Remove macOS quarantine attribute if on macOS
+  if [ "$(uname -s)" = "Darwin" ]; then
+    remove_macos_quarantine "$dest"
+  fi
 
   if [ "$(dirname "$dest")" = "$HOME/.$bin/bin" ]; then
     symlink_to_system_path "$dest" "$bin"
