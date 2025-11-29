@@ -1,0 +1,54 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "S3 Rate Limit Configuration",
+  "type": "object",
+  "properties": {
+    "rate_limit": {
+      "type": "object",
+      "properties": {
+        "min_delay_ms": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0,
+          "description": "Minimum backoff delay in milliseconds"
+        },
+        "max_delay_ms": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 5000,
+          "description": "Maximum backoff delay in milliseconds"
+        },
+        "initial_backoff_ms": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 100,
+          "description": "Initial backoff delay when first throttled"
+        },
+        "backoff_multiplier": {
+          "type": "number",
+          "exclusiveMinimum": 1.0,
+          "default": 2.0,
+          "description": "Multiplier for exponential backoff growth"
+        },
+        "success_divisor": {
+          "type": ["number", "null"],
+          "exclusiveMinimum": 1.0,
+          "default": null,
+          "description": "Divisor for backoff reduction. Defaults to backoff_multiplier * 0.75"
+        },
+        "zeno_threshold_ms": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 50,
+          "description": "Threshold below which backoff resets to zero (solves Zeno's paradox)"
+        },
+        "successes_before_reduction": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 3,
+          "description": "Number of consecutive successes required before reducing backoff"
+        }
+      }
+    }
+  }
+}
