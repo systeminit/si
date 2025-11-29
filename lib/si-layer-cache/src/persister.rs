@@ -489,7 +489,7 @@ impl PersisterTask {
                     .get(event.payload.db_name.as_str())
                     .ok_or(LayerDbError::S3NotConfigured)?;
 
-                s3_layer.write(event).map_err(Into::into)
+                s3_layer.insert(event)
             }
         };
 

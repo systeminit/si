@@ -19,14 +19,17 @@ use ulid::Ulid;
 
 use crate::{
     error::{
+        AwsSdkError,
         LayerDbError,
         S3Error,
+        S3Operation,
     },
     event::LayeredEvent,
     rate_limiter::{
         RateLimitConfig,
         RateLimiter,
     },
+    s3::categorize_s3_error,
     s3_write_queue::{
         S3WriteQueue,
         S3WriteQueueError,
@@ -152,17 +155,38 @@ impl S3QueueProcessor {
 
         let span = Span::current();
 
-        // Attempt S3 write using the key from the event
-        let result = self.s3_layer.insert(&event.key, &event.payload.value).await;
+        // Key is already transformed - write directly to S3
+        // Event.key contains the final S3 key after transformation
+        let result = self
+            .s3_client
+            .put_object()
+            .bucket(&self.bucket_name)
+            .key(event.key.as_ref()) // Pre-transformed key from queue
+            .body(Arc::unwrap_or_clone(event.payload.value).into())
+            .send()
+            .await;
 
-        match result {
+        // Categorize result for metrics and rate limiter
+        let categorized_result = result.map_err(|sdk_err| {
+            // Convert AWS SDK error to categorized S3Error
+            let aws_error = AwsSdkError::PutObject(sdk_err);
+            let s3_error = categorize_s3_error(
+                aws_error,
+                S3Operation::Put,
+                self.cache_name.clone(),
+                event.key.to_string(),
+            );
+            LayerDbError::S3(Box::new(s3_error))
+        });
+
+        match categorized_result {
             Ok(_) => {
                 span.record("result", "success");
                 self.handle_success(ulid).await
             }
-            Err(ref e) => {
+            Err(s3_error) => {
                 // Classify the error to record appropriate result
-                let result_str = match e {
+                let result_str = match &s3_error {
                     LayerDbError::S3(boxed_error) => match boxed_error.as_ref() {
                         S3Error::Throttling { .. } => "throttle",
                         S3Error::Configuration { .. } => "error_configuration",
@@ -171,7 +195,7 @@ impl S3QueueProcessor {
                     _ => "error_transient",
                 };
                 span.record("result", result_str);
-                self.handle_error(ulid, e).await
+                self.handle_error(ulid, &s3_error).await
             }
         }
     }
