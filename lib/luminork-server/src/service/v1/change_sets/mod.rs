@@ -14,6 +14,7 @@ pub mod create;
 pub mod delete;
 pub mod force_apply;
 pub mod get;
+pub mod get_review;
 pub mod list;
 pub mod merge_status;
 pub mod purge_open;
@@ -42,14 +43,26 @@ pub enum ChangeSetError {
     ChangeSetNotFound(ChangeSetId),
     #[error("component error: {0}")]
     Component(#[from] dal::ComponentError),
+    #[error("dal materialized views error: {0}")]
+    DalMaterializedViews(#[from] dal_materialized_views::Error),
     #[error("edda client error: {0}")]
     EddaClient(#[from] EddaClientError),
+    #[error("frigg error: {0}")]
+    Frigg(#[from] frigg::FriggError),
     #[error("func error: {0}")]
     Func(#[from] dal::FuncError),
+    #[error("materialized view deserialization failed: {0}")]
+    MaterializedViewDeserialization(String),
     #[error("schema error: {0}")]
     Schema(#[from] dal::SchemaError),
     #[error("schema variant error: {0}")]
     SchemaVariant(#[from] dal::SchemaVariantError),
+    #[error("serde json error: {0}")]
+    SerdeJson(#[from] serde_json::Error),
+    #[error("slow runtime error: {0}")]
+    SlowRuntime(#[from] dal::slow_rt::SlowRuntimeError),
+    #[error("task join error: {0}")]
+    TaskJoin(#[from] tokio::task::JoinError),
     #[error("transactions error: {0}")]
     Transactions(#[from] dal::TransactionsError),
     #[error("validation error: {0}")]
@@ -75,6 +88,7 @@ impl ErrorIntoResponse for ChangeSetError {
             ),
             ChangeSetError::CannotAbandonHead => (StatusCode::BAD_REQUEST, self.to_string()),
             ChangeSetError::CannotMergeHead => (StatusCode::BAD_REQUEST, self.to_string()),
+            ChangeSetError::ChangeSetNotFound(_) => (StatusCode::NOT_FOUND, self.to_string()),
             ChangeSetError::Validation(_) => (StatusCode::UNPROCESSABLE_ENTITY, self.to_string()),
             _ => (StatusCode::INTERNAL_SERVER_ERROR, self.to_string()),
         }
