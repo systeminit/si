@@ -17,10 +17,6 @@ export_file(
     name = "rustfmt_check.py",
 )
 
-export_file(
-    name = "generate_rust_metadata.py",
-)
-
 yapf_check(
     name = "check-format-python",
     srcs = glob(["**/*.py"]),

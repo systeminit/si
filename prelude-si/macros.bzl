@@ -15,8 +15,10 @@ test_suite = _test_suite
 load(
     "@prelude-si//macros:deno.bzl",
     _deno_binary = "deno_binary",
+    _deno_binary_artifact = "deno_binary_artifact",
 )
 deno_binary = _deno_binary
+deno_binary_artifact = _deno_binary_artifact
 
 load(
     "@prelude-si//macros:docker.bzl",

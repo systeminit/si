@@ -607,6 +607,52 @@ For production builds:
 buck2 build //bin/si --mode=release
 ```
 
+### Packaging Binary Artifacts
+
+The SI CLI supports packaging into distributable binary artifacts with metadata
+sidecars for all supported platforms.
+
+#### Building Artifacts
+
+Build artifacts for specific platforms using platform-specific targets:
+
+```bash
+# Build for specific platform (using alias)
+buck2 build //bin/si:si-binary-artifact-linux-x86_64
+buck2 build //bin/si:si-binary-artifact-darwin-aarch64
+buck2 build //bin/si:si-binary-artifact-windows-x86_64
+
+# Build using explicit --target-platforms
+buck2 build //bin/si:si-binary-artifact \
+  --target-platforms=prelude-si//platforms:linux-x86_64
+
+# Build all platforms
+buck2 build \
+  //bin/si:si-binary-artifact-linux-x86_64 \
+  //bin/si:si-binary-artifact-linux-aarch64 \
+  //bin/si:si-binary-artifact-darwin-x86_64 \
+  //bin/si:si-binary-artifact-darwin-aarch64 \
+  //bin/si:si-binary-artifact-windows-x86_64
+```
+
+#### Artifact Structure
+
+- **Unix platforms (Linux, macOS):** `.tar.gz` archives with flat structure
+- **Windows platforms:** `.zip` archives with flat structure
+- Each archive contains the binary and a `metadata.json` sidecar file
+
+#### Supported Platforms
+
+- `linux-x86_64`, `linux-aarch64`
+- `darwin-x86_64` (Intel Macs), `darwin-aarch64` (Apple Silicon)
+- `windows-x86_64`
+
+**Note:** Windows ARM64 (`windows-aarch64`) is not supported because Deno does
+not provide a compilation target for that platform.
+
+For detailed information on artifact packaging, including publishing and
+promoting artifacts, see `docs/build/deno-binary-artifacts.md`.
+
 ### Testing and Code Quality
 
 #### Running Tests

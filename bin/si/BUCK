@@ -7,6 +7,7 @@ load(
     "@prelude-si//:macros.bzl",
     "alias",
     "deno_binary",
+    "deno_binary_artifact",
     "export_file",
 )
 
@@ -33,6 +34,12 @@ deno_binary(
         "allow-run",
         "allow-write",
     ],
+)
+
+# Binary artifact packaging for distribution
+deno_binary_artifact(
+    name = "si",
+    binary = ":si",
 )
 
 # Convenience aliases for cross-compilation
