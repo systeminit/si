@@ -114,7 +114,7 @@ export function componentGetTool(server: McpServer) {
         const siApi = new ComponentsApi(apiConfig);
         try {
           const response = await siApi.getComponent({
-            workspaceId: WORKSPACE_ID!,
+            workspaceId: WORKSPACE_ID,
             changeSetId: changeSetId,
             componentId,
           });

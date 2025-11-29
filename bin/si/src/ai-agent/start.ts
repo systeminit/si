@@ -13,6 +13,7 @@
 
 import type { Context } from "../context.ts";
 import { loadConfig } from "./shared.ts";
+import { join } from "@std/path";
 
 export interface AiAgentStartOptions {
   tool?: string;
@@ -99,6 +100,7 @@ async function checkToolAvailable(command: string): Promise<boolean> {
 function getToolDisplayName(tool: string): string {
   const names: Record<string, string> = {
     claude: "Claude Code",
+    codex: "OpenAI Codex",
     cursor: "Cursor",
     windsurf: "Windsurf",
   };
@@ -111,6 +113,7 @@ function getToolDisplayName(tool: string): string {
 function getToolInstallUrl(tool: string): string {
   const urls: Record<string, string> = {
     claude: "https://www.anthropic.com/claude-code",
+    codex: "https://developers.openai.com/codex/cli/",
     cursor: "https://cursor.sh/",
     windsurf: "https://codeium.com/windsurf",
   };

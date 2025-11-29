@@ -1,5 +1,5 @@
 import { assertEquals } from "jsr:@std/assert";
-import { applyFilters } from "./componentList.ts";
+import { applyFilters } from "./componentFilters.ts";
 
 // Test data
 const testComponents = [

@@ -49,7 +49,7 @@ export function changeSetListTool(server: McpServer) {
         const siApi = new ChangeSetsApi(apiConfig);
         try {
           const response = await siApi.listChangeSets({
-            workspaceId: WORKSPACE_ID!,
+            workspaceId: WORKSPACE_ID,
           });
           return successResponse(
             response.data.changeSets,

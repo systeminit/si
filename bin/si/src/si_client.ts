@@ -57,7 +57,7 @@ function getBaseUrl(): string {
  * @param token - The JWT token to decode
  * @returns The decoded JWT payload
  */
-function decodeToken(token: string): SIJwtPayload {
+function decodeToken(token: string): SIJwtPayload | null {
   try {
     return jwtDecode<SIJwtPayload>(token);
   } catch (error) {
@@ -66,7 +66,8 @@ function decodeToken(token: string): SIJwtPayload {
         error instanceof Error ? error.message : String(error)
       }`,
     );
-    Deno.exit(10);
+    // Don't exit - just return null and let caller handle it
+    return null;
   }
 }
 
@@ -95,20 +96,24 @@ const apiToken = Deno.env.get("SI_API_TOKEN");
 if (apiToken) {
   const baseUrl = getBaseUrl();
   const decoded = decodeToken(apiToken);
-  validateToken(decoded);
 
-  apiConfig = new Configuration({
-    basePath: baseUrl,
-    accessToken: apiToken,
-    baseOptions: {
-      headers: {
-        Authorization: `Bearer ${apiToken}`,
+  // Only initialize if token decoded successfully
+  if (decoded) {
+    validateToken(decoded);
+
+    apiConfig = new Configuration({
+      basePath: baseUrl,
+      accessToken: apiToken,
+      baseOptions: {
+        headers: {
+          Authorization: `Bearer ${apiToken}`,
+        },
       },
-    },
-  });
+    });
 
-  WORKSPACE_ID = decoded.workspaceId;
-  USER_ID = decoded.userId;
+    WORKSPACE_ID = decoded.workspaceId;
+    USER_ID = decoded.userId;
+  }
 }
 
 /**

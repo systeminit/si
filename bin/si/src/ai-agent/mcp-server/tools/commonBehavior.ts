@@ -105,7 +105,7 @@ export function errorResponse(error: any, hints?: string): CallToolResult {
 export async function findHeadChangeSet(changeSetsApi: any, onlyHead: boolean) {
   try {
     const changeSetList = await changeSetsApi.listChangeSets({
-      workspaceId: WORKSPACE_ID!,
+      workspaceId: WORKSPACE_ID,
     });
     const head = (changeSetList.data.changeSets as ChangeSetItem[]).find(
       (cs) => cs.isHead,

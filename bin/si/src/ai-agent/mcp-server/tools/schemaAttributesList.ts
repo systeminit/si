@@ -100,7 +100,7 @@ export function schemaAttributesListTool(server: McpServer) {
           if (!isValid(schemaNameOrId)) {
             try {
               const response = await siSchemasApi.findSchema({
-                workspaceId: WORKSPACE_ID!,
+                workspaceId: WORKSPACE_ID,
                 changeSetId: changeSetId!,
                 schema: schemaNameOrId,
               });
@@ -119,7 +119,7 @@ export function schemaAttributesListTool(server: McpServer) {
           }
 
           const response = await siSchemasApi.getDefaultVariant({
-            workspaceId: WORKSPACE_ID!,
+            workspaceId: WORKSPACE_ID,
             changeSetId: changeSetId!,
             schemaId,
           });

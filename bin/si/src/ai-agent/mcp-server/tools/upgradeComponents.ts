@@ -77,7 +77,7 @@ export function upgradeComponentsTool(server: McpServer) {
           ].filter(Boolean).join(" ");
 
           const upgradableResp = await siSearchApi.search({
-            workspaceId: WORKSPACE_ID!,
+            workspaceId: WORKSPACE_ID,
             changeSetId: changeSetId,
             q: searchString,
           });
@@ -92,7 +92,7 @@ export function upgradeComponentsTool(server: McpServer) {
             for (const component of components) {
               console.debug(`Starting upgrade of ${component.name}`);
               await siComponentsApi.upgradeComponent({
-                workspaceId: WORKSPACE_ID!,
+                workspaceId: WORKSPACE_ID,
                 changeSetId: changeSetId,
                 componentId: component.id,
               });

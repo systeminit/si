@@ -62,7 +62,7 @@ export function componentEraseTool(server: McpServer) {
         const siApi = new ComponentsApi(apiConfig);
         try {
           await siApi.eraseComponent({
-            workspaceId: WORKSPACE_ID!,
+            workspaceId: WORKSPACE_ID,
             changeSetId: changeSetId,
             componentId,
           });

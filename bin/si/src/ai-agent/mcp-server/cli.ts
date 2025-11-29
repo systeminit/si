@@ -24,8 +24,9 @@ export async function run() {
     })
     .command("stdio", "Start the SI MCP Server over the stdio transport")
     .action(async () => {
+      // Token validation happens in si_client.ts when modules are loaded
       await analytics.trackServerStart();
-      await setAiAgentUserFlag();
+      // Don't call setAiAgentUserFlag() - it's for ai-agent tracking only
 
       const server = createServer();
 

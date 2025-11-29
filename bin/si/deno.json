@@ -20,9 +20,9 @@
   },
   "tasks": {
     "dev": "deno run --allow-net --allow-env --allow-read --allow-run --env-file=.env.local --allow-write main.ts",
-    "build": "deno compile --allow-net --allow-env --allow-read --allow-write --allow-run --allow-import --include=data/templates/Claude.md.tmpl main.ts",
+    "build": "deno compile --allow-net --allow-env --allow-read --allow-write --allow-run --allow-import --include=data/templates/SI_Agent_Context.md.tmpl main.ts",
     "lint": "deno lint",
-    "test": "deno test --allow-env --allow-read --allow-write --allow-run"
+    "test": "SI_API_TOKEN=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ3b3Jrc3BhY2VJZCI6InRlc3Qtd29ya3NwYWNlLWlkIiwidXNlcklkIjoidGVzdC11c2VyLWlkIn0.fakesignature deno test --allow-env --allow-read --allow-write --allow-run"
   },
   "imports": {
     "@cliffy/command": "jsr:@cliffy/command@^1.0.0-rc.7",

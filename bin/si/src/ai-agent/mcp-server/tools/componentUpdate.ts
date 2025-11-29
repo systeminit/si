@@ -73,14 +73,14 @@ export function componentUpdateTool(server: McpServer) {
         try {
           if (upgrade) {
             const compResponse = await siApi.getComponent({
-              workspaceId: WORKSPACE_ID!,
+              workspaceId: WORKSPACE_ID,
               changeSetId: changeSetId,
               componentId,
             });
 
             if (compResponse.data.component.canBeUpgraded) {
               await siApi.upgradeComponent({
-                workspaceId: WORKSPACE_ID!,
+                workspaceId: WORKSPACE_ID,
                 changeSetId: changeSetId,
                 componentId,
               });
@@ -92,7 +92,7 @@ export function componentUpdateTool(server: McpServer) {
           }
 
           await siApi.updateComponent({
-            workspaceId: WORKSPACE_ID!,
+            workspaceId: WORKSPACE_ID,
             changeSetId: changeSetId,
             componentId,
             updateComponentV1Request: {
