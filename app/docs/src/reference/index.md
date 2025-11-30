@@ -5,6 +5,8 @@ of System Initiative.
 
 - [Vocabulary](./vocabulary.md) - a comprehensive guide to the terminology we
   use.
+- [SI CLI](./si-cli.md) - the command-line tool for managing schemas, templates,
+  components, and AI agent integration.
 - [TypeScript Functions API](./typescript/asset_builder/README.md) - the
   TypeScript API documentation.
 - [Public API](./public-api.md) - the reference docs for the Public API to
