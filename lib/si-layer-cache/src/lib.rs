@@ -47,6 +47,7 @@ pub mod layer_cache;
 mod nats;
 pub mod persister;
 pub mod pg;
+pub mod rate_limiter;
 pub mod retry_queue;
 pub mod s3;
 
@@ -64,6 +65,11 @@ pub use pg::{
     APPLICATION_NAME,
     DBNAME,
     default_pg_pool_config,
+};
+pub use rate_limiter::{
+    RateLimitConfig,
+    RateLimitConfigError,
+    RateLimiter,
 };
 pub use s3::{
     KeyTransformStrategy,
