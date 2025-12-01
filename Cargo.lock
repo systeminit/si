@@ -4847,6 +4847,7 @@ dependencies = [
  "strum",
  "telemetry",
  "telemetry-http",
+ "telemetry-utils",
  "thiserror 2.0.12",
  "tokio",
  "tokio-stream",

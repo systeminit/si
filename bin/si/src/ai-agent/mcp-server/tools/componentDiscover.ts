@@ -142,10 +142,17 @@ export function componentDiscoverTool(server: McpServer) {
               });
             }
 
-            // Make sure we have the proper data before moving on!
+            // Make sure we have the proper data before moving on! If we hit the max attempts,
+            // attempt to cleanup the discovery component that we created, but do not check for
+            // errors since we do not need to block execution.
             if (defaultVariantResponse.status === 202) {
+              await siApi.eraseComponent({
+                workspaceId: WORKSPACE_ID,
+                changeSetId: changeSetId,
+                componentId: discoverTemplateResponse.data.component.id,
+              });
               return errorResponse({
-                message: "After 5 attempts, the workspace graph is still generating default variant data.",
+                message: "After 5 attempts, the workspace graph is still generating default variant data. Please try again.",
               });
             } else if (!defaultVariantResponse.data.variantFuncs) {
               return errorResponse({
@@ -200,6 +207,15 @@ export function componentDiscoverTool(server: McpServer) {
               },
             });
 
+            // if discovery failed, remove the component
+            if (discoverResponse.status === 500) {
+              await siApi.eraseComponent({
+                workspaceId: WORKSPACE_ID,
+                changeSetId: changeSetId,
+                componentId: discoverTemplateResponse.data.component.id,
+              });
+            }
+
             let discoverState = "Pending";
             const retrySleepInMs = 1000;
             const retryMaxCount = 260;
@@ -245,6 +261,12 @@ export function componentDiscoverTool(server: McpServer) {
                 "The discover function is still in progress; use the funcRunId to find out more",
               );
             } else if (discoverState == "Failure") {
+              // delete dangling component in the case of a discovery failure
+              await siApi.deleteComponent({
+                workspaceId: WORKSPACE_ID,
+                changeSetId: changeSetId,
+                componentId: discoverTemplateResult["componentId"],
+              });
               return errorResponse({
                 response: {
                   status: "failed",
@@ -266,10 +288,22 @@ export function componentDiscoverTool(server: McpServer) {
               return successResponse(discoverTemplateResult);
             }
           } catch (error) {
-            return errorResponse(error);
+            if (error instanceof Error)
+              return errorResponse({
+                message: error.message,
+                stack: error.stack,
+              });
+            else
+              return errorResponse(error)
           }
         } catch (error) {
-          return errorResponse(error);
+          if (error instanceof Error)
+            return errorResponse({
+              message: error.message,
+              stack: error.stack,
+            });
+          else
+            return errorResponse(error)
         }
       });
     },

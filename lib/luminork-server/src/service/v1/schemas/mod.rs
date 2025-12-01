@@ -55,6 +55,8 @@ use si_frontend_mv_types::{
     management::ManagementFuncKind,
     prop_schema::PropSchemaV1 as CachedPropSchemaV1,
 };
+use telemetry::prelude::*;
+use telemetry_utils::monotonic;
 use thiserror::Error;
 use utoipa::{
     self,
@@ -747,17 +749,93 @@ pub struct GetSchemaV1Response {
     pub variant_ids: Vec<SchemaVariantId>,
 }
 
+/// The response payload when materialized views or data is being built referenced by present or
+/// expected data.
 #[derive(Serialize, Debug, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct BuildingResponseV1 {
+    /// The status of the data being built.
     #[schema(value_type = String, example = "building")]
     pub status: String,
+    /// The message reflecting the reason or state of the data being built.
     #[schema(value_type = String, example = "Schema data is being generated, please retry shortly")]
     pub message: String,
+    /// The number of seconds recommended between retries for the desired data.
     #[schema(value_type = u64, example = 2)]
     pub retry_after_seconds: u64,
+    /// The estimated time for the data being built to be completed.
     #[schema(value_type = u64, example = 10)]
     pub estimated_completion_seconds: u64,
+}
+
+impl BuildingResponseV1 {
+    /// Creates a new response and increments the relevant counter for default variant data
+    /// generated from the workspace graph.
+    pub fn new_and_increment_counter_for_default_variant_workspace_graph() -> Self {
+        monotonic!(luminork_building_default_variant_workspace_graph = 1);
+        Self::new_inner(
+            "Default variant data is being generated from workspace graph, please retry shortly",
+            2,
+            5,
+        )
+    }
+
+    /// Creates a new response and increments the relevant counter for default variant data
+    /// generated from cached modules.
+    pub fn new_and_increment_counter_for_default_variant_cached_modules() -> Self {
+        monotonic!(luminork_building_default_variant_cached_modules = 1);
+        Self::new_inner(
+            "Default variant data is being generated from cached modules, please retry shortly",
+            2,
+            10,
+        )
+    }
+
+    /// Creates a new response and increments the relevant counter for schema data
+    /// generated from cached modules.
+    pub fn new_and_increment_counter_for_schema_cached_modules() -> Self {
+        monotonic!(luminork_building_schema_cached_modules = 1);
+        Self::new_inner(
+            "Schema data is being generated from cached modules, please retry shortly",
+            2,
+            10,
+        )
+    }
+
+    /// Creates a new response and increments the relevant counter for schema variant data
+    /// generated from the workspace graph.
+    pub fn new_and_increment_counter_for_schema_variant_workspace_graph() -> Self {
+        monotonic!(luminork_building_schema_variant_workspace_graph = 1);
+        Self::new_inner(
+            "Schema variant data is being generated from workspace graph, please retry shortly",
+            2,
+            5,
+        )
+    }
+
+    /// Creates a new response and increments the relevant counter for schema data
+    /// generated from cached modules.
+    pub fn new_and_increment_counter_for_schema_variant_cached_modules() -> Self {
+        monotonic!(luminork_building_schema_variant_cached_modules = 1);
+        Self::new_inner(
+            "Schema variant data is being generated from cached modules, please retry shortly",
+            2,
+            10,
+        )
+    }
+
+    fn new_inner(
+        message: &'static str,
+        retry_after_seconds: u64,
+        estimated_completion_seconds: u64,
+    ) -> Self {
+        Self {
+            status: "building".to_string(),
+            message: message.to_string(),
+            retry_after_seconds,
+            estimated_completion_seconds,
+        }
+    }
 }
 
 #[derive(Debug, Serialize)]
