@@ -47,7 +47,7 @@
           "type": "prometheus",
           "uid": "${datasource}"
         },
-        "query": "label_values(layer_cache_persister_write_attempted, exported_job)",
+        "query": "label_values({__name__=~\"layer_cache_requests_total|layer_cache_persister_write_attempted\"}, exported_job)",
         "refresh": 2,
         "sort": 1,
         "multi": true,
@@ -71,437 +71,198 @@
       },
       {
         "name": "backend",
-        "type": "custom",
+        "type": "query",
         "label": "Backend",
-        "query": "foyer, postgres, s3",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${datasource}"
+        },
+        "query": "label_values({__name__=~\"layer_cache_read_latency_ms_bucket|layer_cache_persister_write_success_total|s3_write_queue_depth\"}, backend)",
+        "refresh": 2,
+        "sort": 1,
         "multi": true,
         "includeAll": true,
-        "hide": 0,
-        "options": [
-          {
-            "selected": false,
-            "text": "All",
-            "value": "$__all"
-          },
-          {
-            "selected": false,
-            "text": "foyer",
-            "value": "foyer"
-          },
-          {
-            "selected": false,
-            "text": "postgres",
-            "value": "postgres"
-          },
-          {
-            "selected": false,
-            "text": "s3",
-            "value": "s3"
-          }
-        ],
-        "queryValue": "",
-        "skipUrlSync": false
+        "allValue": ".*"
+      },
+      {
+        "name": "operation",
+        "type": "query",
+        "label": "Operation",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${datasource}"
+        },
+        "query": "label_values(layer_cache_persistence_latency_seconds_bucket, operation)",
+        "refresh": 2,
+        "sort": 1,
+        "multi": true,
+        "includeAll": true,
+        "allValue": ".*"
       }
     ]
   },
   "panels": [
     {
-      "id": 2,
+      "id": 200,
+      "type": "row",
+      "title": "OVERVIEW & HEALTH",
       "gridPos": {
         "x": 0,
         "y": 0,
-        "w": 12,
-        "h": 8
+        "w": 24,
+        "h": 1
       },
-      "type": "timeseries",
-      "title": "Retry Queue - Enqueue Rate",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${datasource}"
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "expr": "rate(layer_cache_retry_queue_enqueued{exported_job=~\"${service}\", cache_name=~\"${cache}\"}[1m])",
-          "legendFormat": "{{exported_job}}/{{cache_name}} - enqueued",
-          "refId": "A"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "ops",
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "lineWidth": 2,
-            "fillOpacity": 10,
-            "showPoints": "never"
-          }
-        }
-      },
-      "options": {
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc"
-        },
-        "legend": {
-          "displayMode": "table",
-          "placement": "right",
-          "calcs": [
-            "lastNotNull",
-            "max",
-            "mean"
-          ]
-        }
-      }
+      "collapsed": false
     },
     {
-      "id": 3,
-      "gridPos": {
-        "x": 12,
-        "y": 0,
-        "w": 12,
-        "h": 8
-      },
-      "type": "timeseries",
-      "title": "Retry Queue - Success Rate",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${datasource}"
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "expr": "rate(layer_cache_retry_queue_success{exported_job=~\"${service}\", cache_name=~\"${cache}\"}[1m])",
-          "legendFormat": "{{exported_job}}/{{cache_name}} - success",
-          "refId": "A"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "ops",
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "lineWidth": 2,
-            "fillOpacity": 10,
-            "showPoints": "never"
-          }
-        }
-      },
-      "options": {
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc"
-        },
-        "legend": {
-          "displayMode": "table",
-          "placement": "right",
-          "calcs": [
-            "lastNotNull",
-            "max",
-            "mean"
-          ]
-        }
-      }
-    },
-    {
-      "id": 4,
+      "id": 300,
+      "type": "stat",
+      "title": "System Health - Overall Error Rate",
+      "section": "overview",
       "gridPos": {
         "x": 0,
-        "y": 8,
-        "w": 12,
-        "h": 8
-      },
-      "type": "timeseries",
-      "title": "Retry Queue - Failure Rate",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${datasource}"
+        "y": 1,
+        "w": 8,
+        "h": 4
       },
       "targets": [
         {
+          "expr": "(sum(rate(layer_cache_persister_write_failed_retryable_total[5m])) + sum(rate(s3_write_attempts_total{result=~\"throttle|error_.*\"}[5m]))) / sum(rate(layer_cache_persister_write_attempted[5m]))",
+          "refId": "A",
           "datasource": {
             "type": "prometheus",
             "uid": "${datasource}"
-          },
-          "expr": "rate(layer_cache_retry_queue_failed{exported_job=~\"${service}\", cache_name=~\"${cache}\"}[1m])",
-          "legendFormat": "{{exported_job}}/{{cache_name}} - failed",
-          "refId": "A"
+          }
         }
       ],
       "fieldConfig": {
         "defaults": {
-          "unit": "ops",
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "lineWidth": 2,
-            "fillOpacity": 10,
-            "showPoints": "never"
-          }
-        }
-      },
-      "options": {
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc"
-        },
-        "legend": {
-          "displayMode": "table",
-          "placement": "right",
-          "calcs": [
-            "lastNotNull",
-            "max",
-            "mean"
-          ]
-        }
-      }
-    },
-    {
-      "id": 5,
-      "gridPos": {
-        "x": 12,
-        "y": 8,
-        "w": 12,
-        "h": 8
-      },
-      "type": "timeseries",
-      "title": "Retry Queue - Permanent Failure Rate",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${datasource}"
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "expr": "rate(layer_cache_retry_queue_permanent_failure{exported_job=~\"${service}\", cache_name=~\"${cache}\"}[1m])",
-          "legendFormat": "{{exported_job}}/{{cache_name}} - permanent failure",
-          "refId": "A"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "ops",
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "lineWidth": 2,
-            "fillOpacity": 10,
-            "showPoints": "never"
-          }
-        }
-      },
-      "options": {
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc"
-        },
-        "legend": {
-          "displayMode": "table",
-          "placement": "right",
-          "calcs": [
-            "lastNotNull",
-            "max",
-            "mean"
-          ]
-        }
-      }
-    },
-    {
-      "id": 6,
-      "gridPos": {
-        "x": 0,
-        "y": 16,
-        "w": 12,
-        "h": 8
-      },
-      "type": "timeseries",
-      "title": "Retry Queue - Current Depth",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${datasource}"
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "expr": "layer_cache_retry_queue_depth{exported_job=~\"${service}\", cache_name=~\"${cache}\"}",
-          "legendFormat": "{{exported_job}}/{{cache_name}} - queue depth",
-          "refId": "A"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short",
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "lineWidth": 2,
-            "fillOpacity": 10,
-            "showPoints": "auto"
-          }
-        }
-      },
-      "options": {
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc"
-        },
-        "legend": {
-          "displayMode": "table",
-          "placement": "right",
-          "calcs": [
-            "lastNotNull",
-            "max",
-            "mean"
-          ]
-        }
-      }
-    },
-    {
-      "id": 7,
-      "gridPos": {
-        "x": 12,
-        "y": 16,
-        "w": 12,
-        "h": 8
-      },
-      "type": "timeseries",
-      "title": "Retry Queue - Success vs Failure Ratio",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${datasource}"
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "expr": "rate(layer_cache_retry_queue_success{exported_job=~\"${service}\", cache_name=~\"${cache}\"}[1m])",
-          "legendFormat": "{{exported_job}}/{{cache_name}} - success",
-          "refId": "A"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "expr": "rate(layer_cache_retry_queue_failed{exported_job=~\"${service}\", cache_name=~\"${cache}\"}[1m])",
-          "legendFormat": "{{exported_job}}/{{cache_name}} - retryable failure",
-          "refId": "B"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "expr": "rate(layer_cache_retry_queue_permanent_failure{exported_job=~\"${service}\", cache_name=~\"${cache}\"}[1m])",
-          "legendFormat": "{{exported_job}}/{{cache_name}} - permanent failure",
-          "refId": "C"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "ops",
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "lineWidth": 2,
-            "fillOpacity": 10,
-            "showPoints": "never",
-            "stacking": {
-              "mode": "normal"
-            }
-          }
-        },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "success"
-            },
-            "properties": [
+          "unit": "percentunit",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
               {
-                "id": "color",
-                "value": {
-                  "mode": "fixed",
-                  "fixedColor": "green"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "retryable failure"
-            },
-            "properties": [
+                "value": 0,
+                "color": "green"
+              },
               {
-                "id": "color",
-                "value": {
-                  "mode": "fixed",
-                  "fixedColor": "yellow"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "permanent failure"
-            },
-            "properties": [
+                "value": 0.01,
+                "color": "yellow"
+              },
               {
-                "id": "color",
-                "value": {
-                  "mode": "fixed",
-                  "fixedColor": "red"
-                }
+                "value": 0.05,
+                "color": "red"
               }
             ]
           }
-        ]
-      },
-      "options": {
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc"
-        },
-        "legend": {
-          "displayMode": "table",
-          "placement": "bottom",
-          "calcs": [
-            "lastNotNull",
-            "max",
-            "mean"
-          ]
         }
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      }
+    },
+    {
+      "id": 301,
+      "type": "stat",
+      "title": "System Health - S3 Queue Depth",
+      "section": "overview",
+      "gridPos": {
+        "x": 8,
+        "y": 5,
+        "w": 8,
+        "h": 4
+      },
+      "targets": [
+        {
+          "expr": "sum(s3_write_queue_depth)",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": 0,
+                "color": "green"
+              },
+              {
+                "value": 100,
+                "color": "yellow"
+              },
+              {
+                "value": 500,
+                "color": "red"
+              }
+            ]
+          }
+        }
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      }
+    },
+    {
+      "id": 302,
+      "type": "stat",
+      "title": "System Health - Retry Queue Depth",
+      "section": "overview",
+      "gridPos": {
+        "x": 16,
+        "y": 9,
+        "w": 8,
+        "h": 4
+      },
+      "targets": [
+        {
+          "expr": "sum(layer_cache_retry_queue_depth)",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": 0,
+                "color": "green"
+              },
+              {
+                "value": 10,
+                "color": "yellow"
+              },
+              {
+                "value": 100,
+                "color": "red"
+              }
+            ]
+          }
+        }
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
       }
     },
     {
       "id": 8,
       "gridPos": {
         "x": 0,
-        "y": 32,
+        "y": 13,
         "w": 12,
         "h": 8
       },
@@ -560,15 +321,63 @@
       }
     },
     {
-      "id": 9,
+      "id": 306,
+      "type": "timeseries",
+      "title": "Write Throughput Balance (S3 vs PostgreSQL)",
+      "section": "overview",
       "gridPos": {
-        "x": 12,
-        "y": 32,
-        "w": 12,
+        "x": 0,
+        "y": 21,
+        "w": 24,
         "h": 8
       },
-      "type": "timeseries",
-      "title": "Retry Queue - Depth by Cache",
+      "targets": [
+        {
+          "expr": "sum(rate(layer_cache_persister_write_success_total{backend=\"s3\"}[5m]))",
+          "legendFormat": "S3 writes/sec",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          }
+        },
+        {
+          "expr": "sum(rate(layer_cache_persister_write_success_total{backend=\"postgres\"}[5m]))",
+          "legendFormat": "PostgreSQL writes/sec",
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops",
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 10
+          }
+        }
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      }
+    },
+    {
+      "id": 33,
+      "gridPos": {
+        "x": 0,
+        "y": 29,
+        "w": 8,
+        "h": 8
+      },
+      "type": "gauge",
+      "title": "${backend} Resolution Rate",
+      "repeat": "backend",
+      "repeatDirection": "h",
+      "maxPerRow": 3,
       "datasource": {
         "type": "prometheus",
         "uid": "${datasource}"
@@ -579,7 +388,553 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "layer_cache_retry_queue_depth{exported_job=~\"${service}\", cache_name=~\"${cache}\"}",
+          "expr": "sum(rate(layer_cache_backend_resolved_total{exported_job=~\"${service}\", cache_name=~\"${cache}\", backend=\"${backend}\", result=\"hit\"}[5m])) / sum(rate(layer_cache_requests_total{exported_job=~\"${service}\", cache_name=~\"${cache}\"}[5m]))",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "min": 0,
+          "max": 1,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "blue"
+          }
+        }
+      }
+    },
+    {
+      "id": 34,
+      "gridPos": {
+        "x": 0,
+        "y": 37,
+        "w": 24,
+        "h": 8
+      },
+      "type": "timeseries",
+      "title": "Cache Resolution Distribution Over Time",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "sum(rate(layer_cache_backend_resolved_total{exported_job=~\"${service}\", cache_name=~\"${cache}\", backend=\"foyer\", result=\"hit\"}[1m]))",
+          "legendFormat": "Foyer",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "sum(rate(layer_cache_backend_resolved_total{exported_job=~\"${service}\", cache_name=~\"${cache}\", backend=\"s3\", result=\"hit\"}[1m]))",
+          "legendFormat": "S3",
+          "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "sum(rate(layer_cache_backend_resolved_total{exported_job=~\"${service}\", cache_name=~\"${cache}\", backend=\"pg\", result=\"hit\"}[1m]))",
+          "legendFormat": "PostgreSQL",
+          "refId": "C"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "sum(rate(layer_cache_backend_resolved_total{exported_job=~\"${service}\", cache_name=~\"${cache}\", result=\"miss\"}[1m]))",
+          "legendFormat": "Not Found",
+          "refId": "D"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "fillOpacity": 10,
+            "lineWidth": 2,
+            "spanNulls": false
+          },
+          "unit": "reqps"
+        }
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        }
+      }
+    },
+    {
+      "id": 35,
+      "gridPos": {
+        "x": 0,
+        "y": 45,
+        "w": 8,
+        "h": 8
+      },
+      "type": "bargauge",
+      "title": "${cache} Resolution by Backend",
+      "repeat": "cache",
+      "repeatDirection": "h",
+      "maxPerRow": 3,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "sum by (backend) (rate(layer_cache_backend_resolved_total{exported_job=~\"${service}\", cache_name=\"${cache}\", backend=~\"${backend}\"}[5m]))",
+          "legendFormat": "{{backend}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "min": 0,
+          "displayName": "${__field.labels.backend}"
+        }
+      },
+      "options": {
+        "orientation": "horizontal",
+        "displayMode": "gradient",
+        "showUnfilled": true,
+        "text": {
+          "titleSize": 12,
+          "valueSize": 18
+        }
+      }
+    },
+    {
+      "id": 201,
+      "type": "row",
+      "title": "READ PATH PERFORMANCE",
+      "gridPos": {
+        "x": 0,
+        "y": 53,
+        "w": 24,
+        "h": 1
+      },
+      "collapsed": false
+    },
+    {
+      "id": 27,
+      "gridPos": {
+        "x": 0,
+        "y": 54,
+        "w": 24,
+        "h": 8
+      },
+      "type": "timeseries",
+      "title": "${backend} Backend - Read Latency (p50, p95, p99)",
+      "repeat": "backend",
+      "repeatDirection": "v",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "histogram_quantile(0.50, sum(rate(layer_cache_read_latency_ms_bucket{exported_job=~\"${service}\", cache_name=~\"${cache}\", backend=\"${backend}\"}[$__interval])) by (le))",
+          "legendFormat": "p50",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "histogram_quantile(0.95, sum(rate(layer_cache_read_latency_ms_bucket{exported_job=~\"${service}\", cache_name=~\"${cache}\", backend=\"${backend}\"}[$__interval])) by (le))",
+          "legendFormat": "p95",
+          "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "histogram_quantile(0.99, sum(rate(layer_cache_read_latency_ms_bucket{exported_job=~\"${service}\", cache_name=~\"${cache}\", backend=\"${backend}\"}[$__interval])) by (le))",
+          "legendFormat": "p99",
+          "refId": "C"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "never"
+          }
+        }
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        },
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max",
+            "mean"
+          ]
+        }
+      },
+      "interval": "1m"
+    },
+    {
+      "id": 28,
+      "gridPos": {
+        "x": 0,
+        "y": 62,
+        "w": 24,
+        "h": 8
+      },
+      "type": "timeseries",
+      "title": "${cache} - End-to-End Request Latency (p50, p95, p99)",
+      "repeat": "cache",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "histogram_quantile(0.50, sum(rate(layer_cache_request_latency_ms_bucket{exported_job=~\"${service}\", cache_name=\"${cache}\"}[$__interval])) by (le))",
+          "legendFormat": "p50",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "histogram_quantile(0.95, sum(rate(layer_cache_request_latency_ms_bucket{exported_job=~\"${service}\", cache_name=\"${cache}\"}[$__interval])) by (le))",
+          "legendFormat": "p95",
+          "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "histogram_quantile(0.99, sum(rate(layer_cache_request_latency_ms_bucket{exported_job=~\"${service}\", cache_name=\"${cache}\"}[$__interval])) by (le))",
+          "legendFormat": "p99",
+          "refId": "C"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "never"
+          }
+        }
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        },
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max",
+            "mean"
+          ]
+        }
+      },
+      "interval": "1m"
+    },
+    {
+      "id": 29,
+      "gridPos": {
+        "x": 0,
+        "y": 70,
+        "w": 24,
+        "h": 8
+      },
+      "type": "timeseries",
+      "title": "${cache} - Backend Hit Latency Comparison (p95)",
+      "repeat": "cache",
+      "repeatDirection": "v",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "histogram_quantile(0.95, sum(rate(layer_cache_read_latency_ms_bucket{exported_job=~\"${service}\", cache_name=\"${cache}\", result=\"hit\"}[1m])) by (backend, le))",
+          "legendFormat": "{{backend}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "never"
+          }
+        }
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        },
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max",
+            "mean"
+          ]
+        }
+      },
+      "interval": "1m"
+    },
+    {
+      "id": 30,
+      "gridPos": {
+        "x": 0,
+        "y": 78,
+        "w": 24,
+        "h": 8
+      },
+      "type": "timeseries",
+      "title": "Overall Cache Miss Rate",
+      "repeatDirection": "v",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "sum(rate(layer_cache_request_latency_ms_count{result=\"miss\"}[5m])) by (cache_name) / sum(rate(layer_cache_request_latency_ms_count[5m])) by (cache_name)",
+          "legendFormat": "{{cache_name}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "never"
+          },
+          "min": 0,
+          "max": 1
+        }
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        },
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max",
+            "mean"
+          ]
+        }
+      }
+    },
+    {
+      "id": 31,
+      "gridPos": {
+        "x": 0,
+        "y": 86,
+        "w": 24,
+        "h": 8
+      },
+      "type": "heatmap",
+      "title": "${backend} Backend - Read Latency Distribution",
+      "repeat": "backend",
+      "repeatDirection": "v",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "sum(increase(layer_cache_read_latency_ms_bucket{exported_job=~\"${service}\", cache_name=~\"${cache}\", backend=\"${backend}\"}[$__interval])) by (le)",
+          "legendFormat": "{{le}}",
+          "refId": "A",
+          "format": "heatmap"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "hideFrom": {
+              "tooltip": false,
+              "viz": false,
+              "legend": false
+            }
+          }
+        }
+      },
+      "options": {
+        "calculate": false,
+        "cellGap": 2,
+        "color": {
+          "exponent": 0.5,
+          "fill": "dark-orange",
+          "mode": "scheme",
+          "scheme": "Oranges",
+          "steps": 128
+        },
+        "exemplars": {
+          "color": "rgba(255,0,255,0.7)"
+        },
+        "filterValues": {
+          "le": 1E-9
+        },
+        "legend": {
+          "show": true
+        },
+        "rowsFrame": {
+          "layout": "auto"
+        },
+        "tooltip": {
+          "show": true,
+          "yHistogram": false
+        },
+        "yAxis": {
+          "axisPlacement": "left",
+          "reverse": false,
+          "unit": "ms"
+        }
+      },
+      "interval": "1m"
+    },
+    {
+      "id": 303,
+      "type": "timeseries",
+      "title": "Fallback Tracking (S3→PostgreSQL)",
+      "section": "read",
+      "gridPos": {
+        "x": 0,
+        "y": 94,
+        "w": 24,
+        "h": 8
+      },
+      "targets": [
+        {
+          "expr": "rate(layer_cache_read_fallback{from_backend=\"s3\", to_backend=\"postgres\"}[5m])",
+          "legendFormat": "{{cache_name}} - S3→PG fallback",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops",
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 10
+          }
+        }
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      }
+    },
+    {
+      "id": 202,
+      "type": "row",
+      "title": "WRITE PATH - S3 PERSISTENCE",
+      "gridPos": {
+        "x": 0,
+        "y": 102,
+        "w": 24,
+        "h": 1
+      },
+      "collapsed": false
+    },
+    {
+      "id": 36,
+      "gridPos": {
+        "x": 0,
+        "y": 103,
+        "w": 12,
+        "h": 8
+      },
+      "type": "timeseries",
+      "title": "S3 Write Queue Depth",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "s3_write_queue_depth{exported_job=~\"${service}\", cache_name=~\"${cache}\", backend=\"s3\"}",
           "legendFormat": "{{exported_job}}/{{cache_name}}",
           "refId": "A"
         }
@@ -592,11 +947,8 @@
           },
           "custom": {
             "lineWidth": 2,
-            "fillOpacity": 30,
-            "showPoints": "never",
-            "stacking": {
-              "mode": "normal"
-            }
+            "fillOpacity": 10,
+            "showPoints": "never"
           }
         }
       },
@@ -610,16 +962,352 @@
           "placement": "right",
           "calcs": [
             "lastNotNull",
-            "max"
+            "max",
+            "mean"
+          ]
+        }
+      },
+      "alert": {
+        "name": "S3 Queue Growing",
+        "conditions": [
+          {
+            "evaluator": {
+              "params": [
+                100
+              ],
+              "type": "gt"
+            },
+            "query": {
+              "params": [
+                "A",
+                "5m",
+                "now"
+              ]
+            },
+            "type": "query"
+          }
+        ],
+        "message": "S3 write queue depth exceeds 100 for 5 minutes"
+      }
+    },
+    {
+      "id": 37,
+      "gridPos": {
+        "x": 12,
+        "y": 111,
+        "w": 12,
+        "h": 8
+      },
+      "type": "timeseries",
+      "title": "S3 Write Backoff State",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "s3_write_backoff_ms{exported_job=~\"${service}\", cache_name=~\"${cache}\", backend=\"s3\"}",
+          "legendFormat": "{{exported_job}}/{{cache_name}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "never"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": null,
+                "color": "green"
+              },
+              {
+                "value": 1000,
+                "color": "yellow"
+              },
+              {
+                "value": 3000,
+                "color": "red"
+              }
+            ]
+          }
+        }
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        },
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "calcs": [
+            "lastNotNull",
+            "max",
+            "mean"
           ]
         }
       }
     },
     {
+      "id": 38,
+      "gridPos": {
+        "x": 0,
+        "y": 119,
+        "w": 12,
+        "h": 8
+      },
+      "type": "timeseries",
+      "title": "S3 Write Success Rate",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "sum(rate(s3_write_attempts_total{exported_job=~\"${service}\", cache_name=~\"${cache}\", backend=\"s3\", result=\"success\"}[5m])) by (exported_job, cache_name)",
+          "legendFormat": "{{exported_job}}/{{cache_name}} - Success",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "sum(rate(s3_write_attempts_total{exported_job=~\"${service}\", cache_name=~\"${cache}\", backend=\"s3\", result=\"throttle\"}[5m])) by (exported_job, cache_name)",
+          "legendFormat": "{{exported_job}}/{{cache_name}} - Throttle",
+          "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "sum(rate(s3_write_attempts_total{exported_job=~\"${service}\", cache_name=~\"${cache}\", backend=\"s3\", result=~\"error_.*\"}[5m])) by (exported_job, cache_name)",
+          "legendFormat": "{{exported_job}}/{{cache_name}} - Error",
+          "refId": "C"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "never"
+          }
+        }
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        },
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "calcs": [
+            "lastNotNull",
+            "max",
+            "mean"
+          ]
+        }
+      }
+    },
+    {
+      "id": 39,
+      "gridPos": {
+        "x": 12,
+        "y": 127,
+        "w": 12,
+        "h": 8
+      },
+      "type": "heatmap",
+      "title": "S3 Write Latency Distribution",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "sum(increase(s3_write_duration_ms_bucket{exported_job=~\"${service}\", cache_name=~\"${cache}\", backend=\"s3\"}[$__interval])) by (le)",
+          "legendFormat": "{{le}}",
+          "refId": "A",
+          "format": "heatmap"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "hideFrom": {
+              "tooltip": false,
+              "viz": false,
+              "legend": false
+            }
+          }
+        }
+      },
+      "options": {
+        "calculate": false,
+        "cellGap": 2,
+        "color": {
+          "exponent": 0.5,
+          "fill": "dark-orange",
+          "mode": "scheme",
+          "scheme": "Oranges",
+          "steps": 128
+        },
+        "exemplars": {
+          "color": "rgba(255,0,255,0.7)"
+        },
+        "filterValues": {
+          "le": 1E-9
+        },
+        "legend": {
+          "show": true
+        },
+        "rowsFrame": {
+          "layout": "auto"
+        },
+        "tooltip": {
+          "show": true,
+          "yHistogram": false
+        },
+        "yAxis": {
+          "axisPlacement": "left",
+          "reverse": false,
+          "unit": "ms"
+        }
+      }
+    },
+    {
+      "id": 304,
+      "type": "timeseries",
+      "title": "S3 Write Error Breakdown by Category",
+      "section": "s3",
+      "gridPos": {
+        "x": 0,
+        "y": 135,
+        "w": 24,
+        "h": 8
+      },
+      "targets": [
+        {
+          "expr": "rate(s3_write_attempts_total{result=~\"error_.*\"}[5m])",
+          "legendFormat": "{{result}} - {{cache_name}}",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops",
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "stacking": {
+              "mode": "normal"
+            }
+          }
+        }
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      }
+    },
+    {
+      "id": 305,
+      "type": "timeseries",
+      "title": "S3 Dead Letter Queue Depth",
+      "section": "s3",
+      "gridPos": {
+        "x": 0,
+        "y": 143,
+        "w": 24,
+        "h": 8
+      },
+      "targets": [
+        {
+          "expr": "s3_dlq_depth",
+          "legendFormat": "{{cache_name}} - DLQ depth",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 10
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": 0,
+                "color": "green"
+              },
+              {
+                "value": 1,
+                "color": "red"
+              }
+            ]
+          }
+        }
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      }
+    },
+    {
+      "id": 203,
+      "type": "row",
+      "title": "WRITE PATH - POSTGRES PERSISTENCE",
+      "gridPos": {
+        "x": 0,
+        "y": 151,
+        "w": 24,
+        "h": 1
+      },
+      "collapsed": false
+    },
+    {
       "id": 10,
       "gridPos": {
         "x": 0,
-        "y": 40,
+        "y": 152,
         "w": 12,
         "h": 8
       },
@@ -682,7 +1370,7 @@
       "id": 11,
       "gridPos": {
         "x": 12,
-        "y": 40,
+        "y": 160,
         "w": 12,
         "h": 8
       },
@@ -751,159 +1439,10 @@
       }
     },
     {
-      "id": 12,
-      "gridPos": {
-        "x": 0,
-        "y": 48,
-        "w": 24,
-        "h": 8
-      },
-      "type": "timeseries",
-      "title": "S3 Write Failures by Error Category",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${datasource}"
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "expr": "rate(layer_cache_persister_write_failed_retryable{exported_job=~\"${service}\", cache_name=~\"${cache}\", backend=\"s3\", error_kind!=\"\"}[1m])",
-          "legendFormat": "{{exported_job}}/{{cache_name}} - {{error_kind}}",
-          "refId": "A"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "ops",
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "lineWidth": 2,
-            "fillOpacity": 10,
-            "showPoints": "never",
-            "stacking": {
-              "mode": "normal"
-            }
-          }
-        },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byRegexp",
-              "options": "/.*authentication.*/"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "mode": "fixed",
-                  "fixedColor": "red"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byRegexp",
-              "options": "/.*throttling.*/"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "mode": "fixed",
-                  "fixedColor": "orange"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byRegexp",
-              "options": "/.*network.*/"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "mode": "fixed",
-                  "fixedColor": "yellow"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byRegexp",
-              "options": "/.*not_found.*/"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "mode": "fixed",
-                  "fixedColor": "blue"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byRegexp",
-              "options": "/.*configuration.*/"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "mode": "fixed",
-                  "fixedColor": "purple"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byRegexp",
-              "options": "/.*other.*/"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "mode": "fixed",
-                  "fixedColor": "gray"
-                }
-              }
-            ]
-          }
-        ]
-      },
-      "options": {
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc"
-        },
-        "legend": {
-          "displayMode": "table",
-          "placement": "bottom",
-          "calcs": [
-            "lastNotNull",
-            "max",
-            "mean"
-          ]
-        }
-      }
-    },
-    {
       "id": 21,
       "gridPos": {
         "x": 0,
-        "y": 56,
+        "y": 168,
         "w": 12,
         "h": 8
       },
@@ -955,65 +1494,10 @@
       }
     },
     {
-      "id": 23,
-      "gridPos": {
-        "x": 12,
-        "y": 56,
-        "w": 12,
-        "h": 8
-      },
-      "type": "timeseries",
-      "title": "Persister - Evict Duration (Average)",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${datasource}"
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "expr": "(rate(layer_cache_persister_evict_duration_seconds_sum{exported_job=~\"${service}\", cache_name=~\"${cache}\", backend=~\"${backend}\"}[1m]) / rate(layer_cache_persister_evict_duration_seconds_count{exported_job=~\"${service}\", cache_name=~\"${cache}\", backend=~\"${backend}\"}[1m])) * 1000",
-          "legendFormat": "{{exported_job}}/{{cache_name}} - avg",
-          "refId": "A"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "ms",
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "lineWidth": 2,
-            "fillOpacity": 10,
-            "showPoints": "never"
-          }
-        }
-      },
-      "options": {
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc"
-        },
-        "legend": {
-          "displayMode": "table",
-          "placement": "right",
-          "calcs": [
-            "lastNotNull",
-            "max",
-            "mean",
-            "min"
-          ]
-        }
-      }
-    },
-    {
       "id": 14,
       "gridPos": {
         "x": 0,
-        "y": 64,
+        "y": 176,
         "w": 12,
         "h": 8
       },
@@ -1085,7 +1569,7 @@
       "id": 15,
       "gridPos": {
         "x": 12,
-        "y": 64,
+        "y": 184,
         "w": 12,
         "h": 8
       },
@@ -1157,7 +1641,7 @@
       "id": 16,
       "gridPos": {
         "x": 0,
-        "y": 72,
+        "y": 192,
         "w": 24,
         "h": 8
       },
@@ -1208,124 +1692,16 @@
       }
     },
     {
-      "id": 17,
-      "gridPos": {
-        "x": 0,
-        "y": 80,
-        "w": 24,
-        "h": 8
-      },
-      "type": "timeseries",
-      "title": "Persister - Retry Operations (All Types)",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${datasource}"
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "expr": "rate(layer_cache_persister_retry_attempted{exported_job=~\"${service}\", cache_name=~\"${cache}\"}[1m])",
-          "legendFormat": "{{exported_job}}/{{cache_name}} - retry attempts",
-          "refId": "A"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "ops",
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "lineWidth": 2,
-            "fillOpacity": 10,
-            "showPoints": "never"
-          }
-        }
-      },
-      "options": {
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc"
-        },
-        "legend": {
-          "displayMode": "table",
-          "placement": "right",
-          "calcs": [
-            "lastNotNull",
-            "max",
-            "mean"
-          ]
-        }
-      }
-    },
-    {
-      "id": 25,
-      "gridPos": {
-        "x": 0,
-        "y": 88,
-        "w": 24,
-        "h": 8
-      },
-      "type": "timeseries",
-      "title": "Persister - Retry Duration (Average)",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${datasource}"
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "expr": "(rate(layer_cache_persister_retry_duration_seconds_sum{exported_job=~\"${service}\", cache_name=~\"${cache}\"}[1m]) / rate(layer_cache_persister_retry_duration_seconds_count{exported_job=~\"${service}\", cache_name=~\"${cache}\"}[1m])) * 1000",
-          "legendFormat": "{{exported_job}}/{{cache_name}} - avg",
-          "refId": "A"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "ms",
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "lineWidth": 2,
-            "fillOpacity": 10,
-            "showPoints": "never"
-          }
-        }
-      },
-      "options": {
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc"
-        },
-        "legend": {
-          "displayMode": "table",
-          "placement": "right",
-          "calcs": [
-            "lastNotNull",
-            "max",
-            "mean",
-            "min"
-          ]
-        }
-      }
-    },
-    {
       "id": 26,
       "gridPos": {
         "x": 0,
-        "y": 96,
+        "y": 200,
         "w": 24,
         "h": 8
       },
       "type": "timeseries",
-      "title": "Persister - End-to-End Persistence Latency (p50, p95, p99)",
+      "title": "${operation} - Persistence Latency (p50, p95, p99)",
+      "repeat": "operation",
       "datasource": {
         "type": "prometheus",
         "uid": "${datasource}"
@@ -1336,8 +1712,8 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "histogram_quantile(0.50, rate(layer_cache_persistence_latency_seconds_bucket{exported_job=~\"${service}\", cache_name=~\"${cache}\", backend=~\"${backend}\"}[1m])) * 1000",
-          "legendFormat": "{{exported_job}}/{{cache_name}}/{{operation}}/{{event_kind}} - p50",
+          "expr": "histogram_quantile(0.50, sum(rate(layer_cache_persistence_latency_seconds_bucket{operation=\"${operation}\", exported_job=~\"${service}\", cache_name=~\"${cache}\", backend=~\"${backend}\"}[1m])) by (le)) * 1000",
+          "legendFormat": "p50",
           "refId": "A"
         },
         {
@@ -1345,8 +1721,8 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "histogram_quantile(0.95, rate(layer_cache_persistence_latency_seconds_bucket{exported_job=~\"${service}\", cache_name=~\"${cache}\", backend=~\"${backend}\"}[1m])) * 1000",
-          "legendFormat": "{{exported_job}}/{{cache_name}}/{{operation}}/{{event_kind}} - p95",
+          "expr": "histogram_quantile(0.95, sum(rate(layer_cache_persistence_latency_seconds_bucket{operation=\"${operation}\", exported_job=~\"${service}\", cache_name=~\"${cache}\", backend=~\"${backend}\"}[1m])) by (le)) * 1000",
+          "legendFormat": "p95",
           "refId": "B"
         },
         {
@@ -1354,8 +1730,8 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "histogram_quantile(0.99, rate(layer_cache_persistence_latency_seconds_bucket{exported_job=~\"${service}\", cache_name=~\"${cache}\", backend=~\"${backend}\"}[1m])) * 1000",
-          "legendFormat": "{{exported_job}}/{{cache_name}}/{{operation}}/{{event_kind}} - p99",
+          "expr": "histogram_quantile(0.99, sum(rate(layer_cache_persistence_latency_seconds_bucket{operation=\"${operation}\", exported_job=~\"${service}\", cache_name=~\"${cache}\", backend=~\"${backend}\"}[1m])) by (le)) * 1000",
+          "legendFormat": "p99",
           "refId": "C"
         }
       ],
@@ -1390,10 +1766,348 @@
       }
     },
     {
+      "id": 2,
+      "gridPos": {
+        "x": 0,
+        "y": 208,
+        "w": 12,
+        "h": 8
+      },
+      "type": "timeseries",
+      "title": "Retry Queue - Enqueue Rate",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "rate(layer_cache_retry_queue_enqueued{exported_job=~\"${service}\", cache_name=~\"${cache}\"}[1m])",
+          "legendFormat": "{{exported_job}}/{{cache_name}} - enqueued",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "never"
+          }
+        }
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        },
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "calcs": [
+            "lastNotNull",
+            "max",
+            "mean"
+          ]
+        }
+      }
+    },
+    {
+      "id": 3,
+      "gridPos": {
+        "x": 12,
+        "y": 216,
+        "w": 12,
+        "h": 8
+      },
+      "type": "timeseries",
+      "title": "Retry Queue - Success Rate",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "rate(layer_cache_retry_queue_success{exported_job=~\"${service}\", cache_name=~\"${cache}\"}[1m])",
+          "legendFormat": "{{exported_job}}/{{cache_name}} - success",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "never"
+          }
+        }
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        },
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "calcs": [
+            "lastNotNull",
+            "max",
+            "mean"
+          ]
+        }
+      }
+    },
+    {
+      "id": 4,
+      "gridPos": {
+        "x": 0,
+        "y": 224,
+        "w": 12,
+        "h": 8
+      },
+      "type": "timeseries",
+      "title": "Retry Queue - Failure Rate",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "rate(layer_cache_retry_queue_failed{exported_job=~\"${service}\", cache_name=~\"${cache}\"}[1m])",
+          "legendFormat": "{{exported_job}}/{{cache_name}} - failed",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "never"
+          }
+        }
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        },
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "calcs": [
+            "lastNotNull",
+            "max",
+            "mean"
+          ]
+        }
+      }
+    },
+    {
+      "id": 5,
+      "gridPos": {
+        "x": 12,
+        "y": 232,
+        "w": 12,
+        "h": 8
+      },
+      "type": "timeseries",
+      "title": "Retry Queue - Permanent Failure Rate",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "rate(layer_cache_retry_queue_permanent_failure{exported_job=~\"${service}\", cache_name=~\"${cache}\"}[1m])",
+          "legendFormat": "{{exported_job}}/{{cache_name}} - permanent failure",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "never"
+          }
+        }
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        },
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "calcs": [
+            "lastNotNull",
+            "max",
+            "mean"
+          ]
+        }
+      }
+    },
+    {
+      "id": 6,
+      "gridPos": {
+        "x": 0,
+        "y": 240,
+        "w": 12,
+        "h": 8
+      },
+      "type": "timeseries",
+      "title": "Retry Queue - Current Depth",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "layer_cache_retry_queue_depth{exported_job=~\"${service}\", cache_name=~\"${cache}\"}",
+          "legendFormat": "{{exported_job}}/{{cache_name}} - queue depth",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "auto"
+          }
+        }
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        },
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "calcs": [
+            "lastNotNull",
+            "max",
+            "mean"
+          ]
+        }
+      }
+    },
+    {
+      "id": 9,
+      "gridPos": {
+        "x": 12,
+        "y": 248,
+        "w": 12,
+        "h": 8
+      },
+      "type": "timeseries",
+      "title": "Retry Queue - Depth by Cache",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "layer_cache_retry_queue_depth{exported_job=~\"${service}\", cache_name=~\"${cache}\"}",
+          "legendFormat": "{{exported_job}}/{{cache_name}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 30,
+            "showPoints": "never",
+            "stacking": {
+              "mode": "normal"
+            }
+          }
+        }
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        },
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        }
+      }
+    },
+    {
+      "id": 204,
+      "type": "row",
+      "title": "EVICTION OPERATIONS",
+      "gridPos": {
+        "x": 0,
+        "y": 256,
+        "w": 24,
+        "h": 1
+      },
+      "collapsed": false
+    },
+    {
       "id": 19,
       "gridPos": {
         "x": 0,
-        "y": 104,
+        "y": 257,
         "w": 12,
         "h": 8
       },
@@ -1456,7 +2170,7 @@
       "id": 20,
       "gridPos": {
         "x": 12,
-        "y": 104,
+        "y": 265,
         "w": 12,
         "h": 8
       },
@@ -1516,66 +2230,15 @@
       }
     },
     {
-      "id": 32,
+      "id": 23,
       "gridPos": {
-        "x": 0,
-        "y": 112,
-        "w": 24,
-        "h": 1
-      },
-      "type": "row",
-      "title": "Read Path Performance",
-      "collapsed": false
-    },
-    {
-      "id": 33,
-      "gridPos": {
-        "x": 0,
-        "y": 113,
-        "w": 8,
-        "h": 8
-      },
-      "type": "gauge",
-      "title": "${backend} Resolution Rate",
-      "repeat": "backend",
-      "repeatDirection": "h",
-      "maxPerRow": 3,
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${datasource}"
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "expr": "sum(rate(layer_cache_backend_resolved_total{exported_job=~\"${service}\", cache_name=~\"${cache}\", backend=\"${backend}\", result=\"hit\"}[5m])) / sum(rate(layer_cache_requests_total{exported_job=~\"${service}\", cache_name=~\"${cache}\"}[5m]))",
-          "refId": "A"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "percentunit",
-          "min": 0,
-          "max": 1,
-          "color": {
-            "mode": "fixed",
-            "fixedColor": "blue"
-          }
-        }
-      }
-    },
-    {
-      "id": 34,
-      "gridPos": {
-        "x": 0,
-        "y": 121,
-        "w": 24,
+        "x": 12,
+        "y": 273,
+        "w": 12,
         "h": 8
       },
       "type": "timeseries",
-      "title": "Cache Resolution Distribution Over Time",
+      "title": "Persister - Evict Duration (Average)",
       "datasource": {
         "type": "prometheus",
         "uid": "${datasource}"
@@ -1586,143 +2249,9 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "sum(rate(layer_cache_backend_resolved_total{exported_job=~\"${service}\", cache_name=~\"${cache}\", backend=\"foyer\", result=\"hit\"}[1m]))",
-          "legendFormat": "Foyer",
+          "expr": "(rate(layer_cache_persister_evict_duration_seconds_sum{exported_job=~\"${service}\", cache_name=~\"${cache}\", backend=~\"${backend}\"}[1m]) / rate(layer_cache_persister_evict_duration_seconds_count{exported_job=~\"${service}\", cache_name=~\"${cache}\", backend=~\"${backend}\"}[1m])) * 1000",
+          "legendFormat": "{{exported_job}}/{{cache_name}} - avg",
           "refId": "A"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "expr": "sum(rate(layer_cache_backend_resolved_total{exported_job=~\"${service}\", cache_name=~\"${cache}\", backend=\"s3\", result=\"hit\"}[1m]))",
-          "legendFormat": "S3",
-          "refId": "B"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "expr": "sum(rate(layer_cache_backend_resolved_total{exported_job=~\"${service}\", cache_name=~\"${cache}\", backend=\"pg\", result=\"hit\"}[1m]))",
-          "legendFormat": "PostgreSQL",
-          "refId": "C"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "expr": "sum(rate(layer_cache_backend_resolved_total{exported_job=~\"${service}\", cache_name=~\"${cache}\", result=\"miss\"}[1m]))",
-          "legendFormat": "Not Found",
-          "refId": "D"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "custom": {
-            "fillOpacity": 10,
-            "lineWidth": 2,
-            "spanNulls": false
-          },
-          "unit": "reqps"
-        }
-      },
-      "options": {
-        "legend": {
-          "displayMode": "list",
-          "placement": "bottom"
-        }
-      }
-    },
-    {
-      "id": 35,
-      "gridPos": {
-        "x": 0,
-        "y": 129,
-        "w": 8,
-        "h": 8
-      },
-      "type": "bargauge",
-      "title": "${cache} Resolution by Backend",
-      "repeat": "cache",
-      "repeatDirection": "h",
-      "maxPerRow": 3,
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${datasource}"
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "expr": "sum by (backend) (rate(layer_cache_backend_resolved_total{exported_job=~\"${service}\", cache_name=\"${cache}\", backend=~\"${backend}\"}[5m]))",
-          "legendFormat": "{{backend}}",
-          "refId": "A"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "reqps",
-          "min": 0,
-          "displayName": "${__field.labels.backend}"
-        }
-      },
-      "options": {
-        "orientation": "horizontal",
-        "displayMode": "gradient",
-        "showUnfilled": true,
-        "text": {
-          "titleSize": 12,
-          "valueSize": 18
-        }
-      }
-    },
-    {
-      "id": 27,
-      "gridPos": {
-        "x": 0,
-        "y": 137,
-        "w": 24,
-        "h": 8
-      },
-      "type": "timeseries",
-      "title": "${backend} Backend - Read Latency (p50, p95, p99)",
-      "repeat": "backend",
-      "repeatDirection": "v",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${datasource}"
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "expr": "histogram_quantile(0.50, sum(rate(layer_cache_read_latency_ms_bucket{exported_job=~\"${service}\", cache_name=~\"${cache}\", backend=\"${backend}\"}[$__interval])) by (cache_name, le))",
-          "legendFormat": "{{cache_name}} - p50",
-          "refId": "A"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "expr": "histogram_quantile(0.95, sum(rate(layer_cache_read_latency_ms_bucket{exported_job=~\"${service}\", cache_name=~\"${cache}\", backend=\"${backend}\"}[$__interval])) by (cache_name, le))",
-          "legendFormat": "{{cache_name}} - p95",
-          "refId": "B"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "expr": "histogram_quantile(0.99, sum(rate(layer_cache_read_latency_ms_bucket{exported_job=~\"${service}\", cache_name=~\"${cache}\", backend=\"${backend}\"}[$__interval])) by (cache_name, le))",
-          "legendFormat": "{{cache_name}} - p99",
-          "refId": "C"
         }
       ],
       "fieldConfig": {
@@ -1745,227 +2274,51 @@
         },
         "legend": {
           "displayMode": "table",
-          "placement": "bottom",
+          "placement": "right",
           "calcs": [
             "lastNotNull",
             "max",
-            "mean"
+            "mean",
+            "min"
           ]
         }
-      },
-      "interval": "1m"
+      }
     },
     {
-      "id": 28,
-      "gridPos": {
-        "x": 0,
-        "y": 145,
-        "w": 24,
-        "h": 8
-      },
+      "id": 307,
       "type": "timeseries",
-      "title": "End-to-End Request Latency (p50, p95, p99)",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${datasource}"
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "expr": "histogram_quantile(0.50, sum(rate(layer_cache_request_latency_ms_bucket{exported_job=~\"${service}\", cache_name=~\"${cache}\"}[$__interval])) by (cache_name, le))",
-          "legendFormat": "{{cache_name}} - p50",
-          "refId": "A"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "expr": "histogram_quantile(0.95, sum(rate(layer_cache_request_latency_ms_bucket{exported_job=~\"${service}\", cache_name=~\"${cache}\"}[$__interval])) by (cache_name, le))",
-          "legendFormat": "{{cache_name}} - p95",
-          "refId": "B"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "expr": "histogram_quantile(0.99, sum(rate(layer_cache_request_latency_ms_bucket{exported_job=~\"${service}\", cache_name=~\"${cache}\"}[$__interval])) by (cache_name, le))",
-          "legendFormat": "{{cache_name}} - p99",
-          "refId": "C"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "ms",
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "lineWidth": 2,
-            "fillOpacity": 10,
-            "showPoints": "never"
-          }
-        }
-      },
-      "options": {
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc"
-        },
-        "legend": {
-          "displayMode": "table",
-          "placement": "bottom",
-          "calcs": [
-            "lastNotNull",
-            "max",
-            "mean"
-          ]
-        }
-      },
-      "interval": "1m"
-    },
-    {
-      "id": 29,
+      "title": "Memory-Only Evictions",
+      "section": "eviction",
       "gridPos": {
         "x": 0,
-        "y": 153,
+        "y": 281,
         "w": 24,
         "h": 8
       },
-      "type": "timeseries",
-      "title": "${backend} Backend - Hit vs Miss (p95)",
-      "repeat": "backend",
-      "repeatDirection": "v",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${datasource}"
-      },
       "targets": [
         {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "expr": "histogram_quantile(0.95, sum(rate(layer_cache_read_latency_ms_bucket{exported_job=~\"${service}\", cache_name=~\"${cache}\", backend=\"${backend}\", result=\"hit\"}[$__interval])) by (cache_name, le))",
-          "legendFormat": "{{cache_name}} - hit",
-          "refId": "A"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "expr": "histogram_quantile(0.95, sum(rate(layer_cache_read_latency_ms_bucket{exported_job=~\"${service}\", cache_name=~\"${cache}\", backend=\"${backend}\", result=\"miss\"}[$__interval])) by (cache_name, le))",
-          "legendFormat": "{{cache_name}} - miss",
-          "refId": "B"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "ms",
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "lineWidth": 2,
-            "fillOpacity": 10,
-            "showPoints": "never"
-          }
-        }
-      },
-      "options": {
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc"
-        },
-        "legend": {
-          "displayMode": "table",
-          "placement": "bottom",
-          "calcs": [
-            "lastNotNull",
-            "max",
-            "mean"
-          ]
-        }
-      },
-      "interval": "1m"
-    },
-    {
-      "id": 31,
-      "gridPos": {
-        "x": 0,
-        "y": 169,
-        "w": 24,
-        "h": 8
-      },
-      "type": "heatmap",
-      "title": "${backend} Backend - Latency Distribution",
-      "repeat": "backend",
-      "repeatDirection": "v",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${datasource}"
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "expr": "sum(increase(layer_cache_read_latency_ms_bucket{exported_job=~\"${service}\", cache_name=~\"${cache}\", backend=\"${backend}\"}[$__interval])) by (le)",
-          "legendFormat": "{{le}}",
+          "expr": "rate(layer_cache_persistence_latency_seconds_count{operation=\"evict_memory_only\"}[5m])",
+          "legendFormat": "{{cache_name}} - memory-only evictions",
           "refId": "A",
-          "format": "heatmap"
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          }
         }
       ],
       "fieldConfig": {
         "defaults": {
+          "unit": "ops",
           "custom": {
-            "hideFrom": {
-              "tooltip": false,
-              "viz": false,
-              "legend": false
-            }
+            "lineWidth": 2,
+            "fillOpacity": 10
           }
         }
       },
-      "options": {
-        "calculate": false,
-        "cellGap": 2,
-        "color": {
-          "exponent": 0.5,
-          "fill": "dark-orange",
-          "mode": "scheme",
-          "scheme": "Oranges",
-          "steps": 128
-        },
-        "exemplars": {
-          "color": "rgba(255,0,255,0.7)"
-        },
-        "filterValues": {
-          "le": 1e-09
-        },
-        "legend": {
-          "show": true
-        },
-        "rowsFrame": {
-          "layout": "auto"
-        },
-        "tooltip": {
-          "show": true,
-          "yHistogram": false
-        },
-        "yAxis": {
-          "axisPlacement": "left",
-          "reverse": false,
-          "unit": "ms"
-        }
-      },
-      "interval": "1m"
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      }
     }
   ],
   "time": {

@@ -8221,6 +8221,7 @@ dependencies = [
  "foyer",
  "fs4",
  "futures",
+ "http 0.2.12",
  "miniz_oxide",
  "mixtrics",
  "nats-std",

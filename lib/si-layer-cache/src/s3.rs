@@ -1,6 +1,8 @@
 use std::{
     collections::HashMap,
     fmt,
+    path::Path,
+    sync::Arc,
 };
 
 use aws_config::Region;
@@ -13,10 +15,20 @@ use serde::{
 use si_std::SensitiveString;
 use strum::AsRefStr;
 use telemetry::prelude::*;
+use tokio::task::JoinHandle;
 
-use crate::error::{
-    LayerDbError,
-    LayerDbResult,
+use crate::{
+    error::{
+        LayerDbError,
+        LayerDbResult,
+    },
+    event::{
+        LayeredEvent,
+        LayeredEventPayload,
+    },
+    rate_limiter::RateLimitConfig,
+    s3_queue_processor::S3QueueProcessor,
+    s3_write_queue::S3WriteQueue,
 };
 
 /// Strategy for transforming keys before storage in S3
@@ -82,6 +94,33 @@ pub struct S3CacheConfig {
     pub key_prefix: Option<String>,
 }
 
+/// Configuration for S3 read operation retry behavior
+///
+/// Controls AWS SDK retry configuration for S3Layer read operations (get, head_bucket).
+/// Write operations use application-level retry via queue and have SDK retry disabled.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct S3ReadRetryConfig {
+    /// Maximum number of retry attempts (default: 3)
+    pub max_attempts: u32,
+    /// Initial backoff delay in milliseconds (default: 100)
+    pub initial_backoff_ms: u64,
+    /// Maximum backoff delay in milliseconds (default: 20000)
+    pub max_backoff_ms: u64,
+    /// Backoff multiplier for exponential backoff (default: 2.0)
+    pub backoff_multiplier: f64,
+}
+
+impl Default for S3ReadRetryConfig {
+    fn default() -> Self {
+        Self {
+            max_attempts: 3,
+            initial_backoff_ms: 100,
+            max_backoff_ms: 20000,
+            backoff_multiplier: 2.0,
+        }
+    }
+}
+
 /// Configuration for S3-compatible object storage.
 ///
 /// Supports AWS S3 and S3-compatible services (VersityGW, MinIO, etc).
@@ -116,6 +155,12 @@ pub struct ObjectStorageConfig {
     /// Optional key prefix for test isolation
     /// When set, all object keys are prefixed with this value after transformation
     pub key_prefix: Option<String>,
+    /// Rate limiting configuration for S3 writes
+    #[serde(default)]
+    pub rate_limit: RateLimitConfig,
+    /// Retry configuration for S3 read operations
+    #[serde(default)]
+    pub read_retry: S3ReadRetryConfig,
 }
 
 impl Default for ObjectStorageConfig {
@@ -130,6 +175,8 @@ impl Default for ObjectStorageConfig {
                 secret_key: "bugbear".into(),
             },
             key_prefix: None,
+            rate_limit: RateLimitConfig::default(),
+            read_retry: S3ReadRetryConfig::default(),
         }
     }
 }
@@ -158,7 +205,99 @@ impl ObjectStorageConfig {
     }
 }
 
-/// S3-compatible object storage layer
+/// S3-based persistence layer with internal write queue and adaptive rate limiting.
+///
+/// # Architecture
+///
+/// All writes go through a persistent disk queue (no fast path) to guarantee durability:
+///
+/// 1. `insert()` transforms the key and enqueues LayeredEvent to disk atomically
+/// 2. Background processor dequeues in ULID order
+/// 3. Processor applies backoff delay if rate limited
+/// 4. Processor attempts S3 write
+/// 5. On success: remove from queue, update rate limiter
+/// 6. On throttle (503): increase backoff, leave in queue
+/// 7. On serialization error: move to dead letter queue
+/// 8. On transient error: increase backoff, leave in queue
+///
+/// # S3 Clients
+///
+/// Two independent S3 clients with different retry configurations:
+///
+/// - **S3Layer client**: Configurable SDK retry for resilient synchronous reads
+/// - **Processor client**: SDK retry disabled (application-level retry via queue)
+///
+/// This separation ensures processor issues don't affect S3Layer reads, and allows
+/// optimal retry strategies for each use case.
+///
+/// # Key Transformation
+///
+/// Keys are transformed at the API boundary before queueing:
+///
+/// - Strategy transformation (Passthrough or ReverseKey)
+/// - Three-tier distribution prefix (`ab/c1/23/...`)
+/// - Optional key_prefix if configured
+///
+/// Events in the queue contain pre-transformed keys ready for S3 storage.
+/// The processor uses keys directly without transformation.
+///
+/// # Rate Limiting
+///
+/// Adaptive exponential backoff prevents constant S3 throttling:
+///
+/// - **On throttle:** delay *= backoff_multiplier (default: 2.0), capped at max_delay
+/// - **On success:** consecutive_successes++
+/// - **After N successes:** delay /= success_divisor (default: 1.5), streak resets
+/// - **Below Zeno threshold (50ms):** delay resets to zero (solves dichotomy paradox)
+///
+/// # Configuration
+///
+/// Rate limiting configured via `RateLimitConfig` in `ObjectStorageConfig`:
+///
+/// ```json
+/// {
+///   "rate_limit": {
+///     "min_delay_ms": 0,
+///     "max_delay_ms": 5000,
+///     "initial_backoff_ms": 100,
+///     "backoff_multiplier": 2.0,
+///     "success_divisor": null,  // defaults to multiplier * 0.75
+///     "zeno_threshold_ms": 50,
+///     "successes_before_reduction": 3
+///   }
+/// }
+/// ```
+///
+/// # Logging
+///
+/// - Enqueue: TRACE level (normal operation)
+/// - Success: TRACE level (expected happy path)
+/// - Throttle: DEBUG level (expected, not alarming)
+/// - Transient error: WARN level (unexpected but retryable)
+/// - Serialization error: ERROR level (data corruption)
+///
+/// # Metrics
+///
+/// - `s3_write_queue_depth` - Current pending writes
+/// - `s3_write_backoff_ms` - Current backoff delay
+/// - `s3_write_attempts_total{result}` - Attempts by result (success/throttle/error)
+/// - `s3_write_duration_ms` - Time from enqueue to completion
+///
+/// # Shutdown
+///
+/// On Drop:
+/// 1. Signals processor to shutdown
+/// 2. Processor completes in-flight write
+/// 3. Processor exits (does not drain queue)
+/// 4. Queue remains on disk for restart
+///
+/// # Startup
+///
+/// On initialization:
+/// 1. Scans queue directory for `*.pending` files
+/// 2. Loads pending writes in ULID order
+/// 3. Starts processor with zero backoff
+/// 4. Rate limits rediscovered naturally during processing
 #[derive(Clone, Debug)]
 pub struct S3Layer {
     client: Client,
@@ -166,14 +305,32 @@ pub struct S3Layer {
     cache_name: String,
     strategy: KeyTransformStrategy,
     key_prefix: Option<String>,
+    write_queue: Arc<S3WriteQueue>,
+    processor_handle: Arc<JoinHandle<()>>,
+    processor_shutdown: Arc<tokio::sync::Notify>,
 }
 
 impl S3Layer {
     /// Create a new S3Layer from configuration and strategy
+    ///
+    /// All writes go through a persistent queue for durability. The queue processor
+    /// runs in the background and applies adaptive rate limiting if configured.
+    ///
+    /// # Parameters
+    ///
+    /// * `config` - S3 cache configuration
+    /// * `cache_name` - Name of this cache (used for queue directory)
+    /// * `strategy` - Key transformation strategy
+    /// * `rate_limit_config` - Rate limiting configuration for adaptive backoff
+    /// * `read_retry_config` - Retry configuration for S3 read operations
+    /// * `queue_base_path` - Base directory for queue persistence
     pub async fn new(
         config: S3CacheConfig,
         cache_name: impl Into<String>,
         strategy: KeyTransformStrategy,
+        rate_limit_config: RateLimitConfig,
+        read_retry_config: S3ReadRetryConfig,
+        queue_base_path: impl AsRef<Path>,
     ) -> LayerDbResult<Self> {
         info!(
             layer_db.s3.auth_mode = config.auth.as_ref(),
@@ -193,6 +350,7 @@ impl S3Layer {
                     None,     // expiration
                     "static", // provider name
                 );
+                info!(endpoint = config.endpoint, "Using S3 endpoint",);
 
                 aws_config::SdkConfig::builder()
                     .endpoint_url(&config.endpoint)
@@ -212,18 +370,65 @@ impl S3Layer {
         };
 
         // VersityGW with POSIX backend requires path-style bucket access
-        let s3_config = aws_sdk_s3::config::Builder::from(&sdk_config)
-            .force_path_style(true)
-            .build();
+        let s3_config_builder =
+            aws_sdk_s3::config::Builder::from(&sdk_config).force_path_style(true);
+
+        // Apply read retry configuration
+        let retry_config = aws_sdk_s3::config::retry::RetryConfig::standard()
+            .with_max_attempts(read_retry_config.max_attempts)
+            .with_initial_backoff(std::time::Duration::from_millis(
+                read_retry_config.initial_backoff_ms,
+            ))
+            .with_max_backoff(std::time::Duration::from_millis(
+                read_retry_config.max_backoff_ms,
+            ));
+
+        let s3_config = s3_config_builder.retry_config(retry_config).build();
 
         let client = Client::from_conf(s3_config);
 
+        // Create separate S3 client for processor with retry disabled
+        // Processor uses application-level retry via queue, so SDK retry must be disabled
+        let processor_s3_config = aws_sdk_s3::config::Builder::from(&sdk_config)
+            .force_path_style(true)
+            .retry_config(aws_sdk_s3::config::retry::RetryConfig::disabled())
+            .build();
+
+        let processor_client = Client::from_conf(processor_s3_config);
+        let cache_name_str = cache_name.into();
+        let bucket_name = config.bucket_name;
+        let key_prefix = config.key_prefix;
+
+        // Initialize write queue
+        let write_queue = S3WriteQueue::new(&queue_base_path, &cache_name_str)
+            .map_err(|e| LayerDbError::S3WriteQueue(e.to_string()))?;
+        let write_queue = Arc::new(write_queue);
+
+        // Start queue processor
+        // Create processor with direct S3 client access (no S3Layer dependency)
+        let processor = S3QueueProcessor::new(
+            Arc::clone(&write_queue),
+            rate_limit_config,
+            processor_client,
+            bucket_name.clone(),
+            cache_name_str.clone(),
+        );
+
+        let shutdown = processor.shutdown_handle();
+        let handle = tokio::spawn(processor.process_queue());
+
+        let processor_handle = Arc::new(handle);
+        let processor_shutdown = shutdown;
+
         Ok(S3Layer {
             client,
-            bucket_name: config.bucket_name,
-            cache_name: cache_name.into(),
+            bucket_name,
+            cache_name: cache_name_str,
             strategy,
-            key_prefix: config.key_prefix,
+            key_prefix,
+            write_queue,
+            processor_handle,
+            processor_shutdown,
         })
     }
 
@@ -358,7 +563,7 @@ impl S3Layer {
 
                 // Not a "not found" error - wrap with context
                 let aws_error = AwsSdkError::GetObject(sdk_err);
-                let s3_error = Self::categorize_error(
+                let s3_error = categorize_s3_error(
                     aws_error,
                     crate::error::S3Operation::Get,
                     self.cache_name.clone(),
@@ -369,33 +574,46 @@ impl S3Layer {
         }
     }
 
-    /// Insert a value into S3
-    pub async fn insert(&self, key: &str, value: &[u8]) -> LayerDbResult<()> {
-        use crate::error::AwsSdkError;
+    /// Insert an event into S3 via the write queue
+    ///
+    /// Transforms the key according to the configured strategy and prefix before queueing.
+    /// The queued event contains the final S3 key ready to write.
+    ///
+    /// This is the single write interface - all S3 writes go through the queue for durability.
+    pub fn insert(&self, event: &LayeredEvent) -> LayerDbResult<()> {
+        // Transform key at API boundary
+        let transformed_key = self.transform_and_prefix_key(&event.key);
+        let transformed_key_arc: Arc<str> = Arc::from(transformed_key);
 
-        let s3_key = self.transform_and_prefix_key(key);
+        // Create new event with transformed key
+        // Most fields are Arc, so clone is cheap
+        let transformed_event = LayeredEvent {
+            event_id: event.event_id,
+            event_kind: event.event_kind,
+            key: transformed_key_arc.clone(),
+            metadata: event.metadata.clone(),
+            payload: LayeredEventPayload {
+                db_name: event.payload.db_name.clone(),
+                key: transformed_key_arc.clone(), // Reuse same Arc
+                sort_key: event.payload.sort_key.clone(),
+                value: event.payload.value.clone(),
+            },
+            web_events: event.web_events.clone(),
+        };
 
-        match self
-            .client
-            .put_object()
-            .bucket(&self.bucket_name)
-            .key(s3_key)
-            .body(value.to_vec().into())
-            .send()
-            .await
-        {
-            Ok(_) => Ok(()),
-            Err(sdk_err) => {
-                let aws_error = AwsSdkError::PutObject(sdk_err);
-                let s3_error = Self::categorize_error(
-                    aws_error,
-                    crate::error::S3Operation::Put,
-                    self.cache_name.clone(),
-                    key.to_string(),
-                );
-                Err(LayerDbError::S3(Box::new(s3_error)))
-            }
-        }
+        // Queue the transformed event
+        let ulid = self
+            .write_queue
+            .enqueue(&transformed_event)
+            .map_err(|e| LayerDbError::S3WriteQueue(e.to_string()))?;
+
+        trace!(
+            cache = %self.cache_name,
+            ulid = %ulid,
+            "Queued S3 write"
+        );
+
+        Ok(())
     }
 
     /// Get multiple values in parallel
@@ -431,7 +649,7 @@ impl S3Layer {
             Ok(_) => Ok(()),
             Err(sdk_err) => {
                 let aws_error = AwsSdkError::HeadBucket(sdk_err);
-                let s3_error = Self::categorize_error(
+                let s3_error = categorize_s3_error(
                     aws_error,
                     crate::error::S3Operation::HeadBucket,
                     // Use bucket name as cache name for head_bucket operations
@@ -442,283 +660,219 @@ impl S3Layer {
             }
         }
     }
+}
 
-    /// Categorize AWS SDK error into appropriate S3Error variant with context
-    fn categorize_error(
-        aws_error: crate::error::AwsSdkError,
-        operation: crate::error::S3Operation,
-        cache_name: String,
-        key: String,
-    ) -> crate::error::S3Error {
-        use crate::error::{
-            AwsSdkError,
-            S3Error,
-        };
+impl Drop for S3Layer {
+    fn drop(&mut self) {
+        // Signal processor to shutdown
+        self.processor_shutdown.notify_one();
 
-        // Extract message from AWS error for display
-        let message = aws_error.to_string();
+        // Abort the processor task handle
+        // Note: Can't await in Drop, processor will exit on next loop iteration
+        self.processor_handle.abort();
+    }
+}
 
-        // Helper to determine error category from status and message
-        let determine_category = |status: u16, error_msg: &str| -> &'static str {
-            if status == 403
-                || error_msg.contains("AccessDenied")
-                || error_msg.contains("InvalidAccessKeyId")
-                || error_msg.contains("SignatureDoesNotMatch")
-            {
-                "authentication"
-            } else if status == 404
-                || error_msg.contains("NoSuchBucket")
-                || error_msg.contains("NoSuchKey")
-            {
-                "not_found"
-            } else if status == 503
+/// Classification of S3 errors for appropriate handling
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum S3ErrorKind {
+    /// Throttling/rate limiting error (SlowDown, RequestLimitExceeded, ServiceUnavailable)
+    Throttle,
+    /// Serialization/construction error (non-retryable)
+    Serialization,
+    /// Transient error (retryable but not throttling)
+    Transient,
+}
+
+impl S3ErrorKind {
+    /// Returns true if this is a throttling error
+    pub fn is_throttle(&self) -> bool {
+        matches!(self, S3ErrorKind::Throttle)
+    }
+
+    /// Returns true if this is a serialization error
+    pub fn is_serialization(&self) -> bool {
+        matches!(self, S3ErrorKind::Serialization)
+    }
+
+    /// Returns true if this is a transient error
+    pub fn is_transient(&self) -> bool {
+        matches!(self, S3ErrorKind::Transient)
+    }
+}
+
+/// Categorize AWS SDK error into appropriate S3Error variant with context
+///
+/// Used by both S3Layer (for read operations) and S3QueueProcessor (for write operations)
+/// to consistently classify S3 errors for retry/backoff decisions.
+pub fn categorize_s3_error(
+    aws_error: crate::error::AwsSdkError,
+    operation: crate::error::S3Operation,
+    cache_name: String,
+    key: String,
+) -> crate::error::S3Error {
+    use crate::error::{
+        AwsSdkError,
+        S3Error,
+    };
+
+    // Extract message from AWS error for display
+    let message = aws_error.to_string();
+
+    // Helper to determine error category from status and message
+    let determine_category = |status: u16, error_msg: &str| -> &'static str {
+        if status == 403
+            || error_msg.contains("AccessDenied")
+            || error_msg.contains("InvalidAccessKeyId")
+            || error_msg.contains("SignatureDoesNotMatch")
+        {
+            "authentication"
+        } else if status == 404
+            || error_msg.contains("NoSuchBucket")
+            || error_msg.contains("NoSuchKey")
+        {
+            "not_found"
+        } else if status == 503
+            || error_msg.contains("SlowDown")
+            || error_msg.contains("RequestLimitExceeded")
+            || error_msg.contains("ServiceUnavailable")
+        {
+            "throttling"
+        } else {
+            "other"
+        }
+    };
+
+    // Determine error category based on AWS SDK error type
+    // Note: Can't use match arm `|` patterns because each variant has different inner types
+    let category = match &aws_error {
+        AwsSdkError::PutObject(sdk_err) => match sdk_err {
+            aws_sdk_s3::error::SdkError::ServiceError(err) => {
+                let status = err.raw().status().as_u16();
+                let error_msg = format!("{:?}", err.err());
+                determine_category(status, &error_msg)
+            }
+            aws_sdk_s3::error::SdkError::TimeoutError(_)
+            | aws_sdk_s3::error::SdkError::DispatchFailure(_)
+            | aws_sdk_s3::error::SdkError::ResponseError(_) => "network",
+            aws_sdk_s3::error::SdkError::ConstructionFailure(_) => "configuration",
+            _ => "other",
+        },
+        AwsSdkError::GetObject(sdk_err) => match sdk_err {
+            aws_sdk_s3::error::SdkError::ServiceError(err) => {
+                let status = err.raw().status().as_u16();
+                let error_msg = format!("{:?}", err.err());
+                determine_category(status, &error_msg)
+            }
+            aws_sdk_s3::error::SdkError::TimeoutError(_)
+            | aws_sdk_s3::error::SdkError::DispatchFailure(_)
+            | aws_sdk_s3::error::SdkError::ResponseError(_) => "network",
+            aws_sdk_s3::error::SdkError::ConstructionFailure(_) => "configuration",
+            _ => "other",
+        },
+        AwsSdkError::HeadBucket(sdk_err) => match sdk_err {
+            aws_sdk_s3::error::SdkError::ServiceError(err) => {
+                let status = err.raw().status().as_u16();
+                let error_msg = format!("{:?}", err.err());
+                determine_category(status, &error_msg)
+            }
+            aws_sdk_s3::error::SdkError::TimeoutError(_)
+            | aws_sdk_s3::error::SdkError::DispatchFailure(_)
+            | aws_sdk_s3::error::SdkError::ResponseError(_) => "network",
+            aws_sdk_s3::error::SdkError::ConstructionFailure(_) => "configuration",
+            _ => "other",
+        },
+    };
+
+    // Build appropriate S3Error variant based on category
+    match category {
+        "authentication" => S3Error::Authentication {
+            operation,
+            cache_name,
+            key,
+            message,
+            source: aws_error,
+        },
+        "not_found" => S3Error::NotFound {
+            operation,
+            cache_name,
+            key,
+            message,
+            source: aws_error,
+        },
+        "throttling" => S3Error::Throttling {
+            operation,
+            cache_name,
+            key,
+            message,
+            source: aws_error,
+        },
+        "network" => S3Error::Network {
+            operation,
+            cache_name,
+            key,
+            message,
+            source: aws_error,
+        },
+        "configuration" => S3Error::Configuration {
+            operation,
+            cache_name,
+            key,
+            message,
+            source: aws_error,
+        },
+        _ => S3Error::Other {
+            operation,
+            cache_name,
+            key,
+            message,
+            source: aws_error,
+        },
+    }
+}
+
+/// Classify an S3 SDK error into an error kind for appropriate handling
+///
+/// # Classification Rules
+///
+/// - **Throttle**: SlowDown, RequestLimitExceeded, ServiceUnavailable (503)
+/// - **Serialization**: ConstructionFailure (indicates bad request data)
+/// - **Transient**: All other errors (network, timeout, internal errors, etc.)
+pub fn classify_s3_error<E>(
+    error: &aws_sdk_s3::error::SdkError<E, http::Response<()>>,
+) -> S3ErrorKind
+where
+    E: std::error::Error,
+{
+    use aws_sdk_s3::error::SdkError;
+
+    match error {
+        SdkError::ServiceError(context) => {
+            // Extract HTTP status code as primary classification mechanism
+            let status = context.raw().status().as_u16();
+            let error_msg = format!("{:?}", context.err());
+
+            // Classify based on HTTP status code (503) with message validation
+            if status == 503
                 || error_msg.contains("SlowDown")
                 || error_msg.contains("RequestLimitExceeded")
                 || error_msg.contains("ServiceUnavailable")
             {
-                "throttling"
+                S3ErrorKind::Throttle
             } else {
-                "other"
+                // All other service errors are transient (InternalError, etc.)
+                S3ErrorKind::Transient
             }
-        };
-
-        // Determine error category based on AWS SDK error type
-        // Note: Can't use match arm `|` patterns because each variant has different inner types
-        let category = match &aws_error {
-            AwsSdkError::PutObject(sdk_err) => match sdk_err {
-                aws_sdk_s3::error::SdkError::ServiceError(err) => {
-                    let status = err.raw().status().as_u16();
-                    let error_msg = format!("{:?}", err.err());
-                    determine_category(status, &error_msg)
-                }
-                aws_sdk_s3::error::SdkError::TimeoutError(_)
-                | aws_sdk_s3::error::SdkError::DispatchFailure(_)
-                | aws_sdk_s3::error::SdkError::ResponseError(_) => "network",
-                aws_sdk_s3::error::SdkError::ConstructionFailure(_) => "configuration",
-                _ => "other",
-            },
-            AwsSdkError::GetObject(sdk_err) => match sdk_err {
-                aws_sdk_s3::error::SdkError::ServiceError(err) => {
-                    let status = err.raw().status().as_u16();
-                    let error_msg = format!("{:?}", err.err());
-                    determine_category(status, &error_msg)
-                }
-                aws_sdk_s3::error::SdkError::TimeoutError(_)
-                | aws_sdk_s3::error::SdkError::DispatchFailure(_)
-                | aws_sdk_s3::error::SdkError::ResponseError(_) => "network",
-                aws_sdk_s3::error::SdkError::ConstructionFailure(_) => "configuration",
-                _ => "other",
-            },
-            AwsSdkError::HeadBucket(sdk_err) => match sdk_err {
-                aws_sdk_s3::error::SdkError::ServiceError(err) => {
-                    let status = err.raw().status().as_u16();
-                    let error_msg = format!("{:?}", err.err());
-                    determine_category(status, &error_msg)
-                }
-                aws_sdk_s3::error::SdkError::TimeoutError(_)
-                | aws_sdk_s3::error::SdkError::DispatchFailure(_)
-                | aws_sdk_s3::error::SdkError::ResponseError(_) => "network",
-                aws_sdk_s3::error::SdkError::ConstructionFailure(_) => "configuration",
-                _ => "other",
-            },
-        };
-
-        // Build appropriate S3Error variant based on category
-        match category {
-            "authentication" => S3Error::Authentication {
-                operation,
-                cache_name,
-                key,
-                message,
-                source: aws_error,
-            },
-            "not_found" => S3Error::NotFound {
-                operation,
-                cache_name,
-                key,
-                message,
-                source: aws_error,
-            },
-            "throttling" => S3Error::Throttling {
-                operation,
-                cache_name,
-                key,
-                message,
-                source: aws_error,
-            },
-            "network" => S3Error::Network {
-                operation,
-                cache_name,
-                key,
-                message,
-                source: aws_error,
-            },
-            "configuration" => S3Error::Configuration {
-                operation,
-                cache_name,
-                key,
-                message,
-                source: aws_error,
-            },
-            _ => S3Error::Other {
-                operation,
-                cache_name,
-                key,
-                message,
-                source: aws_error,
-            },
         }
+        // AWS SDK serialization/construction errors
+        SdkError::ConstructionFailure(_) => S3ErrorKind::Serialization,
+        // All other errors are transient (network, timeout, etc.)
+        SdkError::ResponseError(_) => S3ErrorKind::Transient,
+        SdkError::TimeoutError(_) => S3ErrorKind::Transient,
+        SdkError::DispatchFailure(_) => S3ErrorKind::Transient,
+        _ => S3ErrorKind::Transient,
     }
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    fn test_cache_config(key_prefix: Option<String>) -> S3CacheConfig {
-        let base_config = ObjectStorageConfig {
-            endpoint: "http://localhost:9200".to_string(),
-            bucket_prefix: "test-bucket".to_string(),
-            bucket_suffix: None,
-            region: "us-east-1".to_string(),
-            auth: S3AuthConfig::StaticCredentials {
-                access_key: "key".into(),
-                secret_key: "secret".into(),
-            },
-            key_prefix,
-        };
-        base_config.for_cache("test-cache")
-    }
-
-    #[tokio::test]
-    async fn test_transform_and_prefix_key_with_test_prefix_passthrough() {
-        let config = test_cache_config(Some("test-uuid-1234".to_string()));
-
-        let layer = S3Layer::new(config, "test-cache", KeyTransformStrategy::Passthrough)
-            .await
-            .expect("Failed to create S3Layer");
-
-        // Test with 6+ character key
-        let result = layer.transform_and_prefix_key("abc123def456");
-        assert_eq!(result, "test-uuid-1234/ab/c1/23/abc123def456");
-
-        // Test with 4-5 character key
-        let result = layer.transform_and_prefix_key("abcd");
-        assert_eq!(result, "test-uuid-1234/ab/cd/abcd");
-
-        // Test with 2-3 character key
-        let result = layer.transform_and_prefix_key("ab");
-        assert_eq!(result, "test-uuid-1234/ab/ab");
-    }
-
-    #[tokio::test]
-    async fn test_transform_and_prefix_key_without_test_prefix_passthrough() {
-        let config = test_cache_config(None);
-
-        let layer = S3Layer::new(config, "test-cache", KeyTransformStrategy::Passthrough)
-            .await
-            .expect("Failed to create S3Layer");
-
-        let result = layer.transform_and_prefix_key("abc123def456");
-        assert_eq!(result, "ab/c1/23/abc123def456");
-    }
-
-    #[tokio::test]
-    async fn test_transform_and_prefix_key_with_test_prefix_reverse() {
-        let config = test_cache_config(Some("test-uuid-5678".to_string()));
-
-        let layer = S3Layer::new(config, "test-cache", KeyTransformStrategy::ReverseKey)
-            .await
-            .expect("Failed to create S3Layer");
-
-        // "abc123" reversed is "321cba"
-        let result = layer.transform_and_prefix_key("abc123");
-        assert_eq!(result, "test-uuid-5678/32/1c/ba/321cba");
-    }
-
-    #[tokio::test]
-    async fn test_transform_and_prefix_key_without_test_prefix_reverse() {
-        let config = test_cache_config(None);
-
-        let layer = S3Layer::new(config, "test-cache", KeyTransformStrategy::ReverseKey)
-            .await
-            .expect("Failed to create S3Layer");
-
-        // "abc123" reversed is "321cba"
-        let result = layer.transform_and_prefix_key("abc123");
-        assert_eq!(result, "32/1c/ba/321cba");
-    }
-
-    #[test]
-    fn test_bucket_suffix_in_final_bucket_name() {
-        let base_config = ObjectStorageConfig {
-            endpoint: "http://localhost:9200".to_string(),
-            bucket_prefix: "si-layer-cache".to_string(),
-            bucket_suffix: Some("production".to_string()),
-            region: "us-east-1".to_string(),
-            auth: S3AuthConfig::StaticCredentials {
-                access_key: "key".into(),
-                secret_key: "secret".into(),
-            },
-            key_prefix: None,
-        };
-
-        let cache_config = base_config.for_cache("cas_objects");
-        assert_eq!(
-            cache_config.bucket_name,
-            "si-layer-cache-cas-objects-production"
-        );
-
-        // Verify underscores are normalized to hyphens
-        let cache_config2 = base_config.for_cache("some_cache");
-        assert_eq!(
-            cache_config2.bucket_name,
-            "si-layer-cache-some-cache-production"
-        );
-
-        // Test without suffix
-        let base_config_no_suffix = ObjectStorageConfig {
-            bucket_suffix: None,
-            ..base_config
-        };
-        let cache_config3 = base_config_no_suffix.for_cache("cas_objects");
-        assert_eq!(cache_config3.bucket_name, "si-layer-cache-cas-objects");
-    }
-
-    #[tokio::test]
-    async fn test_iam_auth_config_construction() {
-        let config = ObjectStorageConfig {
-            endpoint: "https://s3.us-west-2.amazonaws.com".to_string(),
-            bucket_prefix: "si-layer-cache".to_string(),
-            bucket_suffix: Some("production".to_string()),
-            region: "us-west-2".to_string(),
-            auth: S3AuthConfig::IamRole,
-            key_prefix: None,
-        };
-
-        let cache_config = config.for_cache("test-cache");
-
-        // Verify IAM auth is carried through
-        assert!(matches!(cache_config.auth, S3AuthConfig::IamRole));
-        assert_eq!(
-            cache_config.bucket_name,
-            "si-layer-cache-test-cache-production"
-        );
-
-        // Note: We can't easily test actual IAM credential resolution without AWS credentials
-        // That would be an integration test requiring AWS setup
-        let layer = S3Layer::new(
-            cache_config,
-            "test-cache",
-            KeyTransformStrategy::Passthrough,
-        )
-        .await;
-        match layer {
-            Ok(_) => { /* success - we have AWS credentials available */ }
-            Err(e) => {
-                // Expected failure in test environment without AWS credentials
-                eprintln!("Expected error without AWS credentials: {e:?}");
-            }
-        }
-    }
-}
+mod tests;

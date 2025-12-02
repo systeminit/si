@@ -312,6 +312,8 @@ pub enum LayerDbError {
     S3(Box<S3Error>),
     #[error("S3 not configured")]
     S3NotConfigured,
+    #[error("S3 write queue error: {0}")]
+    S3WriteQueue(String),
     #[error("serde json error: {0}")]
     SerdeJson(#[from] serde_json::Error),
     #[error("tokio oneshot recv error: {0}")]
