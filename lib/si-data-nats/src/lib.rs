@@ -95,7 +95,9 @@ pub type Result<T> = std::result::Result<T, Error>;
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct NatsConfig {
     pub connection_name: Option<String>,
+    #[serde(skip_serializing)]
     pub creds: Option<String>,
+    #[serde(skip_serializing)]
     pub creds_file: Option<String>,
     pub subject_prefix: Option<String>,
     pub url: String,
