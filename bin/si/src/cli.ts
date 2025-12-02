@@ -56,6 +56,10 @@ import {
   callAiAgentConfig,
   type AiAgentConfigOptions,
 } from "./ai-agent/config.ts";
+import {
+  callSecretCreate,
+  type SecretCreateOptions,
+} from "./secret/create.ts";
 
 /**
  * Global options available to all commands
@@ -175,7 +179,7 @@ function buildCommand() {
       let userData: ReturnType<typeof jwt.getUserDataFromToken>;
       try {
         userData = jwt.getUserDataFromToken(options.apiToken);
-      } catch (error) {
+      } catch (_error) {
         // If token decode fails, just continue without user data
         // This allows MCP server commands to run even with invalid tokens in env
         userData = undefined;
@@ -192,6 +196,8 @@ function buildCommand() {
     .command("component", buildComponentCommand() as any)
     // deno-lint-ignore no-explicit-any
     .command("schema", buildSchemaCommand() as any)
+    // deno-lint-ignore no-explicit-any
+    .command("secret", buildSecretCommand() as any)
     // deno-lint-ignore no-explicit-any
     .command("template", buildTemplateCommand() as any)
     // deno-lint-ignore no-explicit-any
@@ -1027,6 +1033,74 @@ function buildComponentCommand() {
             query as string,
             options as ComponentSearchOptions,
           );
+        }),
+    );
+}
+
+/**
+ * Builds the secret command group with all subcommands.
+ *
+ * @returns A SubCommand configured for secret operations
+ * @internal
+ */
+function buildSecretCommand() {
+  return createSubCommand()
+    .description("Manage secrets and credentials")
+    .action(function () {
+      this.showHelp();
+    })
+    .command(
+      "create",
+      createSubCommand()
+        .description("Create a new secret")
+        .arguments("<secret-type:string>")
+        .env(
+          "SI_API_TOKEN=<value:string>",
+          "A System Initiative API Token",
+          {
+            required: true,
+          },
+        )
+        .env(
+          "SI_BASE_URL=<url:string>",
+          "The System Initiative Base URL for your workspace",
+        )
+        .option(
+          "--name <name:string>",
+          "Name for the secret instance",
+        )
+        .option(
+          "--description <desc:string>",
+          "Description for the secret",
+        )
+        .option(
+          "-c, --change-set <id-or-name:string>",
+          "Change set ID or name (creates new change set if not specified)",
+        )
+        .option(
+          "--use-local-profile",
+          "Discover credentials from local environment (e.g., AWS credentials)",
+        )
+        .option(
+          "--interactive",
+          "Prompt for all values interactively",
+        )
+        .option(
+          "--dry-run",
+          "Show what would be created without making changes",
+        )
+        .action(async (options, secretType) => {
+          // Parse --field-* options from remaining args
+          const fields: Record<string, string> = {};
+
+          // Extract field options (--field-name value pattern)
+          // Note: Cliffy doesn't support dynamic options, so we'll handle this in the action
+
+          await callSecretCreate({
+            ...options,
+            secretType: secretType as string,
+            fields,
+          } as SecretCreateOptions);
         }),
     );
 }
