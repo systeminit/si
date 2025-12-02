@@ -36,6 +36,7 @@ si-events = { path = "../../lib/si-events-rs" }
 si-frontend-mv-types = { path = "../../lib/si-frontend-mv-types-rs" }
 si-id = { path = "../../lib/si-id" }
 si-layer-cache = { path = "../../lib/si-layer-cache" }
+si-service-endpoints = { path = "../../lib/si-service-endpoints" }
 si-settings = { path = "../../lib/si-settings" }
 si-std = { path = "../../lib/si-std" }
 si-tls = { path = "../../lib/si-tls" }
