@@ -71,5 +71,23 @@ services:
     depends_on:
       - otelcol
 
+  health-monitor:
+    container_name: health-monitor
+    image: systeminit/hypochondriac:stable
+    profiles:
+      - rebaser
+      - veritech
+      - pinga
+      - forklift
+      - edda
+    environment:
+      - SI_SERVICE=${SI_SERVICE}
+      - AWS_REGION=${AWS_REGION:-us-east-1}
+      - HEALTH_ENDPOINT=http://host.docker.internal:8080/health
+      - SLEEP_INTERVAL=30
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
+
 volumes:
   config:
