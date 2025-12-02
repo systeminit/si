@@ -224,6 +224,9 @@ impl crate::service::v1::common::ErrorIntoResponse for ComponentsError {
             ) if matches!(**err, dal::prop::PropError::ChildPropNotFoundByName(_, _)) => {
                 (StatusCode::NOT_FOUND, self.to_string())
             }
+            ComponentsError::Attribute(
+                dal::attribute::attributes::AttributesError::SourceComponentNotFound(_),
+            ) => (StatusCode::NOT_FOUND, self.to_string()),
             ComponentsError::Component(dal::ComponentError::NotFound(_)) => {
                 (StatusCode::NOT_FOUND, self.to_string())
             }
