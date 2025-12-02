@@ -34,6 +34,7 @@ import {
   callRemoteSchemaPush,
 } from "./schema/push.ts";
 import { callRunTemplate } from "./template/run.ts";
+import { callGenerateTemplate, type GenerateTemplateOptions } from "./template/generate.ts";
 import { callComponentGet } from "./component/get.ts";
 import { callComponentUpdate } from "./component/update.ts";
 import { callComponentDelete } from "./component/delete.ts";
@@ -796,6 +797,25 @@ function buildTemplateCommand() {
     .action(function () {
       this.showHelp();
     })
+    .command(
+      "generate",
+      createSubCommand()
+        .description("Generate a new template structure file")
+        .arguments("<name:string>")
+        .option(
+          "-o, --output-dir <path:string>",
+          "Output directory for the template file (defaults to current directory)",
+        )
+        .action(async (options, name) => {
+          await callGenerateTemplate(
+            Context.instance(),
+            {
+              name: name as string,
+              outputDir: options.outputDir as string | undefined,
+            } as GenerateTemplateOptions,
+          );
+        }),
+    )
     .command(
       "run",
       createSubCommand()

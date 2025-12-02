@@ -20,7 +20,7 @@
   },
   "tasks": {
     "dev": "deno run --allow-net --allow-env --allow-read --allow-run --env-file=.env.local --allow-write main.ts",
-    "build": "deno compile --allow-net --allow-env --allow-read --allow-write --allow-run --allow-import --include=data/templates/SI_Agent_Context.md.tmpl main.ts",
+    "build": "deno compile --allow-net --allow-env --allow-read --allow-write --allow-run --allow-import --include=data/templates/SI_Agent_Context.md.tmpl --include=data/templates/template.ts.tmpl main.ts",
     "lint": "deno lint",
     "test": "SI_API_TOKEN=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ3b3Jrc3BhY2VJZCI6InRlc3Qtd29ya3NwYWNlLWlkIiwidXNlcklkIjoidGVzdC11c2VyLWlkIn0.fakesignature deno test --allow-env --allow-read --allow-write --allow-run"
   },
