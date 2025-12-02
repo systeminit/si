@@ -48,6 +48,7 @@ export const CODE_GENERATION_FUNC_SPECS = {
     responseType: "codeGeneration",
     displayName: "Code Gen for creating a DigitalOcean Asset",
     path: "./src/pipelines/digitalocean/funcs/code-gen/digitalOceanCodeGenCreate.ts",
+    requiredHandlers: ["create"],
   },
   "DigitalOcean Update Code Gen": {
     id: "d8g9i0t1a2l3o4c5e6a7n8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9",
@@ -55,6 +56,7 @@ export const CODE_GENERATION_FUNC_SPECS = {
     responseType: "codeGeneration",
     displayName: "Code Gen for updating a DigitalOcean Asset",
     path: "./src/pipelines/digitalocean/funcs/code-gen/digitalOceanCodeGenUpdate.ts",
+    requiredHandlers: ["update"],
   },
 } as const satisfies Record<
   string,
