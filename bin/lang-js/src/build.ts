@@ -17,8 +17,7 @@ export async function buildSandbox(outputPath?: string) {
     platform: "node",
     write: false,
     banner: {
-      js:
-        `import { createRequire } from 'node:module';const require = createRequire(import.meta.url);// INJECTION_POINT - DO NOT REMOVE THIS LINE`,
+      js: `import { createRequire } from 'node:module';const require = createRequire(import.meta.url);// INJECTION_POINT - DO NOT REMOVE THIS LINE`,
     },
     define: {
       "import.meta.main": "false",
@@ -45,10 +44,7 @@ export async function buildSandbox(outputPath?: string) {
   const bundleContent = result.outputFiles[0].text;
   const targetPath = outputPath ?? join(baseDir, "bundle.js");
 
-  await Deno.writeTextFile(
-    targetPath,
-    bundleContent,
-  );
+  await Deno.writeTextFile(targetPath, bundleContent);
 
   console.log(
     `✅ Built sandbox bundle → ${targetPath} (${bundleContent.length} bytes)`,
