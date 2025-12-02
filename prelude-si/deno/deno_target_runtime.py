@@ -86,7 +86,7 @@ def download_target_runtime(
             str(temp_script),
         ]
 
-        env = {"DENO_DIR": str(temp_deno_path)}
+        env = {"DENO_DIR": str(temp_deno_path), "DENO_NO_PACKAGE_JSON": "1"}
 
         try:
             subprocess.run(

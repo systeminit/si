@@ -28,7 +28,7 @@ filegroup(
 deno_run(
     name = "bundle",
     main = "src/build.ts",
-    out = "bundle.js",
+    out = "src/bundle.js",
     srcs = glob(["src/**/*.ts"]),
     permissions = [
         "allow-all",
@@ -67,38 +67,20 @@ deno_format(
     check = True,
 )
 
-#deno_test(
-#    name = "test-unit",
-#    srcs = glob(["**/tests/**/*.ts"]),
-#    extra_srcs = {
-#        "bundle.js": ":bundle",
-#    },
-#    ignore = ["node_modules"],
-#    permissions = [
-#        "allow-all",
-#    ],
-#    unstable_flags = [
-#        "worker-options",
-#    ],
-#    parallel = False,
-#)
-
-# TODO(Paul): There's a current issue with the lang-js deno.lock file that happens only in CI
-# we get the error:
-# error: Integrity check failed for remote specifier. The source code is invalid, as it does not match the expected hash in the lock file.
-#
-#  Specifier: https://esm.sh/@hapi/hoek@9.3.0/denonext/lib/escapeHtml.mjs
-#  Actual: 83a85a7fcfa3707c451f7d83e2570683198e2ce6b5c31e22cd8d38c04f4330bc
-#  Expected: 387f36a3bdc441b43af33809cf2f21e057bd6c8f08c9b7be81c6e5090da800d4
-#
-#  This could be caused by:
-#  * the lock file may be corrupt
-#  * the source itself may be corrupt
-#
-# We are going to side step these tests while we look into this more!
-alias(
+deno_test(
     name = "test-unit",
-    actual = ":bundle",
+    srcs = glob(["**/tests/**/*.ts"]),
+    extra_srcs = {
+        "src/bundle.js": ":bundle",
+    },
+    ignore = ["node_modules"],
+    permissions = [
+        "allow-all",
+    ],
+    unstable_flags = [
+        "worker-options",
+    ],
+    parallel = False,
 )
 
 nix_omnibus_pkg(
