@@ -1201,7 +1201,8 @@
           "reverse": false,
           "unit": "ms"
         }
-      }
+      },
+      "interval": "1m"
     },
     {
       "id": 304,
