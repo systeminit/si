@@ -5,12 +5,12 @@ import boto3
 import json
 import os
 from datetime import datetime, timezone
-from typing import NotRequired, Optional, TypedDict, cast, overload
+from typing import Iterable, NotRequired, Optional, TypedDict, cast, overload
 from si_redshift import Redshift
 from si_lago_api import LagoApi
 from si_auth_api import SiAuthApi
 from si_posthog_api import PosthogApi
-from si_types import WorkspaceId, timestamp_to_sql_timestamp
+from si_types import SqlTimestamp, WorkspaceId, timestamp_to_sql_timestamp
 import logging
 
 class SiLambdaEnv(TypedDict):
@@ -164,6 +164,47 @@ class SiLambda:
         """Get a secret from an arn."""
         secretsmanager = self.session.client(service_name="secretsmanager")
         return secretsmanager.get_secret_value(SecretId=secret_id)
+
+    # Get the range of data that hasn't been uploaded yet for a given upload type,
+    # starting from either the last upload or the beginning of time, and ending with the last
+    # complete data we have.
+    def get_upload_range(self, upload_type: str, batch_hours: int):
+        # Start the upload where we last left off, or at the beginning of time
+        return list(cast(
+            Iterable[tuple[SqlTimestamp, SqlTimestamp, SqlTimestamp]],
+            self.redshift.query_raw(
+                f"""
+                    SELECT COALESCE(uploaded_to, DATE_TRUNC('hour', first_event)) AS batch_start,
+                           LEAST(DATEADD(HOUR, {batch_hours}, batch_start), last_complete_hour_end) AS batch_end,
+                           last_complete_hour_end
+                      FROM workspace_operations.workspace_update_events_summary
+                      LEFT OUTER JOIN workspace_operations.upload_progress
+                        ON upload_type = :upload_type
+                """,
+                upload_type=upload_type
+            )
+        ))[0]
+
+    # Update progress of a given upload type
+    def update_upload_progress(self, upload_type: str, uploaded_to: SqlTimestamp):
+        if self.dry_run:
+            logging.info(f"Dry run: not updating upload progress to {uploaded_to}")
+            return
+        self.redshift.execute(
+            f"""
+                -- There doesn't seem to be a nicer way to INSERT OR UPDATE in Redshift
+                MERGE INTO workspace_operations.upload_progress
+                    USING (SELECT
+                        :upload_type::text AS upload_type,
+                        :uploaded_to::timestamp AS uploaded_to
+                    ) AS my_source
+                    ON upload_progress.upload_type = my_source.upload_type
+                    WHEN MATCHED THEN UPDATE SET uploaded_to = my_source.uploaded_to
+                    WHEN NOT MATCHED THEN INSERT (upload_type, uploaded_to) VALUES (my_source.upload_type, my_source.uploaded_to)
+            """,
+            upload_type=upload_type,
+            uploaded_to=uploaded_to
+        )
 
     @abstractmethod
     def run(self): ...
