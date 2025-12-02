@@ -15,7 +15,10 @@ use serde::{
 use si_std::SensitiveString;
 use strum::AsRefStr;
 use telemetry::prelude::*;
-use tokio::task::JoinHandle;
+use tokio::{
+    sync::Notify,
+    task::JoinHandle,
+};
 
 use crate::{
     error::{
@@ -27,7 +30,10 @@ use crate::{
         LayeredEventPayload,
     },
     rate_limiter::RateLimitConfig,
-    s3_queue_processor::S3QueueProcessor,
+    s3_queue_processor::{
+        ProcessorQueueSetup,
+        S3QueueProcessor,
+    },
     s3_write_queue::S3WriteQueue,
 };
 
@@ -399,19 +405,33 @@ impl S3Layer {
         let bucket_name = config.bucket_name;
         let key_prefix = config.key_prefix;
 
-        // Initialize write queue
-        let write_queue = S3WriteQueue::new(&queue_base_path, &cache_name_str)
+        // Initialize notify for queue communication
+        let notify = Arc::new(Notify::new());
+
+        // Initialize write queue - returns queue and receiver
+        let (write_queue, rx) =
+            S3WriteQueue::new(&queue_base_path, &cache_name_str, notify.clone())
+                .map_err(|e| LayerDbError::S3WriteQueue(e.to_string()))?;
+
+        // Scan disk for initial ULIDs (startup only)
+        let initial_ulids = write_queue
+            .scan_ulids()
             .map_err(|e| LayerDbError::S3WriteQueue(e.to_string()))?;
+
         let write_queue = Arc::new(write_queue);
 
-        // Start queue processor
-        // Create processor with direct S3 client access (no S3Layer dependency)
+        // Start queue processor with in-memory index
         let processor = S3QueueProcessor::new(
             Arc::clone(&write_queue),
             rate_limit_config,
             processor_client,
             bucket_name.clone(),
             cache_name_str.clone(),
+            ProcessorQueueSetup {
+                rx,
+                notify,
+                initial_ulids,
+            },
         );
 
         let shutdown = processor.shutdown_handle();
