@@ -18,6 +18,7 @@ export interface FuncSpecInfo {
   responseType: FuncSpecBackendResponseType;
   displayName: string;
   path: string;
+  requiredHandlers?: string[]; // Optional: which handlers must exist for this func to apply
 }
 
 export function createFunc(

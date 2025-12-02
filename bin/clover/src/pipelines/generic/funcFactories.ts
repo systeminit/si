@@ -26,13 +26,13 @@ export function createActionFuncs(
 export function createCodeGenFuncs(
   codeGenSpecs: Record<string, FuncSpecInfo>,
   domain_id: string,
-): FuncSpec[] {
+): Array<{ spec: FuncSpec; requiredHandlers?: string[] }> {
   if (!domain_id) {
     throw new Error("no domain id provided for codegen func!");
   }
 
-  return Object.entries(codeGenSpecs).map(([func, spec]) =>
-    createDefaultFuncSpec(func, spec, [
+  return Object.entries(codeGenSpecs).map(([func, spec]) => ({
+    spec: createDefaultFuncSpec(func, spec, [
       {
         name: "domain",
         kind: "object",
@@ -40,8 +40,9 @@ export function createCodeGenFuncs(
         uniqueId: domain_id,
         deleted: false,
       },
-    ])
-  );
+    ]),
+    requiredHandlers: spec.requiredHandlers,
+  }));
 }
 
 /**

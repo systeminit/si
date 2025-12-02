@@ -23,12 +23,31 @@ export function generateDefaultLeafFuncs(
 
     const defaultCodeGenFuncs = fn(domain_id);
 
+    // Get available handlers from the schema
+    const superSchema = schemaVariant.superSchema;
+    const availableHandlers = superSchema.handlers
+      ? Object.keys(superSchema.handlers)
+      : [];
+
     for (const codeGenFunc of defaultCodeGenFuncs) {
+      // Check if this func has required handlers
+      if (codeGenFunc.requiredHandlers && codeGenFunc.requiredHandlers.length > 0) {
+        // Check if all required handlers exist on this schema
+        const hasAllHandlers = codeGenFunc.requiredHandlers.every(
+          (required) => availableHandlers.includes(required)
+        );
+
+        if (!hasAllHandlers) {
+          // Skip this codegen func for this schema
+          continue;
+        }
+      }
+
       // clone otherwise modifications to these cause changes on all
       // specs
-      funcs.push(_.cloneDeep(codeGenFunc));
+      funcs.push(_.cloneDeep(codeGenFunc.spec));
       leafFuncs.push(
-        createLeafFuncSpec("codeGeneration", codeGenFunc.uniqueId, ["domain"]),
+        createLeafFuncSpec("codeGeneration", codeGenFunc.spec.uniqueId, ["domain"]),
       );
     }
   }
@@ -36,4 +55,7 @@ export function generateDefaultLeafFuncs(
   return specs;
 }
 
-export type LeafFn = (domain_id: string) => FuncSpec[];
+export type LeafFn = (domain_id: string) => Array<{
+  spec: FuncSpec;
+  requiredHandlers?: string[]
+}>;
