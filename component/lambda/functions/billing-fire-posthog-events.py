@@ -18,15 +18,14 @@ class UploadPosthogBillingData(SiLambda):
         assert self.batch_hours > 0
 
     def run(self):
-        (first_hour_start, last_complete_hour_end) = self.get_full_event_range()
-        while self.upload_batch(first_hour_start, last_complete_hour_end):
+        while self.upload_batch():
             pass
 
-    def upload_batch(self, first_hour_start: SqlTimestamp, last_complete_hour_end: SqlTimestamp):
+    def upload_batch(self):
         #
         # Figure out the time range of events to upload
         #
-        batch_start, batch_end = self.get_upload_range(first_hour_start, last_complete_hour_end)
+        batch_start, batch_end, last_complete_hour_end = self.get_upload_range(UPLOAD_PROGRESS_TYPE, self.batch_hours)
         if batch_start >= batch_end:
             logging.info(f"No more events to upload! upload_range {batch_start} to {batch_end} is empty.")
             return False
@@ -87,72 +86,11 @@ class UploadPosthogBillingData(SiLambda):
                 "batch": all_events
             })
 
-        self.update_progress(batch_end)
+        self.update_upload_progress(UPLOAD_PROGRESS_TYPE, batch_end)
 
         logging.info(f"Uploaded {len(all_events)} events to Posthog from {batch_start} to {batch_end} with historical_migration={historical_migration}")
 
         return True
-
-    def get_full_event_range(self):
-        first_hour_start, last_complete_hour_end = [
-            cast(tuple[SqlTimestamp, SqlTimestamp], row)
-            for row in self.redshift.query_raw(
-                f"""
-                    SELECT DATE_TRUNC('hour', first_event) AS first_hour_start, last_complete_hour_end
-                      FROM workspace_operations.workspace_update_events_summary
-                """)
-        ][0]
-        return (first_hour_start, last_complete_hour_end)
-
-    def get_upload_range(self, first_hour_start: SqlTimestamp, last_complete_hour_end: SqlTimestamp):
-        # Start the upload where we last left off, or at the beginning of time
-        uploaded_to = [
-            cast(SqlTimestamp, uploaded_to)
-            for [uploaded_to] in self.redshift.query_raw(
-                f"""
-                    SELECT uploaded_to
-                    FROM workspace_operations.upload_progress
-                    WHERE upload_type = :upload_type
-                """,
-                upload_type=UPLOAD_PROGRESS_TYPE
-            )
-        ]
-        batch_start = uploaded_to[0] if len(uploaded_to) > 0 else first_hour_start
-        # End the batch at the last complete hour, or the max batch size, whichever comes first
-        batch_end = [
-            cast(SqlTimestamp, batch_end)
-            for [batch_end] in self.redshift.query_raw(
-                f"""
-                    SELECT LEAST(
-                               DATEADD(HOUR, {self.batch_hours}, :batch_start::timestamp),
-                               :last_complete_hour_end::timestamp
-                           ) AS batch_end
-                """,
-                batch_start=batch_start,
-                last_complete_hour_end=last_complete_hour_end
-            )
-        ][0]
-        return (batch_start, batch_end)
-
-    def update_progress(self, uploaded_to: SqlTimestamp):
-        if self.dry_run:
-            logging.info(f"Dry run: not updating upload progress to {uploaded_to}")
-            return
-        self.redshift.execute(
-            f"""
-                -- There doesn't seem to be a nicer way to INSERT OR UPDATE in Redshift
-                MERGE INTO workspace_operations.upload_progress
-                    USING (SELECT
-                        :upload_type::text AS upload_type,
-                        :uploaded_to::timestamp AS uploaded_to
-                    ) AS my_source
-                    ON upload_progress.upload_type = my_source.upload_type
-                    WHEN MATCHED THEN UPDATE SET uploaded_to = my_source.uploaded_to
-                    WHEN NOT MATCHED THEN INSERT (upload_type, uploaded_to) VALUES (my_source.upload_type, my_source.uploaded_to)
-            """,
-            upload_type=UPLOAD_PROGRESS_TYPE,
-            uploaded_to=uploaded_to
-        )
 
 lambda_handler = UploadPosthogBillingData.lambda_handler
 
