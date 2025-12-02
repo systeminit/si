@@ -54,6 +54,13 @@ Linux with MUSL instead of GNU is untested.
 In general, GNU-based distros will work.
 Those include, but are not limited to the following: Ubuntu, Fedora, Debian, Arch Linux, and openSUSE.
 
+> [!WARNING]
+> If you are using [Arch Linux](https://archlinux.org/), you may need to install [libxml2-legacy](https://archlinux.org/packages/extra/x86_64/libxml2-legacy/) to build with `buck2`.
+>
+> ```bash
+> pacman -S libxml2-legacy
+> ```
+
 #### What about NixOS?
 
 If using NixOS, you need [Docker](https://wiki.nixos.org/wiki/Docker) to be installed and [Flakes](https://wiki.nixos.org/wiki/Flakes) to be enabled.
