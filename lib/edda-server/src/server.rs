@@ -85,6 +85,11 @@ use crate::{
 
 const TASKS_CONSUMER_NAME: &str = "edda-tasks";
 
+// Send ack pending messages more often than the default 20 seconds
+const TASKS_PROGRESS_PERIOD: Duration = Duration::from_secs(10);
+// Increase the default ack wait from 30 to 60 seconds
+const TASKS_ACK_WAIT: Duration = Duration::from_secs(60);
+
 /// Server metadata, used with telemetry.
 #[derive(Clone, Debug)]
 pub struct ServerMetadata {
@@ -257,7 +262,7 @@ impl Server {
                     .on_request(EddaOnRequest)
                     .on_response(telemetry_nats::NatsOnResponse::new()),
             )
-            .layer(AckLayer::new())
+            .layer(AckLayer::new().progress_period(TASKS_PROGRESS_PERIOD))
             .service(handlers::default.with_state(state))
             .map_response(Response::into_response);
 
@@ -305,6 +310,7 @@ impl Server {
         subject_prefix: Option<&str>,
     ) -> async_nats::jetstream::consumer::pull::Config {
         async_nats::jetstream::consumer::pull::Config {
+            ack_wait: TASKS_ACK_WAIT,
             durable_name: Some(TASKS_CONSUMER_NAME.to_owned()),
             filter_subject: nats::subject::tasks_incoming(subject_prefix).to_string(),
             ..Default::default()
