@@ -6030,6 +6030,7 @@ dependencies = [
  "si-db",
  "si-events",
  "si-layer-cache",
+ "si-service-endpoints",
  "si-settings",
  "si-std",
  "si-tls",
@@ -6637,6 +6638,7 @@ dependencies = [
  "si-events",
  "si-frontend-types",
  "si-layer-cache",
+ "si-service-endpoints",
  "si-settings",
  "si-std",
  "si-tls",
@@ -8346,6 +8348,20 @@ dependencies = [
 [[package]]
 name = "si-service-build"
 version = "0.1.0"
+
+[[package]]
+name = "si-service-endpoints"
+version = "0.1.0"
+dependencies = [
+ "axum 0.6.20",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.12",
+ "tokio",
+ "tokio-util",
+ "tower 0.4.13",
+ "tower-http 0.4.4",
+]
 
 [[package]]
 name = "si-settings"

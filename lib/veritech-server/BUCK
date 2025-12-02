@@ -9,6 +9,7 @@ rust_library(
         "//lib/si-crypto:si-crypto",
         "//lib/si-data-nats:si-data-nats",
         "//lib/si-pool-noodle:si-pool-noodle",
+        "//lib/si-service-endpoints:si-service-endpoints",
         "//lib/si-settings:si-settings",
         "//lib/si-std:si-std",
         "//lib/telemetry-nats-rs:telemetry-nats",
