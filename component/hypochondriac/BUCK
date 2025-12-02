@@ -1,0 +1,11 @@
+load(
+    "@prelude-si//:macros.bzl",
+    "docker_image",
+)
+
+docker_image(
+    name = "hypochondriac",
+    srcs = {
+        "health-monitor.sh": ".",
+    },
+)
