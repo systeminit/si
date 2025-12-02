@@ -15,6 +15,7 @@ import { PipelineOptions, selectedProviders } from "../pipelines/types.ts";
 import "../pipelines/aws/spec.ts";
 import "../pipelines/hetzner/provider.ts";
 import "../pipelines/entra/provider.ts";
+import "../pipelines/digitalocean/provider.ts";
 import "../pipelines/dummy/spec.ts";
 
 // set this boolean to true to print out duplicates instead of throwing an error
@@ -63,7 +64,7 @@ export async function generateSiSpecs(options: PipelineOptions) {
       ];
     }
 
-    // two categories cannot have the same name with different case
+    // two categories cannot have the same name with different casing
     if (schema.data?.category) {
       const category = schema.data.category;
       const categoryLower = category.toLowerCase();
