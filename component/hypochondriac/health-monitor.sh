@@ -33,9 +33,7 @@ check_health_and_report() {
 
 main() {
     local service_name="${SI_SERVICE:-unknown}"
-    local instance_id
-    
-    instance_id=$(ec2-metadata --instance-id | cut -d " " -f 2)
+    local instance_id="${SI_INSTANCE_ID:-unknown}"
     
     echo "$(date -Iseconds): Starting health monitor for service: $service_name"
     echo "$(date -Iseconds): Instance ID: $instance_id"
