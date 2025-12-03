@@ -11242,6 +11242,9 @@
   "The amount of storage in gibibytes (GiB) to be initially allocated for the database instance.\n  If any value is set in the ``Iops`` parameter, ``AllocatedStorage`` must be at least 100 GiB, which corresponds to the minimum Iops value of 1,000. If you increase the ``Iops`` value (in 1,000 IOPS increments), then you must also increase the ``AllocatedStorage`` value (in 100-GiB increments). \n   *Amazon Aurora* \n Not applicable. Aurora cluster volumes automatically grow as the amount of data in your database increases, though you are only charged for the space that you use in an Aurora cluster volume.\n  *Db2* \n Constraints to the amount of storage for each storage type are the following:\n  +  General Purpose (SSD) storage (gp3): Must be an integer from 20 to 64000.\n  +  Provisioned IOPS storage (io1): Must be an integer from 100 to 64000.\n  \n  *MySQL* \n Constraints to the amount of storage for each storage type are the following: \n  +  General Purpose (SSD) storage (gp2): Must be an integer from 20 to 65536.\n  +  Provisioned IOPS storage (io1): Must be an integer from 100 to 65536.\n  +  Magnetic storage (standard): Must be an integer from 5 to 3072.\n  \n  *MariaDB* \n Constraints to the amount of storage for each storage type are the following: \n  +  General Purpose (SSD) storage (gp2): Must be an integer from 20 to 65536.\n  +  Provisioned IOPS storage (io1): Must be an integer from 100 to 65536.\n  +  Magnetic storage (standard): Must be an integer from 5 to 3072.\n  \n  *PostgreSQL* \n Constraints to the amount of storage for each storage type are the following: \n  +  General Purpose (SSD) storage (gp2): Must be an integer from 20 to 65536.\n  +  Provisioned IOPS storage (io1): Must be an integer from 100 to 65536.\n  +  Magnetic storage (standard): Must be an integer from 5 to 3072.\n  \n  *Oracle* \n Constraints to the amount of storage for each storage type are the following: \n  +  General Purpose (SSD) storage (gp2): Must be an integer from 20 to 65536.\n  +  Provisioned IOPS storage (io1): Must be an integer from 100 to 65536.\n  +  Magnetic storage (standard): Must be an integer from 10 to 3072.\n  \n  *SQL Server* \n Constraints to the amount of storage for each storage type are the following: \n  +  General Purpose (SSD) storage (gp2):\n  +  Enterprise and Standard editions: Must be an integer from 20 to 16384.\n  +  Web and Express editions: Must be an integer from 20 to 16384.\n  \n  +  Provisioned IOPS storage (io1):\n  +  Enterprise and Standard editions: Must be an integer from 20 to 16384.\n  +  Web and Express editions: Must be an integer from 20 to 16384.\n  \n  +  Magnetic storage (standard):\n  +  Enterprise and Standard editions: Must be an integer from 20 to 1024.\n  +  Web and Express editions: Must be an integer from 20 to 1024.": {
     "enum": null
   },
+  "The amount of time (in seconds) that Lambda allows a durable function to run before stopping it. The maximum is one 366-day year or 31,622,400 seconds.": {
+    "enum": null
+  },
   "The amount of time (in seconds) that Lambda allows a function to run before stopping it. The default is 3 seconds. The maximum allowed value is 900 seconds. For more information, see [Lambda execution environment](https://docs.aws.amazon.com/lambda/latest/dg/runtimes-context.html).": {
     "enum": null
   },
@@ -11917,6 +11920,9 @@
   "The deletion policy for the data source.": {
     "enum": null
   },
+  "The delimiter to divide S3 key into hierarchy of prefixes.": {
+    "enum": null
+  },
   "The delimiter used for separating items in the CSV file being imported.": {
     "enum": null
   },
@@ -11969,6 +11975,9 @@
     "enum": null
   },
   "The description of the AgentCore Runtime endpoint.": {
+    "enum": null
+  },
+  "The description of the AgentSpace.": {
     "enum": null
   },
   "The description of the Amazon DataZone domain.": {
@@ -12887,6 +12896,9 @@
     "enum": null
   },
   "The identifier for the Multi-AZ DB cluster snapshot to restore from.\n For more information on Multi-AZ DB clusters, see [Multi-AZ DB cluster deployments](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/multi-az-db-clusters-concepts.html) in the *Amazon RDS User Guide*.\n Constraints:\n  +  Must match the identifier of an existing Multi-AZ DB cluster snapshot.\n  +  Can't be specified when ``DBSnapshotIdentifier`` is specified.\n  +  Must be specified when ``DBSnapshotIdentifier`` isn't specified.\n  +  If you are restoring from a shared manual Multi-AZ DB cluster snapshot, the ``DBClusterSnapshotIdentifier`` must be the ARN of the shared snapshot.\n  +  Can't be the identifier of an Aurora DB cluster snapshot.": {
+    "enum": null
+  },
+  "The identifier for the associated service": {
     "enum": null
   },
   "The identifier for the hours of operation.": {
@@ -14051,6 +14063,9 @@
     "enum": null
   },
   "The name of the Agent Runtime Endpoint": {
+    "enum": null
+  },
+  "The name of the AgentSpace.": {
     "enum": null
   },
   "The name of the Amazon CloudWatch log group the function sends logs to. By default, Lambda functions send logs to a default log group named ``/aws/lambda/<function name>``. To use a different log group, enter an existing log group or enter a new log group name.": {
@@ -15713,6 +15728,9 @@
     "enum": null
   },
   "The number of datapoints within the evaluation period that must be breaching to trigger the alarm.": {
+    "enum": null
+  },
+  "The number of days after a durable execution is closed that Lambda retains its history, from one to 90 days. The default is 14 days.": {
     "enum": null
   },
   "The number of days after which records expire. Required if Expiration is ENABLED.": {
@@ -17747,6 +17765,9 @@
     "enum": null
   },
   "The unique identifier of a security control across standards. Values for this field typically consist of an AWS service name and a number, such as APIGateway.3.": {
+    "enum": null
+  },
+  "The unique identifier of the AgentSpace": {
     "enum": null
   },
   "The unique identifier of the Amazon DataZone environment to which the data source publishes assets.": {
