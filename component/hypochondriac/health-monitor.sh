@@ -9,25 +9,34 @@ AWS_REGION="${AWS_REGION:-us-east-1}"
 check_health_and_report() {
     local service_name="$1"
     local instance_id="$2"
-    local value
+    local health_status
     
     if curl -f -s --max-time 10 "$HEALTH_ENDPOINT" > /dev/null; then
-        value=1
+        health_status="Healthy"
         echo "$(date -Iseconds): Health check PASSED for $service_name (instance: $instance_id)"
     else
-        value=0
+        health_status="Unhealthy"
         echo "$(date -Iseconds): Health check FAILED for $service_name (instance: $instance_id)"
     fi
     
-    aws cloudwatch put-metric-data \
-        --region "$AWS_REGION" \
-        --namespace "SI/ServiceHealth" \
-        --metric-data "MetricName=Health,Value=$value,Unit=Count,Dimensions=[{Name=Service,Value=$service_name},{Name=Instance,Value=$instance_id}]"
+    # Report to Auto Scaling Group for scaling decisions
+    if [ "$health_status" = "Unhealthy" ]; then
+        aws autoscaling set-instance-health \
+            --region "$AWS_REGION" \
+            --instance-id "$instance_id" \
+            --health-status "$health_status" \
+            --should-respect-grace-period false
+    else
+        aws autoscaling set-instance-health \
+            --region "$AWS_REGION" \
+            --instance-id "$instance_id" \
+            --health-status "$health_status"
+    fi
     
     if [ $? -eq 0 ]; then
-        echo "$(date -Iseconds): Metric sent successfully (Value: $value)"
+        echo "$(date -Iseconds): ASG health status set to $health_status"
     else
-        echo "$(date -Iseconds): Failed to send metric to CloudWatch"
+        echo "$(date -Iseconds): Failed to set ASG health status"
     fi
 }
 
