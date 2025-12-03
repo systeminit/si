@@ -6,7 +6,7 @@ load(
 docker_image(
     name = "jaeger",
     build_args = {
-        "BASE_VERSION": "1.70.0",
+        "BASE_VERSION": "2.13.0",
     },
     run_docker_args = [
         "--publish",
