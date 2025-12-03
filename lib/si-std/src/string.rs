@@ -18,9 +18,9 @@ use serde::{
 /// logging/tracing/debugging should redact it actual value and prevent accidental leaking of
 /// sensitive data.
 ///
-/// When serialized, the value is redacted as "..." to prevent accidental exposure in config dumps
-/// or API responses.
-#[derive(Clone, Default, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd)]
+/// When serialized, the value is preserved for internal use (config loading, DB connections).
+/// Redaction for HTTP endpoints is handled by a custom serializer at the boundary.
+#[derive(Clone, Default, Deserialize, Serialize, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct SensitiveString(String);
 
 impl Deref for SensitiveString {
@@ -40,15 +40,6 @@ impl fmt::Debug for SensitiveString {
 impl fmt::Display for SensitiveString {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str("...")
-    }
-}
-
-impl Serialize for SensitiveString {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        serializer.serialize_str("...")
     }
 }
 
@@ -151,10 +142,10 @@ mod tests {
     #[test]
     fn serialize() {
         let s = SensitiveString::from("secret");
-        // SensitiveString now serializes as "..." to prevent leaking sensitive data
+        // This will be a JSON string, meaning it includes quotes
         let serialized = serde_json::to_string(&s).expect("failed to serialize");
 
-        assert_eq!(r#""...""#, serialized);
+        assert_eq!(r#""secret""#, serialized);
     }
 
     #[test]
