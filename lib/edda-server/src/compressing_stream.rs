@@ -32,6 +32,7 @@ use naxum::MessageHead;
 use pin_project_lite::pin_project;
 use serde::Serialize;
 use si_data_nats::{
+    HeaderMap,
     Subject,
     async_nats::jetstream::{
         self,
@@ -39,7 +40,15 @@ use si_data_nats::{
     },
 };
 use strum::AsRefStr;
-use telemetry::prelude::*;
+use telemetry::{
+    OpenTelemetrySpanExt,
+    opentelemetry::trace::{
+        SpanContext,
+        TraceContextExt,
+    },
+    prelude::*,
+};
+use telemetry_nats::propagation;
 use thiserror::Error;
 use tokio::sync::watch;
 
@@ -128,8 +137,9 @@ enum State<R, C> {
         read_window: usize,
         /// The stream sequence number of the first message
         message_stream_sequence: u64,
-        /// A [`Future`] that parses a Jetstream message into an API request
-        parse_message_fut: BoxFuture<'static, result::Result<R, NegotiateError>>,
+        /// A [`Future`] that parses a Jetstream message into an API request and extracts headers
+        parse_message_fut:
+            BoxFuture<'static, result::Result<(R, Option<HeaderMap>), NegotiateError>>,
     },
     /// 4. Reading the next message from the subscription in the read window
     ReadNextMessageInWindow {
@@ -141,6 +151,8 @@ enum State<R, C> {
         requests: Vec<R>,
         /// The accumulated list of stream sequence numbers to later delete
         stream_sequence_numbers: VecDeque<u64>,
+        /// The accumulated list of span contexts from incoming messages for creating span links
+        span_contexts: Vec<SpanContext>,
     },
     /// 5. Parsing the next message into an API request in the read window
     ParseNextRequestInWindow {
@@ -150,12 +162,15 @@ enum State<R, C> {
         read_window: usize,
         /// The stream sequence number of the initial message
         message_stream_sequence: u64,
-        /// A [`Future`] that parses a Jetstream message into an API request
-        parse_message_fut: BoxFuture<'static, result::Result<R, NegotiateError>>,
+        /// A [`Future`] that parses a Jetstream message into an API request and extracts headers
+        parse_message_fut:
+            BoxFuture<'static, result::Result<(R, Option<HeaderMap>), NegotiateError>>,
         /// The accumulated list of read and parsed API requests
         requests: Vec<R>,
         /// The accumulated list of stream sequence numbers to later delete
         stream_sequence_numbers: VecDeque<u64>,
+        /// The accumulated list of span contexts from incoming messages for creating span links
+        span_contexts: Vec<SpanContext>,
     },
     /// 5. Compressing multiple API requests into a single compressed request
     CompressRequests {
@@ -165,6 +180,8 @@ enum State<R, C> {
         compress_messages_fut: BoxFuture<'static, result::Result<C, CompressedRequestError>>,
         /// The accumulated list of stream sequence numbers to later delete
         stream_sequence_numbers: VecDeque<u64>,
+        /// The accumulated list of span contexts from incoming messages for creating span links
+        span_contexts: Vec<SpanContext>,
     },
     /// 7. Deleting a message from the Jetstream stream
     DeleteStreamMessage {
@@ -202,6 +219,8 @@ enum State<R, C> {
         compress_messages_fut: BoxFuture<'static, result::Result<C, CompressedRequestError>>,
         /// The accumulated list of stream sequence numbers to later delete
         stream_sequence_numbers: VecDeque<u64>,
+        /// The accumulated list of span contexts from incoming messages for creating span links
+        span_contexts: Vec<SpanContext>,
     },
     /// 4.2 Deleting messages from the Jetstream stream before closing [`Stream`]
     DeleteStreamMessageAndClose {
@@ -300,7 +319,7 @@ where
 
                 let s = span!(
                     parent: None,
-                    Level::DEBUG,
+                    Level::INFO,
                     "compressing_stream.next",
                     messages.deleted.count = Empty,
                     messaging.destination.name = Empty,
@@ -495,7 +514,7 @@ where
                     // Parse API request from Jetstream message
                     match parse_message_fut.poll_unpin(cx) {
                         // API request parsed successfully
-                        Poll::Ready(Ok(request)) => {
+                        Poll::Ready(Ok((request, headers))) => {
                             update_heartbeat(this.last_compressing_heartbeat_tx);
 
                             let mut requests = Vec::with_capacity(*read_window);
@@ -503,6 +522,15 @@ where
 
                             let mut stream_sequence_numbers = VecDeque::with_capacity(*read_window);
                             stream_sequence_numbers.push_back(*message_stream_sequence);
+
+                            // Extract span context from headers for span linking. This is the
+                            // first request, so we need to initialize the contexts vec collection.
+                            let mut span_contexts = Vec::with_capacity(*read_window);
+                            if let Some(ref headers) = headers {
+                                let otel_ctx = propagation::extract_opentelemetry_context(headers);
+                                let span_ctx = otel_ctx.span().span_context().clone();
+                                span_contexts.push(span_ctx);
+                            }
 
                             // We've read all message in the read window
                             if requests.len() == *read_window {
@@ -554,6 +582,7 @@ where
                                             C::compress_from_requests(requests).await
                                         }),
                                         stream_sequence_numbers,
+                                        span_contexts,
                                     };
                                     continue;
                                 }
@@ -566,6 +595,7 @@ where
                                     read_window: *read_window,
                                     requests,
                                     stream_sequence_numbers,
+                                    span_contexts,
                                 };
                                 continue;
                             }
@@ -607,6 +637,7 @@ where
                     read_window,
                     requests,
                     stream_sequence_numbers,
+                    span_contexts,
                 } => {
                     // Read next message from subscription in read window
                     match this.subscription.poll_next_unpin(cx) {
@@ -643,6 +674,7 @@ where
                                             C::compress_from_requests(requests).await
                                         }),
                                         stream_sequence_numbers: mem::take(stream_sequence_numbers),
+                                        span_contexts: mem::take(span_contexts),
                                     };
                                     span.record("task.state", this.state.as_ref());
                                     let err = span.record_err(err);
@@ -660,6 +692,7 @@ where
                                 parse_message_fut: Box::pin(async move { parse_message(message) }),
                                 requests: mem::take(requests),
                                 stream_sequence_numbers: mem::take(stream_sequence_numbers),
+                                span_contexts: mem::take(span_contexts),
                             };
                             continue;
                         }
@@ -687,6 +720,7 @@ where
                                     C::compress_from_requests(requests).await
                                 }),
                                 stream_sequence_numbers: mem::take(stream_sequence_numbers),
+                                span_contexts: mem::take(span_contexts),
                             };
                             span.record("task.state", this.state.as_ref());
                             let err = span.record_err(err);
@@ -711,6 +745,7 @@ where
                                     C::compress_from_requests(requests).await
                                 }),
                                 stream_sequence_numbers: mem::take(stream_sequence_numbers),
+                                span_contexts: mem::take(span_contexts),
                             };
                             continue;
                         }
@@ -726,18 +761,28 @@ where
                     parse_message_fut,
                     requests,
                     stream_sequence_numbers,
+                    span_contexts,
                 } => {
                     // Parse API request from Jetstream message
                     match parse_message_fut.poll_unpin(cx) {
                         // API request parsed successfully
-                        Poll::Ready(Ok(request)) => {
+                        Poll::Ready(Ok((request, headers))) => {
                             update_heartbeat(this.last_compressing_heartbeat_tx);
 
                             requests.push(request);
                             stream_sequence_numbers.push_back(*message_stream_sequence);
 
+                            // Extract span context from headers for span linking. We already have
+                            // a span context from the first message, so now we'll add another.
+                            if let Some(ref headers) = headers {
+                                let otel_ctx = propagation::extract_opentelemetry_context(headers);
+                                let span_ctx = otel_ctx.span().span_context().clone();
+                                span_contexts.push(span_ctx);
+                            }
+
                             let requests = mem::take(requests);
                             let stream_sequence_numbers = mem::take(stream_sequence_numbers);
+                            let span_contexts = mem::take(span_contexts);
 
                             // We've read all message in the read window
                             if requests.len() == *read_window {
@@ -750,6 +795,7 @@ where
                                         C::compress_from_requests(requests).await
                                     }),
                                     stream_sequence_numbers,
+                                    span_contexts,
                                 };
                                 continue;
                             }
@@ -761,6 +807,7 @@ where
                                     read_window: *read_window,
                                     requests,
                                     stream_sequence_numbers,
+                                    span_contexts,
                                 };
                                 continue;
                             }
@@ -783,6 +830,7 @@ where
 
                             let requests = mem::take(requests);
                             let stream_sequence_numbers = mem::take(stream_sequence_numbers);
+                            let span_contexts = mem::take(span_contexts);
 
                             span.record("requests.count", requests.len());
 
@@ -793,6 +841,7 @@ where
                                     C::compress_from_requests(requests).await
                                 }),
                                 stream_sequence_numbers,
+                                span_contexts,
                             };
                             span.record("task.state", this.state.as_ref());
                             let err = span.record_err(err);
@@ -807,7 +856,17 @@ where
                     subject,
                     compress_messages_fut,
                     stream_sequence_numbers,
+                    span_contexts,
                 } => {
+                    // Add span links to track the lineage from the original incoming requests to
+                    // the compressed request. Links must be added before any other work is done
+                    // within the span.
+                    for span_context in span_contexts.iter() {
+                        if span_context.is_valid() {
+                            span.add_link(span_context.clone());
+                        }
+                    }
+
                     // Compress multiple API requests into a single compressed request
                     match compress_messages_fut.poll_unpin(cx) {
                         // Requests compressed successfully
@@ -1094,9 +1153,14 @@ where
                         }
                     };
 
+                    // We need to inject headers with our span and all of its links that we've
+                    // built. Without this, the trace would end here.
+                    let mut headers = HeaderMap::new();
+                    propagation::inject_headers(&mut headers);
+
                     let local_message = LocalMessage {
                         subject,
-                        headers: None, // TODO(fnichol): propagation headers?
+                        headers: Some(headers),
                         payload,
                     };
 
@@ -1148,7 +1212,17 @@ where
                     subject,
                     compress_messages_fut,
                     stream_sequence_numbers,
+                    span_contexts,
                 } => {
+                    // Add span links to track the lineage from the original incoming requests to
+                    // the compressed request. Links must be added before any other work is done
+                    // within the span.
+                    for span_context in span_contexts.iter() {
+                        if span_context.is_valid() {
+                            span.add_link(span_context.clone());
+                        }
+                    }
+
                     // Compress multiple API requests into a single compressed request
                     match compress_messages_fut.poll_unpin(cx) {
                         // Requests compressed successfully
@@ -1442,9 +1516,14 @@ where
                         }
                     };
 
+                    // We need to inject headers with our span and all of its links that we've
+                    // built. Without this, the trace would end here.
+                    let mut headers = HeaderMap::new();
+                    propagation::inject_headers(&mut headers);
+
                     let local_message = LocalMessage {
                         subject,
-                        headers: None, // TODO(fnichol): propagation headers?
+                        headers: Some(headers),
                         payload,
                     };
 
@@ -1693,7 +1772,9 @@ fn update_heartbeat(heartbeat_tx: &mut Option<watch::Sender<Instant>>) {
 }
 
 #[inline]
-fn parse_message<R>(message: jetstream::Message) -> result::Result<R, NegotiateError>
+fn parse_message<R>(
+    message: jetstream::Message,
+) -> result::Result<(R, Option<HeaderMap>), NegotiateError>
 where
     R: Negotiate + Send + 'static,
 {
@@ -1701,5 +1782,6 @@ where
     let content_info =
         ContentInfo::try_from(head.headers.as_ref()).map_err(ContentInfoError::from_err)?;
 
-    R::negotiate(&content_info, &payload)
+    let request = R::negotiate(&content_info, &payload)?;
+    Ok((request, head.headers))
 }
