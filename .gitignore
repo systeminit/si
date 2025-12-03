@@ -78,3 +78,6 @@ CLAUDE.md
 # Local Claude settings and preferences; ignored to avoid committing
 # user-specific config
 **/.claude/settings.local.json
+
+# Zed project settings
+**/.zed/

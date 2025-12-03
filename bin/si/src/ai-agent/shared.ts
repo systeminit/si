@@ -22,7 +22,8 @@ async function getAgentContextTemplate(): Promise<string> {
   // Try multiple paths to find the template
   const possiblePaths = [
     // When running from source
-    new URL("../../data/templates/SI_Agent_Context.md.tmpl", import.meta.url).pathname,
+    new URL("../../data/templates/SI_Agent_Context.md.tmpl", import.meta.url)
+      .pathname,
     // Relative to current working directory
     join(Deno.cwd(), "data/templates/SI_Agent_Context.md.tmpl"),
     // Relative to binary location
@@ -452,7 +453,7 @@ export async function createCodexConfig(
   // 1. Create a project-level .env file with SI_API_TOKEN
   // 2. Users source it before running codex: `source .codex-env && codex`
   // 3. env_vars tells Codex to pass through SI_API_TOKEN from shell environment
-  const siMcpConfig = generateMcpServerToml(
+  const _siMcpConfig = generateMcpServerToml(
     "system-initiative",
     siBinaryPath,
     ["ai-agent", "stdio"], // Correct command: ai-agent stdio, not mcp-server stdio

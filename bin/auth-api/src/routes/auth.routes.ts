@@ -13,29 +13,28 @@ import {
 } from "../services/auth.service";
 import { setCache, getCache } from "../lib/cache";
 import {
-  createOrUpdateUserFromAuth0Details, getUserByEmail,
+  createOrUpdateUserFromAuth0Details,
+  getUserByEmail,
 } from "../services/users.service";
 import { validate } from "../lib/validation-helpers";
 
-import {
-  userRoleForWorkspace,
-} from "../services/workspaces.service";
+import { userRoleForWorkspace } from "../services/workspaces.service";
 import { router } from ".";
+import { nanoid } from "nanoid";
 
 router.get("/auth/login", async (ctx) => {
-  // TODO: can read from querystring info about where request originated
-  // so that we can shoot later directly back to the right place, skipping auth portal
+  // passing in cli_redir=URL will begin the auth flow for the si cli
+  const cliRedirect = ctx.request.query.cli_redir;
 
   // passing in a querystring signup=1 will show auth0's signup page instead of login
   // it's almost exactly the same, but one less step if using a password
   const { randomState, url } = getAuth0LoginUrl(!!ctx.request.query.signup);
-
+  console.log(randomState, url);
   // save our auth request in the cache using our random state
   await setCache(
     `auth:start:${randomState}`,
     {
-      // here we'll save info about the request
-      // like extra query params about where they came from...
+      cliRedirect,
     },
     { expiresIn: 300 }, // expire in 5 minutes
   );
@@ -55,6 +54,7 @@ router.post("/auth/login", async (ctx) => {
   );
 
   const user = await getUserByEmail(email);
+  console.log(user, ctx.request.body);
   if (!user) {
     throw new ApiError("Forbidden", "Bad user");
   }
@@ -84,11 +84,15 @@ router.post("/auth/login", async (ctx) => {
 });
 
 router.get("/auth/login-callback", async (ctx) => {
-  const reqQuery = validate(ctx.request.query, z.object({
-    // TODO: could check state/code look like valid values
-    code: z.string(),
-    state: z.string(),
-  }));
+  console.error("login-callback");
+  const reqQuery = validate(
+    ctx.request.query,
+    z.object({
+      // TODO: could check state/code look like valid values
+      code: z.string(),
+      state: z.string(),
+    }),
+  );
 
   // verify `state` matches ours by checking cache (and destroys key so it cannot be used twice)
   const authStartMeta = await getCache(`auth:start:${reqQuery.state}`, true);
@@ -112,7 +116,34 @@ router.get("/auth/login-callback", async (ctx) => {
 
   // ctx.body = { authToken: siToken, profile };
 
-  ctx.redirect(`${process.env.AUTH_PORTAL_URL}/login-success`);
+  const cliRedir = authStartMeta["cliRedirect"];
+  if (cliRedir) {
+    const nonce = nanoid(32);
+    await setCache(
+      `auth:cli:${nonce}`,
+      {
+        token: siToken,
+      },
+      { expiresIn: 500 },
+    );
+    ctx.redirect(`${cliRedir}?nonce=${nonce}`);
+  } else {
+    ctx.redirect(`${process.env.AUTH_PORTAL_URL}/login-success`);
+  }
+});
+
+router.get("/auth/cli-auth-api-token", async (ctx) => {
+  const nonce = ctx.request.query.nonce;
+  if (!nonce) {
+    throw new ApiError("BadRequest", "Nonce required");
+  }
+
+  const apiToken = await getCache(`auth:cli:${nonce}`, true);
+  if (!apiToken) {
+    throw new ApiError("Conflict", "Invalid or expired nonce");
+  }
+
+  ctx.body = apiToken;
 });
 
 router.get("/auth/logout", async (ctx) => {

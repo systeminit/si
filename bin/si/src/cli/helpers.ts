@@ -39,6 +39,7 @@ export type AuthenticatedCliContext = BaseCliContext & {
 };
 
 export async function getWorkspaceDetails(
+  authApiUrl: string,
   apiToken: string,
   workspaceId?: string,
 ) {
@@ -46,7 +47,7 @@ export async function getWorkspaceDetails(
     throw new Error("Workspace ID is required");
   }
 
-  const authApi = new AuthApiClient(apiToken, workspaceId);
+  const authApi = new AuthApiClient(authApiUrl, apiToken, workspaceId);
 
   const workspace = await authApi.getWorkspaceDetails();
 

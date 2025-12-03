@@ -20,7 +20,7 @@ use serde::{
 ///
 /// When serialized, the value is redacted as "..." to prevent accidental exposure in config dumps
 /// or API responses.
-#[derive(Clone, Default, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[derive(Clone, Default, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub struct SensitiveString(String);
 
 impl Deref for SensitiveString {
@@ -40,15 +40,6 @@ impl fmt::Debug for SensitiveString {
 impl fmt::Display for SensitiveString {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str("...")
-    }
-}
-
-impl Serialize for SensitiveString {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        serializer.serialize_str("...")
     }
 }
 
@@ -165,4 +156,7 @@ mod tests {
 
         assert_eq!("secret", s.deref());
     }
+
+    #[test]
+    fn into_string() {}
 }

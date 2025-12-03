@@ -8,15 +8,17 @@ export interface WorkspaceDetails {
 export class AuthApiClient {
   private readonly apiToken: string;
   private readonly workspaceId: string;
+  private readonly authApiUrl: string;
 
-  constructor(apiToken: string, workspaceId: string) {
+  constructor(authApiUrl: string, apiToken: string, workspaceId: string) {
+    this.authApiUrl = authApiUrl;
     this.apiToken = apiToken;
     this.workspaceId = workspaceId;
   }
 
   async getWorkspaceDetails(): Promise<WorkspaceDetails> {
     const response = await fetch(
-      `https://auth-api.systeminit.com/workspaces/${this.workspaceId}`,
+      `${this.authApiUrl}/workspaces/${this.workspaceId}`,
       {
         headers: {
           Authorization: `Bearer ${this.apiToken}`,

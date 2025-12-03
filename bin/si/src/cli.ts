@@ -34,7 +34,10 @@ import {
   callRemoteSchemaPush,
 } from "./schema/push.ts";
 import { callRunTemplate } from "./template/run.ts";
-import { callGenerateTemplate, type GenerateTemplateOptions } from "./template/generate.ts";
+import {
+  callGenerateTemplate,
+  type GenerateTemplateOptions,
+} from "./template/generate.ts";
 import { callComponentGet } from "./component/get.ts";
 import { callComponentUpdate } from "./component/update.ts";
 import { callComponentDelete } from "./component/delete.ts";
@@ -44,18 +47,16 @@ import type { ComponentGetOptions } from "./component/get.ts";
 import type { ComponentUpdateOptions } from "./component/update.ts";
 import type { ComponentDeleteOptions } from "./component/delete.ts";
 import type { ComponentSearchOptions } from "./component/search.ts";
+import { type AiAgentInitOptions, callAiAgentInit } from "./ai-agent/init.ts";
 import {
-  callAiAgentInit,
-  type AiAgentInitOptions,
-} from "./ai-agent/init.ts";
-import {
-  callAiAgentStart,
   type AiAgentStartOptions,
+  callAiAgentStart,
 } from "./ai-agent/start.ts";
 import {
-  callAiAgentConfig,
   type AiAgentConfigOptions,
+  callAiAgentConfig,
 } from "./ai-agent/config.ts";
+import { waitForAuthCallback } from "./cli/login.ts";
 
 /**
  * Global options available to all commands
@@ -63,6 +64,7 @@ import {
 export type GlobalOptions = {
   apiBaseUrl: string;
   apiToken?: string;
+  authApiUrl: string;
   noColor?: boolean;
   root?: RootPath | RootPathNotFoundError;
   verbose?: number;
@@ -147,6 +149,12 @@ function buildCommand() {
     .globalOption("--api-base-url <URL:string>", "API endpoint URL", {
       default: "https://api.systeminit.com",
     })
+    .globalEnv("SI_AUTH_API_URL=<URL:string", "Auth API endpoint URL", {
+      prefix: "SI_",
+    })
+    .globalOption("--auth-api-url <URL:string>", "Auth API endpoint URL", {
+      default: "https://auth-api.systeminit.com",
+    })
     .globalEnv(
       "SI_API_TOKEN=<TOKEN:string>",
       "Your System Initiative API token (required for authenticated commands)",
@@ -175,7 +183,7 @@ function buildCommand() {
       let userData: ReturnType<typeof jwt.getUserDataFromToken>;
       try {
         userData = jwt.getUserDataFromToken(options.apiToken);
-      } catch (error) {
+      } catch (_error) {
         // If token decode fails, just continue without user data
         // This allows MCP server commands to run even with invalid tokens in env
         userData = undefined;
@@ -195,7 +203,9 @@ function buildCommand() {
     // deno-lint-ignore no-explicit-any
     .command("template", buildTemplateCommand() as any)
     // deno-lint-ignore no-explicit-any
-    .command("whoami", buildWhoamiCommand() as any);
+    .command("whoami", buildWhoamiCommand() as any)
+    // deno-lint-ignore no-explicit-any
+    .command("login", buildLoginCommand() as any);
 }
 
 /**
@@ -206,7 +216,9 @@ function buildCommand() {
  */
 function buildSchemaCommand() {
   return createSubCommand()
-    .description("Manage schemas: initialize project, generate functions locally, pull from and push to remote workspaces")
+    .description(
+      "Manage schemas: initialize project, generate functions locally, pull from and push to remote workspaces",
+    )
     .action(function () {
       this.showHelp();
     })
@@ -227,9 +239,16 @@ function buildSchemaCommand() {
           "Include builtin schemas (schemas you don't own). By default, builtins are skipped.",
         )
         .action(
-          async ({ root, apiBaseUrl, apiToken, builtins }, ...schemaNames) => {
+          async (
+            { root, authApiUrl, apiBaseUrl, apiToken, builtins },
+            ...schemaNames
+          ) => {
             const project = createProject(root);
-            const apiCtx = await createApiContext(apiBaseUrl, apiToken);
+            const apiCtx = await createApiContext(
+              authApiUrl,
+              apiBaseUrl,
+              apiToken,
+            );
             let finalSchemaNames;
             if (schemaNames.length > 0) {
               finalSchemaNames = schemaNames;
@@ -254,30 +273,41 @@ function buildSchemaCommand() {
           "Pushes schemas to your remote System Initiative workspace",
         )
         .option("-s, --skip-confirmation", "Skip confirmation prompt")
-        .option("-b, --update-builtins", "Change builtin schema, without creating overlays. SI Admin Only", {
-          hidden: false,
-        })
+        .option(
+          "-b, --update-builtins",
+          "Change builtin schema, without creating overlays. SI Admin Only",
+          {
+            hidden: false,
+          },
+        )
         .arguments("[...SCHEMA_NAME:string]")
-        .action(async ({ root, skipConfirmation, updateBuiltins }, ...schemaNames) => {
-          const project = createProject(root);
+        .action(
+          async (
+            { root, skipConfirmation, updateBuiltins },
+            ...schemaNames
+          ) => {
+            const project = createProject(root);
 
-          const ctx = Context.instance();
-          const cliContext = await initializeCliContextWithAuth({ ctx });
+            const ctx = Context.instance();
+            const cliContext = await initializeCliContextWithAuth({ ctx });
 
-          await callRemoteSchemaPush(
-            cliContext,
-            project,
-            schemaNames,
-            !!updateBuiltins,
-            skipConfirmation,
-          );
-        }),
+            await callRemoteSchemaPush(
+              cliContext,
+              project,
+              schemaNames,
+              !!updateBuiltins,
+              skipConfirmation,
+            );
+          },
+        ),
     );
 }
 
 function buildSchemaGenerateCommand() {
   return createSubCommand()
-    .description("Generate schema function definitions for actions, authentication, code generation, and more")
+    .description(
+      "Generate schema function definitions for actions, authentication, code generation, and more",
+    )
     .action(function () {
       this.showHelp();
     })
@@ -291,7 +321,9 @@ function buildSchemaGenerateCommand() {
 
 function buildOverlayCommand() {
   return createSubCommand()
-    .description("Manage schema overlays: generate overlay functions and push them to remote workspaces")
+    .description(
+      "Manage schema overlays: generate overlay functions and push them to remote workspaces",
+    )
     .action(function () {
       this.showHelp();
     })
@@ -320,7 +352,9 @@ function buildOverlayCommand() {
 
 function buildOverlayGenerateCommand() {
   return createSubCommand()
-    .description("Generate overlay function definitions that customize or extend existing schemas")
+    .description(
+      "Generate overlay function definitions that customize or extend existing schemas",
+    )
     .action(function () {
       this.showHelp();
     })
@@ -337,7 +371,6 @@ function buildOverlayGenerateCommand() {
     );
 }
 
-
 /**
  * Builds the whoami command.
  *
@@ -351,6 +384,37 @@ function buildWhoamiCommand() {
       const apiCtx = await createApiContext(apiBaseUrl, apiToken);
 
       await callWhoami(Context.instance(), apiCtx);
+    });
+}
+
+/**
+ * Builds the login command for handling the OAuth flow.
+ *
+ * @returns A SubCommand configured for login operations
+ * @internal
+ */
+function buildLoginCommand() {
+  return createSubCommand()
+    .description("Login to System Initiiatve")
+    .action(async () => {
+      const ctx = Context.instance();
+
+      try {
+        ctx.logger.info("Starting authentication server...");
+        const result = await waitForAuthCallback();
+
+        ctx.logger.info(`Authentication server ran on port: ${result.port}`);
+        ctx.logger.info(
+          "Received authentication callback with query parameters:",
+        );
+
+        for (const [key, value] of Object.entries(result.queryParams)) {
+          ctx.logger.info(`  ${key}: ${value}`);
+        }
+      } catch (error) {
+        ctx.logger.error(`Login failed: ${error}`);
+        throw error;
+      }
     });
 }
 
@@ -385,7 +449,10 @@ function buildAiAgentCommand() {
           "AI tool to use: claude (default), codex",
         )
         .action(async (options) => {
-          await callAiAgentInit(Context.instance(), options as AiAgentInitOptions);
+          await callAiAgentInit(
+            Context.instance(),
+            options as AiAgentInitOptions,
+          );
         }),
     )
     .command(
@@ -397,7 +464,10 @@ function buildAiAgentCommand() {
           "AI tool to launch (default: claude)",
         )
         .action(async (options) => {
-          await callAiAgentStart(Context.instance(), options as AiAgentStartOptions);
+          await callAiAgentStart(
+            Context.instance(),
+            options as AiAgentStartOptions,
+          );
         }),
     )
     .command(
@@ -417,29 +487,45 @@ function buildAiAgentCommand() {
           "Update the AI tool: claude, cursor, windsurf, or none",
         )
         .action(async (options) => {
-          await callAiAgentConfig(Context.instance(), options as AiAgentConfigOptions);
+          await callAiAgentConfig(
+            Context.instance(),
+            options as AiAgentConfigOptions,
+          );
         }),
     )
     .command(
       "stdio",
       createSubCommand()
-        .description("Run MCP server in stdio mode (for external AI tools to connect)")
+        .description(
+          "Run MCP server in stdio mode (for external AI tools to connect)",
+        )
         .action(async () => {
           // Dynamic import to avoid loading MCP server code until needed
           // Token validation happens in si_client.ts when modules are loaded
-          const { start_stdio } = await import("./ai-agent/mcp-server/stdio_transport.ts");
-          const { createServer } = await import("./ai-agent/mcp-server/server.ts");
-          const { analytics } = await import("./ai-agent/mcp-server/analytics.ts");
-          const { setAiAgentUserFlag } = await import("./ai-agent/mcp-server/user_state.ts");
+          const { start_stdio } = await import(
+            "./ai-agent/mcp-server/stdio_transport.ts"
+          );
+          const { createServer } = await import(
+            "./ai-agent/mcp-server/server.ts"
+          );
+          const { analytics } = await import(
+            "./ai-agent/mcp-server/analytics.ts"
+          );
+          const { setAiAgentUserFlag } = await import(
+            "./ai-agent/mcp-server/user_state.ts"
+          );
 
           // Start the MCP server directly
-          await analytics.trackServerStart();
+          analytics.trackServerStart();
           await setAiAgentUserFlag();
 
           const server = createServer();
 
           let ended = false;
-          const shutdown = async (reason: string, exitCode: number | null = 0) => {
+          const shutdown = async (
+            reason: string,
+            exitCode: number | null = 0,
+          ) => {
             if (ended) return;
             ended = true;
             console.log("MCP server shutdown:", reason);
@@ -1072,6 +1158,7 @@ function createProject(rootResult?: RootPath | RootPathNotFoundError): Project {
 }
 
 async function createApiContext(
+  authApiUrl: string,
   apiBaseUrl: string,
   apiToken?: string,
 ): Promise<ApiContext> {
@@ -1082,5 +1169,5 @@ async function createApiContext(
     );
   }
 
-  return await apiContext(apiBaseUrl, apiToken);
+  return await apiContext(authApiUrl, apiBaseUrl, apiToken);
 }

@@ -12,6 +12,7 @@ export type ApiContext = {
 };
 
 export async function apiContext(
+  authApiUrl: string,
   apiBaseUrl: string,
   apiToken: string,
 ): Promise<ApiContext> {
@@ -31,6 +32,7 @@ export async function apiContext(
   });
 
   const workspace = await new AuthApiClient(
+    authApiUrl,
     apiToken,
     userData.workspaceId,
   ).getWorkspaceDetails();
