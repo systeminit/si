@@ -82,6 +82,7 @@ services:
       - edda
     environment:
       - SI_SERVICE=${SI_SERVICE}
+      - SI_INSTANCE_ID=${SI_INSTANCE_ID}
       - AWS_REGION=${AWS_REGION:-us-east-1}
       - HEALTH_ENDPOINT=http://host.docker.internal:8080/health
       - SLEEP_INTERVAL=30
