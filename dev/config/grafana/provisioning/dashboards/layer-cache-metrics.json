@@ -70,21 +70,6 @@
         "allValue": ".*"
       },
       {
-        "name": "backend",
-        "type": "query",
-        "label": "Backend",
-        "datasource": {
-          "type": "prometheus",
-          "uid": "${datasource}"
-        },
-        "query": "label_values({__name__=~\"layer_cache_read_latency_ms_bucket|layer_cache_persister_write_success_total|s3_write_queue_depth\"}, backend)",
-        "refresh": 2,
-        "sort": 1,
-        "multi": true,
-        "includeAll": true,
-        "allValue": ".*"
-      },
-      {
         "name": "operation",
         "type": "query",
         "label": "Operation",
@@ -105,7 +90,7 @@
     {
       "id": 200,
       "type": "row",
-      "title": "OVERVIEW & HEALTH",
+      "title": "Overview & System Health",
       "gridPos": {
         "x": 0,
         "y": 0,
@@ -169,7 +154,7 @@
       "section": "overview",
       "gridPos": {
         "x": 8,
-        "y": 5,
+        "y": 1,
         "w": 8,
         "h": 4
       },
@@ -217,7 +202,7 @@
       "section": "overview",
       "gridPos": {
         "x": 16,
-        "y": 9,
+        "y": 1,
         "w": 8,
         "h": 4
       },
@@ -262,8 +247,8 @@
       "id": 8,
       "gridPos": {
         "x": 0,
-        "y": 13,
-        "w": 12,
+        "y": 5,
+        "w": 24,
         "h": 8
       },
       "type": "stat",
@@ -321,94 +306,10 @@
       }
     },
     {
-      "id": 306,
-      "type": "timeseries",
-      "title": "Write Throughput Balance (S3 vs PostgreSQL)",
-      "section": "overview",
-      "gridPos": {
-        "x": 0,
-        "y": 21,
-        "w": 24,
-        "h": 8
-      },
-      "targets": [
-        {
-          "expr": "sum(rate(layer_cache_persister_write_success_total{backend=\"s3\"}[5m]))",
-          "legendFormat": "S3 writes/sec",
-          "refId": "A",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          }
-        },
-        {
-          "expr": "sum(rate(layer_cache_persister_write_success_total{backend=\"postgres\"}[5m]))",
-          "legendFormat": "PostgreSQL writes/sec",
-          "refId": "B",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          }
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "ops",
-          "custom": {
-            "lineWidth": 2,
-            "fillOpacity": 10
-          }
-        }
-      },
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${datasource}"
-      }
-    },
-    {
-      "id": 33,
-      "gridPos": {
-        "x": 0,
-        "y": 29,
-        "w": 8,
-        "h": 8
-      },
-      "type": "gauge",
-      "title": "${backend} Resolution Rate",
-      "repeat": "backend",
-      "repeatDirection": "h",
-      "maxPerRow": 3,
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${datasource}"
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "expr": "sum(rate(layer_cache_backend_resolved_total{exported_job=~\"${service}\", cache_name=~\"${cache}\", backend=\"${backend}\", result=\"hit\"}[5m])) / sum(rate(layer_cache_requests_total{exported_job=~\"${service}\", cache_name=~\"${cache}\"}[5m]))",
-          "refId": "A"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "percentunit",
-          "min": 0,
-          "max": 1,
-          "color": {
-            "mode": "fixed",
-            "fixedColor": "blue"
-          }
-        }
-      }
-    },
-    {
       "id": 34,
       "gridPos": {
         "x": 0,
-        "y": 37,
+        "y": 19,
         "w": 24,
         "h": 8
       },
@@ -477,7 +378,7 @@
       "id": 35,
       "gridPos": {
         "x": 0,
-        "y": 45,
+        "y": 27,
         "w": 8,
         "h": 8
       },
@@ -496,7 +397,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "sum by (backend) (rate(layer_cache_backend_resolved_total{exported_job=~\"${service}\", cache_name=\"${cache}\", backend=~\"${backend}\"}[5m]))",
+          "expr": "sum by (backend) (rate(layer_cache_backend_resolved_total{exported_job=~\"${service}\", cache_name=\"${cache}\"}[5m]))",
           "legendFormat": "{{backend}}",
           "refId": "A"
         }
@@ -521,95 +422,20 @@
     {
       "id": 201,
       "type": "row",
-      "title": "READ PATH PERFORMANCE",
+      "title": "Foyer Cache",
       "gridPos": {
         "x": 0,
-        "y": 53,
+        "y": 60,
         "w": 24,
         "h": 1
       },
       "collapsed": false
     },
     {
-      "id": 27,
-      "gridPos": {
-        "x": 0,
-        "y": 54,
-        "w": 24,
-        "h": 8
-      },
-      "type": "timeseries",
-      "title": "${backend} Backend - Read Latency (p50, p95, p99)",
-      "repeat": "backend",
-      "repeatDirection": "v",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${datasource}"
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "expr": "histogram_quantile(0.50, sum(rate(layer_cache_read_latency_ms_bucket{exported_job=~\"${service}\", cache_name=~\"${cache}\", backend=\"${backend}\"}[$__interval])) by (le))",
-          "legendFormat": "p50",
-          "refId": "A"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "expr": "histogram_quantile(0.95, sum(rate(layer_cache_read_latency_ms_bucket{exported_job=~\"${service}\", cache_name=~\"${cache}\", backend=\"${backend}\"}[$__interval])) by (le))",
-          "legendFormat": "p95",
-          "refId": "B"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "expr": "histogram_quantile(0.99, sum(rate(layer_cache_read_latency_ms_bucket{exported_job=~\"${service}\", cache_name=~\"${cache}\", backend=\"${backend}\"}[$__interval])) by (le))",
-          "legendFormat": "p99",
-          "refId": "C"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "ms",
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "lineWidth": 2,
-            "fillOpacity": 10,
-            "showPoints": "never"
-          }
-        }
-      },
-      "options": {
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc"
-        },
-        "legend": {
-          "displayMode": "table",
-          "placement": "bottom",
-          "calcs": [
-            "lastNotNull",
-            "max",
-            "mean"
-          ]
-        }
-      },
-      "interval": "1m"
-    },
-    {
       "id": 28,
       "gridPos": {
         "x": 0,
-        "y": 62,
+        "y": 69,
         "w": 24,
         "h": 8
       },
@@ -683,7 +509,7 @@
       "id": 29,
       "gridPos": {
         "x": 0,
-        "y": 70,
+        "y": 77,
         "w": 24,
         "h": 8
       },
@@ -740,7 +566,7 @@
       "id": 30,
       "gridPos": {
         "x": 0,
-        "y": 78,
+        "y": 85,
         "w": 24,
         "h": 8
       },
@@ -794,93 +620,20 @@
       }
     },
     {
-      "id": 31,
-      "gridPos": {
-        "x": 0,
-        "y": 86,
-        "w": 24,
-        "h": 8
-      },
-      "type": "heatmap",
-      "title": "${backend} Backend - Read Latency Distribution",
-      "repeat": "backend",
-      "repeatDirection": "v",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${datasource}"
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "expr": "sum(increase(layer_cache_read_latency_ms_bucket{exported_job=~\"${service}\", cache_name=~\"${cache}\", backend=\"${backend}\"}[$__interval])) by (le)",
-          "legendFormat": "{{le}}",
-          "refId": "A",
-          "format": "heatmap"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "custom": {
-            "hideFrom": {
-              "tooltip": false,
-              "viz": false,
-              "legend": false
-            }
-          }
-        }
-      },
-      "options": {
-        "calculate": false,
-        "cellGap": 2,
-        "color": {
-          "exponent": 0.5,
-          "fill": "dark-orange",
-          "mode": "scheme",
-          "scheme": "Oranges",
-          "steps": 128
-        },
-        "exemplars": {
-          "color": "rgba(255,0,255,0.7)"
-        },
-        "filterValues": {
-          "le": 1E-9
-        },
-        "legend": {
-          "show": true
-        },
-        "rowsFrame": {
-          "layout": "auto"
-        },
-        "tooltip": {
-          "show": true,
-          "yHistogram": false
-        },
-        "yAxis": {
-          "axisPlacement": "left",
-          "reverse": false,
-          "unit": "ms"
-        }
-      },
-      "interval": "1m"
-    },
-    {
       "id": 303,
       "type": "timeseries",
-      "title": "Fallback Tracking (S3→PostgreSQL)",
-      "section": "read",
+      "title": "Fallback Tracking (S3\u2192PostgreSQL)",
+      "section": "overview",
       "gridPos": {
         "x": 0,
-        "y": 94,
+        "y": 35,
         "w": 24,
         "h": 8
       },
       "targets": [
         {
           "expr": "rate(layer_cache_read_fallback{from_backend=\"s3\", to_backend=\"postgres\"}[5m])",
-          "legendFormat": "{{cache_name}} - S3→PG fallback",
+          "legendFormat": "{{cache_name}} - S3\u2192PG fallback",
           "refId": "A",
           "datasource": {
             "type": "prometheus",
@@ -905,10 +658,10 @@
     {
       "id": 202,
       "type": "row",
-      "title": "WRITE PATH - S3 PERSISTENCE",
+      "title": "S3 Persistence",
       "gridPos": {
         "x": 0,
-        "y": 102,
+        "y": 130,
         "w": 24,
         "h": 1
       },
@@ -918,7 +671,7 @@
       "id": 36,
       "gridPos": {
         "x": 0,
-        "y": 103,
+        "y": 139,
         "w": 12,
         "h": 8
       },
@@ -994,7 +747,7 @@
       "id": 37,
       "gridPos": {
         "x": 12,
-        "y": 111,
+        "y": 139,
         "w": 12,
         "h": 8
       },
@@ -1065,7 +818,7 @@
       "id": 38,
       "gridPos": {
         "x": 0,
-        "y": 119,
+        "y": 147,
         "w": 12,
         "h": 8
       },
@@ -1134,84 +887,13 @@
       }
     },
     {
-      "id": 39,
-      "gridPos": {
-        "x": 12,
-        "y": 127,
-        "w": 12,
-        "h": 8
-      },
-      "type": "heatmap",
-      "title": "S3 Write Latency Distribution",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${datasource}"
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "expr": "sum(increase(s3_write_duration_ms_bucket{exported_job=~\"${service}\", cache_name=~\"${cache}\", backend=\"s3\"}[$__interval])) by (le)",
-          "legendFormat": "{{le}}",
-          "refId": "A",
-          "format": "heatmap"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "custom": {
-            "hideFrom": {
-              "tooltip": false,
-              "viz": false,
-              "legend": false
-            }
-          }
-        }
-      },
-      "options": {
-        "calculate": false,
-        "cellGap": 2,
-        "color": {
-          "exponent": 0.5,
-          "fill": "dark-orange",
-          "mode": "scheme",
-          "scheme": "Oranges",
-          "steps": 128
-        },
-        "exemplars": {
-          "color": "rgba(255,0,255,0.7)"
-        },
-        "filterValues": {
-          "le": 1E-9
-        },
-        "legend": {
-          "show": true
-        },
-        "rowsFrame": {
-          "layout": "auto"
-        },
-        "tooltip": {
-          "show": true,
-          "yHistogram": false
-        },
-        "yAxis": {
-          "axisPlacement": "left",
-          "reverse": false,
-          "unit": "ms"
-        }
-      },
-      "interval": "1m"
-    },
-    {
       "id": 304,
       "type": "timeseries",
       "title": "S3 Write Error Breakdown by Category",
       "section": "s3",
       "gridPos": {
         "x": 0,
-        "y": 135,
+        "y": 163,
         "w": 24,
         "h": 8
       },
@@ -1250,7 +932,7 @@
       "section": "s3",
       "gridPos": {
         "x": 0,
-        "y": 143,
+        "y": 171,
         "w": 24,
         "h": 8
       },
@@ -1295,83 +977,20 @@
     {
       "id": 203,
       "type": "row",
-      "title": "WRITE PATH - POSTGRES PERSISTENCE",
+      "title": "PostgreSQL Persistence",
       "gridPos": {
         "x": 0,
-        "y": 151,
+        "y": 250,
         "w": 24,
         "h": 1
       },
       "collapsed": false
     },
     {
-      "id": 10,
-      "gridPos": {
-        "x": 0,
-        "y": 152,
-        "w": 12,
-        "h": 8
-      },
-      "type": "timeseries",
-      "title": "Persister - Write Operations (Initial Attempts)",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${datasource}"
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "expr": "rate(layer_cache_persister_write_attempted{exported_job=~\"${service}\", cache_name=~\"${cache}\"}[1m])",
-          "legendFormat": "{{exported_job}}/{{cache_name}} - attempted",
-          "refId": "A"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "expr": "rate(layer_cache_persister_write_success{exported_job=~\"${service}\", cache_name=~\"${cache}\", backend=~\"${backend}\"}[1m])",
-          "legendFormat": "{{exported_job}}/{{cache_name}} - success",
-          "refId": "B"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "ops",
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "lineWidth": 2,
-            "fillOpacity": 10,
-            "showPoints": "never"
-          }
-        }
-      },
-      "options": {
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc"
-        },
-        "legend": {
-          "displayMode": "table",
-          "placement": "right",
-          "calcs": [
-            "lastNotNull",
-            "max",
-            "mean"
-          ]
-        }
-      }
-    },
-    {
       "id": 11,
       "gridPos": {
-        "x": 12,
-        "y": 160,
+        "x": 0,
+        "y": 275,
         "w": 12,
         "h": 8
       },
@@ -1440,65 +1059,10 @@
       }
     },
     {
-      "id": 21,
-      "gridPos": {
-        "x": 0,
-        "y": 168,
-        "w": 12,
-        "h": 8
-      },
-      "type": "timeseries",
-      "title": "Persister - Write Duration (Average)",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${datasource}"
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "expr": "rate(layer_cache_persister_write_duration_ms_sum{exported_job=~\"${service}\", cache_name=~\"${cache}\", backend=~\"${backend}\"}[1m]) / rate(layer_cache_persister_write_duration_ms_count{exported_job=~\"${service}\", cache_name=~\"${cache}\", backend=~\"${backend}\"}[1m])",
-          "legendFormat": "{{exported_job}}/{{cache_name}}/{{backend}} - avg",
-          "refId": "A"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "ms",
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "lineWidth": 2,
-            "fillOpacity": 10,
-            "showPoints": "never"
-          }
-        }
-      },
-      "options": {
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc"
-        },
-        "legend": {
-          "displayMode": "table",
-          "placement": "right",
-          "calcs": [
-            "lastNotNull",
-            "max",
-            "mean",
-            "min"
-          ]
-        }
-      }
-    },
-    {
       "id": 14,
       "gridPos": {
         "x": 0,
-        "y": 176,
+        "y": 283,
         "w": 12,
         "h": 8
       },
@@ -1570,7 +1134,7 @@
       "id": 15,
       "gridPos": {
         "x": 12,
-        "y": 184,
+        "y": 283,
         "w": 12,
         "h": 8
       },
@@ -1642,7 +1206,7 @@
       "id": 16,
       "gridPos": {
         "x": 0,
-        "y": 192,
+        "y": 291,
         "w": 24,
         "h": 8
       },
@@ -1696,7 +1260,7 @@
       "id": 26,
       "gridPos": {
         "x": 0,
-        "y": 200,
+        "y": 299,
         "w": 24,
         "h": 8
       },
@@ -1713,7 +1277,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "histogram_quantile(0.50, sum(rate(layer_cache_persistence_latency_seconds_bucket{operation=\"${operation}\", exported_job=~\"${service}\", cache_name=~\"${cache}\", backend=~\"${backend}\"}[1m])) by (le)) * 1000",
+          "expr": "histogram_quantile(0.50, sum(rate(layer_cache_persistence_latency_seconds_bucket{operation=\"${operation}\", exported_job=~\"${service}\", cache_name=~\"${cache}\", backend=\"postgres\"}[1m])) by (le)) * 1000",
           "legendFormat": "p50",
           "refId": "A"
         },
@@ -1722,7 +1286,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "histogram_quantile(0.95, sum(rate(layer_cache_persistence_latency_seconds_bucket{operation=\"${operation}\", exported_job=~\"${service}\", cache_name=~\"${cache}\", backend=~\"${backend}\"}[1m])) by (le)) * 1000",
+          "expr": "histogram_quantile(0.95, sum(rate(layer_cache_persistence_latency_seconds_bucket{operation=\"${operation}\", exported_job=~\"${service}\", cache_name=~\"${cache}\", backend=\"postgres\"}[1m])) by (le)) * 1000",
           "legendFormat": "p95",
           "refId": "B"
         },
@@ -1731,7 +1295,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "histogram_quantile(0.99, sum(rate(layer_cache_persistence_latency_seconds_bucket{operation=\"${operation}\", exported_job=~\"${service}\", cache_name=~\"${cache}\", backend=~\"${backend}\"}[1m])) by (le)) * 1000",
+          "expr": "histogram_quantile(0.99, sum(rate(layer_cache_persistence_latency_seconds_bucket{operation=\"${operation}\", exported_job=~\"${service}\", cache_name=~\"${cache}\", backend=\"postgres\"}[1m])) by (le)) * 1000",
           "legendFormat": "p99",
           "refId": "C"
         }
@@ -1770,7 +1334,7 @@
       "id": 2,
       "gridPos": {
         "x": 0,
-        "y": 208,
+        "y": 307,
         "w": 12,
         "h": 8
       },
@@ -1824,7 +1388,7 @@
       "id": 3,
       "gridPos": {
         "x": 12,
-        "y": 216,
+        "y": 307,
         "w": 12,
         "h": 8
       },
@@ -1878,7 +1442,7 @@
       "id": 4,
       "gridPos": {
         "x": 0,
-        "y": 224,
+        "y": 315,
         "w": 12,
         "h": 8
       },
@@ -1932,7 +1496,7 @@
       "id": 5,
       "gridPos": {
         "x": 12,
-        "y": 232,
+        "y": 315,
         "w": 12,
         "h": 8
       },
@@ -1986,7 +1550,7 @@
       "id": 6,
       "gridPos": {
         "x": 0,
-        "y": 240,
+        "y": 323,
         "w": 12,
         "h": 8
       },
@@ -2040,7 +1604,7 @@
       "id": 9,
       "gridPos": {
         "x": 12,
-        "y": 248,
+        "y": 323,
         "w": 12,
         "h": 8
       },
@@ -2093,27 +1657,16 @@
       }
     },
     {
-      "id": 204,
-      "type": "row",
-      "title": "EVICTION OPERATIONS",
+      "id": 3301,
+      "type": "gauge",
+      "title": "Foyer Resolution Rate",
+      "section": "foyer",
       "gridPos": {
         "x": 0,
-        "y": 256,
-        "w": 24,
-        "h": 1
+        "y": 13,
+        "w": 8,
+        "h": 6
       },
-      "collapsed": false
-    },
-    {
-      "id": 19,
-      "gridPos": {
-        "x": 0,
-        "y": 257,
-        "w": 12,
-        "h": 8
-      },
-      "type": "timeseries",
-      "title": "Persister - Evict Rate",
       "datasource": {
         "type": "prometheus",
         "uid": "${datasource}"
@@ -2124,7 +1677,556 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "rate(layer_cache_persister_evict_attempted{exported_job=~\"${service}\", cache_name=~\"${cache}\", backend=~\"${backend}\"}[1m])",
+          "expr": "sum(rate(layer_cache_backend_resolved_total{exported_job=~\"${service}\", cache_name=~\"${cache}\", backend=\"foyer\", result=\"hit\"}[5m])) / sum(rate(layer_cache_requests_total{exported_job=~\"${service}\", cache_name=~\"${cache}\"}[5m]))",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "min": 0,
+          "max": 1,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "blue"
+          }
+        }
+      }
+    },
+    {
+      "id": 3302,
+      "type": "gauge",
+      "title": "S3 Resolution Rate",
+      "section": "s3",
+      "gridPos": {
+        "x": 8,
+        "y": 13,
+        "w": 8,
+        "h": 6
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "sum(rate(layer_cache_backend_resolved_total{exported_job=~\"${service}\", cache_name=~\"${cache}\", backend=\"s3\", result=\"hit\"}[5m])) / sum(rate(layer_cache_requests_total{exported_job=~\"${service}\", cache_name=~\"${cache}\"}[5m]))",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "min": 0,
+          "max": 1,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "blue"
+          }
+        }
+      }
+    },
+    {
+      "id": 3303,
+      "type": "gauge",
+      "title": "PostgreSQL Resolution Rate",
+      "section": "postgres",
+      "gridPos": {
+        "x": 16,
+        "y": 13,
+        "w": 8,
+        "h": 6
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "sum(rate(layer_cache_backend_resolved_total{exported_job=~\"${service}\", cache_name=~\"${cache}\", backend=\"postgres\", result=\"hit\"}[5m])) / sum(rate(layer_cache_requests_total{exported_job=~\"${service}\", cache_name=~\"${cache}\"}[5m]))",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "min": 0,
+          "max": 1,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "blue"
+          }
+        }
+      }
+    },
+    {
+      "id": 2701,
+      "gridPos": {
+        "x": 0,
+        "y": 61,
+        "w": 24,
+        "h": 8
+      },
+      "type": "timeseries",
+      "title": "Foyer - Read Latency (p50, p95, p99)",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "histogram_quantile(0.50, sum(rate(layer_cache_read_latency_ms_bucket{exported_job=~\"${service}\", cache_name=~\"${cache}\", backend=\"foyer\"}[$__interval])) by (le))",
+          "legendFormat": "p50 - Foyer",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "histogram_quantile(0.95, sum(rate(layer_cache_read_latency_ms_bucket{exported_job=~\"${service}\", cache_name=~\"${cache}\", backend=\"foyer\"}[$__interval])) by (le))",
+          "legendFormat": "p95 - Foyer",
+          "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "histogram_quantile(0.99, sum(rate(layer_cache_read_latency_ms_bucket{exported_job=~\"${service}\", cache_name=~\"${cache}\", backend=\"foyer\"}[$__interval])) by (le))",
+          "legendFormat": "p99 - Foyer",
+          "refId": "C"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "never"
+          }
+        }
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        },
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max",
+            "mean"
+          ]
+        }
+      },
+      "interval": "1m",
+      "section": "foyer"
+    },
+    {
+      "id": 2702,
+      "gridPos": {
+        "x": 0,
+        "y": 131,
+        "w": 24,
+        "h": 8
+      },
+      "type": "timeseries",
+      "title": "S3 - Read Latency (p50, p95, p99)",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "histogram_quantile(0.50, sum(rate(layer_cache_read_latency_ms_bucket{exported_job=~\"${service}\", cache_name=~\"${cache}\", backend=\"s3\"}[$__interval])) by (le))",
+          "legendFormat": "p50 - S3",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "histogram_quantile(0.95, sum(rate(layer_cache_read_latency_ms_bucket{exported_job=~\"${service}\", cache_name=~\"${cache}\", backend=\"s3\"}[$__interval])) by (le))",
+          "legendFormat": "p95 - S3",
+          "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "histogram_quantile(0.99, sum(rate(layer_cache_read_latency_ms_bucket{exported_job=~\"${service}\", cache_name=~\"${cache}\", backend=\"s3\"}[$__interval])) by (le))",
+          "legendFormat": "p99 - S3",
+          "refId": "C"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "never"
+          }
+        }
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        },
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max",
+            "mean"
+          ]
+        }
+      },
+      "interval": "1m",
+      "section": "s3"
+    },
+    {
+      "id": 2703,
+      "gridPos": {
+        "x": 0,
+        "y": 251,
+        "w": 24,
+        "h": 8
+      },
+      "type": "timeseries",
+      "title": "PostgreSQL - Read Latency (p50, p95, p99)",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "histogram_quantile(0.50, sum(rate(layer_cache_read_latency_ms_bucket{exported_job=~\"${service}\", cache_name=~\"${cache}\", backend=\"postgres\"}[$__interval])) by (le))",
+          "legendFormat": "p50 - PostgreSQL",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "histogram_quantile(0.95, sum(rate(layer_cache_read_latency_ms_bucket{exported_job=~\"${service}\", cache_name=~\"${cache}\", backend=\"postgres\"}[$__interval])) by (le))",
+          "legendFormat": "p95 - PostgreSQL",
+          "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "histogram_quantile(0.99, sum(rate(layer_cache_read_latency_ms_bucket{exported_job=~\"${service}\", cache_name=~\"${cache}\", backend=\"postgres\"}[$__interval])) by (le))",
+          "legendFormat": "p99 - PostgreSQL",
+          "refId": "C"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "never"
+          }
+        }
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        },
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max",
+            "mean"
+          ]
+        }
+      },
+      "interval": "1m",
+      "section": "postgres"
+    },
+    {
+      "id": 3101,
+      "gridPos": {
+        "x": 0,
+        "y": 101,
+        "w": 24,
+        "h": 8
+      },
+      "type": "heatmap",
+      "title": "Foyer Backend - Read Latency Distribution",
+      "section": "foyer",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "sum(increase(layer_cache_read_latency_ms_bucket{exported_job=~\"${service}\", cache_name=~\"${cache}\", backend=\"foyer\"}[$__interval])) by (le)",
+          "legendFormat": "{{le}}",
+          "refId": "A",
+          "format": "heatmap"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "hideFrom": {
+              "tooltip": false,
+              "viz": false,
+              "legend": false
+            }
+          }
+        }
+      },
+      "options": {
+        "calculate": false,
+        "cellGap": 2,
+        "color": {
+          "exponent": 0.5,
+          "fill": "dark-orange",
+          "mode": "scheme",
+          "scheme": "Oranges",
+          "steps": 128
+        },
+        "exemplars": {
+          "color": "rgba(255,0,255,0.7)"
+        },
+        "filterValues": {
+          "le": 1e-09
+        },
+        "legend": {
+          "show": true
+        },
+        "rowsFrame": {
+          "layout": "auto"
+        },
+        "tooltip": {
+          "show": true,
+          "yHistogram": false
+        },
+        "yAxis": {
+          "axisPlacement": "left",
+          "reverse": false,
+          "unit": "ms"
+        }
+      },
+      "interval": "1m"
+    },
+    {
+      "id": 3102,
+      "gridPos": {
+        "x": 0,
+        "y": 155,
+        "w": 24,
+        "h": 8
+      },
+      "type": "heatmap",
+      "title": "S3 Backend - Read Latency Distribution",
+      "section": "s3",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "sum(increase(layer_cache_read_latency_ms_bucket{exported_job=~\"${service}\", cache_name=~\"${cache}\", backend=\"s3\"}[$__interval])) by (le)",
+          "legendFormat": "{{le}}",
+          "refId": "A",
+          "format": "heatmap"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "hideFrom": {
+              "tooltip": false,
+              "viz": false,
+              "legend": false
+            }
+          }
+        }
+      },
+      "options": {
+        "calculate": false,
+        "cellGap": 2,
+        "color": {
+          "exponent": 0.5,
+          "fill": "dark-orange",
+          "mode": "scheme",
+          "scheme": "Oranges",
+          "steps": 128
+        },
+        "exemplars": {
+          "color": "rgba(255,0,255,0.7)"
+        },
+        "filterValues": {
+          "le": 1e-09
+        },
+        "legend": {
+          "show": true
+        },
+        "rowsFrame": {
+          "layout": "auto"
+        },
+        "tooltip": {
+          "show": true,
+          "yHistogram": false
+        },
+        "yAxis": {
+          "axisPlacement": "left",
+          "reverse": false,
+          "unit": "ms"
+        }
+      },
+      "interval": "1m"
+    },
+    {
+      "id": 3103,
+      "gridPos": {
+        "x": 0,
+        "y": 259,
+        "w": 24,
+        "h": 8
+      },
+      "type": "heatmap",
+      "title": "PostgreSQL Backend - Read Latency Distribution",
+      "section": "postgres",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "sum(increase(layer_cache_read_latency_ms_bucket{exported_job=~\"${service}\", cache_name=~\"${cache}\", backend=\"postgres\"}[$__interval])) by (le)",
+          "legendFormat": "{{le}}",
+          "refId": "A",
+          "format": "heatmap"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "hideFrom": {
+              "tooltip": false,
+              "viz": false,
+              "legend": false
+            }
+          }
+        }
+      },
+      "options": {
+        "calculate": false,
+        "cellGap": 2,
+        "color": {
+          "exponent": 0.5,
+          "fill": "dark-orange",
+          "mode": "scheme",
+          "scheme": "Oranges",
+          "steps": 128
+        },
+        "exemplars": {
+          "color": "rgba(255,0,255,0.7)"
+        },
+        "filterValues": {
+          "le": 1e-09
+        },
+        "legend": {
+          "show": true
+        },
+        "rowsFrame": {
+          "layout": "auto"
+        },
+        "tooltip": {
+          "show": true,
+          "yHistogram": false
+        },
+        "yAxis": {
+          "axisPlacement": "left",
+          "reverse": false,
+          "unit": "ms"
+        }
+      },
+      "interval": "1m"
+    },
+    {
+      "id": 1002,
+      "gridPos": {
+        "x": 0,
+        "y": 179,
+        "w": 12,
+        "h": 8
+      },
+      "type": "timeseries",
+      "title": "S3 - Write Operations (Initial Attempts)",
+      "section": "s3",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "rate(layer_cache_persister_write_attempted{exported_job=~\"${service}\", cache_name=~\"${cache}\"}[1m])",
           "legendFormat": "{{exported_job}}/{{cache_name}} - attempted",
           "refId": "A"
         },
@@ -2133,7 +2235,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "rate(layer_cache_persister_evict_success{exported_job=~\"${service}\", cache_name=~\"${cache}\", backend=~\"${backend}\"}[1m])",
+          "expr": "rate(layer_cache_persister_write_success{exported_job=~\"${service}\", cache_name=~\"${cache}\", backend=\"s3\"}[1m])",
           "legendFormat": "{{exported_job}}/{{cache_name}} - success",
           "refId": "B"
         }
@@ -2168,15 +2270,16 @@
       }
     },
     {
-      "id": 20,
+      "id": 1003,
       "gridPos": {
-        "x": 12,
-        "y": 265,
+        "x": 0,
+        "y": 267,
         "w": 12,
         "h": 8
       },
       "type": "timeseries",
-      "title": "Persister - Evict Failures",
+      "title": "PostgreSQL - Write Operations (Initial Attempts)",
+      "section": "postgres",
       "datasource": {
         "type": "prometheus",
         "uid": "${datasource}"
@@ -2187,8 +2290,8 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "rate(layer_cache_persister_evict_failed_retryable{exported_job=~\"${service}\", cache_name=~\"${cache}\", backend=~\"${backend}\"}[1m])",
-          "legendFormat": "{{exported_job}}/{{cache_name}} - retryable",
+          "expr": "rate(layer_cache_persister_write_attempted{exported_job=~\"${service}\", cache_name=~\"${cache}\"}[1m])",
+          "legendFormat": "{{exported_job}}/{{cache_name}} - attempted",
           "refId": "A"
         },
         {
@@ -2196,8 +2299,8 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "rate(layer_cache_persister_evict_failed_permanent{exported_job=~\"${service}\", cache_name=~\"${cache}\", backend=~\"${backend}\"}[1m])",
-          "legendFormat": "{{exported_job}}/{{cache_name}} - permanent",
+          "expr": "rate(layer_cache_persister_write_success{exported_job=~\"${service}\", cache_name=~\"${cache}\", backend=\"postgres\"}[1m])",
+          "legendFormat": "{{exported_job}}/{{cache_name}} - success",
           "refId": "B"
         }
       ],
@@ -2231,15 +2334,16 @@
       }
     },
     {
-      "id": 23,
+      "id": 2102,
       "gridPos": {
         "x": 12,
-        "y": 273,
+        "y": 179,
         "w": 12,
         "h": 8
       },
       "type": "timeseries",
-      "title": "Persister - Evict Duration (Average)",
+      "title": "S3 - Write Duration (p50, p95, p99)",
+      "section": "s3",
       "datasource": {
         "type": "prometheus",
         "uid": "${datasource}"
@@ -2250,9 +2354,27 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "(rate(layer_cache_persister_evict_duration_seconds_sum{exported_job=~\"${service}\", cache_name=~\"${cache}\", backend=~\"${backend}\"}[1m]) / rate(layer_cache_persister_evict_duration_seconds_count{exported_job=~\"${service}\", cache_name=~\"${cache}\", backend=~\"${backend}\"}[1m])) * 1000",
-          "legendFormat": "{{exported_job}}/{{cache_name}} - avg",
+          "expr": "histogram_quantile(0.50, sum(rate(layer_cache_persister_write_duration_ms_bucket{exported_job=~\"${service}\", cache_name=~\"${cache}\", backend=\"s3\"}[1m])) by (le))",
+          "legendFormat": "p50 - S3",
           "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "histogram_quantile(0.95, sum(rate(layer_cache_persister_write_duration_ms_bucket{exported_job=~\"${service}\", cache_name=~\"${cache}\", backend=\"s3\"}[1m])) by (le))",
+          "legendFormat": "p95 - S3",
+          "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "histogram_quantile(0.99, sum(rate(layer_cache_persister_write_duration_ms_bucket{exported_job=~\"${service}\", cache_name=~\"${cache}\", backend=\"s3\"}[1m])) by (le))",
+          "legendFormat": "p99 - S3",
+          "refId": "C"
         }
       ],
       "fieldConfig": {
@@ -2286,39 +2408,482 @@
       }
     },
     {
-      "id": 307,
-      "type": "timeseries",
-      "title": "Memory-Only Evictions",
-      "section": "eviction",
+      "id": 2103,
       "gridPos": {
-        "x": 0,
-        "y": 281,
-        "w": 24,
+        "x": 12,
+        "y": 267,
+        "w": 12,
         "h": 8
+      },
+      "type": "timeseries",
+      "title": "PostgreSQL - Write Duration (p50, p95, p99)",
+      "section": "postgres",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
       },
       "targets": [
         {
-          "expr": "rate(layer_cache_persistence_latency_seconds_count{operation=\"evict_memory_only\"}[5m])",
-          "legendFormat": "{{cache_name}} - memory-only evictions",
-          "refId": "A",
           "datasource": {
             "type": "prometheus",
             "uid": "${datasource}"
+          },
+          "expr": "histogram_quantile(0.50, sum(rate(layer_cache_persister_write_duration_ms_bucket{exported_job=~\"${service}\", cache_name=~\"${cache}\", backend=\"postgres\"}[1m])) by (le))",
+          "legendFormat": "p50 - PostgreSQL",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "histogram_quantile(0.95, sum(rate(layer_cache_persister_write_duration_ms_bucket{exported_job=~\"${service}\", cache_name=~\"${cache}\", backend=\"postgres\"}[1m])) by (le))",
+          "legendFormat": "p95 - PostgreSQL",
+          "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "histogram_quantile(0.99, sum(rate(layer_cache_persister_write_duration_ms_bucket{exported_job=~\"${service}\", cache_name=~\"${cache}\", backend=\"postgres\"}[1m])) by (le))",
+          "legendFormat": "p99 - PostgreSQL",
+          "refId": "C"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "never"
           }
+        }
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        },
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "calcs": [
+            "lastNotNull",
+            "max",
+            "mean",
+            "min"
+          ]
+        }
+      }
+    },
+    {
+      "id": 2602,
+      "gridPos": {
+        "x": 0,
+        "y": 187,
+        "w": 24,
+        "h": 8
+      },
+      "type": "timeseries",
+      "title": "S3 - ${operation} End-to-End Latency (p50, p95, p99)",
+      "repeat": "operation",
+      "section": "s3",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "histogram_quantile(0.50, sum(rate(layer_cache_persistence_latency_seconds_bucket{operation=\"${operation}\", exported_job=~\"${service}\", cache_name=~\"${cache}\", backend=\"s3\"}[1m])) by (le)) * 1000",
+          "legendFormat": "p50",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "histogram_quantile(0.95, sum(rate(layer_cache_persistence_latency_seconds_bucket{operation=\"${operation}\", exported_job=~\"${service}\", cache_name=~\"${cache}\", backend=\"s3\"}[1m])) by (le)) * 1000",
+          "legendFormat": "p95",
+          "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "histogram_quantile(0.99, sum(rate(layer_cache_persistence_latency_seconds_bucket{operation=\"${operation}\", exported_job=~\"${service}\", cache_name=~\"${cache}\", backend=\"s3\"}[1m])) by (le)) * 1000",
+          "legendFormat": "p99",
+          "refId": "C"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "never"
+          }
+        }
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        },
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max",
+            "mean",
+            "min"
+          ]
+        }
+      }
+    },
+    {
+      "id": 1901,
+      "type": "timeseries",
+      "title": "Foyer - Evict Rate",
+      "section": "foyer",
+      "gridPos": {
+        "x": 0,
+        "y": 93,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "rate(layer_cache_evictions_total{exported_job=~\"${service}\", cache_name=~\"${cache}\", backend=\"foyer\"}[5m])",
+          "legendFormat": "Foyer Evictions",
+          "refId": "A"
         }
       ],
       "fieldConfig": {
         "defaults": {
           "unit": "ops",
+          "color": {
+            "mode": "palette-classic"
+          },
           "custom": {
             "lineWidth": 2,
-            "fillOpacity": 10
+            "fillOpacity": 10,
+            "showPoints": "never"
           }
         }
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        },
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "calcs": [
+            "lastNotNull",
+            "max",
+            "mean"
+          ]
+        }
+      }
+    },
+    {
+      "id": 1903,
+      "type": "timeseries",
+      "title": "PostgreSQL - Evict Rate",
+      "section": "postgres",
+      "gridPos": {
+        "x": 0,
+        "y": 331,
+        "w": 12,
+        "h": 8
       },
       "datasource": {
         "type": "prometheus",
         "uid": "${datasource}"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "rate(layer_cache_evictions_total{exported_job=~\"${service}\", cache_name=~\"${cache}\", backend=\"postgres\"}[5m])",
+          "legendFormat": "PostgreSQL Evictions",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "never"
+          }
+        }
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        },
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "calcs": [
+            "lastNotNull",
+            "max",
+            "mean"
+          ]
+        }
+      }
+    },
+    {
+      "id": 2001,
+      "type": "timeseries",
+      "title": "Foyer - Evict Failures",
+      "section": "foyer",
+      "gridPos": {
+        "x": 12,
+        "y": 93,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "rate(layer_cache_eviction_failures_total{exported_job=~\"${service}\", cache_name=~\"${cache}\", backend=\"foyer\"}[5m])",
+          "legendFormat": "Foyer Eviction Failures",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "never"
+          }
+        }
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        },
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "calcs": [
+            "lastNotNull",
+            "max",
+            "mean"
+          ]
+        }
+      }
+    },
+    {
+      "id": 2003,
+      "type": "timeseries",
+      "title": "PostgreSQL - Evict Failures",
+      "section": "postgres",
+      "gridPos": {
+        "x": 12,
+        "y": 331,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "rate(layer_cache_eviction_failures_total{exported_job=~\"${service}\", cache_name=~\"${cache}\", backend=\"postgres\"}[5m])",
+          "legendFormat": "PostgreSQL Eviction Failures",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "never"
+          }
+        }
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        },
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "calcs": [
+            "lastNotNull",
+            "max",
+            "mean"
+          ]
+        }
+      }
+    },
+    {
+      "id": 2301,
+      "type": "timeseries",
+      "title": "Foyer - Evict Duration (Average)",
+      "section": "foyer",
+      "gridPos": {
+        "x": 0,
+        "y": 109,
+        "w": 24,
+        "h": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "rate(layer_cache_evict_duration_ms_sum{exported_job=~\"${service}\", cache_name=~\"${cache}\", backend=\"foyer\"}[5m]) / rate(layer_cache_evict_duration_ms_count{exported_job=~\"${service}\", cache_name=~\"${cache}\", backend=\"foyer\"}[5m])",
+          "legendFormat": "Foyer Avg Eviction Duration",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "never"
+          }
+        }
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        },
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "calcs": [
+            "lastNotNull",
+            "max",
+            "mean"
+          ]
+        }
+      }
+    },
+    {
+      "id": 2303,
+      "type": "timeseries",
+      "title": "PostgreSQL - Evict Duration (Average)",
+      "section": "postgres",
+      "gridPos": {
+        "x": 0,
+        "y": 339,
+        "w": 24,
+        "h": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "rate(layer_cache_evict_duration_ms_sum{exported_job=~\"${service}\", cache_name=~\"${cache}\", backend=\"postgres\"}[5m]) / rate(layer_cache_evict_duration_ms_count{exported_job=~\"${service}\", cache_name=~\"${cache}\", backend=\"postgres\"}[5m])",
+          "legendFormat": "PostgreSQL Avg Eviction Duration",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "never"
+          }
+        }
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        },
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "calcs": [
+            "lastNotNull",
+            "max",
+            "mean"
+          ]
+        }
       }
     }
   ],
