@@ -11,6 +11,18 @@ pub mod axum_integration;
 
 pub mod server;
 
+/// Sensitive field name patterns that should be redacted in config output.
+/// Add any substring that appears in field names containing sensitive data.
+const SENSITIVE_FIELD_PATTERNS: &[&str] = &[
+    "auth",
+    "credential",
+    "creds",
+    "key",
+    "password",
+    "secret",
+    "token",
+];
+
 #[derive(Debug, Error)]
 pub enum ServiceEndpointsError {
     #[error("HTTP server error: {0}")]
@@ -36,9 +48,10 @@ impl DefaultServiceEndpoints {
         }
     }
 
-    /// Create from any serializable config object
+    /// Create from any serializable config object, redacting sensitive fields for safe exposure
     pub fn from_config<T: Serialize>(service_name: impl Into<String>, config: &T) -> Result<Self> {
-        let value = serde_json::to_value(config)?;
+        let mut value = serde_json::to_value(config)?;
+        redact_sensitive_fields(&mut value);
         Ok(Self::new(service_name, value))
     }
 
@@ -84,5 +97,31 @@ impl ServiceEndpointsConfig {
     pub fn disabled(mut self) -> Self {
         self.enabled = false;
         self
+    }
+}
+
+/// Recursively walk a JSON value and redact fields with sensitive names
+fn redact_sensitive_fields(value: &mut Value) {
+    match value {
+        Value::Object(map) => {
+            for (key, val) in map.iter_mut() {
+                let key_lower = key.to_lowercase();
+                let is_sensitive = SENSITIVE_FIELD_PATTERNS
+                    .iter()
+                    .any(|pattern| key_lower.contains(pattern));
+
+                if is_sensitive {
+                    *val = Value::String("...".to_string());
+                } else {
+                    redact_sensitive_fields(val);
+                }
+            }
+        }
+        Value::Array(arr) => {
+            for item in arr {
+                redact_sensitive_fields(item);
+            }
+        }
+        _ => {}
     }
 }
