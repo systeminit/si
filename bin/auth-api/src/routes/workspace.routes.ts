@@ -8,6 +8,7 @@ import {
   refreshUserAuth0Profile,
   UserId,
 } from "../services/users.service";
+import { revokeAllWorkspaceTokens } from "../services/auth_tokens.service";
 import {
   createWorkspace,
   getUserWorkspaces,
@@ -102,12 +103,32 @@ automationApiRouter.delete("/workspaces/:workspaceId", async (ctx) => {
   extractAuthUser(ctx, true);
   const { authUser, workspaceId } = await authorizeWorkspaceRoute(ctx, [RoleType.OWNER]);
 
-  await deleteWorkspace(workspaceId);
+  const workspace = await getWorkspaceById(workspaceId);
+  if (!workspace) throw new ApiError("Conflict", "Workspace doesn't exist");
+
+  const workspaceOwner = await getUserById(workspace.creatorUserId)!;
+
+  await deleteWorkspace(workspace.id);
 
   tracker.trackEvent(authUser, "workspace_deleted", {
     workspaceId,
     workspaceDeletedAt: new Date(),
     workspaceDeletedBy: authUser.email,
+  });
+
+  const { tokensToRevoke } = await revokeAllWorkspaceTokens(workspaceId);
+  tokensToRevoke.forEach((token) => {
+    tracker.trackEvent(authUser, "workspace_api_token_revoked", {
+      workspaceId: workspace.id,
+      workspaceName: workspace.displayName,
+      workspaceOwner: workspaceOwner?.email,
+      tokenName: token.name,
+      tokenCreated: token.createdAt,
+      tokenRevoked: new Date(),
+      initiatedBy: authUser.email,
+      reason: "User deleted workspace",
+      tokenAction: "revoked",
+    });
   });
 
   ctx.body = "";

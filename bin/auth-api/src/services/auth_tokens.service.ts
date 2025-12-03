@@ -75,3 +75,27 @@ export async function deleteAuthToken(id: AuthTokenId) {
   });
   return count > 0;
 }
+
+export async function revokeAllWorkspaceTokens(workspaceId: WorkspaceId) {
+  const revokedAt = new Date();
+
+  const tokensToRevoke = await prisma.authToken.findMany({
+    where: {
+      workspaceId,
+      revokedAt: null,
+    },
+  });
+
+  const { count } = await prisma.authToken.updateMany({
+    where: {
+      workspaceId,
+      revokedAt: null,
+    },
+    data: { revokedAt },
+  });
+
+  return {
+    count,
+    tokensToRevoke,
+  };
+}
