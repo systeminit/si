@@ -18,35 +18,45 @@ The `si` CLI provides comprehensive tooling for:
 ## Architecture
 
 The `si` CLI is a Deno-based application that provides a structured workflow for
-managing System Initiative infrastructure. The codebase follows a **domain-driven
-organization** where the folder structure directly mirrors the CLI command hierarchy.
+managing System Initiative infrastructure. The codebase follows a
+**domain-driven organization** where the folder structure directly mirrors the
+CLI command hierarchy.
 
 ### Core Principles
 
-1. **Command-Code Alignment**: Every CLI command maps directly to its implementation file
+1. **Command-Code Alignment**: Every CLI command maps directly to its
+   implementation file
    - `si component get` → `src/component/get.ts`
    - `si schema generate` → `src/schema/generate.ts`
    - `si ai-agent init` → `src/ai-agent/init.ts`
 
 2. **Domain Cohesion**: Related code lives together with its domain utilities
-   - `src/schema/` - All schema operations + domain utilities (project.ts, generators.ts, materialize.ts, config.ts)
-   - `src/component/` - All component operations + domain utilities (cache_api.ts, change_set.ts)
-   - `src/template/` - Template execution + template utilities (transpile.ts, helpers.ts)
+   - `src/schema/` - All schema operations + domain utilities (project.ts,
+     generators.ts, materialize.ts, config.ts)
+   - `src/component/` - All component operations + domain utilities
+     (cache_api.ts, change_set.ts)
+   - `src/template/` - Template execution + template utilities (transpile.ts,
+     helpers.ts)
    - `src/ai-agent/` - AI agent commands + MCP server implementation
 
 3. **Infrastructure Separation**: Cross-cutting concerns organized by purpose
    - `src/cli/` - CLI infrastructure (api.ts, auth.ts, config.ts, jwt.ts)
-   - `src/` root - Only global infrastructure (context.ts, logger.ts, si_client.ts)
+   - `src/` root - Only global infrastructure (context.ts, logger.ts)
 
 ### Core Components
 
 - **CLI Module** (`src/cli.ts`): Command-line interface built with Cliffy
-- **Context Module** (`src/context.ts`): Global application state with logging (LogTape) and analytics (PostHog)
-- **Schema Domain** (`src/schema/`): Schema operations, project structure, code generation
-- **Component Domain** (`src/component/`): Component CRUD operations with caching and change set management
-- **Template Domain** (`src/template/`): TypeScript-based template execution with convergence
+- **Context Module** (`src/context.ts`): Global application state with logging
+  (LogTape) and analytics (PostHog)
+- **Schema Domain** (`src/schema/`): Schema operations, project structure, code
+  generation
+- **Component Domain** (`src/component/`): Component CRUD operations with
+  caching and change set management
+- **Template Domain** (`src/template/`): TypeScript-based template execution
+  with convergence
 - **AI Agent Domain** (`src/ai-agent/`): AI agent configuration and MCP server
-- **CLI Infrastructure** (`src/cli/`): Authentication, API context, configuration utilities
+- **CLI Infrastructure** (`src/cli/`): Authentication, API context,
+  configuration utilities
 
 ### Command Structure
 
@@ -123,9 +133,7 @@ project-root/
 
 ### Environment Variables
 
-- `SI_API_TOKEN`: Your System Initiative API token (required for authenticated
-  commands)
-- `SI_API_BASE_URL`: API endpoint URL (defaults to `https://api.systeminit.com`)
+- `SI_API_TOKEN`: Your System Initiative API token
 - `SI_BASE_URL`: API base URL for templates (defaults to
   `https://api.systeminit.com`)
 - `SI_ROOT`: Project root directory (searches for `.siroot` if not specified)
@@ -731,20 +739,23 @@ The project enforces code quality through:
 
 ## Adding New Commands
 
-The codebase follows a consistent pattern for adding new CLI commands. The folder structure
-directly mirrors the command hierarchy, making it intuitive to add new functionality.
+The codebase follows a consistent pattern for adding new CLI commands. The
+folder structure directly mirrors the command hierarchy, making it intuitive to
+add new functionality.
 
 ### Pattern for New Commands
 
 #### 1. Determine Command Location
 
 Map your CLI command to a file path:
+
 - `si mycommand run` → `src/mycommand/run.ts`
 - `si mycommand subcommand action` → `src/mycommand/subcommand/action.ts`
 
 #### 2. Create Implementation File
 
-Create your command file with a `call*` function that contains the full implementation:
+Create your command file with a `call*` function that contains the full
+implementation:
 
 ```typescript
 // src/mycommand/run.ts
@@ -780,8 +791,9 @@ src/mycommand/
 └── cache.ts         # Domain-specific caching
 ```
 
-**Key Rule**: Domain utilities should only be used by that domain. If a utility is needed
-by multiple domains, it belongs at `src/` root or in `src/cli/` for CLI infrastructure.
+**Key Rule**: Domain utilities should only be used by that domain. If a utility
+is needed by multiple domains, it belongs at `src/` root or in `src/cli/` for
+CLI infrastructure.
 
 #### 4. Register Command in CLI
 
@@ -793,13 +805,12 @@ import { callMyCommandRun, type MyCommandRunOptions } from "./mycommand/run.ts";
 
 // Add command registration in buildProgram()
 function buildProgram() {
-  return new Command()
-    // ... existing commands
-    .command(
-      "mycommand",
-      new Command()
-        .description("Description of mycommand")
-        .command(
+  return (
+    new Command()
+      // ... existing commands
+      .command(
+        "mycommand",
+        new Command().description("Description of mycommand").command(
           "run",
           new Command()
             .description("Run my command")
@@ -807,51 +818,61 @@ function buildProgram() {
             .action(async (options) => {
               const ctx = Context.instance();
               await callMyCommandRun(ctx, options as MyCommandRunOptions);
-            })
-        )
-    );
+            }),
+        ),
+      )
+  );
 }
 ```
 
 #### 5. Determine Where Utilities Belong
 
 **Place utilities in domain folder (`src/mycommand/`) if:**
+
 - Only used by this command/domain
 - Example: Template-specific helpers in `src/template/helpers.ts`
 
 **Place utilities in CLI infrastructure (`src/cli/`) if:**
+
 - Used for CLI setup, authentication, or configuration
 - Example: JWT utilities in `src/cli/jwt.ts`
 
 **Place utilities at root (`src/`) if:**
+
 - Used across ALL domains (component, schema, template, etc.)
-- Example: `si_client.ts` (global API config), `logger.ts` (global logging)
+- Example: `logger.ts` (global logging)
 
 ### Examples from Codebase
 
 **Simple command with no subcommands:**
+
 - Command: `si whoami`
 - Location: `src/whoami.ts`
 - Pattern: Single file at root for top-level commands
 
 **Command group with multiple operations:**
+
 - Commands: `si component get`, `si component update`, etc.
 - Location: `src/component/get.ts`, `src/component/update.ts`, etc.
 - Utilities: `src/component/cache_api.ts`, `src/component/change_set.ts`
 - Pattern: Folder per command group with operations as files
 
 **Nested command hierarchy:**
+
 - Command: `si schema generate action`
 - Location: `src/schema/generate.ts` (contains `callSchemaFuncGenerate`)
 - Pattern: Single file handling multiple related subcommands
 
 ### Anti-Patterns to Avoid
 
-❌ **Don't create thin wrapper files** - The command file IS the implementation, not a wrapper
+❌ **Don't create thin wrapper files** - The command file IS the implementation,
+not a wrapper
 
-❌ **Don't put domain code at root** - Domain-specific utilities belong in domain folders
+❌ **Don't put domain code at root** - Domain-specific utilities belong in
+domain folders
 
-❌ **Don't mix domain utilities** - `config.ts` at root shouldn't contain both schema and CLI config
+❌ **Don't mix domain utilities** - `config.ts` at root shouldn't contain both
+schema and CLI config
 
 ## Contributing
 

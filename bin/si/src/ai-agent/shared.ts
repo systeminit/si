@@ -22,7 +22,8 @@ async function getAgentContextTemplate(): Promise<string> {
   // Try multiple paths to find the template
   const possiblePaths = [
     // When running from source
-    new URL("../../data/templates/SI_Agent_Context.md.tmpl", import.meta.url).pathname,
+    new URL("../../data/templates/SI_Agent_Context.md.tmpl", import.meta.url)
+      .pathname,
     // Relative to current working directory
     join(Deno.cwd(), "data/templates/SI_Agent_Context.md.tmpl"),
     // Relative to binary location
@@ -66,10 +67,11 @@ export interface AiAgentConfig {
   apiToken: string;
   tool: AiTool;
   mcpServerPath?: string;
+  baseUrl: string;
 }
 
 /** Default configuration values */
-export const DEFAULT_CONFIG: Omit<AiAgentConfig, "apiToken"> = {
+export const DEFAULT_CONFIG: Omit<AiAgentConfig, "apiToken" | "baseUrl"> = {
   tool: "claude",
 };
 
@@ -99,9 +101,11 @@ interface McpConfig {
  */
 function isOldDockerFormat(config: McpConfig): boolean {
   const serverConfig = config.mcpServers["system-initiative"];
-  return serverConfig.command === "docker" &&
+  return (
+    serverConfig.command === "docker" &&
     Array.isArray(serverConfig.args) &&
-    serverConfig.args.includes("systeminit/si-mcp-server:stable");
+    serverConfig.args.includes("systeminit/si-mcp-server:stable")
+  );
 }
 
 /**
@@ -204,6 +208,7 @@ export function validateToken(token: string): boolean {
  */
 export async function createMcpConfig(
   apiToken: string,
+  baseUrl: string,
   targetDir: string,
 ): Promise<string> {
   // Get the absolute path to the si binary
@@ -232,6 +237,7 @@ export async function createMcpConfig(
             args: ["ai-agent", "stdio"],
             env: {
               SI_API_TOKEN: apiToken,
+              SI_BASE_URL: baseUrl,
             },
           },
         },
@@ -253,6 +259,7 @@ export async function createMcpConfig(
           args: ["ai-agent", "stdio"],
           env: {
             SI_API_TOKEN: apiToken,
+            SI_BASE_URL: baseUrl,
           },
         },
       },
@@ -401,9 +408,9 @@ function generateMcpServerToml(
   // Add enabled_tools if specified
   if (enabledTools && enabledTools.length > 0) {
     toml += `enabled_tools = [`;
-    toml += enabledTools.map((tool) => `"${escapeTomlString(tool)}"`).join(
-      ", ",
-    );
+    toml += enabledTools
+      .map((tool) => `"${escapeTomlString(tool)}"`)
+      .join(", ");
     toml += `]\n`;
   }
 
@@ -416,6 +423,7 @@ function generateMcpServerToml(
  */
 export async function createCodexConfig(
   apiToken: string,
+  baseUrl: string,
   targetDir?: string,
 ): Promise<string> {
   const codexConfigDir = getCodexConfigDir();
@@ -465,7 +473,7 @@ export async function createCodexConfig(
     // Don't hardcode token - let it come from environment
     // This allows different workspaces to use different tokens
     {},
-    ["SI_API_TOKEN"], // Tell Codex to pass through this env var from shell
+    ["SI_API_TOKEN", "SI_BASE_URL"], // Tell Codex to pass through this env var from shell
     enabledSiTools, // Explicitly allow these SI tools
   );
 
@@ -480,6 +488,7 @@ export async function createCodexConfig(
 # Source this file before running Codex to use workspace-specific token:
 #   source .codex-env && codex
 export SI_API_TOKEN="${apiToken}"
+export SI_BASE_URL="${baseUrl}"
 `;
       await Deno.writeTextFile(envPath, envContent);
     } catch {
@@ -512,6 +521,7 @@ export const createOpenCodeMd = (targetDir: string): Promise<string> =>
  */
 export async function createOpenCodeConfig(
   apiToken: string,
+  baseUrl: string,
   targetDir: string,
 ): Promise<string> {
   const siBinaryPath = Deno.execPath();
@@ -526,6 +536,7 @@ export async function createOpenCodeConfig(
         command: [siBinaryPath, "ai-agent", "stdio"],
         environment: {
           SI_API_TOKEN: apiToken,
+          SI_BASE_URL: baseUrl,
         },
       },
     },
@@ -566,9 +577,8 @@ export function getMcpServerInstallDir(): string {
  */
 export function getMcpServerInstallPath(): string {
   const binDir = getMcpServerInstallDir();
-  const binaryName = Deno.build.os === "windows"
-    ? "si-mcp-server.exe"
-    : "si-mcp-server";
+  const binaryName =
+    Deno.build.os === "windows" ? "si-mcp-server.exe" : "si-mcp-server";
   return join(binDir, binaryName);
 }
 
@@ -613,7 +623,7 @@ async function shouldCheckForUpdates(): Promise<boolean> {
   const now = new Date();
   const dayInMs = 24 * 60 * 60 * 1000;
 
-  return (now.getTime() - lastCheck.getTime()) > dayInMs;
+  return now.getTime() - lastCheck.getTime() > dayInMs;
 }
 
 /**
@@ -625,7 +635,7 @@ export async function getLatestMcpServerVersion(): Promise<string | null> {
       "https://api.github.com/repos/systeminit/si/releases/latest",
       {
         headers: {
-          "Accept": "application/vnd.github.v3+json",
+          Accept: "application/vnd.github.v3+json",
           "User-Agent": "si-cli",
         },
       },
@@ -699,8 +709,7 @@ export async function downloadMcpServer(
     );
   }
 
-  const downloadUrl =
-    `https://github.com/systeminit/si/releases/download/${version}/${assetName}`;
+  const downloadUrl = `https://github.com/systeminit/si/releases/download/${version}/${assetName}`;
 
   logger.debug(`Downloading from: ${downloadUrl}`);
 
@@ -744,7 +753,7 @@ export async function checkAndUpdateMcpServer(
   logger: Logger,
 ): Promise<boolean> {
   // Check if we should check for updates (daily limit)
-  if (!await shouldCheckForUpdates()) {
+  if (!(await shouldCheckForUpdates())) {
     logger.debug("Skipping update check (checked recently)");
     return false;
   }
@@ -842,9 +851,8 @@ export async function findMcpServerBinary(): Promise<string | null> {
   try {
     const siPath = Deno.execPath();
     const siDir = siPath.substring(0, siPath.lastIndexOf("/") + 1);
-    const binaryName = Deno.build.os === "windows"
-      ? "si-mcp-server.exe"
-      : "si-mcp-server";
+    const binaryName =
+      Deno.build.os === "windows" ? "si-mcp-server.exe" : "si-mcp-server";
     const colocatedBinary = join(siDir, binaryName);
 
     const stat = await Deno.stat(colocatedBinary);

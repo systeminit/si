@@ -16,11 +16,12 @@ export async function queryExistingSet(
   ctx: TemplateContext,
   changeSetId: string,
 ): Promise<ExistingSetComponent[]> {
-  const apiConfig = ctx.apiConfig();
-  const workspaceId = ctx.workspaceId();
-
-  if (!apiConfig || !workspaceId) {
-    ctx.logger.warn("Cannot query existing set: API not configured");
+  let apiConfig;
+  let workspaceId;
+  try {
+    apiConfig = ctx.apiConfig();
+    workspaceId = ctx.workspaceId();
+  } catch (_err) {
     return [];
   }
 

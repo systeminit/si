@@ -11,7 +11,6 @@
 
 import { ComponentsApi } from "@systeminit/api-client";
 import { Context } from "../context.ts";
-import { apiConfig, WORKSPACE_ID } from "../si_client.ts";
 import { resolveChangeSet } from "./change_set.ts";
 
 /**
@@ -42,17 +41,15 @@ export async function callComponentDelete(
   options: ComponentDeleteOptions,
 ): Promise<void> {
   const ctx = Context.instance();
-
-  if (!apiConfig || !WORKSPACE_ID) {
-    throw new Error("API configuration not initialized");
-  }
+  const apiConfig = Context.apiConfig();
+  const workspaceId = Context.workspaceId();
 
   ctx.logger.info(`Deleting component: {component}`, {
     component: componentIdOrName,
   });
 
   // Resolve change set
-  const changeSetId = await resolveChangeSet(WORKSPACE_ID, options.changeSet);
+  const changeSetId = await resolveChangeSet(workspaceId, options.changeSet);
   ctx.logger.debug(`Using change set: {changeSetId}`, { changeSetId });
 
   // Fetch component to verify it exists and get its ID
@@ -65,7 +62,7 @@ export async function callComponentDelete(
   let component;
   try {
     const componentResponse = await componentsApi.findComponent({
-      workspaceId: WORKSPACE_ID,
+      workspaceId,
       changeSetId: changeSetId,
       // Use componentId parameter for ULIDs, component parameter for names
       ...(isUlid
@@ -81,8 +78,9 @@ export async function callComponentDelete(
     });
   } catch (error) {
     // Check if it's a 404 (component not found)
-    // deno-lint-ignore no-explicit-any
-    const statusCode = (error as any)?.response?.status ||
+    const statusCode =
+      // deno-lint-ignore no-explicit-any
+      (error as any)?.response?.status ||
       // deno-lint-ignore no-explicit-any
       (error as any)?.status;
 
@@ -102,13 +100,10 @@ export async function callComponentDelete(
 
   // Check if already marked for deletion
   if (component.toDelete) {
-    ctx.logger.info(
-      `Component {name} ({id}) is already marked for deletion`,
-      {
-        name: component.name,
-        id: component.id,
-      },
-    );
+    ctx.logger.info(`Component {name} ({id}) is already marked for deletion`, {
+      name: component.name,
+      id: component.id,
+    });
 
     // In dry-run mode, still exit successfully
     if (options.dryRun) {
@@ -122,29 +117,23 @@ export async function callComponentDelete(
 
   // Dry-run mode: log what would be deleted
   if (options.dryRun) {
-    ctx.logger.info(
-      `Would delete component: {name} ({id})`,
-      {
-        name: component.name,
-        id: component.id,
-      },
-    );
+    ctx.logger.info(`Would delete component: {name} ({id})`, {
+      name: component.name,
+      id: component.id,
+    });
     ctx.logger.info("Dry-run mode - no changes applied");
     return;
   }
 
   // Delete the component
   await componentsApi.deleteComponent({
-    workspaceId: WORKSPACE_ID,
+    workspaceId,
     changeSetId: changeSetId,
     componentId: component.id,
   });
 
-  ctx.logger.info(
-    `Successfully deleted component: {name} ({id})`,
-    {
-      name: component.name,
-      id: component.id,
-    },
-  );
+  ctx.logger.info(`Successfully deleted component: {name} ({id})`, {
+    name: component.name,
+    id: component.id,
+  });
 }

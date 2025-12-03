@@ -22,7 +22,6 @@ export {
   schemaHasRequiredFields,
 } from "./input.ts";
 export { loadBaselineFromFile, setBaseline } from "./baseline.ts";
-export { getHeadChangeSetId } from "../si_client.ts";
 export type { BaselineCache } from "./cache.ts";
 export { cacheBaseline } from "./cache.ts";
 export { initializeWorkingSet } from "./working_set.ts";
@@ -94,20 +93,22 @@ export const SubscriptionInput: z.ZodDiscriminatedUnion<
     }>,
   ],
   "kind"
-> = z.discriminatedUnion("kind", [
-  z.object({
-    kind: z.literal("search"),
-    query: z.string(),
-    path: z.string(),
-    func: z.string().optional(),
-  }),
-  z.object({
-    kind: z.literal("$source"),
-    component: z.string(),
-    path: z.string(),
-    func: z.string().optional(),
-  }),
-]).describe("component subscription using either search or $source");
+> = z
+  .discriminatedUnion("kind", [
+    z.object({
+      kind: z.literal("search"),
+      query: z.string(),
+      path: z.string(),
+      func: z.string().optional(),
+    }),
+    z.object({
+      kind: z.literal("$source"),
+      component: z.string(),
+      path: z.string(),
+      func: z.string().optional(),
+    }),
+  ])
+  .describe("component subscription using either search or $source");
 
 /**
  * TypeScript type inferred from the SubscriptionInput Zod schema.
@@ -182,10 +183,10 @@ export async function callRunTemplate(
   const specifier = isRemoteUrl(template)
     ? toFileUrl(localTemplatePath).href
     : toFileUrl(
-      isAbsolute(localTemplatePath)
-        ? localTemplatePath
-        : resolve(localTemplatePath),
-    ).href;
+        isAbsolute(localTemplatePath)
+          ? localTemplatePath
+          : resolve(localTemplatePath),
+      ).href;
 
   ctx.logger.info(`Loading Template: {specifier}`, { specifier });
 
@@ -217,12 +218,13 @@ export async function callRunTemplate(
 
   try {
     // deno-lint-ignore no-explicit-any
-    const mod = await import(importSpecifier) as any;
-    const run = typeof mod === "function"
-      ? mod
-      : typeof mod.default === "function"
-      ? mod.default
-      : mod.run;
+    const mod = (await import(importSpecifier)) as any;
+    const run =
+      typeof mod === "function"
+        ? mod
+        : typeof mod.default === "function"
+          ? mod.default
+          : mod.run;
 
     if (typeof run !== "function") {
       ctx.logger.error(
@@ -293,14 +295,12 @@ export async function callRunTemplate(
         });
       } catch (cleanupError) {
         // Ignore cleanup errors - file might not exist or already be deleted
-        ctx.logger.debug(
-          `Failed to clean up transpiled file: {message}`,
-          {
-            message: cleanupError instanceof Error
+        ctx.logger.debug(`Failed to clean up transpiled file: {message}`, {
+          message:
+            cleanupError instanceof Error
               ? cleanupError.message
               : String(cleanupError),
-          },
-        );
+        });
       }
     }
 

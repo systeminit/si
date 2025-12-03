@@ -1,5 +1,5 @@
 import { AxiosError } from "axios";
-import { WorkspaceDetails } from "./cli/auth.ts";
+import type { WorkspaceDetails } from "./cli/auth.ts";
 
 export function unknownValueToErrorMessage(value: unknown): string {
   if (typeof value === "string") return value;

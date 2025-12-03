@@ -8,7 +8,6 @@ import {
   ManagementFuncsApi,
   SchemasApi,
 } from "@systeminit/api-client";
-import { apiConfig, WORKSPACE_ID } from "../si_client.ts";
 import {
   errorResponse,
   generateDescription,
@@ -17,12 +16,12 @@ import {
 } from "./commonBehavior.ts";
 import { AttributesSchema } from "../data/components.ts";
 import { validateSchemaPrereqs } from "../data/schemaHints.ts";
+import { Context } from "../../../context.ts";
 
 const name = "component-discover";
 const title =
   "Discover all the resources for a given schema, creating components for them all.";
-const description =
-  `<description>Discover all the resources for a given schema name, and create components for them in a change set. This tool will delete any components it uses to be able to refine the requirements of the discover process.</description><usage>Use this tool to bring an all the existing resources for a given Schema into System Initiative. For example, if the user asks to discover AWS::EC2::VPC's, then this tool will find all of the AWS::EC2::VPC's in the given region and account. After discovering components, you should ask the user if they want you to update the attributes of the discovered components to use subscriptions to any existing components attributes - for example, a discovered AWS::EC2::Subnet would be updated to have a subscription to the /resource_value/VpcId of the AWS::EC2::VPC that matches the imported VpcId attribute of the subnet.</usage>`;
+const description = `<description>Discover all the resources for a given schema name, and create components for them in a change set. This tool will delete any components it uses to be able to refine the requirements of the discover process.</description><usage>Use this tool to bring an all the existing resources for a given Schema into System Initiative. For example, if the user asks to discover AWS::EC2::VPC's, then this tool will find all of the AWS::EC2::VPC's in the given region and account. After discovering components, you should ask the user if they want you to update the attributes of the discovered components to use subscriptions to any existing components attributes - for example, a discovered AWS::EC2::Subnet would be updated to have a subscription to the /resource_value/VpcId of the AWS::EC2::VPC that matches the imported VpcId attribute of the subnet.</usage>`;
 
 const DiscoverComponentInputSchemaRaw = {
   changeSetId: z
@@ -93,19 +92,21 @@ export function componentDiscoverTool(server: McpServer) {
           return prereqError;
         }
 
+        const apiConfig = Context.apiConfig();
+        const workspaceId = Context.workspaceId();
         const siApi = new ComponentsApi(apiConfig);
         const siSchemasApi = new SchemasApi(apiConfig);
         const siFuncsApi = new FuncsApi(apiConfig);
         try {
           const findSchemaResponse = await siSchemasApi.findSchema({
-            workspaceId: WORKSPACE_ID,
+            workspaceId,
             changeSetId: changeSetId,
             schema: schemaName,
           });
           const schemaId = findSchemaResponse.data.schemaId;
 
           const discoverTemplateResponse = await siApi.createComponent({
-            workspaceId: WORKSPACE_ID,
+            workspaceId,
             changeSetId: changeSetId,
             createComponentV1Request: {
               name: `Discover ${schemaName} - Temporary`,
@@ -121,7 +122,7 @@ export function componentDiscoverTool(server: McpServer) {
 
           // Now get the variantFuncs so we can decide on the discovery function
           let defaultVariantResponse = await siSchemasApi.getDefaultVariant({
-            workspaceId: WORKSPACE_ID,
+            workspaceId,
             changeSetId: changeSetId,
             schemaId,
           });
@@ -131,12 +132,12 @@ export function componentDiscoverTool(server: McpServer) {
             let attempts = 1;
             while (defaultVariantResponse.status === 202 && attempts < 6) {
               // Wait three seconds
-              await new Promise(r => setTimeout(r, attempts * 1000));
+              await new Promise((r) => setTimeout(r, attempts * 1000));
 
               // Try again
               attempts++;
               defaultVariantResponse = await siSchemasApi.getDefaultVariant({
-                workspaceId: WORKSPACE_ID,
+                workspaceId,
                 changeSetId: changeSetId,
                 schemaId,
               });
@@ -147,12 +148,13 @@ export function componentDiscoverTool(server: McpServer) {
             // errors since we do not need to block execution.
             if (defaultVariantResponse.status === 202) {
               await siApi.eraseComponent({
-                workspaceId: WORKSPACE_ID,
+                workspaceId,
                 changeSetId: changeSetId,
                 componentId: discoverTemplateResponse.data.component.id,
               });
               return errorResponse({
-                message: "After 5 attempts, the workspace graph is still generating default variant data. Please try again.",
+                message:
+                  "After 5 attempts, the workspace graph is still generating default variant data. Please try again.",
               });
             } else if (!defaultVariantResponse.data.variantFuncs) {
               return errorResponse({
@@ -176,7 +178,7 @@ export function componentDiscoverTool(server: McpServer) {
           }
 
           const discoverFuncResponse = await siFuncsApi.getFunc({
-            workspaceId: WORKSPACE_ID,
+            workspaceId,
             changeSetId: changeSetId,
             funcId: discoverFunc.id,
           });
@@ -186,12 +188,12 @@ export function componentDiscoverTool(server: McpServer) {
           // Lets dequeue any actions created for this component
           const actionsApi = new ActionsApi(apiConfig);
           const queuedDiscoveryComponentActions = await actionsApi.getActions({
-            workspaceId: WORKSPACE_ID,
+            workspaceId,
             changeSetId: changeSetId,
           });
           for (const action of queuedDiscoveryComponentActions.data.actions) {
             await actionsApi.cancelAction({
-              workspaceId: WORKSPACE_ID,
+              workspaceId,
               changeSetId: changeSetId,
               actionId: action.id,
             });
@@ -199,7 +201,7 @@ export function componentDiscoverTool(server: McpServer) {
 
           try {
             const discoverResponse = await siApi.executeManagementFunction({
-              workspaceId: WORKSPACE_ID,
+              workspaceId,
               changeSetId,
               componentId: discoverTemplateResult["componentId"],
               executeManagementFunctionV1Request: {
@@ -210,7 +212,7 @@ export function componentDiscoverTool(server: McpServer) {
             // if discovery failed, remove the component
             if (discoverResponse.status === 500) {
               await siApi.eraseComponent({
-                workspaceId: WORKSPACE_ID,
+                workspaceId,
                 changeSetId: changeSetId,
                 componentId: discoverTemplateResponse.data.component.id,
               });
@@ -233,7 +235,7 @@ export function componentDiscoverTool(server: McpServer) {
               }
               try {
                 const status = await mgmtApi.getManagementFuncRunState({
-                  workspaceId: WORKSPACE_ID,
+                  workspaceId,
                   changeSetId,
                   managementFuncJobStateId:
                     discoverResponse.data.managementFuncJobStateId,
@@ -245,13 +247,11 @@ export function componentDiscoverTool(server: McpServer) {
                 currentCount += 1;
               } catch (error) {
                 return errorResponse({
-                  message: `error fetching management function state: ${
-                    JSON.stringify(
-                      error,
-                      null,
-                      2,
-                    )
-                  }`,
+                  message: `error fetching management function state: ${JSON.stringify(
+                    error,
+                    null,
+                    2,
+                  )}`,
                 });
               }
             }
@@ -263,7 +263,7 @@ export function componentDiscoverTool(server: McpServer) {
             } else if (discoverState == "Failure") {
               // delete dangling component in the case of a discovery failure
               await siApi.deleteComponent({
-                workspaceId: WORKSPACE_ID,
+                workspaceId,
                 changeSetId: changeSetId,
                 componentId: discoverTemplateResult["componentId"],
               });
@@ -272,15 +272,14 @@ export function componentDiscoverTool(server: McpServer) {
                   status: "failed",
                   data: discoverTemplateResult,
                 },
-                message:
-                  `failed to discover ${schemaName} resources; see funcRunId ${
-                    discoverTemplateResult["funcRunId"]
-                  } with the func-run-get tool for more information`,
+                message: `failed to discover ${schemaName} resources; see funcRunId ${
+                  discoverTemplateResult["funcRunId"]
+                } with the func-run-get tool for more information`,
               });
             } else {
               // Let's cleanup the discovery component now that the management function is successful
               await siApi.deleteComponent({
-                workspaceId: WORKSPACE_ID,
+                workspaceId,
                 changeSetId: changeSetId,
                 componentId: discoverTemplateResult["componentId"],
               });
@@ -293,8 +292,7 @@ export function componentDiscoverTool(server: McpServer) {
                 message: error.message,
                 stack: error.stack,
               });
-            else
-              return errorResponse(error)
+            else return errorResponse(error);
           }
         } catch (error) {
           if (error instanceof Error)
@@ -302,8 +300,7 @@ export function componentDiscoverTool(server: McpServer) {
               message: error.message,
               stack: error.stack,
             });
-          else
-            return errorResponse(error)
+          else return errorResponse(error);
         }
       });
     },

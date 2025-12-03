@@ -1,12 +1,10 @@
 import {
   ChangeSetsApi,
   ComponentsApi,
-  Configuration,
   SchemasApi,
   SecretsApi,
   type SecretV1,
 } from "@systeminit/api-client";
-import { jwtDecode } from "jwt-decode";
 import { Context } from "../context.ts";
 import type { SecretDefinitionV1, SecretFieldValues } from "./types.ts";
 import type { SecretCreateOptions } from "./types.ts";
@@ -215,11 +213,12 @@ function displayDryRun(
 
     if (value) {
       // Mask sensitive values
-      const displayValue = field.kind === "password"
-        ? "********"
-        : value.length > 20
-        ? `${value.substring(0, 20)}... (${value.length} characters)`
-        : value;
+      const displayValue =
+        field.kind === "password"
+          ? "********"
+          : value.length > 20
+            ? `${value.substring(0, 20)}... (${value.length} characters)`
+            : value;
 
       ctx.logger.info(`    - ${field.name}: ${displayValue}`);
     } else {
@@ -265,40 +264,10 @@ export async function callSecretCreate(
 ): Promise<void> {
   // Get context
   const ctx = Context.instance();
+  const apiConfig = Context.apiConfig();
+  const workspaceId = Context.workspaceId();
 
   try {
-    // Extract API token
-    const apiToken = options.apiToken;
-
-    if (!apiToken) {
-      throw new Error(
-        "API token not found. Set SI_API_TOKEN environment variable or use --api-token flag.",
-      );
-    }
-
-    // Decode JWT to get workspace ID
-    const decoded = jwtDecode<SIJwtPayload>(apiToken);
-
-    if (!decoded.workspaceId) {
-      throw new Error("Workspace ID not found in API token");
-    }
-
-    const workspaceId = decoded.workspaceId;
-
-    // Get base URL from options (already set from env or flag by CLI)
-    const baseUrl = options.apiBaseUrl;
-
-    // Create API configuration
-    const apiConfig = new Configuration({
-      basePath: baseUrl,
-      accessToken: apiToken,
-      baseOptions: {
-        headers: {
-          Authorization: `Bearer ${apiToken}`,
-        },
-      },
-    });
-
     // Create API clients
     const changeSetsApi = new ChangeSetsApi(apiConfig);
     const secretsApi = new SecretsApi(apiConfig);

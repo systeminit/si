@@ -1,33 +1,11 @@
-import { Configuration } from "@systeminit/api-client";
+import {
+  ChangeSetsApi,
+  type ChangeSetViewV1,
+  type Configuration,
+} from "@systeminit/api-client";
 import { AuthApiClient, type WorkspaceDetails } from "./auth.ts";
-import { extractConfig } from "./config.ts";
-import type { Context } from "../context.ts";
-
-/// From the environment variables, extract the configuration needed to run auth commands
-export async function initializeCliContextWithAuth(
-  baseCtx: BaseCliContext,
-): Promise<AuthenticatedCliContext> {
-  const { ctx } = baseCtx;
-  const { apiUrl, apiToken, workspaceId } = extractConfig();
-
-  ctx.logger.debug(
-    `Initializing CLI context with auth, pointing at ${apiUrl}, workspace ${workspaceId}`,
-  );
-
-  const apiConfiguration = new Configuration({
-    basePath: apiUrl,
-    accessToken: apiToken,
-    baseOptions: {
-      headers: {
-        Authorization: `Bearer ${apiToken}`,
-      },
-    },
-  });
-
-  const workspace = await getWorkspaceDetails(apiToken, workspaceId);
-
-  return { apiConfiguration, workspace, ctx: ctx };
-}
+import { Context } from "../context.ts";
+import { getWorkspaceDetails as getStoredWorkspaceDetails } from "./config.ts";
 
 export type BaseCliContext = {
   ctx: Context;
@@ -39,16 +17,54 @@ export type AuthenticatedCliContext = BaseCliContext & {
 };
 
 export async function getWorkspaceDetails(
-  apiToken: string,
-  workspaceId?: string,
-) {
-  if (!workspaceId) {
-    throw new Error("Workspace ID is required");
+  workspaceId: string,
+): Promise<WorkspaceDetails> {
+  const ctx = Context.instance();
+  const userId = Context.userId();
+  Context.apiConfig();
+
+  const { workspaceDetails: maybeWorkspaceDetails } = getStoredWorkspaceDetails(
+    userId,
+    workspaceId,
+  );
+  if (maybeWorkspaceDetails) {
+    return maybeWorkspaceDetails;
   }
 
-  const authApi = new AuthApiClient(apiToken, workspaceId);
+  const authApiUrl = ctx.authApiUrl;
+  const apiToken = ctx.authApiToken ?? ctx.apiToken;
 
-  const workspace = await authApi.getWorkspaceDetails();
+  const authApi = new AuthApiClient(authApiUrl, apiToken);
+  const workspace = await authApi.getWorkspaceDetails(workspaceId);
 
   return workspace;
+}
+
+/**
+ * Get the HEAD changeset ID for a workspace.
+ *
+ * @returns The HEAD changeset ID
+ * @throws Error if HEAD changeset cannot be found or API call fails
+ */
+export async function getHeadChangeSetId(): Promise<string> {
+  const ctx = Context.instance();
+  const apiConfig = Context.apiConfig();
+  const workspaceId = Context.workspaceId();
+
+  const changeSetsApi = new ChangeSetsApi(apiConfig);
+  const response = await changeSetsApi.listChangeSets({ workspaceId });
+
+  // Find the HEAD changeset
+  const changeSets = response.data.changeSets as ChangeSetViewV1[];
+  const headChangeSet = changeSets.find((cs) => cs.isHead);
+
+  if (headChangeSet) {
+    ctx.logger.debug(`Found HEAD changeset: {id} ({name})`, {
+      id: headChangeSet.id,
+      name: headChangeSet.name,
+    });
+    return headChangeSet.id;
+  } else {
+    throw new Error("No HEAD changeset found in workspace");
+  }
 }

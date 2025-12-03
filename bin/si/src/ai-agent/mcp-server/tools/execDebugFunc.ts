@@ -12,12 +12,11 @@ import {
   successResponse,
   withAnalytics,
 } from "./commonBehavior.ts";
-import { apiConfig, WORKSPACE_ID } from "../si_client.ts";
+import { Context } from "../../../context.ts";
 
 const name = "exec-debug-func";
 const title = "Run a debug func inside a change set";
-const description =
-  `<description>Runs a one-off function inside a change set intended to troubleshoot problems building infrastructure in the cloud. Returns arbitrary json data that should provide information about problems encountered when building infrastructure. Requires a component that has credentials and other settings necessary for making API calls within the cloud environment. The component SHOULD be connected to READ ONLY CREDENTIALS to prevent making changes to infrastructure. Optionally accepts arbitrary JSON debugInput with any additional context required for troubleshooting the problem.</description>`;
+const description = `<description>Runs a one-off function inside a change set intended to troubleshoot problems building infrastructure in the cloud. Returns arbitrary json data that should provide information about problems encountered when building infrastructure. Requires a component that has credentials and other settings necessary for making API calls within the cloud environment. The component SHOULD be connected to READ ONLY CREDENTIALS to prevent making changes to infrastructure. Optionally accepts arbitrary JSON debugInput with any additional context required for troubleshooting the problem.</description>`;
 
 const debugFuncDescription =
   "<description>A typescript debug function. The function should *ALWAYS* have the form of `async function debug({ component, debugInput }) { /* debug code here */ }`. The function name should *ALWAYS* be `debug`</description>";
@@ -95,6 +94,8 @@ export function execDebugFunc(server: McpServer) {
       debugFunc,
     }: DebugFuncInputSchema): Promise<CallToolResult> =>
       await withAnalytics(name, async () => {
+        const apiConfig = Context.apiConfig();
+        const workspaceId = Context.workspaceId();
         const debugFuncPattern = /async\s+function\s+debug/;
         if (!debugFuncPattern.test(debugFunc)) {
           return errorResponse({
@@ -105,7 +106,7 @@ export function execDebugFunc(server: McpServer) {
 
         const debugFuncsApi = new DebugFuncsApi(apiConfig);
         const execFuncRequest: DebugFuncsApiExecDebugFuncRequest = {
-          workspaceId: WORKSPACE_ID,
+          workspaceId: workspaceId,
           changeSetId,
           execDebugFuncV1Request: {
             code: debugFunc,
@@ -120,9 +121,8 @@ export function execDebugFunc(server: McpServer) {
         await zzz(POLL_WAIT_START_MS);
 
         try {
-          const execResponse = await debugFuncsApi.execDebugFunc(
-            execFuncRequest,
-          );
+          const execResponse =
+            await debugFuncsApi.execDebugFunc(execFuncRequest);
           const debugFuncJobStateId = execResponse.data.debugFuncJobStateId;
 
           let pollCount = 0;
@@ -131,20 +131,20 @@ export function execDebugFunc(server: McpServer) {
 
           while (pollCount < MAX_POLLS) {
             const jobStateRequest: DebugFuncsApiGetDebugFuncStateRequest = {
-              workspaceId: WORKSPACE_ID,
+              workspaceId: workspaceId,
               changeSetId,
               debugFuncJobStateId,
             };
 
-            const { data } = await debugFuncsApi.getDebugFuncState(
-              jobStateRequest,
-            );
+            const { data } =
+              await debugFuncsApi.getDebugFuncState(jobStateRequest);
             funcRunId = data.funcRunId;
 
             if (data.state === SUCCESS || data.state === FAILURE) {
-              const errorMessage = data.state === FAILURE
-                ? data.failure || "Debug function execution failed"
-                : undefined;
+              const errorMessage =
+                data.state === FAILURE
+                  ? data.failure || "Debug function execution failed"
+                  : undefined;
               return successResponse({
                 status: data.state,
                 output: data.result,

@@ -15,7 +15,6 @@ import {
   SearchApi,
   type SearchV1Response,
 } from "@systeminit/api-client";
-import { getHeadChangeSetId } from "../si_client.ts";
 import {
   deepEqual,
   extractSubscription,
@@ -32,6 +31,7 @@ import {
   resolveSearchQuery,
   type SearchFunction,
 } from "../component/subscription_utils.ts";
+import { getHeadChangeSetId } from "../cli/helpers.ts";
 
 /**
  * Configuration options for creating a TemplateContext and running a template.
@@ -128,9 +128,7 @@ export type AttributePredicate = (
  *   Array.isArray(value) && value.length > 3;
  * ```
  */
-export type ValuePredicate = (
-  value: unknown,
-) => boolean;
+export type ValuePredicate = (value: unknown) => boolean;
 
 /**
  * Transform function that modifies the working set of components.
@@ -176,14 +174,15 @@ export type { ComponentViewV1 };
  * @param attributes - Full attributes object from ComponentViewV1
  * @returns Filtered attributes object
  */
-export function filterComponentAttributes(
-  attributes: { [key: string]: unknown },
-): { [key: string]: unknown } {
+export function filterComponentAttributes(attributes: {
+  [key: string]: unknown;
+}): { [key: string]: unknown } {
   const filtered: { [key: string]: unknown } = {};
 
   for (const [key, value] of Object.entries(attributes)) {
     if (
-      key.startsWith("/si") || key.startsWith("/domain") ||
+      key.startsWith("/si") ||
+      key.startsWith("/domain") ||
       key.startsWith("/secrets")
     ) {
       filtered[key] = value;
@@ -386,9 +385,10 @@ export class TemplateContext<TInputSchema extends z.ZodTypeAny = z.ZodTypeAny> {
   ): z.infer<TInputSchema> | undefined | void {
     if (data !== undefined) {
       this.logger.debug(`Setting Input Data with {count} keys`, {
-        count: typeof data === "object" && data !== null
-          ? Object.keys(data).length
-          : 0,
+        count:
+          typeof data === "object" && data !== null
+            ? Object.keys(data).length
+            : 0,
       });
       this._inputData = data;
     } else {
@@ -419,8 +419,8 @@ export class TemplateContext<TInputSchema extends z.ZodTypeAny = z.ZodTypeAny> {
    *
    * @returns The API client configuration, or undefined if not initialized
    */
-  apiConfig(): Configuration | undefined {
-    return this.ctx.apiConfig;
+  apiConfig(): Configuration {
+    return Context.apiConfig();
   }
 
   /**
@@ -428,8 +428,8 @@ export class TemplateContext<TInputSchema extends z.ZodTypeAny = z.ZodTypeAny> {
    *
    * @returns The workspace ID, or undefined if not initialized
    */
-  workspaceId(): string | undefined {
-    return this.ctx.workspaceId;
+  workspaceId(): string {
+    return Context.workspaceId();
   }
 
   /**
@@ -456,19 +456,11 @@ export class TemplateContext<TInputSchema extends z.ZodTypeAny = z.ZodTypeAny> {
       return this._headChangeSetId;
     }
 
-    const apiConfig = this.apiConfig();
-    const workspaceId = this.workspaceId();
-
-    if (!apiConfig || !workspaceId) {
-      throw new Error(
-        "Cannot get HEAD changeset: API configuration not available",
-      );
-    }
-
+    const workspaceId = Context.workspaceId();
     this.logger.debug(`Fetching HEAD changeset for workspace {workspaceId}`, {
       workspaceId,
     });
-    const changeSetId = await getHeadChangeSetId(apiConfig, workspaceId);
+    const changeSetId = await getHeadChangeSetId();
     this._headChangeSetId = changeSetId;
     this.logger.debug(`Found HEAD changeset: {id} ("HEAD")`, {
       id: changeSetId,
@@ -551,12 +543,6 @@ export class TemplateContext<TInputSchema extends z.ZodTypeAny = z.ZodTypeAny> {
   ): Promise<string> {
     try {
       const apiConfig = this.apiConfig();
-      if (!apiConfig) {
-        this.logger.warn(
-          "Cannot fetch schema: API configuration not available",
-        );
-        return schemaId;
-      }
 
       const schemasApi = new SchemasApi(apiConfig);
       const schema = await cachedGetSchema(
@@ -624,9 +610,6 @@ export class TemplateContext<TInputSchema extends z.ZodTypeAny = z.ZodTypeAny> {
   ): Promise<string> {
     try {
       const apiConfig = this.apiConfig();
-      if (!apiConfig) {
-        throw new Error("Cannot fetch schema: API configuration not available");
-      }
 
       const schemasApi = new SchemasApi(apiConfig);
       return await cachedGetSchemaIdByName(
@@ -677,11 +660,6 @@ export class TemplateContext<TInputSchema extends z.ZodTypeAny = z.ZodTypeAny> {
 
     try {
       const apiConfig = this.apiConfig();
-      if (!apiConfig) {
-        throw new Error(
-          "Cannot fetch schema variant: API configuration not available",
-        );
-      }
 
       this.logger.debug(
         "Fetching schema variant {schemaId}:{schemaVariantId}",
@@ -747,9 +725,6 @@ export class TemplateContext<TInputSchema extends z.ZodTypeAny = z.ZodTypeAny> {
     // Cache miss - perform API call
     this.logger.debug(`Search cache miss for query: {query}`, { query });
     const apiConfig = this.apiConfig();
-    if (!apiConfig) {
-      throw new Error("Cannot perform search: API configuration not available");
-    }
 
     const searchApi = new SearchApi(apiConfig);
     const searchResult = await searchApi.search({
@@ -787,11 +762,6 @@ export class TemplateContext<TInputSchema extends z.ZodTypeAny = z.ZodTypeAny> {
     componentId: string,
   ): Promise<GetComponentV1Response> {
     const apiConfig = this.apiConfig();
-    if (!apiConfig) {
-      throw new Error(
-        "Cannot fetch component: API configuration not available",
-      );
-    }
 
     const componentsApi = new ComponentsApi(apiConfig);
     return await cachedGetComponent(
@@ -821,17 +791,15 @@ export class TemplateContext<TInputSchema extends z.ZodTypeAny = z.ZodTypeAny> {
     if (!prop) return paths;
 
     // Trace log the prop being processed
-    this.logger.trace(
-      "Building paths from prop at {currentPath}",
-      {
-        currentPath: currentPath || "(root)",
-        propName: prop.name,
-        propType: prop.propType,
-        hasChildren: prop.children && Array.isArray(prop.children)
+    this.logger.trace("Building paths from prop at {currentPath}", {
+      currentPath: currentPath || "(root)",
+      propName: prop.name,
+      propType: prop.propType,
+      hasChildren:
+        prop.children && Array.isArray(prop.children)
           ? prop.children.length
           : 0,
-      },
-    );
+    });
 
     // Add current path if not empty
     if (currentPath) {
@@ -841,7 +809,9 @@ export class TemplateContext<TInputSchema extends z.ZodTypeAny = z.ZodTypeAny> {
 
     // Recursively process children
     if (
-      prop.children && Array.isArray(prop.children) && prop.children.length > 0
+      prop.children &&
+      Array.isArray(prop.children) &&
+      prop.children.length > 0
     ) {
       for (const child of prop.children) {
         const childPath = currentPath
@@ -862,20 +832,20 @@ export class TemplateContext<TInputSchema extends z.ZodTypeAny = z.ZodTypeAny> {
 
         // For arrays, also consider indexed paths
         if (
-          child.propType === "array" && child.children &&
+          child.propType === "array" &&
+          child.children &&
           Array.isArray(child.children)
         ) {
-          this.logger.trace(
-            "Processing array children for {childPath}",
-            { childPath, arrayChildrenCount: child.children.length },
-          );
+          this.logger.trace("Processing array children for {childPath}", {
+            childPath,
+            arrayChildrenCount: child.children.length,
+          });
           // Add a placeholder for array element validation
           for (const arrayChild of child.children) {
             const arrayChildPath = `${childPath}/0/${arrayChild.name}`;
-            this.logger.trace(
-              "Adding array indexed path: {arrayChildPath}",
-              { arrayChildPath },
-            );
+            this.logger.trace("Adding array indexed path: {arrayChildPath}", {
+              arrayChildPath,
+            });
             const arrayChildPaths = this._buildValidPathsFromSchema(
               arrayChild,
               arrayChildPath,
@@ -932,13 +902,6 @@ export class TemplateContext<TInputSchema extends z.ZodTypeAny = z.ZodTypeAny> {
     // Get API config to fetch from current workspace
     const apiConfig = this.apiConfig();
     const workspaceId = this.workspaceId();
-
-    if (!apiConfig || !workspaceId) {
-      this.logger.debug(
-        "Cannot resolve schema variant ID: API configuration not available",
-      );
-      return null;
-    }
 
     try {
       const changeSetId = await this.getHeadChangeSetId();
@@ -1009,10 +972,9 @@ export class TemplateContext<TInputSchema extends z.ZodTypeAny = z.ZodTypeAny> {
     // Check cache first
     const cached = this._schemaVariantCache.get(schemaVariantId);
     if (cached) {
-      this.logger.trace(
-        "Schema variant cache hit for {variantId}",
-        { variantId: schemaVariantId },
-      );
+      this.logger.trace("Schema variant cache hit for {variantId}", {
+        variantId: schemaVariantId,
+      });
       return cached.domainProps ?? null;
     }
 
@@ -1020,21 +982,13 @@ export class TemplateContext<TInputSchema extends z.ZodTypeAny = z.ZodTypeAny> {
     const apiConfig = this.apiConfig();
     const workspaceId = this.workspaceId();
 
-    if (!apiConfig || !workspaceId) {
-      this.logger.debug(
-        "Cannot fetch schema variant: API configuration not available",
-      );
-      return null;
-    }
-
     try {
       const changeSetId = await this.getHeadChangeSetId();
       const schemasApi = new SchemasApi(apiConfig);
 
-      this.logger.debug(
-        "Fetching schema variant {variantId} from API",
-        { variantId: schemaVariantId },
-      );
+      this.logger.debug("Fetching schema variant {variantId} from API", {
+        variantId: schemaVariantId,
+      });
 
       const response = await schemasApi.getVariant({
         workspaceId,
@@ -1046,20 +1000,16 @@ export class TemplateContext<TInputSchema extends z.ZodTypeAny = z.ZodTypeAny> {
       // Cache the full response data
       this._schemaVariantCache.set(schemaVariantId, response.data);
 
-      this.logger.trace(
-        "Cached schema variant {variantId}",
-        { variantId: schemaVariantId },
-      );
+      this.logger.trace("Cached schema variant {variantId}", {
+        variantId: schemaVariantId,
+      });
 
       return response.data.domainProps ?? null;
     } catch (error) {
-      this.logger.debug(
-        "Failed to fetch schema variant {variantId}: {error}",
-        {
-          variantId: schemaVariantId,
-          error: error instanceof Error ? error.message : String(error),
-        },
-      );
+      this.logger.debug("Failed to fetch schema variant {variantId}: {error}", {
+        variantId: schemaVariantId,
+        error: error instanceof Error ? error.message : String(error),
+      });
       return null;
     }
   }
@@ -1125,9 +1075,8 @@ export class TemplateContext<TInputSchema extends z.ZodTypeAny = z.ZodTypeAny> {
         },
       );
 
-      const isBaselineComponent = this._workingSet?.some((c) =>
-        c.id === component.id
-      ) ?? false;
+      const isBaselineComponent =
+        this._workingSet?.some((c) => c.id === component.id) ?? false;
 
       if (isBaselineComponent) {
         this.logger.debug(
@@ -1228,12 +1177,12 @@ export class TemplateContext<TInputSchema extends z.ZodTypeAny = z.ZodTypeAny> {
         },
       );
 
-      // Get API configuration
-      const apiConfig = this.apiConfig();
-      const workspaceId = this.workspaceId();
-
-      if (!apiConfig || !workspaceId) {
-        // No API available - skip validation silently
+      let apiConfig;
+      let workspaceId;
+      try {
+        apiConfig = this.apiConfig();
+        workspaceId = this.workspaceId();
+      } catch (_err) {
         this.logger.debug(
           "Skipping attribute validation: API configuration not available",
         );
@@ -1331,10 +1280,9 @@ export class TemplateContext<TInputSchema extends z.ZodTypeAny = z.ZodTypeAny> {
           `Available paths: ${Array.from(validPaths).sort().join(", ")}`;
 
         if (skipIfMissing) {
-          this.logger.debug(
-            "Skipping attribute update: {errorMessage}",
-            { errorMessage },
-          );
+          this.logger.debug("Skipping attribute update: {errorMessage}", {
+            errorMessage,
+          });
           return false;
         } else {
           throw new Error(errorMessage);
@@ -1381,14 +1329,7 @@ export class TemplateContext<TInputSchema extends z.ZodTypeAny = z.ZodTypeAny> {
         componentId = subscription.component;
       } else {
         // Component is a name - need API access to resolve it
-        const apiConfig = this.apiConfig();
         const workspaceId = this.workspaceId();
-
-        if (!apiConfig || !workspaceId) {
-          throw new Error(
-            "Cannot resolve subscription: API configuration not available",
-          );
-        }
 
         const changeSetId = await this.getHeadChangeSetId();
 
@@ -1410,14 +1351,7 @@ export class TemplateContext<TInputSchema extends z.ZodTypeAny = z.ZodTypeAny> {
       }
     } else {
       // Search subscription - need API access
-      const apiConfig = this.apiConfig();
       const workspaceId = this.workspaceId();
-
-      if (!apiConfig || !workspaceId) {
-        throw new Error(
-          "Cannot resolve subscription: API configuration not available",
-        );
-      }
 
       const changeSetId = await this.getHeadChangeSetId();
 
@@ -1524,9 +1458,8 @@ export class TemplateContext<TInputSchema extends z.ZodTypeAny = z.ZodTypeAny> {
     subscription: SubscriptionInputType,
   ): Promise<void> {
     // Resolve the subscription to get the final $source format
-    const resolvedSubscription = await this._resolveSubscriptionInput(
-      subscription,
-    );
+    const resolvedSubscription =
+      await this._resolveSubscriptionInput(subscription);
 
     // Check if subscription already matches
     const existingValue = component.attributes[attributePath];
@@ -1609,9 +1542,9 @@ export class TemplateContext<TInputSchema extends z.ZodTypeAny = z.ZodTypeAny> {
     // Log the deletions
     if (deletedPaths.length > 0) {
       logger.debug(
-        `Deleted ${deletedPaths.length} attribute(s) from component "${component.name}": ${
-          deletedPaths.join(", ")
-        }`,
+        `Deleted ${deletedPaths.length} attribute(s) from component "${component.name}": ${deletedPaths.join(
+          ", ",
+        )}`,
       );
     } else {
       logger.debug(
@@ -1660,9 +1593,9 @@ export class TemplateContext<TInputSchema extends z.ZodTypeAny = z.ZodTypeAny> {
       }
     } else {
       // For RegExp and predicate, iterate through existing attributes
-      for (
-        const [path, existingValue] of Object.entries(component.attributes)
-      ) {
+      for (const [path, existingValue] of Object.entries(
+        component.attributes,
+      )) {
         let shouldSet = false;
 
         if (matcher instanceof RegExp) {
@@ -1688,9 +1621,9 @@ export class TemplateContext<TInputSchema extends z.ZodTypeAny = z.ZodTypeAny> {
     // Log the updates
     if (updatedPaths.length > 0) {
       logger.debug(
-        `Set ${updatedPaths.length} attribute(s) on component "${component.name}": ${
-          updatedPaths.join(", ")
-        }`,
+        `Set ${updatedPaths.length} attribute(s) on component "${component.name}": ${updatedPaths.join(
+          ", ",
+        )}`,
       );
     } else {
       logger.debug(
@@ -1834,10 +1767,7 @@ export class TemplateContext<TInputSchema extends z.ZodTypeAny = z.ZodTypeAny> {
    *   return workingSet;
    * });
    */
-  copyComponent(
-    source: TemplateComponent,
-    newName: string,
-  ): TemplateComponent {
+  copyComponent(source: TemplateComponent, newName: string): TemplateComponent {
     const logger = Context.instance().logger;
 
     // Validate newName
@@ -1903,15 +1833,7 @@ export class TemplateContext<TInputSchema extends z.ZodTypeAny = z.ZodTypeAny> {
       throw new Error("Component name cannot be empty");
     }
 
-    // Get API configuration and workspace ID
-    const apiConfig = this.apiConfig();
     const workspaceId = this.workspaceId();
-
-    if (!apiConfig || !workspaceId) {
-      throw new Error(
-        "Cannot create component: API configuration not available",
-      );
-    }
 
     // Get the HEAD changeset ID (cached)
     const changeSetId = await this.getHeadChangeSetId();
@@ -2013,15 +1935,12 @@ export class TemplateContext<TInputSchema extends z.ZodTypeAny = z.ZodTypeAny> {
 
     // Log the ensure operation
     const schemaName = component.schemaName ?? component.schemaId;
-    logger.info(
-      `Ensuring {schemaName} {componentName} {path} has {value}`,
-      {
-        schemaName,
-        componentName: component.name,
-        path,
-        value: finalValue,
-      },
-    );
+    logger.info(`Ensuring {schemaName} {componentName} {path} has {value}`, {
+      schemaName,
+      componentName: component.name,
+      path,
+      value: finalValue,
+    });
 
     // Check if current value equals desired value
     const currentValue = component.attributes[path];
@@ -2128,14 +2047,16 @@ export class TemplateContext<TInputSchema extends z.ZodTypeAny = z.ZodTypeAny> {
       // Value is a SubscriptionInputType - resolve it to $source format
       finalValue = await this._resolveSubscriptionInput(subscriptionParse.data);
     } else if (
-      typeof value === "object" && value !== null && !isSubscription(value) &&
+      typeof value === "object" &&
+      value !== null &&
+      !isSubscription(value) &&
       !Array.isArray(value)
     ) {
       // Value is an object - check each property for SubscriptionInputType
       const resolvedObject: Record<string, unknown> = {};
-      for (
-        const [key, val] of Object.entries(value as Record<string, unknown>)
-      ) {
+      for (const [key, val] of Object.entries(
+        value as Record<string, unknown>,
+      )) {
         const propSubParse = SubscriptionInput.safeParse(val);
         if (propSubParse.success) {
           resolvedObject[key] = await this._resolveSubscriptionInput(
@@ -2189,9 +2110,10 @@ export class TemplateContext<TInputSchema extends z.ZodTypeAny = z.ZodTypeAny> {
     let _matchedSubpath: string | undefined;
 
     for (const [index, subpaths] of elements.entries()) {
-      for (
-        const [subpath, { value: attrValue, fullPath }] of subpaths.entries()
-      ) {
+      for (const [
+        subpath,
+        { value: attrValue, fullPath },
+      ] of subpaths.entries()) {
         if (
           matcher({
             subpath,
@@ -2213,16 +2135,16 @@ export class TemplateContext<TInputSchema extends z.ZodTypeAny = z.ZodTypeAny> {
       const elementPath = `${basePath}/${matchedIndex}`;
 
       if (
-        typeof finalValue === "object" && finalValue !== null &&
-        !isSubscription(finalValue) && !Array.isArray(finalValue)
+        typeof finalValue === "object" &&
+        finalValue !== null &&
+        !isSubscription(finalValue) &&
+        !Array.isArray(finalValue)
       ) {
         // Object array - merge siblings
         const updates: string[] = [];
-        for (
-          const [key, val] of Object.entries(
-            finalValue as Record<string, unknown>,
-          )
-        ) {
+        for (const [key, val] of Object.entries(
+          finalValue as Record<string, unknown>,
+        )) {
           const siblingPath = `${elementPath}/${key}`;
           const currentValue = component.attributes[siblingPath];
 
@@ -2273,15 +2195,15 @@ export class TemplateContext<TInputSchema extends z.ZodTypeAny = z.ZodTypeAny> {
       const elementPath = `${basePath}/${newIndex}`;
 
       if (
-        typeof finalValue === "object" && finalValue !== null &&
-        !isSubscription(finalValue) && !Array.isArray(finalValue)
+        typeof finalValue === "object" &&
+        finalValue !== null &&
+        !isSubscription(finalValue) &&
+        !Array.isArray(finalValue)
       ) {
         // Object array - create new element with properties
-        for (
-          const [key, val] of Object.entries(
-            finalValue as Record<string, unknown>,
-          )
-        ) {
+        for (const [key, val] of Object.entries(
+          finalValue as Record<string, unknown>,
+        )) {
           const newPath = `${elementPath}/${key}`;
           component.attributes[newPath] = val;
         }
@@ -2333,11 +2255,7 @@ export class TemplateContext<TInputSchema extends z.ZodTypeAny = z.ZodTypeAny> {
     // Validate attribute path against schema
     // Always skip if missing for "ensure missing" operations - if path doesn't
     // exist in schema, attribute is already missing (success/no-op)
-    const isValid = await this._validateAttributePath(
-      component,
-      path,
-      true,
-    );
+    const isValid = await this._validateAttributePath(component, path, true);
     if (!isValid) {
       // Path doesn't exist in schema - already missing, return success
       return;
@@ -2345,14 +2263,11 @@ export class TemplateContext<TInputSchema extends z.ZodTypeAny = z.ZodTypeAny> {
 
     // Log the ensure operation
     const schemaName = component.schemaName ?? component.schemaId;
-    logger.info(
-      `Ensuring {schemaName} {componentName} {path} is missing`,
-      {
-        schemaName,
-        componentName: component.name,
-        path,
-      },
-    );
+    logger.info(`Ensuring {schemaName} {componentName} {path} is missing`, {
+      schemaName,
+      componentName: component.name,
+      path,
+    });
 
     if (path in component.attributes) {
       delete component.attributes[path];
@@ -2469,9 +2384,10 @@ export class TemplateContext<TInputSchema extends z.ZodTypeAny = z.ZodTypeAny> {
     const indicesToDelete = new Set<number>();
 
     for (const [index, subpaths] of elements.entries()) {
-      for (
-        const [subpath, { value: attrValue, fullPath }] of subpaths.entries()
-      ) {
+      for (const [
+        subpath,
+        { value: attrValue, fullPath },
+      ] of subpaths.entries()) {
         if (
           matcher({
             subpath,
@@ -2541,8 +2457,8 @@ export class TemplateContext<TInputSchema extends z.ZodTypeAny = z.ZodTypeAny> {
     }
 
     // Sort indices and reindex
-    const sortedIndices = Array.from(remainingElements.keys()).sort((a, b) =>
-      a - b
+    const sortedIndices = Array.from(remainingElements.keys()).sort(
+      (a, b) => a - b,
     );
     const reindexMap = new Map<number, number>();
 

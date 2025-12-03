@@ -9,7 +9,6 @@
 
 import { ChangeSetsApi } from "@systeminit/api-client";
 import { Context } from "../context.ts";
-import { apiConfig, WORKSPACE_ID } from "../si_client.ts";
 import type { ChangeSetAbandonOptions } from "./types.ts";
 import { resolveChangeSet } from "./utils.ts";
 
@@ -25,23 +24,20 @@ export async function callChangeSetAbandon(
   const ctx = Context.instance();
 
   try {
-    if (!apiConfig || !WORKSPACE_ID) {
-      throw new Error(
-        "API token not found. Set SI_API_TOKEN environment variable or use --api-token flag.",
-      );
-    }
+    const apiConfig = Context.apiConfig();
+    const workspaceId = Context.workspaceId();
 
     const changeSetsApi = new ChangeSetsApi(apiConfig);
 
     // Resolve the change set ID from the provided ID or name
     const changeSetId = await resolveChangeSet(
-      WORKSPACE_ID,
+      workspaceId,
       options.changeSetIdOrName,
     );
 
     // Check if the change set is HEAD - cannot abandon HEAD
     const getResponse = await changeSetsApi.getChangeSet({
-      workspaceId: WORKSPACE_ID,
+      workspaceId,
       changeSetId,
     });
 
@@ -53,7 +49,7 @@ export async function callChangeSetAbandon(
 
     // Abandon the change set
     const response = await changeSetsApi.abandonChangeSet({
-      workspaceId: WORKSPACE_ID,
+      workspaceId,
       changeSetId,
     });
 

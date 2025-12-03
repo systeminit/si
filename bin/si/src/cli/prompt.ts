@@ -29,6 +29,7 @@ import type { InputOptions } from "@cliffy/prompt/input";
 import { Project } from "../schema/project.ts";
 import { isInteractive } from "../logger.ts";
 import { ValidationError } from "@cliffy/command";
+import type { WorkspaceDetails } from "./auth.ts";
 
 /** Minimum length requirement for all prompt inputs. */
 const MIN_INPUT_LENGTH = 1 as const;
@@ -51,11 +52,15 @@ const MIN_INPUT_LENGTH = 1 as const;
 function createPromptOptions(
   message: string,
   suggestions: readonly string[],
+  list: boolean = false,
+  info: boolean = false,
 ): InputOptions {
   return {
     message,
     minLength: MIN_INPUT_LENGTH,
     suggestions: [...suggestions],
+    list,
+    info,
   };
 }
 
@@ -75,7 +80,7 @@ function createPromptOptions(
  *
  * @internal
  */
-async function promptForName(
+export async function promptForName(
   value: string | undefined,
   promptMessage: string,
   getSuggestions: () => readonly string[] | Promise<readonly string[]>,
@@ -124,10 +129,8 @@ export async function schemaNameFromDirNames(
   schemaName: string | undefined,
   project: Project,
 ): Promise<string> {
-  return await promptForName(
-    schemaName,
-    "Schema Name",
-    () => project.schemas.currentSchemaDirNames(),
+  return await promptForName(schemaName, "Schema Name", () =>
+    project.schemas.currentSchemaDirNames(),
   );
 }
 
@@ -328,4 +331,66 @@ export async function authName(
     "Authentication Function Name",
     () => [],
   );
+}
+
+/**
+ * Prompts the user for a workspace selection if not provided.
+ *
+ * This function implements a flexible input strategy: if a workspace ID is
+ * provided, it returns immediately. Otherwise, it presents an interactive
+ * prompt with workspace display names as suggestions.
+ *
+ * @param workspaceId - Optional workspace ID from command arguments.
+ *   If provided, this value is returned as-is without prompting the user
+ * @param existingWorkspaces - Array of available workspaces with their details
+ * @returns A promise resolving to the workspace ID (either the provided value
+ *   or the ID corresponding to the user's selected workspace)
+ *
+ * @example
+ * ```ts
+ * // With argument - no prompt shown
+ * const id1 = await workspace("ws-123", workspaces);
+ * // Returns: "ws-123"
+ *
+ * // Without argument - interactive prompt with workspace names
+ * const id2 = await workspace(undefined, workspaces);
+ * // User sees: "Workspace Name: _" with display names as suggestions
+ * // Returns the ID of the selected workspace
+ * ```
+ */
+export async function workspace(
+  workspaceId: string | undefined,
+  existingWorkspaces: WorkspaceDetails[],
+): Promise<string> {
+  if (workspaceId !== undefined) {
+    return workspaceId;
+  }
+
+  if (!isInteractive()) {
+    throw new ValidationError("Missing required argument for Workspace Name");
+  }
+
+  // Create a map of display names to IDs for lookup
+  const nameToId = new Map<string, string>();
+  const displayNames: string[] = [];
+
+  for (const workspace of existingWorkspaces) {
+    const displayName = workspace.displayName || workspace.id;
+    const selectionName = `${displayName} (${workspace.baseUrl})`;
+    nameToId.set(selectionName, workspace.id);
+    displayNames.push(selectionName);
+  }
+
+  // Prompt with display names
+  const selectedName = await Input.prompt(
+    createPromptOptions("Set current workspace", displayNames, true, true),
+  );
+
+  // Return the ID corresponding to the selected display name
+  const resolvedId = nameToId.get(selectedName);
+  if (!resolvedId) {
+    throw new ValidationError(`Invalid workspace selection: ${selectedName}`);
+  }
+
+  return resolvedId;
 }

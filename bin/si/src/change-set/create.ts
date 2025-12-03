@@ -9,7 +9,6 @@
 
 import { ChangeSetsApi } from "@systeminit/api-client";
 import { Context } from "../context.ts";
-import { apiConfig, WORKSPACE_ID } from "../si_client.ts";
 import type { ChangeSetCreateOptions } from "./types.ts";
 
 export type { ChangeSetCreateOptions };
@@ -20,20 +19,16 @@ export type { ChangeSetCreateOptions };
 export async function callChangeSetCreate(
   options: ChangeSetCreateOptions,
 ): Promise<void> {
-  // Get context
   const ctx = Context.instance();
 
   try {
-    if (!apiConfig || !WORKSPACE_ID) {
-      throw new Error(
-        "API token not found. Set SI_API_TOKEN environment variable or use --api-token flag.",
-      );
-    }
+    const apiConfig = Context.apiConfig();
+    const workspaceId = Context.workspaceId();
 
     const changeSetsApi = new ChangeSetsApi(apiConfig);
 
     const response = await changeSetsApi.createChangeSet({
-      workspaceId: WORKSPACE_ID,
+      workspaceId,
       createChangeSetV1Request: {
         changeSetName: options.name,
       },

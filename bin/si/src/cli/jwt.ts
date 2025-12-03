@@ -34,6 +34,8 @@ export interface UserData {
   workspaceId: string;
   /** Unique identifier for the user. */
   userId: string;
+  /** expiration date */
+  exp?: Date;
 }
 
 /**
@@ -47,6 +49,8 @@ interface JWTPayload {
   workspaceId?: unknown;
   /** User identifier from the token. */
   userId?: unknown;
+  /** expiration time */
+  exp?: number;
   /** Standard JWT claims and any additional fields. */
   [key: string]: unknown;
 }
@@ -108,9 +112,16 @@ export function tryGetUserDataFromToken(apiToken: string): UserData {
     );
   }
 
+  if (typeof payload.exp !== "number") {
+    throw new JWTDecodeError(
+      `Token payload is missing required field 'exp' or it is not a number`,
+    );
+  }
+
   return {
     workspaceId: payload.workspaceId,
     userId: payload.userId,
+    exp: new Date(payload.exp * 1000),
   };
 }
 

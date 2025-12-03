@@ -15,7 +15,6 @@ import {
   type RootPathNotFoundError,
   RootPathType,
 } from "./cli/root-path.ts";
-import { initializeCliContextWithAuth } from "./cli/helpers.ts";
 import { callWhoami } from "./whoami.ts";
 import { callProjectInit } from "./schema/init.ts";
 import { callRemoteSchemaPull } from "./schema/pull.ts";
@@ -23,10 +22,8 @@ import {
   callSchemaFuncGenerate,
   callSchemaScaffoldGenerate,
 } from "./schema/generate.ts";
-import { type ApiContext, apiContext } from "./cli/api.ts";
 import { unknownValueToErrorMessage } from "./helpers.ts";
 import { Context } from "./context.ts";
-import * as jwt from "./cli/jwt.ts";
 import { FunctionKind, Project } from "./schema/project.ts";
 import { VERSION } from "./git_metadata.ts";
 import {
@@ -34,7 +31,10 @@ import {
   callRemoteSchemaPush,
 } from "./schema/push.ts";
 import { callRunTemplate } from "./template/run.ts";
-import { callGenerateTemplate, type GenerateTemplateOptions } from "./template/generate.ts";
+import {
+  callGenerateTemplate,
+  type GenerateTemplateOptions,
+} from "./template/generate.ts";
 import { callComponentGet } from "./component/get.ts";
 import { callComponentUpdate } from "./component/update.ts";
 import { callComponentDelete } from "./component/delete.ts";
@@ -44,22 +44,16 @@ import type { ComponentGetOptions } from "./component/get.ts";
 import type { ComponentUpdateOptions } from "./component/update.ts";
 import type { ComponentDeleteOptions } from "./component/delete.ts";
 import type { ComponentSearchOptions } from "./component/search.ts";
+import { type AiAgentInitOptions, callAiAgentInit } from "./ai-agent/init.ts";
 import {
-  callAiAgentInit,
-  type AiAgentInitOptions,
-} from "./ai-agent/init.ts";
-import {
-  callAiAgentStart,
   type AiAgentStartOptions,
+  callAiAgentStart,
 } from "./ai-agent/start.ts";
 import {
-  callAiAgentConfig,
   type AiAgentConfigOptions,
+  callAiAgentConfig,
 } from "./ai-agent/config.ts";
-import {
-  callSecretCreate,
-  type SecretCreateOptions,
-} from "./secret/create.ts";
+import { callSecretCreate, type SecretCreateOptions } from "./secret/create.ts";
 import {
   callChangeSetCreate,
   type ChangeSetCreateOptions,
@@ -76,13 +70,25 @@ import {
   callChangeSetOpen,
   type ChangeSetOpenOptions,
 } from "./change-set/open.ts";
+import { doLogin } from "./cli/login.ts";
+import {
+  getCurrentUser,
+  getCurrentWorkspace,
+  getUserDetails,
+  getWorkspaceDetails,
+  logout,
+  setCurrentWorkspace,
+  writeWorkspace,
+} from "./cli/config.ts";
+import { AuthApiClient } from "./cli/auth.ts";
 
 /**
  * Global options available to all commands
  */
 export type GlobalOptions = {
-  apiBaseUrl: string;
+  baseUrl?: string;
   apiToken?: string;
+  authApiUrl: string;
   noColor?: boolean;
   root?: RootPath | RootPathNotFoundError;
   verbose?: number;
@@ -154,72 +160,78 @@ export async function start() {
  * @internal
  */
 function buildCommand() {
-  return new Command()
-    .name("si")
-    .version(VERSION)
-    .description(
-      "A command-line tool for managing System Initiative schemas, templates, and components",
-    )
-    .globalType("root-path", new RootPathType())
-    .globalEnv("SI_API_BASE_URL=<URL:string>", "API endpoint URL", {
-      prefix: "SI_",
-    })
-    .globalOption("--api-base-url <URL:string>", "API endpoint URL", {
-      default: "https://api.systeminit.com",
-    })
-    .globalEnv(
-      "SI_API_TOKEN=<TOKEN:string>",
-      "Your System Initiative API token (required for authenticated commands)",
-      { prefix: "SI_" },
-    )
-    .globalOption(
-      "--api-token <TOKEN:string>",
-      "Your System Initiative API token (required for authenticated commands)",
-    )
-    .globalEnv(
-      "SI_ROOT=<PATH:root-path>",
-      "Project root directory (searches for .siroot if not specified)",
-      { prefix: "SI_" },
-    )
-    .globalOption(
-      "--root <PATH:root-path>",
-      "Project root directory (searches for .siroot if not specified)",
-    )
-    .globalOption(
-      "-v, --verbose [level:number]",
-      "Enable verbose logging (0=errors only, 1=+warnings, 2=+info, 3=+debug, 4=+trace)",
-      { default: 2, value: (value) => (value === true ? 2 : value) },
-    )
-    .globalOption("--no-color", "Disable colored output")
-    .globalAction(async (options) => {
-      let userData: ReturnType<typeof jwt.getUserDataFromToken>;
-      try {
-        userData = jwt.getUserDataFromToken(options.apiToken);
-      } catch (_error) {
-        // If token decode fails, just continue without user data
-        // This allows MCP server commands to run even with invalid tokens in env
-        userData = undefined;
-      }
-      await Context.init({ ...options, userData });
-    })
-    .action(function () {
-      this.showHelp();
-    })
-    .command("completion", new CompletionsCommand())
-    // deno-lint-ignore no-explicit-any
-    .command("ai-agent", buildAiAgentCommand() as any)
-    // deno-lint-ignore no-explicit-any
-    .command("change-set", buildChangeSetCommand() as any)
-    // deno-lint-ignore no-explicit-any
-    .command("component", buildComponentCommand() as any)
-    // deno-lint-ignore no-explicit-any
-    .command("schema", buildSchemaCommand() as any)
-    // deno-lint-ignore no-explicit-any
-    .command("secret", buildSecretCommand() as any)
-    // deno-lint-ignore no-explicit-any
-    .command("template", buildTemplateCommand() as any)
-    // deno-lint-ignore no-explicit-any
-    .command("whoami", buildWhoamiCommand() as any);
+  return (
+    new Command()
+      .name("si")
+      .version(VERSION)
+      .description(
+        "A command-line tool for managing System Initiative schemas, templates, and components",
+      )
+      .globalType("root-path", new RootPathType())
+      .globalEnv("SI_AUTH_API_URL=<URL:string>", "Auth API endpoint URL", {
+        prefix: "SI_",
+      })
+      .globalOption("--auth-api-url <URL:string>", "Auth API endpoint URL", {
+        default: "https://auth-api.systeminit.com",
+      })
+      .globalOption("--base-url <URL:string>", "API endpoint URL")
+      .globalEnv("SI_BASE_URL=<URL:string>", "API endpoint URL", {
+        prefix: "SI_",
+      })
+      .globalEnv(
+        "SI_API_TOKEN=<TOKEN:string>",
+        "Your System Initiative Workspace API token (required for authenticated commands)",
+        { prefix: "SI_" },
+      )
+      .globalOption(
+        "--api-token <TOKEN:string>",
+        "Your System Initiative API token",
+      )
+      .globalEnv(
+        "SI_ROOT=<PATH:root-path>",
+        "Project root directory (searches for .siroot if not specified)",
+        { prefix: "SI_" },
+      )
+      .globalOption(
+        "--root <PATH:root-path>",
+        "Project root directory (searches for .siroot if not specified)",
+      )
+      .globalOption(
+        "-v, --verbose [level:number]",
+        "Enable verbose logging (0=errors only, 1=+warnings, 2=+info, 3=+debug, 4=+trace)",
+        { default: 2, value: (value) => (value === true ? 2 : value) },
+      )
+      .globalOption("--no-color", "Disable colored output")
+      .globalAction(async (options) => {
+        // Reads stored config for api setup, or sets up API via the environment
+        // or command line overrides
+        await Context.initFromConfig(options);
+      })
+      .action(function () {
+        this.showHelp();
+      })
+      .command("completion", new CompletionsCommand())
+      // deno-lint-ignore no-explicit-any
+      .command("ai-agent", buildAiAgentCommand() as any)
+      // deno-lint-ignore no-explicit-any
+      .command("change-set", buildChangeSetCommand() as any)
+      // deno-lint-ignore no-explicit-any
+      .command("component", buildComponentCommand() as any)
+      // deno-lint-ignore no-explicit-any
+      .command("schema", buildSchemaCommand() as any)
+      // deno-lint-ignore no-explicit-any
+      .command("secret", buildSecretCommand() as any)
+      // deno-lint-ignore no-explicit-any
+      .command("template", buildTemplateCommand() as any)
+      // deno-lint-ignore no-explicit-any
+      .command("whoami", buildWhoamiCommand() as any)
+      // deno-lint-ignore no-explicit-any
+      .command("login", buildLoginCommand() as any)
+      // deno-lint-ignore no-explicit-any
+      .command("logout", buildLogoutCommand() as any)
+      // deno-lint-ignore no-explicit-any
+      .command("workspace", buildWorkspaceCommand() as any)
+  );
 }
 
 /**
@@ -230,7 +242,9 @@ function buildCommand() {
  */
 function buildSchemaCommand() {
   return createSubCommand()
-    .description("Manage schemas: initialize project, generate functions locally, pull from and push to remote workspaces")
+    .description(
+      "Manage schemas: initialize project, generate functions locally, pull from and push to remote workspaces",
+    )
     .action(function () {
       this.showHelp();
     })
@@ -239,7 +253,7 @@ function buildSchemaCommand() {
     .command("overlay", buildOverlayCommand())
     .command(
       "pull",
-      createSubCommand()
+      createSubCommand(true)
         .description(
           "Pulls schemas from your remote System Initiative workspace. " +
             "Supports wildcard patterns like 'Fastly::*' to pull all schemas in a category, " +
@@ -250,26 +264,22 @@ function buildSchemaCommand() {
           "--builtins",
           "Include builtin schemas (schemas you don't own). By default, builtins are skipped.",
         )
-        .action(
-          async ({ root, apiBaseUrl, apiToken, builtins }, ...schemaNames) => {
-            const project = createProject(root);
-            const apiCtx = await createApiContext(apiBaseUrl, apiToken);
-            let finalSchemaNames;
-            if (schemaNames.length > 0) {
-              finalSchemaNames = schemaNames;
-            } else {
-              finalSchemaNames = [await prompt.schemaName(undefined, project)];
-            }
+        .action(async ({ root, builtins }, ...schemaNames) => {
+          const project = createProject(root);
+          let finalSchemaNames;
+          if (schemaNames.length > 0) {
+            finalSchemaNames = schemaNames;
+          } else {
+            finalSchemaNames = [await prompt.schemaName(undefined, project)];
+          }
 
-            await callRemoteSchemaPull(
-              Context.instance(),
-              project,
-              apiCtx,
-              finalSchemaNames,
-              builtins ?? false,
-            );
-          },
-        ),
+          await callRemoteSchemaPull(
+            Context.instance(),
+            project,
+            finalSchemaNames,
+            builtins ?? false,
+          );
+        }),
     )
     .command(
       "push",
@@ -278,30 +288,37 @@ function buildSchemaCommand() {
           "Pushes schemas to your remote System Initiative workspace",
         )
         .option("-s, --skip-confirmation", "Skip confirmation prompt")
-        .option("-b, --update-builtins", "Change builtin schema, without creating overlays. SI Admin Only", {
-          hidden: false,
-        })
+        .option(
+          "-b, --update-builtins",
+          "Change builtin schema, without creating overlays. SI Admin Only",
+          {
+            hidden: false,
+          },
+        )
         .arguments("[...SCHEMA_NAME:string]")
-        .action(async ({ root, skipConfirmation, updateBuiltins }, ...schemaNames) => {
-          const project = createProject(root);
+        .action(
+          async (
+            { root, skipConfirmation, updateBuiltins },
+            ...schemaNames
+          ) => {
+            const project = createProject(root);
 
-          const ctx = Context.instance();
-          const cliContext = await initializeCliContextWithAuth({ ctx });
-
-          await callRemoteSchemaPush(
-            cliContext,
-            project,
-            schemaNames,
-            !!updateBuiltins,
-            skipConfirmation,
-          );
-        }),
+            await callRemoteSchemaPush(
+              project,
+              schemaNames,
+              !!updateBuiltins,
+              skipConfirmation,
+            );
+          },
+        ),
     );
 }
 
 function buildSchemaGenerateCommand() {
   return createSubCommand()
-    .description("Generate schema function definitions for actions, authentication, code generation, and more")
+    .description(
+      "Generate schema function definitions for actions, authentication, code generation, and more",
+    )
     .action(function () {
       this.showHelp();
     })
@@ -315,36 +332,32 @@ function buildSchemaGenerateCommand() {
 
 function buildOverlayCommand() {
   return createSubCommand()
-    .description("Manage schema overlays: generate overlay functions and push them to remote workspaces")
+    .description(
+      "Manage schema overlays: generate overlay functions and push them to remote workspaces",
+    )
     .action(function () {
       this.showHelp();
     })
     .command("generate", buildOverlayGenerateCommand())
     .command(
       "push",
-      createSubCommand()
+      createSubCommand(true)
         .description(
           "Pushes overlay funcs to your remote System Initiative workspace",
         )
         .option("-s, --skip-confirmation", "Skip confirmation prompt")
         .action(async ({ root, skipConfirmation }) => {
           const project = createProject(root);
-
-          const ctx = Context.instance();
-          const cliContext = await initializeCliContextWithAuth({ ctx });
-
-          await callRemoteSchemaOverlaysPush(
-            cliContext,
-            project,
-            skipConfirmation,
-          );
+          await callRemoteSchemaOverlaysPush(project, skipConfirmation);
         }),
     );
 }
 
 function buildOverlayGenerateCommand() {
   return createSubCommand()
-    .description("Generate overlay function definitions that customize or extend existing schemas")
+    .description(
+      "Generate overlay function definitions that customize or extend existing schemas",
+    )
     .action(function () {
       this.showHelp();
     })
@@ -361,7 +374,6 @@ function buildOverlayGenerateCommand() {
     );
 }
 
-
 /**
  * Builds the whoami command.
  *
@@ -369,12 +381,191 @@ function buildOverlayGenerateCommand() {
  * @internal
  */
 function buildWhoamiCommand() {
-  return createSubCommand()
+  return createSubCommand(true)
     .description("Displays authenticated user information")
-    .action(async ({ apiBaseUrl, apiToken }) => {
-      const apiCtx = await createApiContext(apiBaseUrl, apiToken);
+    .action(async () => {
+      await callWhoami();
+    });
+}
 
-      await callWhoami(Context.instance(), apiCtx);
+/**
+ * Builds the login command for handling the OAuth flow.
+ *
+ * @returns A SubCommand configured for login operations
+ * @internal
+ */
+function buildLoginCommand() {
+  return createSubCommand()
+    .description("Login to System Initiiatve")
+    .action(async ({ authApiUrl }) => {
+      await doLogin(authApiUrl);
+    });
+}
+
+/**
+ * Builds the logout command for clearing stored authentication.
+ *
+ * @returns A SubCommand configured for logout operations
+ * @internal
+ */
+function buildLogoutCommand() {
+  return createSubCommand()
+    .description("Logout from System Initiative and clear stored credentials")
+    .action(() => {
+      const ctx = Context.instance();
+
+      // Check if user is logged in
+      const currentUserId = getCurrentUser();
+      if (!currentUserId) {
+        ctx.logger.info("Not currently logged in.");
+        return;
+      }
+
+      // Get user details for confirmation message
+      const { userDetails } = getUserDetails(currentUserId);
+      const userEmail = userDetails?.email || "unknown user";
+
+      // Clear stored authentication
+      logout();
+
+      ctx.logger.info(`Logged out successfully. Goodbye ${userEmail}!`);
+    });
+}
+
+/**
+ * Builds the workspace command for managing workspaces.
+ *
+ * @returns A SubCommand configured for workspace management
+ * @internal
+ */
+function buildWorkspaceCommand() {
+  return createSubCommand()
+    .description("Manage workspaces you have access to")
+    .action(function () {
+      this.showHelp();
+      const currentUserId = getCurrentUser();
+      const currentWorkspaceId = getCurrentWorkspace();
+      if (currentWorkspaceId && currentUserId) {
+        const { workspaceDetails } = getWorkspaceDetails(
+          currentUserId,
+          currentWorkspaceId,
+        );
+        if (workspaceDetails) {
+          const ctx = Context.instance();
+          ctx.logger.info(`Current user: ${currentUserId}`);
+          ctx.logger.info(
+            `Current workspace: ${
+              workspaceDetails.displayName || currentWorkspaceId
+            }`,
+          );
+          ctx.logger.info(
+            `Workspace Instance URL: ${workspaceDetails.instanceUrl}`,
+          );
+        }
+      }
+    })
+    .command("switch", buildWorkspaceSwitchCommand());
+}
+
+/**
+ * Builds the switch-workspace command for changing the active workspace.
+ *
+ * @returns A SubCommand configured for workspace switching
+ * @internal
+ */
+function buildWorkspaceSwitchCommand() {
+  return createSubCommand()
+    .description("Switch to a different workspace")
+    .action(async ({ authApiUrl }) => {
+      const ctx = Context.instance();
+
+      // Check if user is logged in
+      const currentUserId = getCurrentUser();
+      if (!currentUserId) {
+        ctx.logger.error(
+          "Not logged in. Please run 'si login' to authenticate first.",
+        );
+        return;
+      }
+
+      // Get user details and token
+      const { userDetails, token } = getUserDetails(currentUserId);
+      if (!userDetails || !token) {
+        ctx.logger.error(
+          "User configuration corrupted. Please run 'si login' again.",
+        );
+        return;
+      }
+
+      ctx.logger.info(`Switching workspace for ${userDetails.email}...`);
+
+      try {
+        // Fetch available workspaces
+        const authApiClient = new AuthApiClient(authApiUrl, token);
+        const workspaces = await authApiClient.getWorkspaces();
+
+        if (workspaces.length === 0) {
+          ctx.logger.error("No workspaces available for this user.");
+          return;
+        }
+
+        const currentWorkspaceId = getCurrentWorkspace();
+        if (currentWorkspaceId) {
+          const currentWorkspace = workspaces.find(
+            (w) => w.id === currentWorkspaceId,
+          );
+          if (currentWorkspace) {
+            ctx.logger.info(
+              `Current workspace: ${
+                currentWorkspace.displayName || currentWorkspace.id
+              }`,
+            );
+          }
+        }
+
+        // Prompt for new workspace selection
+        const selectedWorkspaceId = await prompt.workspace(
+          undefined,
+          workspaces,
+        );
+
+        // Check if it's the same workspace
+        if (selectedWorkspaceId === currentWorkspaceId) {
+          ctx.logger.info("Already using this workspace.");
+          return;
+        }
+
+        const selectedWorkspace = workspaces.find(
+          (w) => w.id === selectedWorkspaceId,
+        );
+        if (!selectedWorkspace) {
+          throw new Error(`Workspace not found: ${selectedWorkspaceId}`);
+        }
+
+        // Check if we already have a token for this workspace
+        const { token: existingToken } = getWorkspaceDetails(
+          currentUserId,
+          selectedWorkspaceId,
+        );
+
+        if (!existingToken) {
+          // Generate new workspace token if needed
+          ctx.logger.info("Generating workspace access token...");
+          const workspaceToken =
+            await authApiClient.createWorkspaceToken(selectedWorkspaceId);
+          writeWorkspace(currentUserId, selectedWorkspace, workspaceToken);
+        }
+
+        // Update current workspace
+        setCurrentWorkspace(selectedWorkspaceId);
+
+        const workspaceName =
+          selectedWorkspace.displayName || selectedWorkspaceId;
+        ctx.logger.info(`Switched to workspace: ${workspaceName}`);
+      } catch (error) {
+        ctx.logger.error(`Failed to switch workspace: ${error}`);
+        throw error;
+      }
     });
 }
 
@@ -401,27 +592,26 @@ function buildAiAgentCommand() {
           "Directory to create config files (defaults to current directory)",
         )
         .option(
-          "--api-token <token:string>",
-          "System Initiative API token (will prompt if not provided)",
-        )
-        .option(
           "--tool <name:string>",
           "AI tool to use: claude (default), codex, opencode",
         )
         .action(async (options) => {
-          await callAiAgentInit(Context.instance(), options as AiAgentInitOptions);
+          await callAiAgentInit(
+            Context.instance(),
+            options as AiAgentInitOptions,
+          );
         }),
     )
     .command(
       "start",
       createSubCommand()
         .description("Launch Claude Code (MCP server starts automatically)")
-        .option(
-          "--tool <name:string>",
-          "AI tool to launch (default: claude)",
-        )
+        .option("--tool <name:string>", "AI tool to launch (default: claude)")
         .action(async (options) => {
-          await callAiAgentStart(Context.instance(), options as AiAgentStartOptions);
+          await callAiAgentStart(
+            Context.instance(),
+            options as AiAgentStartOptions,
+          );
         }),
     )
     .command(
@@ -432,38 +622,50 @@ function buildAiAgentCommand() {
           "--show",
           "Show current configuration (default if no other options provided)",
         )
-        .option(
-          "--update-token",
-          "Update the API token",
-        )
+        .option("--update-token", "Update the API token")
         .option(
           "--tool <name:string>",
           "Update the AI tool: claude, cursor, windsurf, or none",
         )
         .action(async (options) => {
-          await callAiAgentConfig(Context.instance(), options as AiAgentConfigOptions);
+          await callAiAgentConfig(
+            Context.instance(),
+            options as AiAgentConfigOptions,
+          );
         }),
     )
     .command(
       "stdio",
-      createSubCommand()
-        .description("Run MCP server in stdio mode (for external AI tools to connect)")
+      createSubCommand(true)
+        .description(
+          "Run MCP server in stdio mode (for external AI tools to connect)",
+        )
         .action(async () => {
           // Dynamic import to avoid loading MCP server code until needed
-          // Token validation happens in si_client.ts when modules are loaded
-          const { start_stdio } = await import("./ai-agent/mcp-server/stdio_transport.ts");
-          const { createServer } = await import("./ai-agent/mcp-server/server.ts");
-          const { analytics } = await import("./ai-agent/mcp-server/analytics.ts");
-          const { setAiAgentUserFlag } = await import("./ai-agent/mcp-server/user_state.ts");
+          const { start_stdio } = await import(
+            "./ai-agent/mcp-server/stdio_transport.ts"
+          );
+          const { createServer } = await import(
+            "./ai-agent/mcp-server/server.ts"
+          );
+          const { analytics } = await import(
+            "./ai-agent/mcp-server/analytics.ts"
+          );
+          const { setAiAgentUserFlag } = await import(
+            "./ai-agent/mcp-server/user_state.ts"
+          );
 
           // Start the MCP server directly
-          await analytics.trackServerStart();
+          analytics.trackServerStart();
           await setAiAgentUserFlag();
 
           const server = createServer();
 
           let ended = false;
-          const shutdown = async (reason: string, exitCode: number | null = 0) => {
+          const shutdown = async (
+            reason: string,
+            exitCode: number | null = 0,
+          ) => {
             if (ended) return;
             ended = true;
             console.log("MCP server shutdown:", reason);
@@ -831,18 +1033,15 @@ function buildTemplateCommand() {
           "Output directory for the template file (defaults to current directory)",
         )
         .action(async (options, name) => {
-          await callGenerateTemplate(
-            Context.instance(),
-            {
-              name: name as string,
-              outputDir: options.outputDir as string | undefined,
-            } as GenerateTemplateOptions,
-          );
+          await callGenerateTemplate(Context.instance(), {
+            name: name as string,
+            outputDir: options.outputDir as string | undefined,
+          } as GenerateTemplateOptions);
         }),
     )
     .command(
       "run",
-      createSubCommand()
+      createSubCommand(true)
         .description("Run a SI template file (local path or remote URL)")
         .arguments("<template:string>")
         .env("SI_API_TOKEN=<value:string>", "A System Initiative API Token", {
@@ -873,10 +1072,7 @@ function buildTemplateCommand() {
           "--cache-baseline-only",
           "exit after writing baseline cache (requires --cache-baseline)",
         )
-        .option(
-          "--dry-run",
-          "Show planned changes without executing them",
-        )
+        .option("--dry-run", "Show planned changes without executing them")
         .action(async (options, template) => {
           await callRunTemplate(
             template as string,
@@ -900,20 +1096,9 @@ function buildComponentCommand() {
     })
     .command(
       "get",
-      createSubCommand()
+      createSubCommand(true)
         .description("Get component data by name or ID")
         .arguments("<component:string>")
-        .env(
-          "SI_API_TOKEN=<value:string>",
-          "A System Initiative API Token",
-          {
-            required: true,
-          },
-        )
-        .env(
-          "SI_BASE_URL=<url:string>",
-          "The System Initiative Base URL for your workspace",
-        )
         .option(
           "-c, --change-set <id:string>",
           "Change set ID or name (defaults to HEAD)",
@@ -927,10 +1112,7 @@ function buildComponentCommand() {
           "--cache <file:string>",
           "Cache output to file; format (JSON/YAML) determined by file extension (.json, .yaml, .yml)",
         )
-        .option(
-          "--raw",
-          "Output raw API response as JSON and exit",
-        )
+        .option("--raw", "Output raw API response as JSON and exit")
         .action(async (options, component) => {
           await callComponentGet(
             component as string,
@@ -940,22 +1122,9 @@ function buildComponentCommand() {
     )
     .command(
       "update",
-      createSubCommand()
-        .description(
-          "Update a component from JSON/YAML file (idempotent)",
-        )
+      createSubCommand(true)
+        .description("Update a component from JSON/YAML file (idempotent)")
         .arguments("<input-file:string>")
-        .env(
-          "SI_API_TOKEN=<value:string>",
-          "A System Initiative API Token",
-          {
-            required: true,
-          },
-        )
-        .env(
-          "SI_BASE_URL=<url:string>",
-          "The System Initiative Base URL for your workspace",
-        )
         .option(
           "--component <id-or-name:string>",
           "Component ID or name (overrides componentId from file)",
@@ -965,10 +1134,7 @@ function buildComponentCommand() {
           "Change set ID or name",
           { required: true },
         )
-        .option(
-          "--dry-run",
-          "Show diff without applying changes",
-        )
+        .option("--dry-run", "Show diff without applying changes")
         .action(async (options, inputFile) => {
           await callComponentUpdate(
             inputFile as string,
@@ -978,31 +1144,15 @@ function buildComponentCommand() {
     )
     .command(
       "delete",
-      createSubCommand()
-        .description(
-          "Delete a component by name or ID",
-        )
+      createSubCommand(true)
+        .description("Delete a component by name or ID")
         .arguments("<component:string>")
-        .env(
-          "SI_API_TOKEN=<value:string>",
-          "A System Initiative API Token",
-          {
-            required: true,
-          },
-        )
-        .env(
-          "SI_BASE_URL=<url:string>",
-          "The System Initiative Base URL for your workspace",
-        )
         .option(
           "-c, --change-set <id-or-name:string>",
           "Change set ID or name",
           { required: true },
         )
-        .option(
-          "--dry-run",
-          "Preview deletion without applying changes",
-        )
+        .option("--dry-run", "Preview deletion without applying changes")
         .action(async (options, component) => {
           await callComponentDelete(
             component as string,
@@ -1012,22 +1162,9 @@ function buildComponentCommand() {
     )
     .command(
       "search",
-      createSubCommand()
-        .description(
-          "Search for components using a search query",
-        )
+      createSubCommand(true)
+        .description("Search for components using a search query")
         .arguments("<query:string>")
-        .env(
-          "SI_API_TOKEN=<value:string>",
-          "A System Initiative API Token",
-          {
-            required: true,
-          },
-        )
-        .env(
-          "SI_BASE_URL=<url:string>",
-          "The System Initiative Base URL for your workspace",
-        )
         .option(
           "-c, --change-set <id-or-name:string>",
           "Change set ID or name (defaults to HEAD)",
@@ -1069,17 +1206,11 @@ function buildSecretCommand() {
     })
     .command(
       "create",
-      createSubCommand()
+      createSubCommand(true)
         .description("Create a new secret")
         .arguments("<secret-type:string>")
-        .option(
-          "--name <name:string>",
-          "Name for the secret instance",
-        )
-        .option(
-          "--description <desc:string>",
-          "Description for the secret",
-        )
+        .option("--name <name:string>", "Name for the secret instance")
+        .option("--description <desc:string>", "Description for the secret")
         .option(
           "-c, --change-set <id-or-name:string>",
           "Change set ID or name (creates new change set if not specified)",
@@ -1088,10 +1219,7 @@ function buildSecretCommand() {
           "--use-local-profile",
           "Discover credentials from local environment (e.g., AWS credentials)",
         )
-        .option(
-          "--interactive",
-          "Prompt for all values interactively",
-        )
+        .option("--interactive", "Prompt for all values interactively")
         .option(
           "--dry-run",
           "Show what would be created without making changes",
@@ -1126,7 +1254,7 @@ function buildChangeSetCommand() {
     })
     .command(
       "create",
-      createSubCommand()
+      createSubCommand(true)
         .description("Create a new change set")
         .arguments("<name:string>")
         .action(async (options, name) => {
@@ -1138,7 +1266,7 @@ function buildChangeSetCommand() {
     )
     .command(
       "abandon",
-      createSubCommand()
+      createSubCommand(true)
         .description("Abandon (delete) a change set")
         .arguments("<change-set-id-or-name:string>")
         .action(async (options, changeSetIdOrName) => {
@@ -1162,7 +1290,7 @@ function buildChangeSetCommand() {
     )
     .command(
       "list",
-      createSubCommand()
+      createSubCommand(true)
         .description("List all change sets")
         .option(
           "-o, --output <format:string>",
@@ -1175,9 +1303,35 @@ function buildChangeSetCommand() {
     );
 }
 
+async function ensureApiConfig(options: GlobalOptions): Promise<void> {
+  const ctx = Context.instance();
+  if (ctx.apiToken && ctx.baseUrl) {
+    ctx.logger.debug("API configured! Good job");
+    return;
+  }
+
+  if (ctx.isInteractive) {
+    await doLogin(options.authApiUrl);
+    await Context.initFromConfig(options);
+  } else {
+    const msg =
+      "No API token configured for any workspace. Run `si login` in an interactive terminal or set SI_API_KEY and SI_BASE_URL.";
+    ctx.logger.error(msg);
+    throw new Error(msg);
+  }
+}
+
 /** Creates a new SubCommand with root path options configured */
-function createSubCommand(): Command<GlobalOptions> {
-  return new Command();
+function createSubCommand(requireAuth: boolean = false) {
+  const command: Command<GlobalOptions> = new Command();
+
+  if (requireAuth) {
+    return command.globalAction(async (options) => {
+      await ensureApiConfig(options);
+    });
+  }
+
+  return command;
 }
 
 /**
@@ -1213,18 +1367,4 @@ function createProject(rootResult?: RootPath | RootPathNotFoundError): Project {
   } else {
     return RootPath.findFromCwd().toProject();
   }
-}
-
-async function createApiContext(
-  apiBaseUrl: string,
-  apiToken?: string,
-): Promise<ApiContext> {
-  if (!apiToken) {
-    throw new ValidationError(
-      'Missing required API token; use "--api-token" option or ' +
-        '"SI_API_TOKEN" environment variable',
-    );
-  }
-
-  return await apiContext(apiBaseUrl, apiToken);
 }

@@ -5,7 +5,7 @@ import {
   SchemasApi,
   type SchemaVariantFunc,
 } from "@systeminit/api-client";
-import { apiConfig, WORKSPACE_ID } from "../si_client.ts";
+import { Context } from "../../../context.ts";
 import {
   errorResponse,
   generateDescription,
@@ -35,21 +35,31 @@ const schemaCreateEditGetInputSchemaRaw = {
     .describe(
       "The change set to create, edit, or get a schema in; schemas cannot be manipulated on HEAD.",
     ),
-  name: z.string().min(1).optional().describe(
-    "The name of the schema. A name is required for creating a new schema.",
-  ),
+  name: z
+    .string()
+    .min(1)
+    .optional()
+    .describe(
+      "The name of the schema. A name is required for creating a new schema.",
+    ),
   description: z.string().optional().describe("The description of the schema."),
-  schemaId: z.string().optional().describe(
-    "The id of the schema you want to edit. If none is given, create a new schema. If only a change set id and schema id are given, just get information about the schema.",
-  ),
+  schemaId: z
+    .string()
+    .optional()
+    .describe(
+      "The id of the schema you want to edit. If none is given, create a new schema. If only a change set id and schema id are given, just get information about the schema.",
+    ),
   link: z
     .string()
     .optional()
     .describe("A link to documentation about the thing the schema represents."),
   category: z.string().optional().describe("The category of the schema"),
-  color: z.string().optional().describe(
-    "The schema's color. Must be a hex color, convert any color words into a hex value.",
-  ),
+  color: z
+    .string()
+    .optional()
+    .describe(
+      "The schema's color. Must be a hex color, convert any color words into a hex value.",
+    ),
   definitionFunction: z
     .string()
     .optional()
@@ -166,25 +176,29 @@ const schemaCreateEditGetOutputSchemaRaw = {
     schemaId: z.string().describe("the schema id"),
     name: z.string().describe("the schema name"),
     definitionFunction: z.string().describe("the schema definition function"),
-    functions: z.array(z.object({
-      id: z.string().describe("the function id"),
-      funcKind: z.union([
+    functions: z
+      .array(
         z.object({
-          actionKind: z.string().describe("the action kind"),
-          kind: z.literal("action").describe("the function kind"),
+          id: z.string().describe("the function id"),
+          funcKind: z.union([
+            z.object({
+              actionKind: z.string().describe("the action kind"),
+              kind: z.literal("action").describe("the function kind"),
+            }),
+            z.object({
+              managementFuncKind: z
+                .string()
+                .describe("the management function kind"),
+              kind: z.literal("management").describe("the function kind"),
+            }),
+            z.object({
+              funcKind: z.string().describe("the function kind"),
+              kind: z.literal("other"),
+            }),
+          ]),
         }),
-        z.object({
-          managementFuncKind: z.string().describe(
-            "the management function kind",
-          ),
-          kind: z.literal("management").describe("the function kind"),
-        }),
-        z.object({
-          funcKind: z.string().describe("the function kind"),
-          kind: z.literal("other"),
-        }),
-      ]),
-    })).describe("the functions attached to the schema"),
+      )
+      .describe("the functions attached to the schema"),
   }),
 };
 const schemaCreateEditGetOutputSchema = z.object(
@@ -207,15 +221,15 @@ export function schemaCreateEditGetTool(server: McpServer) {
       inputSchema: schemaCreateEditGetInputSchemaRaw,
       outputSchema: schemaCreateEditGetOutputSchemaRaw,
     },
-    async (
-      {
-        changeSetId,
-        definitionFunction,
-        schemaId,
-        ...createOrEditSchemaV1Request
-      },
-    ) => {
+    async ({
+      changeSetId,
+      definitionFunction,
+      schemaId,
+      ...createOrEditSchemaV1Request
+    }) => {
       return await withAnalytics(toolName, async () => {
+        const apiConfig = Context.apiConfig();
+        const workspaceId = Context.workspaceId();
         const siSchemasApi = new SchemasApi(apiConfig);
         const siFuncsApi = new FuncsApi(apiConfig);
 
@@ -231,7 +245,7 @@ export function schemaCreateEditGetTool(server: McpServer) {
 
             // first we need to make sure we have an unlocked schema variant
             const responseUnlock = await siSchemasApi.unlockSchema({
-              workspaceId: WORKSPACE_ID,
+              workspaceId: workspaceId,
               changeSetId,
               schemaId,
             });
@@ -240,7 +254,7 @@ export function schemaCreateEditGetTool(server: McpServer) {
 
             // then we need to get the info about that unlocked variant
             const responseGetVariant = await siSchemasApi.getVariant({
-              workspaceId: WORKSPACE_ID,
+              workspaceId: workspaceId,
               changeSetId,
               schemaId,
               schemaVariantId,
@@ -250,24 +264,25 @@ export function schemaCreateEditGetTool(server: McpServer) {
 
             // then we need to get the current asset func code
             const responseGetFunc = await siFuncsApi.getFunc({
-              workspaceId: WORKSPACE_ID,
+              workspaceId: workspaceId,
               changeSetId,
               funcId: assetFuncId,
             });
 
             // populate data to return from the tool
             touchedSchemaId = schemaId;
-            touchedDefinitionFunction = definitionFunction ??
-              responseGetFunc.data.code;
-            touchedName = createOrEditSchemaV1Request.name ??
+            touchedDefinitionFunction =
+              definitionFunction ?? responseGetFunc.data.code;
+            touchedName =
+              createOrEditSchemaV1Request.name ??
               responseGetVariant.data.displayName;
             touchedFunctions = responseGetVariant.data.variantFuncs;
 
             // information gathering complete, now only move onto updating if we have new data
             if (
               definitionFunction ||
-              Object.values(createOrEditSchemaV1Request).some((value) =>
-                value != undefined
+              Object.values(createOrEditSchemaV1Request).some(
+                (value) => value != undefined,
               )
             ) {
               // if this schema is a builtin, we need to warn the user accordingly
@@ -295,7 +310,7 @@ export function schemaCreateEditGetTool(server: McpServer) {
 
               // and finally we actually call the endpoint to edit the unlocked schema variant!
               await siSchemasApi.updateSchemaVariant({
-                workspaceId: WORKSPACE_ID,
+                workspaceId: workspaceId,
                 changeSetId,
                 schemaId,
                 schemaVariantId,
@@ -314,12 +329,12 @@ export function schemaCreateEditGetTool(server: McpServer) {
               });
             }
 
-            const code = definitionFunction ??
-              DEFAULT_SCHEMA_DEFINITION_FUNCTION;
+            const code =
+              definitionFunction ?? DEFAULT_SCHEMA_DEFINITION_FUNCTION;
 
             // next we call the endpoint to create a new schema
             const responseCreate = await siSchemasApi.createSchema({
-              workspaceId: WORKSPACE_ID,
+              workspaceId: workspaceId,
               changeSetId: changeSetId,
               createSchemaV1Request: {
                 ...createOrEditSchemaV1Request,

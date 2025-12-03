@@ -2,18 +2,17 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod-v3";
 import { ChangeSetsApi } from "@systeminit/api-client";
-import { apiConfig, WORKSPACE_ID } from "../si_client.ts";
 import {
   errorResponse,
   generateDescription,
   successResponse,
   withAnalytics,
 } from "./commonBehavior.ts";
+import { Context } from "../../../context.ts";
 
 const name = "change-set-force-apply";
 const title = "Force apply a change set";
-const description =
-  `<description>Force apply a change set. Returns 'success' if the status was changed. On failure, returns error details</description><usage>Use this tool to Force apply a change set. This tool will avoid *all* workspace approval flows and apply directly to HEAD. You may *never* force apply the HEAD change set.</usage>`;
+const description = `<description>Force apply a change set. Returns 'success' if the status was changed. On failure, returns error details</description><usage>Use this tool to Force apply a change set. This tool will avoid *all* workspace approval flows and apply directly to HEAD. You may *never* force apply the HEAD change set.</usage>`;
 
 const ForceApplyChangeSetInputSchemaRaw = {
   changeSetId: z.string().describe("the ID of the change set to force apply"),
@@ -60,10 +59,12 @@ export function changeSetForceApplyTool(server: McpServer) {
           });
         }
 
+        const apiConfig = Context.apiConfig();
+        const workspaceId = Context.workspaceId();
         const siApi = new ChangeSetsApi(apiConfig);
         try {
           const response = await siApi.getChangeSet({
-            workspaceId: WORKSPACE_ID,
+            workspaceId,
             changeSetId,
           });
           if (response.data.changeSet.isHead) {
@@ -78,7 +79,7 @@ export function changeSetForceApplyTool(server: McpServer) {
 
         try {
           const response = await siApi.forceApply({
-            workspaceId: WORKSPACE_ID,
+            workspaceId,
             changeSetId,
           });
           return successResponse(response.data);

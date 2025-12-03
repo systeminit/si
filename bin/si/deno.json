@@ -22,10 +22,10 @@
     ".": "./src/template/run.ts"
   },
   "tasks": {
-    "dev": "deno run --allow-net --allow-env --allow-read --allow-run --env-file=.env.local --allow-write main.ts",
-    "build": "deno compile --allow-net --allow-env --allow-read --allow-write --allow-run --allow-import --include=data/templates/SI_Agent_Context.md.tmpl --include=data/templates/template.ts.tmpl main.ts",
+    "dev": "deno run --allow-net --allow-env --allow-read --allow-sys --allow-run --env-file=.env.local --allow-write main.ts",
+    "build": "deno compile --allow-net --allow-env --allow-read --allow-sys --allow-write --allow-run --allow-import --include=data/templates/SI_Agent_Context.md.tmpl --include=data/templates/template.ts.tmpl main.ts",
     "lint": "deno lint",
-    "test": "SI_API_TOKEN=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ3b3Jrc3BhY2VJZCI6InRlc3Qtd29ya3NwYWNlLWlkIiwidXNlcklkIjoidGVzdC11c2VyLWlkIn0.fakesignature deno test --allow-env --allow-read --allow-write --allow-run",
+    "test": "SI_API_TOKEN=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ3b3Jrc3BhY2VJZCI6InRlc3Qtd29ya3NwYWNlLWlkIiwidXNlcklkIjoidGVzdC11c2VyLWlkIn0.fakesignature deno test --allow-sys --allow-env --allow-read --allow-write --allow-run",
     "inspector": "npx @modelcontextprotocol/inspector deno run dev ai-agent stdio"
   },
   "imports": {
@@ -47,8 +47,10 @@
     "@std/ulid": "jsr:@std/ulid@^1.0.0",
     "@std/yaml": "jsr:@std/yaml@^1.0.5",
     "@systeminit/api-client": "jsr:@systeminit/api-client@^1.10.0",
+    "@types/node": "npm:@types/node@^24.10.1",
     "axios": "npm:axios@^1.13.1",
     "ejs": "npm:ejs@^3.1.10",
+    "env-paths": "npm:env-paths@^3.0.0",
     "jwt-decode": "npm:jwt-decode@^4.0.0",
     "lodash": "npm:lodash@^4.17.21",
     "posthog-node": "npm:posthog-node@^4.2.1",

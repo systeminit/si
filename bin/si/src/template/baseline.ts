@@ -4,8 +4,8 @@ import type { TemplateComponent, TemplateContext } from "./context.ts";
 import { componentViewToTemplateComponent } from "./context.ts";
 import { loadDataFromFile } from "./input.ts";
 import type { BaselineCache } from "./cache.ts";
-import { getHeadChangeSetId } from "../si_client.ts";
 import { logComponentWithSchema } from "./helpers.ts";
+import { getHeadChangeSetId } from "../cli/helpers.ts";
 
 /**
  * Set baseline data by searching for components using the context's search strings.
@@ -20,8 +20,8 @@ export async function setBaseline(ctx: TemplateContext): Promise<void> {
     return;
   }
 
-  const apiConfig = ctx.apiConfig();
-  const workspaceId = ctx.workspaceId();
+  const apiConfig = Context.apiConfig();
+  const workspaceId = Context.workspaceId();
 
   if (!apiConfig || !workspaceId) {
     ctx.logger.warn("Cannot set baseline: API configuration not available");
@@ -29,7 +29,7 @@ export async function setBaseline(ctx: TemplateContext): Promise<void> {
   }
 
   // Get the HEAD changeset ID (will throw if not found)
-  const changeSetId = await getHeadChangeSetId(apiConfig, workspaceId);
+  const changeSetId = await getHeadChangeSetId();
 
   const searchStrings = ctx.search();
   if (!searchStrings || searchStrings.length === 0) {

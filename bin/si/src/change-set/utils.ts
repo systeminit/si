@@ -9,7 +9,6 @@
 
 import { ChangeSetsApi, type ChangeSetViewV1 } from "@systeminit/api-client";
 import { Context } from "../context.ts";
-import { apiConfig } from "../si_client.ts";
 
 /**
  * Resolves a change set by ID or name to its ID.
@@ -24,7 +23,7 @@ export async function resolveChangeSet(
   changeSetIdOrName: string,
 ): Promise<string> {
   const ctx = Context.instance();
-  const changeSetsApi = new ChangeSetsApi(apiConfig);
+  const changeSetsApi = new ChangeSetsApi(Context.apiConfig());
 
   ctx.logger.debug(`Resolving change set: {changeSet}`, {
     changeSet: changeSetIdOrName,
