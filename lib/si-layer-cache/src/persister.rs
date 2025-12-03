@@ -496,13 +496,16 @@ impl PersisterTask {
         let write_duration = write_start.elapsed().as_millis() as f64;
         let status = if result.is_ok() { "success" } else { "error" };
 
-        histogram!(
-            layer_cache_persister.write_duration_ms = write_duration,
-            cache_name = cache_name,
-            status = status,
-            backend = backend.as_ref(),
-            event_kind = event_kind
-        );
+        // Only record for PostgreSQL - S3 records its own metrics in S3QueueProcessor
+        if backend == BackendType::Postgres {
+            histogram!(
+                layer_cache_persister.write_duration_ms = write_duration,
+                cache_name = cache_name,
+                status = status,
+                backend = backend.as_ref(),
+                event_kind = event_kind
+            );
+        }
 
         result
     }
@@ -669,13 +672,18 @@ impl PersisterTask {
                                 .signed_duration_since(event.metadata.timestamp)
                                 .to_std()
                                 .unwrap_or_default();
-                            metric!(
-                                histogram.layer_cache_persistence_latency_seconds =
-                                    latency.as_secs_f64(),
-                                cache_name = &cache_name,
-                                operation = "write",
-                                event_kind = event.event_kind.as_ref()
-                            );
+
+                            // Only record for PostgreSQL - S3 records its own metrics in S3QueueProcessor
+                            if backend == BackendType::Postgres {
+                                metric!(
+                                    histogram.layer_cache_persistence_latency_seconds =
+                                        latency.as_secs_f64(),
+                                    cache_name = &cache_name,
+                                    backend = backend.as_ref(),
+                                    operation = "write",
+                                    event_kind = event.event_kind.as_ref()
+                                );
+                            }
 
                             status_tx.send(PersistStatus::Finished)
                         }
@@ -857,13 +865,18 @@ impl PersisterTask {
                         .signed_duration_since(event_timestamp)
                         .to_std()
                         .unwrap_or_default();
-                    metric!(
-                        histogram.layer_cache_persistence_latency_seconds = latency.as_secs_f64(),
-                        cache_name = &cache_name,
-                        backend = backend.as_ref(),
-                        operation = "retry",
-                        event_kind = event_kind.as_ref()
-                    );
+
+                    // Only record for PostgreSQL - S3 records its own metrics in S3QueueProcessor
+                    if backend == BackendType::Postgres {
+                        metric!(
+                            histogram.layer_cache_persistence_latency_seconds =
+                                latency.as_secs_f64(),
+                            cache_name = &cache_name,
+                            backend = backend.as_ref(),
+                            operation = "retry",
+                            event_kind = event_kind.as_ref()
+                        );
+                    }
 
                     // Success - tell manager to remove from queue
                     let _ = retry_queue_command_tx

@@ -1,10 +1,14 @@
 use std::{
     collections::BTreeSet,
     sync::Arc,
-    time::Duration,
+    time::{
+        Duration,
+        Instant,
+    },
 };
 
 use aws_sdk_s3::Client;
+use chrono::Utc;
 use futures::FutureExt;
 use telemetry::prelude::*;
 use telemetry_utils::{
@@ -128,11 +132,29 @@ impl S3QueueProcessor {
         );
     }
 
-    fn record_write_duration(&self, duration_ms: u64) {
+    fn record_put_timing(&self, duration_ms: f64, event_kind: &str, success: bool) {
+        let status = if success { "success" } else { "error" };
         histogram!(
-            s3_write_duration_ms = duration_ms,
+            layer_cache_persister.write_duration_ms = duration_ms,
             cache_name = &self.cache_name,
-            backend = "s3"
+            backend = "s3",
+            status = status,
+            event_kind = event_kind
+        );
+    }
+
+    fn record_persistence_latency(&self, event_timestamp: chrono::DateTime<Utc>, event_kind: &str) {
+        let latency = Utc::now()
+            .signed_duration_since(event_timestamp)
+            .to_std()
+            .unwrap_or_default();
+
+        histogram!(
+            layer_cache_persistence_latency_seconds = latency.as_secs_f64(),
+            cache_name = &self.cache_name,
+            backend = "s3",
+            operation = "write",
+            event_kind = event_kind
         );
     }
 
@@ -263,6 +285,13 @@ impl S3QueueProcessor {
 
         // Key is already transformed - write directly to S3
         // Event.key contains the final S3 key after transformation
+
+        // Capture event fields before moving event.payload
+        let event_kind = event.event_kind;
+        let event_timestamp = event.metadata.timestamp;
+        let event_key = event.key.to_string();
+
+        let put_start = Instant::now();
         let result = self
             .s3_client
             .put_object()
@@ -271,6 +300,7 @@ impl S3QueueProcessor {
             .body(Arc::unwrap_or_clone(event.payload.value).into())
             .send()
             .await;
+        let put_duration_ms = put_start.elapsed().as_millis() as f64;
 
         // Categorize result for metrics and rate limiter
         let categorized_result = result.map_err(|sdk_err| {
@@ -280,7 +310,7 @@ impl S3QueueProcessor {
                 aws_error,
                 S3Operation::Put,
                 self.cache_name.clone(),
-                event.key.to_string(),
+                event_key,
             );
             LayerDbError::S3(Box::new(s3_error))
         });
@@ -288,17 +318,31 @@ impl S3QueueProcessor {
         match categorized_result {
             Ok(_) => {
                 span.record("result", "success");
-                self.handle_success(ulid).await
+                self.record_put_timing(put_duration_ms, event_kind.as_ref(), true);
+                self.handle_success(ulid, event_timestamp, event_kind.as_ref())
+                    .await
             }
             Err(s3_error) => {
                 // Classify the error to record appropriate result
                 let result_str = match &s3_error {
                     LayerDbError::S3(boxed_error) => match boxed_error.as_ref() {
-                        S3Error::Throttling { .. } => "throttle",
-                        S3Error::Configuration { .. } => "error_configuration",
-                        _ => "error_transient",
+                        S3Error::Throttling { .. } => {
+                            // Don't record timing for 503 throttling - this is expected
+                            "throttle"
+                        }
+                        S3Error::Configuration { .. } => {
+                            self.record_put_timing(put_duration_ms, event_kind.as_ref(), false);
+                            "error_configuration"
+                        }
+                        _ => {
+                            self.record_put_timing(put_duration_ms, event_kind.as_ref(), false);
+                            "error_transient"
+                        }
                     },
-                    _ => "error_transient",
+                    _ => {
+                        self.record_put_timing(put_duration_ms, event_kind.as_ref(), false);
+                        "error_transient"
+                    }
                 };
                 span.record("result", result_str);
                 self.handle_error(ulid, &s3_error).await
@@ -306,15 +350,12 @@ impl S3QueueProcessor {
         }
     }
 
-    async fn handle_success(&mut self, ulid: Ulid) {
-        // Calculate duration from ULID timestamp to now
-        let now_ms = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap()
-            .as_millis() as u64;
-        let ulid_ms = ulid.timestamp_ms();
-        let duration_ms = now_ms.saturating_sub(ulid_ms);
-
+    async fn handle_success(
+        &mut self,
+        ulid: Ulid,
+        event_timestamp: chrono::DateTime<Utc>,
+        event_kind: &str,
+    ) {
         // Remove from in-memory queue
         let removed = self.queue.remove(&ulid);
         if !removed {
@@ -337,7 +378,7 @@ impl S3QueueProcessor {
 
         // Record metrics
         self.record_write_attempt("success");
-        self.record_write_duration(duration_ms);
+        self.record_persistence_latency(event_timestamp, event_kind);
 
         // Update rate limiter
         self.rate_limiter.on_success();
@@ -617,7 +658,8 @@ mod tests {
     async fn test_disk_read_error_handles_corrupted_file() {
         let temp_dir = TempDir::new().unwrap();
         let notify = Arc::new(Notify::new());
-        let (write_queue, _rx) = S3WriteQueue::new(temp_dir.path(), "test", notify.clone()).unwrap();
+        let (write_queue, _rx) =
+            S3WriteQueue::new(temp_dir.path(), "test", notify.clone()).unwrap();
 
         // Create a corrupted file
         let corrupted_ulid = Ulid::new();
@@ -756,7 +798,7 @@ mod tests {
         let ulid1 = Ulid::new();
 
         // Insert same ULID multiple times
-        assert!(queue.insert(ulid1));  // First insert returns true
+        assert!(queue.insert(ulid1)); // First insert returns true
         assert!(!queue.insert(ulid1)); // Duplicate returns false
         assert!(!queue.insert(ulid1)); // Still returns false
 

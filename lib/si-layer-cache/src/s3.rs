@@ -601,6 +601,10 @@ impl S3Layer {
     ///
     /// This is the single write interface - all S3 writes go through the queue for durability.
     pub fn insert(&self, event: &LayeredEvent) -> LayerDbResult<()> {
+        use std::time::Instant;
+
+        use telemetry_utils::histogram;
+
         // Transform key at API boundary
         let transformed_key = self.transform_and_prefix_key(&event.key);
         let transformed_key_arc: Arc<str> = Arc::from(transformed_key);
@@ -621,11 +625,18 @@ impl S3Layer {
             web_events: event.web_events.clone(),
         };
 
-        // Queue the transformed event
+        // Queue the transformed event with timing
+        let start = Instant::now();
         let ulid = self
             .write_queue
             .enqueue(&transformed_event)
             .map_err(|e| LayerDbError::S3WriteQueue(e.to_string()))?;
+
+        histogram!(
+            s3_layer_disk_enqueue_duration_ms = start.elapsed().as_millis() as f64,
+            cache_name = event.payload.db_name.as_str(),
+            backend = "s3"
+        );
 
         trace!(
             cache = %self.cache_name,
