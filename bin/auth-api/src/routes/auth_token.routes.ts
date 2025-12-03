@@ -112,6 +112,7 @@ router.post("/workspaces/:workspaceId/authTokens/:authTokenId/revoke", async (ct
     tokenCreated: authToken.createdAt,
     tokenRevoked: new Date(),
     initiatedBy: authUser.email,
+    reason: "User Initiatiated Action",
     tokenAction: "revoked",
   });
 
