@@ -20,18 +20,10 @@ check_health_and_report() {
     fi
     
     # Report to Auto Scaling Group for scaling decisions
-    if [ "$health_status" = "Unhealthy" ]; then
-        aws autoscaling set-instance-health \
-            --region "$AWS_REGION" \
-            --instance-id "$instance_id" \
-            --health-status "$health_status" \
-            --should-respect-grace-period false
-    else
-        aws autoscaling set-instance-health \
-            --region "$AWS_REGION" \
-            --instance-id "$instance_id" \
-            --health-status "$health_status"
-    fi
+    aws autoscaling set-instance-health \
+        --region "$AWS_REGION" \
+        --instance-id "$instance_id" \
+        --health-status "$health_status"
     
     if [ $? -eq 0 ]; then
         echo "$(date -Iseconds): ASG health status set to $health_status"
