@@ -253,7 +253,11 @@ impl S3QueueProcessor {
         )
     )]
     async fn process_item(&mut self, ulid: Ulid, event: LayeredEvent) {
-        trace!("Processing S3 write from queue");
+        trace!(
+            cache = %self.cache_name,
+            ulid = %ulid,
+            "Processing S3 write from queue"
+        );
 
         let span = Span::current();
 
