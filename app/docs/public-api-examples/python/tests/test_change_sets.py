@@ -75,3 +75,61 @@ def test_list_change_sets(change_sets_api, workspace_id):
     assert isinstance(response.change_sets, list)
 
     print(f"Found {len(response.change_sets)} change set(s)")
+
+
+def test_apply_change_set(change_sets_api, workspace_id):
+    """Test applying a change set"""
+    # Create a change set to apply
+    change_set_name = f"test-apply-{int(time.time() * 1000)}"
+    request = CreateChangeSetV1Request(change_set_name=change_set_name)
+
+    create_response = change_sets_api.create_change_set(
+        workspace_id=workspace_id,
+        create_change_set_v1_request=request,
+    )
+
+    assert create_response is not None
+    assert create_response.change_set is not None
+    change_set_id = create_response.change_set.id
+
+    print(f"Created change set to apply: id={change_set_id}, name={change_set_name}")
+
+    # Apply the change set
+    response = change_sets_api.force_apply(
+        workspace_id=workspace_id,
+        change_set_id=change_set_id,
+    )
+
+    assert response is not None
+    assert response.success is True
+
+    print(f"Applied change set: {change_set_id}")
+
+
+def test_abandon_change_set(change_sets_api, workspace_id):
+    """Test abandoning a change set"""
+    # Create a change set to abandon
+    change_set_name = f"test-abandon-{int(time.time() * 1000)}"
+    request = CreateChangeSetV1Request(change_set_name=change_set_name)
+
+    create_response = change_sets_api.create_change_set(
+        workspace_id=workspace_id,
+        create_change_set_v1_request=request,
+    )
+
+    assert create_response is not None
+    assert create_response.change_set is not None
+    change_set_id = create_response.change_set.id
+
+    print(f"Created change set to abandon: id={change_set_id}, name={change_set_name}")
+
+    # Abandon the change set
+    response = change_sets_api.abandon_change_set(
+        workspace_id=workspace_id,
+        change_set_id=change_set_id,
+    )
+
+    assert response is not None
+    assert response.success is True
+
+    print(f"Abandoned change set: {change_set_id}")
