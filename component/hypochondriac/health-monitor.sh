@@ -3,10 +3,10 @@
 set -uo pipefail
 
 HEALTH_ENDPOINT="${HEALTH_ENDPOINT:-http://127.0.0.1:8080/health}"
-SLEEP_INTERVAL="${SLEEP_INTERVAL:-30}"
+SLEEP_INTERVAL="${SLEEP_INTERVAL:-15}"
 AWS_REGION="${AWS_REGION:-us-east-1}"
-STARTUP_GRACE_PERIOD="${STARTUP_GRACE_PERIOD:-300}"
-UNHEALTHY_THRESHOLD="${UNHEALTHY_THRESHOLD:-10}"
+STARTUP_GRACE_PERIOD="${STARTUP_GRACE_PERIOD:-150}"
+UNHEALTHY_THRESHOLD="${UNHEALTHY_THRESHOLD:-3}"
 
 # Global state variables
 CONSECUTIVE_FAILURES=0
@@ -100,20 +100,20 @@ check_health_and_report() {
             echo "$(date -Iseconds): ASG health status set to $report_status"
             LAST_REPORTED_STATUS="$report_status"
             
-            # Send additional metric when marking node as unhealthy (killed)
+            # Send killed event when marking node as unhealthy
             if [ "$report_status" = "Unhealthy" ]; then
                 aws cloudwatch put-metric-data \
                     --region "$AWS_REGION" \
                     --namespace "SI/InstanceLifecycle" \
-                    --metric-data "MetricName=HealthStatus,Value=3,Unit=None,Dimensions=[{Name=Service,Value=$service_name},{Name=Instance,Value=$instance_id}]"
+                    --metric-data "MetricName=ServiceEvents,Value=1,Unit=Count,Dimensions=[{Name=Service,Value=$service_name},{Name=Instance,Value=$instance_id},{Name=Event,Value=Killed}]"
                 
-                echo "$(date -Iseconds): CloudWatch node killed metric sent (Value: 3)"
+                echo "$(date -Iseconds): CloudWatch service killed event sent"
             fi
         else
             echo "$(date -Iseconds): Failed to set ASG health status to $report_status"
         fi
     elif [ "$should_report" = true ]; then
-        echo "$(date -Iseconds): Health status unchanged ($report_status) - not reporting to ASG"
+        echo "$(date -Iseconds): Something went wrong, this should never be reachable"
     fi
 }
 
@@ -129,15 +129,15 @@ main() {
     echo "$(date -Iseconds): Startup grace period: ${STARTUP_GRACE_PERIOD}s"
     echo "$(date -Iseconds): Unhealthy threshold: $UNHEALTHY_THRESHOLD consecutive failures"
     
-    # Send "started" metric on service startup
-    echo "$(date -Iseconds): Sending startup metric to CloudWatch..."
+    # Send "started" event on service startup
+    echo "$(date -Iseconds): Sending startup event to CloudWatch..."
     if aws cloudwatch put-metric-data \
         --region "$AWS_REGION" \
         --namespace "SI/InstanceLifecycle" \
-        --metric-data "MetricName=HealthStatus,Value=2,Unit=None,Dimensions=[{Name=Service,Value=$service_name},{Name=Instance,Value=$instance_id}]" 2>&1; then
-        echo "$(date -Iseconds): CloudWatch startup metric sent successfully (Value: 2 - started)"
+        --metric-data "MetricName=ServiceEvents,Value=1,Unit=Count,Dimensions=[{Name=Service,Value=$service_name},{Name=Instance,Value=$instance_id},{Name=Event,Value=Started}]" 2>&1; then
+        echo "$(date -Iseconds): CloudWatch service started event sent successfully"
     else
-        echo "$(date -Iseconds): Failed to send CloudWatch startup metric - continuing anyway"
+        echo "$(date -Iseconds): Failed to send CloudWatch startup event - continuing anyway"
     fi
     
     echo "$(date -Iseconds): Starting health check loop..."
