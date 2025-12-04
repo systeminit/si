@@ -51,6 +51,54 @@ export function addDefaultProps(
       extraProp.entries.push(endpointProp);
     }
 
+    // Create IdentifierField prop
+    {
+      const identifierFieldProp = createScalarProp(
+        "IdentifierField",
+        "string",
+        extraProp.metadata.propPath,
+        false,
+      );
+
+      const doSchema = schemaVariant.superSchema as DigitalOceanSchema;
+      identifierFieldProp.data.defaultValue = doSchema?.identifierField || "id";
+      identifierFieldProp.data.hidden = true;
+
+      extraProp.entries.push(identifierFieldProp);
+    }
+
+    // Create UpdateMethod prop
+    {
+      const updateMethodProp = createScalarProp(
+        "UpdateMethod",
+        "string",
+        extraProp.metadata.propPath,
+        false,
+      );
+
+      const doSchema = schemaVariant.superSchema as DigitalOceanSchema;
+      updateMethodProp.data.defaultValue = doSchema?.updateMethod || "PUT";
+      updateMethodProp.data.hidden = true;
+
+      extraProp.entries.push(updateMethodProp);
+    }
+
+    // Create RequiredQueryParams prop
+    {
+      const queryParamsProp = createScalarProp(
+        "RequiredQueryParams",
+        "string",
+        extraProp.metadata.propPath,
+        false,
+      );
+
+      const doSchema = schemaVariant.superSchema as DigitalOceanSchema;
+      queryParamsProp.data.defaultValue = JSON.stringify(doSchema?.requiredQueryParams || []);
+      queryParamsProp.data.hidden = true;
+
+      extraProp.entries.push(queryParamsProp);
+    }
+
     // Create DigitalOceanResourceType prop
     // TODO: Check if this is really needed
     {
