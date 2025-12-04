@@ -7,6 +7,7 @@ SLEEP_INTERVAL="${SLEEP_INTERVAL:-15}"
 AWS_REGION="${AWS_REGION:-us-east-1}"
 STARTUP_GRACE_PERIOD="${STARTUP_GRACE_PERIOD:-150}"
 UNHEALTHY_THRESHOLD="${UNHEALTHY_THRESHOLD:-3}"
+ENABLE_ASG_ACTIONS="${ENABLE_ASG_ACTIONS:-true}"
 
 # Global state variables
 CONSECUTIVE_FAILURES=0
@@ -90,7 +91,7 @@ check_health_and_report() {
     echo "$(date -Iseconds): CloudWatch health status metric sent (Value: $metric_value)"
     
     # Report to ASG when we should report (healthy always, unhealthy only after threshold)
-    if [ "$should_report" = true ]; then
+    if [ "$should_report" = true ] && [ "$ENABLE_ASG_ACTIONS" = "true" ]; then
         aws autoscaling set-instance-health \
             --region "$AWS_REGION" \
             --instance-id "$instance_id" \
@@ -112,8 +113,8 @@ check_health_and_report() {
         else
             echo "$(date -Iseconds): Failed to set ASG health status to $report_status"
         fi
-    elif [ "$should_report" = true ]; then
-        echo "$(date -Iseconds): Something went wrong, this should never be reachable"
+    elif [ "$should_report" = true ] && [ "$ENABLE_ASG_ACTIONS" != "true" ]; then
+        echo "$(date -Iseconds): ASG actions disabled - would set ASG health to $report_status"
     fi
 }
 
