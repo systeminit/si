@@ -23,7 +23,7 @@
     @handleTab="handleTab"
   />
   <li
-    v-else-if="showingChildren || !attributeTree.prop?.hidden"
+    v-else-if="!attributeTree.prop?.hidden"
     :class="clsx('flex flex-col', !showingChildren && 'mb-[-1px]')"
   >
     <template v-if="showingChildren">
@@ -253,7 +253,7 @@
                   :value="field.state.value"
                   :disabled="wForm.bifrosting.value"
                   @input="
-                    (e) => 
+                    (e) =>
                       field.handleChange((e.target as HTMLInputElement).value)
                   "
                   @keydown.enter.stop.prevent="saveKeyIfFormValid"
