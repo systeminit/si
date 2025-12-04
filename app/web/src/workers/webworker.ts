@@ -426,59 +426,75 @@ const newChangesetIndex = async (
   //
   // Create a new empty index
   //
-  await lock?.writeLock(async () => {
-    await db.exec({
+  if (!lock || !lock.isWriteLockAcquired)
+    throw new Error("Write lock must be acquired in the caller");
+
+  try {
+    // NOTE: in the future we will add ON CONFLICT DO NOTHING, but I want to report this error for now to see how often its happening
+    db.exec({
       sql: `INSERT INTO indexes (checksum) VALUES (?);`,
       bind: [meta.toIndexChecksum],
     });
-
-    //
-    // Copy atoms from the previous index
-    //
-    const rows = await db.exec({
-      sql: `SELECT index_checksum FROM changesets WHERE change_set_id = ?`,
-      bind: [meta.changeSetId],
-      returnValue: "resultRows",
-    });
-    const lastKnownFromChecksum = oneInOne(rows) as
-      | string
-      | undefined
-      | typeof NOROW;
-
-    let sourceChecksum;
-    if (fromIndexChecksum && fromIndexChecksum !== meta.toIndexChecksum) {
-      // Copy the index from the previous changeset if one exists
-      sourceChecksum = fromIndexChecksum;
-    } else if (lastKnownFromChecksum && lastKnownFromChecksum !== NOROW) {
-      // Copy the index from the previous changeset if one exists
-      // TODO may be redundant; the only caller (indexLogic()) already gets fromIndexChecksum
-      // from the same place.
-      debug(`HIT ELSE BRANCH NEW FROM CHECKSUM SHIT`);
-      sourceChecksum = lastKnownFromChecksum;
-    } else {
-      // we have a new change set and a patch at the same time
-      // which means that the change set record did not exist, no "from" in the DB
-      // but we have the from in the payload
-      //
-      // NOTE: this could be incomplete! Cannot be sure an index/atoms are complete unless
-      // they are associated with a change_sets record, and we're not checking that here.
-      debug(
-        `New changeset and patch at the same time! Copying index atoms from edda's changeset ${meta.fromIndexChecksum}`,
-      );
-      sourceChecksum = meta.fromIndexChecksum;
+  } catch (err) {
+    if (err instanceof Error) {
+      const span = trace.getActiveSpan();
+      span?.addEvent("error", {
+        source: "newChangesetIndex",
+        error: err instanceof Error ? err.toString() : "unknown",
+      });
+      // if the checksum already exists then we are safe to proceed
+      if (!err.message.includes("SQLITE_CONSTRAINT_PRIMARYKEY")) {
+        throw err;
+      }
     }
+  }
 
-    // Copy all entries found for sourceChecksum, while rewriting the index_checksum to the incoming one.
-    await db.exec({
-      sql: `INSERT INTO index_mtm_atoms
-          SELECT
-            ?, kind, args, checksum
-          FROM index_mtm_atoms
-          WHERE
-            index_checksum = ?
-          `,
-      bind: [meta.toIndexChecksum, sourceChecksum],
-    });
+  //
+  // Copy atoms from the previous index
+  //
+  const rows = db.exec({
+    sql: `SELECT index_checksum FROM changesets WHERE change_set_id = ?`,
+    bind: [meta.changeSetId],
+    returnValue: "resultRows",
+  });
+  const lastKnownFromChecksum = oneInOne(rows) as
+    | string
+    | undefined
+    | typeof NOROW;
+
+  let sourceChecksum;
+  if (fromIndexChecksum && fromIndexChecksum !== meta.toIndexChecksum) {
+    // Copy the index from the previous changeset if one exists
+    sourceChecksum = fromIndexChecksum;
+  } else if (lastKnownFromChecksum && lastKnownFromChecksum !== NOROW) {
+    // Copy the index from the previous changeset if one exists
+    // TODO may be redundant; the only caller (indexLogic()) already gets fromIndexChecksum
+    // from the same place.
+    debug(`HIT ELSE BRANCH NEW FROM CHECKSUM SHIT`);
+    sourceChecksum = lastKnownFromChecksum;
+  } else {
+    // we have a new change set and a patch at the same time
+    // which means that the change set record did not exist, no "from" in the DB
+    // but we have the from in the payload
+    //
+    // NOTE: this could be incomplete! Cannot be sure an index/atoms are complete unless
+    // they are associated with a change_sets record, and we're not checking that here.
+    debug(
+      `New changeset and patch at the same time! Copying index atoms from edda's changeset ${meta.fromIndexChecksum}`,
+    );
+    sourceChecksum = meta.fromIndexChecksum;
+  }
+
+  // Copy all entries found for sourceChecksum, while rewriting the index_checksum to the incoming one.
+  db.exec({
+    sql: `INSERT INTO index_mtm_atoms
+        SELECT
+          ?, kind, args, checksum
+        FROM index_mtm_atoms
+        WHERE
+          index_checksum = ?
+        `,
+    bind: [meta.toIndexChecksum, sourceChecksum],
   });
 };
 
@@ -952,57 +968,59 @@ const initIndexAndChangeSet = async (
   //
   // Figure out what index the change set has right now
   //
-  const changeSetQuery = await dbRead(db, {
-    sql: `select change_set_id, index_checksum from changesets where change_set_id = ?`,
-    returnValue: "resultRows",
-    bind: [meta.changeSetId],
-  });
-  let changeSetExists;
-  let currentIndexChecksum;
-  const changeSet = changeSetQuery[0] as string[];
-  if (changeSet) {
-    [changeSetExists, currentIndexChecksum] = [...changeSet];
-    span.setAttributes({
-      changeSetExists,
-      currentIndexChecksum,
+  await lock?.writeLock(async () => {
+    const changeSetQuery = await db.exec({
+      sql: `select change_set_id, index_checksum from changesets where change_set_id = ?`,
+      returnValue: "resultRows",
+      bind: [meta.changeSetId],
     });
-  }
+    let changeSetExists;
+    let currentIndexChecksum;
+    const changeSet = changeSetQuery[0] as string[];
+    if (changeSet) {
+      [changeSetExists, currentIndexChecksum] = [...changeSet];
+      span.setAttributes({
+        changeSetExists,
+        currentIndexChecksum,
+      });
+    }
 
-  const indexQuery = await dbRead(db, {
-    sql: `select checksum from indexes where checksum = ?`,
-    returnValue: "resultRows",
-    bind: [toIndexChecksum],
-  });
-  const indexExists = oneInOne(indexQuery);
-  if (indexExists) span.setAttribute("indexExists", indexExists?.toString());
-
-  if (changeSetExists && !currentIndexChecksum) {
-    throw new Error("Null value from SQL, impossible");
-  }
-
-  //
-  // Create the index if it doesn't exist--and copy the previous index if we have them
-  //
-  if (indexExists === NOROW) {
-    span.setAttribute("newIndexCreated", true);
-    await newChangesetIndex(db, meta, currentIndexChecksum);
-  }
-
-  //
-  // Create the changeset record if it doesn't exist
-  //
-  // TODO this is the wrong place to do this, or at least it shouldn't use the toIndexChecksum;
-  // in general, we don't associate a changeset with a specific index until that index is complete!
-  if (!changeSetExists) {
-    span.setAttribute("changeSetCreated", true);
-    await dbWrite(db, {
-      sql: "insert into changesets (change_set_id, workspace_id, index_checksum) VALUES (?, ?, ?);",
-      bind: [meta.changeSetId, meta.workspaceId, toIndexChecksum],
+    const indexQuery = await db.exec({
+      sql: `select checksum from indexes where checksum = ?`,
+      returnValue: "resultRows",
+      bind: [toIndexChecksum],
     });
-  }
+    const indexExists = oneInOne(indexQuery);
+    if (indexExists) span.setAttribute("indexExists", indexExists?.toString());
 
-  // Index checksum provides validation - every time MVs are generated, there's a new index checksum
-  debug("✓ Index checksum validation passed", toIndexChecksum);
+    if (changeSetExists && !currentIndexChecksum) {
+      throw new Error("Null value from SQL, impossible");
+    }
+
+    //
+    // Create the index if it doesn't exist--and copy the previous index if we have them
+    //
+    if (indexExists === NOROW) {
+      span.setAttribute("newIndexCreated", true);
+      await newChangesetIndex(db, meta, currentIndexChecksum);
+    }
+
+    //
+    // Create the changeset record if it doesn't exist
+    //
+    // TODO this is the wrong place to do this, or at least it shouldn't use the toIndexChecksum;
+    // in general, we don't associate a changeset with a specific index until that index is complete!
+    if (!changeSetExists) {
+      span.setAttribute("changeSetCreated", true);
+      await db.exec({
+        sql: "insert into changesets (change_set_id, workspace_id, index_checksum) VALUES (?, ?, ?);",
+        bind: [meta.changeSetId, meta.workspaceId, toIndexChecksum],
+      });
+    }
+
+    // Index checksum provides validation - every time MVs are generated, there's a new index checksum
+    debug("✓ Index checksum validation passed", toIndexChecksum);
+  });
 
   return toIndexChecksum;
 };
@@ -4540,8 +4558,9 @@ const dbInterface: TabDBInterface = {
               "error.stacktrace": err.stack,
             });
           }
+        } finally {
+          span.end();
         }
-        span.end();
       });
     });
 

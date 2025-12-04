@@ -6,10 +6,16 @@ type AnyFn = (...args: any[]) => any;
 export class ReadWriteLock {
   name: string;
   readerCount: number;
+  writeLockAcquired: boolean;
 
   constructor(name: string) {
     this.name = name;
     this.readerCount = 0;
+    this.writeLockAcquired = false;
+  }
+
+  isWriteLockAcquired(): boolean {
+    return this.writeLockAcquired;
   }
 
   async readLock(callback: AnyFn): Promise<SqlValue[][]> {
@@ -28,19 +34,24 @@ export class ReadWriteLock {
   }
 
   async writeLock(callback: AnyFn): Promise<SqlValue[][]> {
-    return await navigator.locks.request(
-      `${this.name}-reader`,
-      { mode: "exclusive" },
-      async () => {
-        return await navigator.locks.request(
-          `${this.name}-writer`,
-          { mode: "exclusive" },
-          async () => {
-            return await callback();
-          },
-        );
-      },
-    );
+    try {
+      return await navigator.locks.request(
+        `${this.name}-reader`,
+        { mode: "exclusive" },
+        async () => {
+          return await navigator.locks.request(
+            `${this.name}-writer`,
+            { mode: "exclusive" },
+            async () => {
+              this.writeLockAcquired = true;
+              return await callback();
+            },
+          );
+        },
+      );
+    } finally {
+      this.writeLockAcquired = false;
+    }
   }
 
   async query() {
