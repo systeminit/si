@@ -15,7 +15,10 @@ use serde::{
 use si_std::SensitiveString;
 use strum::AsRefStr;
 use telemetry::prelude::*;
-use tokio::task::JoinHandle;
+use tokio::{
+    sync::Notify,
+    task::JoinHandle,
+};
 
 use crate::{
     error::{
@@ -27,7 +30,10 @@ use crate::{
         LayeredEventPayload,
     },
     rate_limiter::RateLimitConfig,
-    s3_queue_processor::S3QueueProcessor,
+    s3_queue_processor::{
+        ProcessorQueueSetup,
+        S3QueueProcessor,
+    },
     s3_write_queue::S3WriteQueue,
 };
 
@@ -399,19 +405,33 @@ impl S3Layer {
         let bucket_name = config.bucket_name;
         let key_prefix = config.key_prefix;
 
-        // Initialize write queue
-        let write_queue = S3WriteQueue::new(&queue_base_path, &cache_name_str)
+        // Initialize notify for queue communication
+        let notify = Arc::new(Notify::new());
+
+        // Initialize write queue - returns queue and receiver
+        let (write_queue, rx) =
+            S3WriteQueue::new(&queue_base_path, &cache_name_str, notify.clone())
+                .map_err(|e| LayerDbError::S3WriteQueue(e.to_string()))?;
+
+        // Scan disk for initial ULIDs (startup only)
+        let initial_ulids = write_queue
+            .scan_ulids()
             .map_err(|e| LayerDbError::S3WriteQueue(e.to_string()))?;
+
         let write_queue = Arc::new(write_queue);
 
-        // Start queue processor
-        // Create processor with direct S3 client access (no S3Layer dependency)
+        // Start queue processor with in-memory index
         let processor = S3QueueProcessor::new(
             Arc::clone(&write_queue),
             rate_limit_config,
             processor_client,
             bucket_name.clone(),
             cache_name_str.clone(),
+            ProcessorQueueSetup {
+                rx,
+                notify,
+                initial_ulids,
+            },
         );
 
         let shutdown = processor.shutdown_handle();
@@ -581,6 +601,10 @@ impl S3Layer {
     ///
     /// This is the single write interface - all S3 writes go through the queue for durability.
     pub fn insert(&self, event: &LayeredEvent) -> LayerDbResult<()> {
+        use std::time::Instant;
+
+        use telemetry_utils::histogram;
+
         // Transform key at API boundary
         let transformed_key = self.transform_and_prefix_key(&event.key);
         let transformed_key_arc: Arc<str> = Arc::from(transformed_key);
@@ -601,11 +625,18 @@ impl S3Layer {
             web_events: event.web_events.clone(),
         };
 
-        // Queue the transformed event
+        // Queue the transformed event with timing
+        let start = Instant::now();
         let ulid = self
             .write_queue
             .enqueue(&transformed_event)
             .map_err(|e| LayerDbError::S3WriteQueue(e.to_string()))?;
+
+        histogram!(
+            s3_layer_disk_enqueue_duration_ms = start.elapsed().as_millis() as f64,
+            cache_name = event.payload.db_name.as_str(),
+            backend = "s3"
+        );
 
         trace!(
             cache = %self.cache_name,
