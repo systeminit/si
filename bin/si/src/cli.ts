@@ -60,6 +60,18 @@ import {
   callSecretCreate,
   type SecretCreateOptions,
 } from "./secret/create.ts";
+import {
+  callChangeSetCreate,
+  type ChangeSetCreateOptions,
+} from "./change-set/create.ts";
+import {
+  callChangeSetAbandon,
+  type ChangeSetAbandonOptions,
+} from "./change-set/abandon.ts";
+import {
+  callChangeSetList,
+  type ChangeSetListOptions,
+} from "./change-set/list.ts";
 
 /**
  * Global options available to all commands
@@ -192,6 +204,8 @@ function buildCommand() {
     .command("completion", new CompletionsCommand())
     // deno-lint-ignore no-explicit-any
     .command("ai-agent", buildAiAgentCommand() as any)
+    // deno-lint-ignore no-explicit-any
+    .command("change-set", buildChangeSetCommand() as any)
     // deno-lint-ignore no-explicit-any
     .command("component", buildComponentCommand() as any)
     // deno-lint-ignore no-explicit-any
@@ -1101,6 +1115,57 @@ function buildSecretCommand() {
             secretType: secretType as string,
             fields,
           } as SecretCreateOptions);
+        }),
+    );
+}
+
+/**
+ * Builds the change-set command group with all subcommands.
+ *
+ * @returns A SubCommand configured for change-set operations
+ * @internal
+ */
+function buildChangeSetCommand() {
+  return createSubCommand()
+    .description("Manage change sets")
+    .action(function () {
+      this.showHelp();
+    })
+    .command(
+      "create",
+      createSubCommand()
+        .description("Create a new change set")
+        .arguments("<name:string>")
+        .action(async (options, name) => {
+          await callChangeSetCreate({
+            ...options,
+            name: name as string,
+          } as ChangeSetCreateOptions);
+        }),
+    )
+    .command(
+      "abandon",
+      createSubCommand()
+        .description("Abandon (delete) a change set")
+        .arguments("<change-set-id-or-name:string>")
+        .action(async (options, changeSetIdOrName) => {
+          await callChangeSetAbandon({
+            ...options,
+            changeSetIdOrName: changeSetIdOrName as string,
+          } as ChangeSetAbandonOptions);
+        }),
+    )
+    .command(
+      "list",
+      createSubCommand()
+        .description("List all change sets")
+        .option(
+          "-o, --output <format:string>",
+          "Output format: info (default), json, or yaml",
+          { default: "info" },
+        )
+        .action(async (options) => {
+          await callChangeSetList(options as ChangeSetListOptions);
         }),
     );
 }
