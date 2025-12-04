@@ -13,5 +13,11 @@
   "engines": {
     "node": ">=18 <=20"
   },
-  "packageManager": "pnpm@10.0.0"
+  "packageManager": "pnpm@10.0.0",
+  "pnpm": {
+    "overrides": {
+      "mdast-util-to-hast": "13.2.1",
+      "form-data": ">=3.0.4"
+    }
+  }
 }
