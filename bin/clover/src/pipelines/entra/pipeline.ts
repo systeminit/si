@@ -10,6 +10,7 @@ import { generateAssetFuncs } from "../generic/generateAssetFuncs.ts";
 import { applyAssetOverrides } from "../generic/applyAssetOverrides.ts";
 import { createSuggestionsForPrimaryIdentifiers } from "../generic/createSuggestionsAcrossAssets.ts";
 import { readEntraOpenApiSpec } from "./schema.ts";
+import { addDefaultProps } from "./pipeline-steps/addDefaultProps.ts";
 import path from "node:path";
 
 export async function generateEntraSpecs(
@@ -23,14 +24,11 @@ export async function generateEntraSpecs(
   const openApiSpec = await readEntraOpenApiSpec(schemaPath);
   specs = entraParseRawSchema(openApiSpec);
 
-  // Apply standard pipeline steps
+  specs = addDefaultProps(specs);
   specs = generateDefaultFuncsFromConfig(specs, entraProviderConfig);
   specs = generateIntrinsicFuncs(specs);
   specs = createSuggestionsForPrimaryIdentifiers(specs);
-
-  // Apply provider-specific overrides
   specs = applyAssetOverrides(specs, entraProviderConfig);
-
   specs = reorderProps(specs);
   specs = generateAssetFuncs(specs);
   specs = updateSchemaIdsForExistingSpecs(existing_specs, specs);
