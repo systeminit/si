@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -euo pipefail
+set -uo pipefail
 
 HEALTH_ENDPOINT="${HEALTH_ENDPOINT:-http://127.0.0.1:8080/health}"
 SLEEP_INTERVAL="${SLEEP_INTERVAL:-30}"
@@ -22,15 +22,20 @@ check_health_and_report() {
     local should_report=false
     local report_status=""
     
+    echo "$(date -Iseconds): Starting health check function..."
+    
     # Perform health check
-    if curl -f -s --max-time 10 "$HEALTH_ENDPOINT" > /dev/null; then
+    echo "$(date -Iseconds): Attempting health check to $HEALTH_ENDPOINT"
+    local curl_output
+    if curl_output=$(curl -f -s --max-time 10 "$HEALTH_ENDPOINT" 2>&1); then
         health_check_passed=true
         CONSECUTIVE_FAILURES=0
         echo "$(date -Iseconds): Health check PASSED for $service_name (instance: $instance_id)"
     else
         health_check_passed=false
-        ((CONSECUTIVE_FAILURES++))
+        CONSECUTIVE_FAILURES=$((CONSECUTIVE_FAILURES + 1))
         echo "$(date -Iseconds): Health check FAILED for $service_name (instance: $instance_id) - Failure count: $CONSECUTIVE_FAILURES"
+        echo "$(date -Iseconds): Curl error: $curl_output"
     fi
     
     # Check if we're still in startup grace period
@@ -125,13 +130,17 @@ main() {
     echo "$(date -Iseconds): Unhealthy threshold: $UNHEALTHY_THRESHOLD consecutive failures"
     
     # Send "started" metric on service startup
-    aws cloudwatch put-metric-data \
+    echo "$(date -Iseconds): Sending startup metric to CloudWatch..."
+    if aws cloudwatch put-metric-data \
         --region "$AWS_REGION" \
         --namespace "SI/InstanceLifecycle" \
-        --metric-data "MetricName=HealthStatus,Value=2,Unit=None,Dimensions=[{Name=Service,Value=$service_name},{Name=Instance,Value=$instance_id}]"
+        --metric-data "MetricName=HealthStatus,Value=2,Unit=None,Dimensions=[{Name=Service,Value=$service_name},{Name=Instance,Value=$instance_id}]" 2>&1; then
+        echo "$(date -Iseconds): CloudWatch startup metric sent successfully (Value: 2 - started)"
+    else
+        echo "$(date -Iseconds): Failed to send CloudWatch startup metric - continuing anyway"
+    fi
     
-    echo "$(date -Iseconds): CloudWatch startup metric sent (Value: 2 - started)"
-    
+    echo "$(date -Iseconds): Starting health check loop..."
     while true; do
         check_health_and_report "$service_name" "$instance_id"
         sleep "$SLEEP_INTERVAL"
