@@ -51,10 +51,7 @@ export { executeChanges } from "./execute.ts";
 export { convergeTemplate } from "./converge.ts";
 
 // Import for internal use
-import {
-  TemplateContext,
-  type TemplateContextOptions,
-} from "./context.ts";
+import { TemplateContext, type TemplateContextOptions } from "./context.ts";
 import { loadInputData, schemaHasRequiredFields } from "./input.ts";
 import { loadBaselineFromFile, setBaseline } from "./baseline.ts";
 import { cacheBaseline } from "./cache.ts";
@@ -63,6 +60,11 @@ import { updateNamesOfWorkingSet } from "./names.ts";
 import { applyTransform } from "./transform.ts";
 import { convergeTemplate } from "./converge.ts";
 import { z } from "zod";
+import {
+  cleanupDownloadedTemplate,
+  downloadRemoteTemplate,
+  isRemoteUrl,
+} from "./download.ts";
 
 /**
  * Zod schema for validating subscription input data.
@@ -166,12 +168,27 @@ export async function callRunTemplate(
 ) {
   const ctx = Context.instance();
 
-  const specifier = /^https?:\/\//.test(template)
-    ? template
-    : toFileUrl(isAbsolute(template) ? template : resolve(template)).href;
+  let downloadedFilePath: string | undefined;
+  let localTemplatePath: string;
+
+  // Check if this is a remote URL that needs to be downloaded
+  if (isRemoteUrl(template)) {
+    downloadedFilePath = await downloadRemoteTemplate(template);
+    localTemplatePath = downloadedFilePath;
+  } else {
+    localTemplatePath = template;
+  }
+
+  const specifier = isRemoteUrl(template)
+    ? toFileUrl(localTemplatePath).href
+    : toFileUrl(
+      isAbsolute(localTemplatePath)
+        ? localTemplatePath
+        : resolve(localTemplatePath),
+    ).href;
+
   ctx.logger.info(`Loading Template: {specifier}`, { specifier });
 
-  // Check if this is a TypeScript file that needs transpilation
   const isTypeScript = specifier.endsWith(".ts") || specifier.endsWith(".tsx");
 
   let importSpecifier = specifier;
@@ -285,6 +302,11 @@ export async function callRunTemplate(
           },
         );
       }
+    }
+
+    // Clean up downloaded template file if it was created
+    if (downloadedFilePath) {
+      await cleanupDownloadedTemplate(downloadedFilePath);
     }
   }
 }

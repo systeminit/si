@@ -825,7 +825,7 @@ function buildTemplateCommand() {
     .command(
       "run",
       createSubCommand()
-        .description("Run a SI template file")
+        .description("Run a SI template file (local path or remote URL)")
         .arguments("<template:string>")
         .env("SI_API_TOKEN=<value:string>", "A System Initiative API Token", {
           required: true,
