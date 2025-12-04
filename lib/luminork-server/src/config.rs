@@ -41,6 +41,7 @@ use si_layer_cache::{
     error::LayerDbError,
 };
 use si_posthog::PosthogConfig;
+use si_service_endpoints::ServiceEndpointsConfig;
 pub use si_settings::{
     StandardConfig,
     StandardConfigFile,
@@ -84,7 +85,7 @@ impl ConfigError {
 
 type Result<T> = std::result::Result<T, ConfigError>;
 
-#[derive(Debug, Builder)]
+#[derive(Debug, Builder, Serialize)]
 pub struct Config {
     #[builder(default = "random_instance_id()")]
     instance_id: String,
@@ -141,6 +142,9 @@ pub struct Config {
 
     #[builder(default)]
     dev_mode: bool,
+
+    #[builder(default = "default_service_endpoints_config()")]
+    service_endpoints: ServiceEndpointsConfig,
 }
 
 impl StandardConfig for Config {
@@ -257,6 +261,12 @@ impl Config {
     pub fn dev_mode(&self) -> bool {
         self.dev_mode
     }
+
+    /// Gets a reference to the config's service endpoints configuration
+    #[must_use]
+    pub fn service_endpoints(&self) -> &ServiceEndpointsConfig {
+        &self.service_endpoints
+    }
 }
 
 impl ConfigBuilder {
@@ -309,6 +319,8 @@ pub struct ConfigFile {
     spicedb: SpiceDbConfig,
     #[serde(default)]
     audit: AuditDatabaseConfig,
+    #[serde(default = "default_service_endpoints_config")]
+    service_endpoints: ServiceEndpointsConfig,
 }
 
 impl Default for ConfigFile {
@@ -333,6 +345,7 @@ impl Default for ConfigFile {
             spicedb: Default::default(),
             audit: Default::default(),
             dev_mode: false,
+            service_endpoints: default_service_endpoints_config(),
         }
     }
 }
@@ -368,12 +381,13 @@ impl TryFrom<ConfigFile> for Config {
             spicedb: value.spicedb,
             audit: value.audit,
             dev_mode: value.dev_mode,
+            service_endpoints: value.service_endpoints,
         })
     }
 }
 
 #[remain::sorted]
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 pub enum IncomingStream {
     TcpSocket(SocketAddr),
     UnixDomainSocket(PathBuf),
@@ -427,6 +441,10 @@ fn default_auth_api_url() -> String {
 
 fn default_layer_db_config() -> LayerDbConfig {
     LayerDbConfig::default()
+}
+
+fn default_service_endpoints_config() -> ServiceEndpointsConfig {
+    ServiceEndpointsConfig::new(0)
 }
 
 #[allow(clippy::disallowed_methods)] // Used to determine if running in development
