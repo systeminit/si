@@ -3,11 +3,13 @@ import { OnlyProperties } from "../../spec/props.ts";
 import type { CfProperty } from "../types.ts";
 import { CfHandler, CfHandlerKind } from "../types.ts";
 import {
+  type EntraOpenApiDocument,
   type EntraOpenApiOperation,
   type EntraOpenApiRequestBody,
   type EntraOpenApiResponse,
   type EntraSchema,
   type JsonSchemaObject,
+  type JsonSchemaObjectOnly,
   type NormalizedEntraSchema,
   type OperationData,
   type PropertySet,
@@ -16,7 +18,8 @@ import {
 export function mergeResourceOperations(
   resourceName: string,
   operations: OperationData[],
-  description?: string,
+  description: string | undefined,
+  allSchemas: EntraOpenApiDocument,
 ): {
   schema: EntraSchema;
   onlyProperties: OnlyProperties;
@@ -111,20 +114,38 @@ export function mergeResourceOperations(
     Object.entries(domainProperties).filter(([_, prop]) => !prop.readOnly),
   );
 
+  // Extract schemas for discriminator expansion
+  const schemas = allSchemas.components?.schemas as
+    | Record<string, JsonSchemaObject>
+    | undefined;
+  const normalizer = new EntraNormalizer(schemas);
+
   // Normalize domain properties (POST + PATCH = writable)
   const normalizedDomainProperties = Object.fromEntries(
-    Object.entries(writableDomainProperties).map(([key, prop]) => [
-      key,
-      normalizeEntraProperty(prop),
-    ]),
+    Object.entries(writableDomainProperties)
+      .map(([key, prop]) => {
+        const normalized = normalizer.normalize(prop);
+        // Skip properties that are part of cycles
+        if (!normalized) return null;
+        return [key, normalized];
+      })
+      .filter((entry): entry is [string, NormalizedEntraSchema] =>
+        entry !== null
+      ),
   );
 
   // Normalize resource_value properties (GET response = readable)
   const normalizedResourceValueProperties = Object.fromEntries(
-    Object.entries(resourceValueProperties).map(([key, prop]) => [
-      key,
-      normalizeEntraProperty(prop),
-    ]),
+    Object.entries(resourceValueProperties)
+      .map(([key, prop]) => {
+        const normalized = normalizer.normalize(prop);
+        // Skip properties that are part of cycles
+        if (!normalized) return null;
+        return [key, normalized];
+      })
+      .filter((entry): entry is [string, NormalizedEntraSchema] =>
+        entry !== null
+      ),
   );
 
   // Use Azure-style naming: Microsoft.Graph/users
@@ -268,182 +289,487 @@ function flattenSchemaProperties(
   return { properties, required: uniqueRequired };
 }
 
-export function normalizeEntraProperty(
-  prop: JsonSchemaObject,
-  path = "",
-  visited = new Set<JsonSchemaObject>(),
-): JsonSchemaObject {
-  if (visited.has(prop)) {
-    throw new Error(
-      `Cycle detected in schema at path: ${path || "(root)"}`,
-    );
+// Helper: Expand discriminators by finding matching subtypes and adding them as properties
+function expandEntraDiscriminators(
+  discriminator: JsonSchemaObjectOnly["discriminator"],
+  properties: JsonSchemaObjectOnly["properties"],
+  schemas: Record<string, JsonSchemaObject>,
+): {
+  expandedProperties: Record<string, JsonSchemaObject>;
+  discriminators: Record<string, Record<string, string>>;
+} | undefined {
+  if (!discriminator || typeof discriminator !== "object") return undefined;
+  if (!properties) return undefined;
+
+  const discriminatorProp = discriminator.propertyName;
+  const mapping = discriminator.mapping;
+
+  if (!discriminatorProp || !mapping) return undefined;
+
+  // Skip @odata.type discriminators - they have 1055+ subtypes (all entity types)
+  // and are not useful for property type narrowing
+  if (discriminatorProp === "@odata.type") {
+    return undefined;
   }
 
-  // Validate input
-  if (!prop || typeof prop !== "object") {
-    throw new Error(
-      `Invalid schema at path ${
-        path || "(root)"
-      }: expected object, got ${typeof prop}`,
+  const expandedProperties: Record<string, JsonSchemaObject> = {
+    ...properties,
+  };
+
+  // Replace the discriminator field with an object containing the subtypes
+  const discriminatorObject: JsonSchemaObject = {
+    type: "object",
+    properties: {},
+  };
+
+  const discriminatorMap: Record<string, string> = {};
+
+  // Format: "#microsoft.graph.application": "#/components/schemas/microsoft.graph.application"
+  for (const [discriminatorValue, schemaRef] of Object.entries(mapping)) {
+    // Extract schema name from ref like "#/components/schemas/microsoft.graph.application"
+    const schemaName = String(schemaRef).replace(
+      "#/components/schemas/",
+      "",
     );
+
+    const subtypeSchema = schemas[schemaName];
+    if (!subtypeSchema) continue;
+
+    // Handle boolean schemas
+    if (typeof subtypeSchema === "boolean") continue;
+
+    // Flatten allOf to get all properties from parent and child schemas
+    const flattened = flattenSchemaProperties(
+      subtypeSchema as NormalizedEntraSchema,
+    );
+
+    // Store the subtype's properties (flattened from allOf)
+    const subtypeProps: JsonSchemaObject = {
+      type: "object",
+      description: subtypeSchema.description,
+      properties: flattened.properties,
+      required: flattened.required,
+    };
+
+    // Use schema name as the key (cleaner than the full discriminator value)
+    discriminatorObject.properties![schemaName] = subtypeProps;
+    discriminatorMap[schemaName] = discriminatorValue;
   }
 
-  // Track this object to detect cycles
-  const newVisited = new Set(visited);
-  newVisited.add(prop);
+  expandedProperties[discriminatorProp] = discriminatorObject;
 
-  if (prop.type) {
-    // normalize nested properties
-    const normalized = { ...prop };
+  const discriminators = {
+    [discriminatorProp]: discriminatorMap,
+  };
 
-    // Remove or normalize unsupported formats
-    const format = normalized.format;
-    if (format && typeof format === "string") {
-      // Remove unsupported formats
-      // Note: "date-time" is kept as it's widely used in Microsoft Graph (792 occurrences)
+  return {
+    expandedProperties,
+    discriminators,
+  };
+}
+
+// Helper: Merge two schemas by intersecting their properties
+function intersectEntraSchema(
+  prop: NormalizedEntraSchema,
+  intersected: NormalizedEntraSchema,
+): NormalizedEntraSchema {
+  if (!prop) return intersected;
+  if (!intersected) return prop;
+
+  // Merge properties from both schemas
+  for (const key of Object.keys(prop) as (keyof NormalizedEntraSchema)[]) {
+    if (prop[key] === undefined) continue;
+
+    switch (key) {
+      // Merge nested properties recursively
+      case "properties": {
+        if (!prop.properties) break;
+        intersected.properties ??= {};
+        for (const [propName, childProp] of Object.entries(prop.properties)) {
+          intersected.properties[propName] = intersectEntraSchema(
+            childProp as NormalizedEntraSchema,
+            intersected.properties[propName] as NormalizedEntraSchema,
+          );
+        }
+        break;
+      }
+
+      // Merge array items and additionalProperties
+      case "items":
+      case "additionalProperties": {
+        intersected[key] = intersectEntraSchema(
+          prop[key] as NormalizedEntraSchema,
+          intersected[key] as NormalizedEntraSchema,
+        );
+        break;
+      }
+
+      // Merge arrays without duplicates
+      case "enum":
+      case "required": {
+        if (prop[key]) {
+          intersected[key] = (intersected[key] ?? []).concat(
+            prop[key].filter((v) => !intersected[key]?.includes(v)),
+          );
+        }
+        break;
+      }
+
+      // Override with new values
+      case "title":
+      case "description":
+        intersected[key] = prop[key];
+        break;
+
+      // Skip these - already handled
+      case "allOf":
+      case "anyOf":
+      case "oneOf":
+        break;
+
+      // Prefer false (writable) over true (readonly)
+      case "readOnly": {
+        if (intersected.readOnly !== undefined) {
+          intersected.readOnly = intersected.readOnly && prop.readOnly;
+        } else {
+          intersected.readOnly = prop.readOnly;
+        }
+        break;
+      }
+
+      // For other fields, just copy if not already set
+      default: {
+        if (intersected[key] === undefined) {
+          intersected[key] = prop[key];
+        }
+        break;
+      }
+    }
+  }
+
+  return intersected;
+}
+
+// Helper: Union two schemas (used for anyOf/oneOf)
+const MORE_SPECIFIC_THAN_STRING = ["number", "integer", "boolean"];
+
+function unionEntraSchema(
+  prop: NormalizedEntraSchema | undefined,
+  unioned: NormalizedEntraSchema | undefined,
+): NormalizedEntraSchema | undefined {
+  if (!prop) return unioned;
+  if (!unioned) return { ...prop };
+
+  // Prefer more specific types over string
+  if (
+    unioned.type === "string" &&
+    MORE_SPECIFIC_THAN_STRING.includes(prop.type as string)
+  ) {
+    unioned.type = prop.type;
+  } else if (
+    prop.type === "string" &&
+    MORE_SPECIFIC_THAN_STRING.includes(unioned.type as string)
+  ) {
+    prop.type = unioned.type;
+  }
+
+  return intersectEntraSchema(prop, unioned);
+}
+
+// Maximum depth of full resource property expansion (below this, resources are assumed
+// to be references and will just have "id")
+const MAX_EXPANDED_RESOURCE_DEPTH = 1;
+const MAX_NORMALIZATION_DEPTH = 10;
+
+export class EntraNormalizer {
+  constructor(schemas?: Record<string, JsonSchemaObject>) {
+    this.schemas = schemas;
+  }
+
+  normalizing: JsonSchemaObject[] = [];
+  schemas?: Record<string, JsonSchemaObject>;
+  discriminatorCollector: Record<string, Record<string, string>> = {};
+
+  /// Normalize a general JSONSchema from Entra into simpler format without nesting
+  normalize(prop: JsonSchemaObject): NormalizedEntraSchema;
+  normalize(
+    prop: JsonSchemaObject | undefined,
+  ): NormalizedEntraSchema | undefined;
+  normalize(
+    prop: JsonSchemaObject | undefined,
+  ): NormalizedEntraSchema | undefined {
+    // This is only meant to be called at the top level, non-recursively
+    if (prop === undefined) return undefined;
+    if (this.normalizing.length !== 0) {
+      throw new Error("normalize() should only be called at top level");
+    }
+    const result = this.normalizeOrCycle(prop, "", 0);
+    if (!result) return undefined;
+
+    // Stub deeply nested resources
+    this.stubResourceReferences(result, 0);
+
+    return result;
+  }
+
+  private normalizeOrCycle(
+    prop: JsonSchemaObject,
+    path = "",
+    depth = 0,
+  ): NormalizedEntraSchema | undefined {
+    // Check for excessive depth
+    if (depth > MAX_NORMALIZATION_DEPTH) {
+      return undefined;
+    }
+
+    // Check for cycles BEFORE any object copying
+    if (this.normalizing.includes(prop)) {
+      return undefined; // Cycle detected
+    }
+
+    this.normalizing.push(prop); // Track ORIGINAL object
+
+    try {
+      // Flatten the schema, merging allOf props and such, before we normalize type/format
+      const normalized = this.flatten(prop, {}, path, depth);
+      if (normalized === undefined) return undefined;
+
+      // Infer type from properties / items if missing
+      normalized.type ??= this.inferType(normalized);
+
+      // Normalize formats to SI-supported ones
+      if (normalized.format) {
+        const format = normalized.format as string;
+        if (
+          [
+            "duration",
+            "uuid",
+            "email",
+            "date",
+            "time",
+            "date-time-rfc1123",
+            "byte",
+            "binary",
+            "password",
+            "uri",
+          ].includes(format)
+        ) {
+          delete normalized.format;
+        } // Normalize integer formats to int64
+        else if (
+          normalized.type === "integer" &&
+          (format === "int16" || format === "int32" || format === "int64" ||
+            format === "uint8")
+        ) {
+          normalized.format = "int64";
+        } // Normalize number formats to double
+        else if (
+          normalized.type === "number" &&
+          (format === "float" || format === "double" || format === "decimal" ||
+            format === "int16" || format === "int32" || format === "uint8")
+        ) {
+          normalized.format = "double";
+        }
+      }
+
+      // At the root level, attach collected discriminators
       if (
-        [
-          "duration",
-          "uuid",
-          "email",
-          "date",
-          "date-time-rfc1123",
-          "byte",
-          "binary",
-          "password",
-          "uri",
-        ].includes(format)
+        this.discriminatorCollector &&
+        Object.keys(this.discriminatorCollector).length > 0
       ) {
-        delete normalized.format;
-      } // Normalize integer formats to int64
-      else if (
-        normalized.type === "integer" &&
-        (format === "int32" || format === "int64")
-      ) {
-        normalized.format = "int64";
-      } // Normalize number formats to double
-      else if (
-        normalized.type === "number" &&
-        (format === "float" || format === "double" || format === "decimal" ||
-          format === "int32")
-      ) {
-        normalized.format = "double";
+        normalized.discriminators = this.discriminatorCollector;
       }
-    }
 
-    // Recursively normalize nested properties
-    if (normalized.properties) {
-      try {
-        normalized.properties = Object.fromEntries(
-          Object.entries(normalized.properties).map(
-            ([key, value]) => {
-              if (!value || typeof value !== "object") {
-                throw new Error(
-                  `Invalid property "${key}" at path ${path}: expected object`,
-                );
-              }
-              return [
-                key,
-                normalizeEntraProperty(
-                  value,
-                  path ? `${path}.${key}` : key,
-                  newVisited,
-                ),
-              ];
-            },
-          ),
-        );
-      } catch (error) {
-        throw new Error(
-          `Error normalizing properties at path ${path || "(root)"}: ${
-            error instanceof Error ? error.message : String(error)
-          }`,
-        );
-      }
+      return normalized;
+    } finally {
+      this.normalizing.pop(); // Always clean up
     }
-
-    // Recursively normalize additionalProperties
-    if (
-      normalized.additionalProperties &&
-      typeof normalized.additionalProperties === "object"
-    ) {
-      try {
-        normalized.additionalProperties = normalizeEntraProperty(
-          normalized.additionalProperties,
-          path ? `${path}[additionalProperties]` : "[additionalProperties]",
-          newVisited,
-        );
-      } catch (error) {
-        throw new Error(
-          `Error normalizing additionalProperties at path ${
-            path || "(root)"
-          }: ${error instanceof Error ? error.message : String(error)}`,
-        );
-      }
-    }
-
-    // Recursively normalize array items
-    if (normalized.items) {
-      if (typeof normalized.items !== "object") {
-        throw new Error(
-          `Invalid items definition at path ${
-            path || "(root)"
-          }: expected object`,
-        );
-      }
-      try {
-        normalized.items = normalizeEntraProperty(
-          normalized.items,
-          path ? `${path}[items]` : "[items]",
-          newVisited,
-        );
-      } catch (error) {
-        throw new Error(
-          `Error normalizing items at path ${path || "(root)"}: ${
-            error instanceof Error ? error.message : String(error)
-          }`,
-        );
-      }
-    }
-
-    return normalized;
   }
 
-  // Handle oneOf with primitive types - smoosh them like cfDb does for array types
-  if (prop.oneOf) {
-    if (!Array.isArray(prop.oneOf)) {
+  private inferType(prop: NormalizedEntraSchema): string | undefined {
+    if (prop.type) {
+      // Handle array of types (e.g., ["string", "null"])
+      if (Array.isArray(prop.type)) {
+        // Return the first non-null type, or the first type if all are null
+        const nonNullType = prop.type.find((t) => t !== "null");
+        return (nonNullType || prop.type[0]) as string;
+      }
+      return prop.type as string;
+    }
+    if (prop.properties || prop.additionalProperties) return "object";
+    if (prop.items) return "array";
+    return undefined;
+  }
+
+  private flatten(
+    schemaProp: JsonSchemaObject,
+    flattened: NormalizedEntraSchema = {},
+    path = "",
+    depth = 0,
+  ): NormalizedEntraSchema | undefined {
+    // Handle boolean schemas up front (JSON Schema allows true/"any" and false/"never")
+    if (schemaProp === false) {
       throw new Error(
-        `Invalid oneOf at path ${path || "(root)"}: expected array`,
+        `Boolean schema 'false' (never) not supported at path: ${
+          path || "(root)"
+        }`,
       );
     }
+    // "any" becomes empty schema (which matches anything)
+    if (schemaProp === true) {
+      schemaProp = {};
+    }
 
-    const allPrimitives = prop.oneOf.every((member) => {
-      if (!member || typeof member !== "object") {
-        return false;
+    // Pull off the stuff we're removing and children we're normalizing
+    const {
+      oneOf,
+      anyOf,
+      allOf,
+      properties,
+      items,
+      additionalProperties,
+      discriminator,
+      ...rest
+    } = schemaProp;
+
+    let expandedProperties = properties;
+
+    // Merge oneOf and anyOf by normalizing each alternative and then merging them
+    if (oneOf) {
+      for (const alternative of oneOf) {
+        const child = this.normalizeOrCycle(alternative, path, depth + 1);
+        if (!child) continue; // Skip cycles
+        unionEntraSchema(child, flattened);
       }
-      const type = member.type;
-      return (
-        type === "string" ||
-        type === "number" ||
-        type === "integer" ||
-        type === "boolean"
-      );
-    });
-
-    if (allPrimitives) {
-      // Pick the non-string type (prefer number, integer, boolean over string)
-      const nonStringMember = prop.oneOf.find(
-        (member) => member.type !== "string",
-      );
-      const smooshed = nonStringMember
-        ? { ...prop, type: nonStringMember.type, oneOf: undefined }
-        : { ...prop, type: "string", oneOf: undefined };
-
-      return normalizeEntraProperty(smooshed, path, newVisited);
     }
+    if (anyOf) {
+      for (const alternative of anyOf) {
+        const child = this.normalizeOrCycle(alternative, path, depth + 1);
+        if (!child) continue; // Skip cycles
+        unionEntraSchema(child, flattened);
+      }
+    }
+
+    // Merge allOf types into the flattened type
+    // We don't normalize here, because allOf children can be *partial* properties
+    if (allOf) {
+      for (const alternative of allOf) {
+        this.flatten(alternative, flattened, path, depth);
+      }
+    }
+
+    // Expand discriminators AFTER allOf processing
+    if (this.schemas) {
+      const expansion = expandEntraDiscriminators(
+        discriminator,
+        properties,
+        this.schemas,
+      );
+      if (expansion) {
+        expandedProperties = expansion.expandedProperties;
+
+        // Add discriminators to collector
+        if (this.discriminatorCollector) {
+          for (
+            const [key, subtypeMap] of Object.entries(expansion.discriminators)
+          ) {
+            this.discriminatorCollector[key] = subtypeMap;
+          }
+        }
+      }
+    }
+
+    // Normalize child schemas (properties, items, etc.)
+    const prop: NormalizedEntraSchema = rest as NormalizedEntraSchema;
+    if (expandedProperties) {
+      prop.properties = {};
+      if (Object.keys(expandedProperties).length > 0) {
+        for (
+          const [propName, childProp] of Object.entries(expandedProperties)
+        ) {
+          const child = this.normalizeOrCycle(
+            childProp,
+            path ? `${path}.${propName}` : propName,
+            depth + 1,
+          );
+          if (!child) continue; // If the prop is part of a cycle, don't include it
+          prop.properties[propName] = child;
+        }
+        // If all props were part of cycles, this prop is part of the cycle
+        if (Object.keys(prop.properties).length == 0) return undefined;
+      }
+    }
+
+    if (items) {
+      prop.items = this.normalizeOrCycle(
+        items,
+        path ? `${path}[items]` : "[items]",
+        depth + 1,
+      );
+      if (prop.items === undefined) return undefined;
+    }
+
+    if (additionalProperties) {
+      prop.additionalProperties = this.normalizeOrCycle(
+        additionalProperties,
+        path ? `${path}[additionalProperties]` : "[additionalProperties]",
+        depth + 1,
+      );
+      if (prop.additionalProperties === undefined) return undefined;
+    }
+
+    // Finally, intersect the props together
+    intersectEntraSchema(prop, flattened);
+
+    return flattened;
   }
 
-  return prop;
+  private stubResourceReferences(
+    prop: NormalizedEntraSchema | undefined,
+    resourceDepth: number,
+  ): void {
+    if (!prop) return;
+
+    // Detect Microsoft Graph resources/entities
+    // Graph entities have an 'id' property and typically multiple other properties
+    if (
+      prop.properties &&
+      "id" in prop.properties &&
+      Object.keys(prop.properties).length >= 3
+    ) {
+      resourceDepth += 1;
+
+      // Stub the resource if we're at max depth - keep only the ID!
+      if (resourceDepth > MAX_EXPANDED_RESOURCE_DEPTH) {
+        prop.properties = { id: prop.properties.id };
+        return;
+      }
+    }
+
+    // Recursively check nested properties
+    if (prop.properties) {
+      for (const childProp of Object.values(prop.properties)) {
+        this.stubResourceReferences(
+          childProp as NormalizedEntraSchema,
+          resourceDepth,
+        );
+      }
+    }
+
+    // Arrays/maps don't increment depth counter
+    if (prop.items) {
+      this.stubResourceReferences(
+        prop.items as NormalizedEntraSchema,
+        resourceDepth,
+      );
+    }
+    if (prop.additionalProperties) {
+      this.stubResourceReferences(
+        prop.additionalProperties as NormalizedEntraSchema,
+        resourceDepth,
+      );
+    }
+  }
 }
 
 export function mergePropertyDefinitions(
@@ -497,10 +823,7 @@ function isListOperation(operation: EntraOpenApiOperation): boolean {
 
   if (properties?.value) {
     const valueSchema = properties.value;
-    if (
-      typeof valueSchema === "object" &&
-      (valueSchema.type === "array" || valueSchema.items !== undefined)
-    ) {
+    if (valueSchema.type === "array" || valueSchema.items !== undefined) {
       return true;
     }
   }

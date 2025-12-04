@@ -22,10 +22,9 @@ import {
 import {
   EntraOpenApiDocument,
   EntraSchema,
-  type JsonSchemaObject,
   type OperationData,
 } from "./schema.ts";
-import { mergeResourceOperations, normalizeEntraProperty } from "./spec.ts";
+import { mergeResourceOperations } from "./spec.ts";
 import { generateEntraSpecs } from "./pipeline.ts";
 import { JSONSchema } from "../draft_07.ts";
 import SwaggerParser from "@apidevtools/swagger-parser";
@@ -70,19 +69,27 @@ function entraNormalizeProperty(
   prop: JSONSchema,
   _context: PropertyNormalizationContext,
 ): CfProperty {
-  let propToNormalize = prop;
-  if (
-    typeof prop === "object" &&
-    "properties" in prop &&
-    prop.properties &&
-    !prop.type
-  ) {
-    propToNormalize = { ...prop, type: "object" } as CfProperty;
+  if (typeof prop !== "object" || prop === null) {
+    return prop as unknown as CfProperty;
   }
 
-  return normalizeEntraProperty(
-    propToNormalize as JsonSchemaObject,
-  ) as CfProperty;
+  // Microsoft Graph has some properties with no type constraint (they accept any JSON)
+  // These show up with description/title but no type field
+  // Treat them as "object" since they're unstructured JSON
+  if (!prop.type) {
+    // If it has properties, it's definitely an object
+    if ("properties" in prop && prop.properties) {
+      return { ...prop, type: "object" } as CfProperty;
+    }
+
+    // If it has a title or description but no type, it's likely unstructured JSON
+    // Examples: contentInfo, content, layout, etc.
+    if ("title" in prop || ("description" in prop && prop.description)) {
+      return { ...prop, type: "object" } as CfProperty;
+    }
+  }
+
+  return prop as CfProperty;
 }
 
 export function entraParseRawSchema(
@@ -141,6 +148,7 @@ export function entraParseRawSchema(
       noun,
       operations,
       description,
+      allSchemas,
     );
     if (result) {
       const spec = makeModule(

@@ -6,19 +6,33 @@ import SwaggerParser from "@apidevtools/swagger-parser";
 
 export type JsonSchema = JSONSchema;
 
-// After dereferencing, all schemas are objects (no boolean/null)
+// Schema object type (without boolean) - used for normalized schemas
+export type JsonSchemaObjectOnly =
+  & Omit<
+    Exclude<JSONSchema, boolean | null>,
+    | "properties"
+    | "additionalProperties"
+    | "items"
+    | "allOf"
+    | "oneOf"
+    | "anyOf"
+  >
+  & {
+    properties?: Record<string, JsonSchemaObject>;
+    additionalProperties?: JsonSchemaObject;
+    items?: JsonSchemaObject;
+    allOf?: readonly JsonSchemaObject[];
+    oneOf?: readonly JsonSchemaObject[];
+    anyOf?: readonly JsonSchemaObject[];
+    discriminator?: {
+      propertyName: string;
+      mapping?: Record<string, string>;
+    };
+  };
+
+// After dereferencing, schemas can be booleans (true="any", false="never") or objects
 // Make it recursive so nested properties are also JsonSchemaObject
-export type JsonSchemaObject = Omit<
-  Exclude<JSONSchema, boolean | null>,
-  "properties" | "additionalProperties" | "items" | "allOf" | "oneOf" | "anyOf"
-> & {
-  properties?: Record<string, JsonSchemaObject>;
-  additionalProperties?: JsonSchemaObject;
-  items?: JsonSchemaObject;
-  allOf?: readonly JsonSchemaObject[];
-  oneOf?: readonly JsonSchemaObject[];
-  anyOf?: readonly JsonSchemaObject[];
-};
+export type JsonSchemaObject = boolean | JsonSchemaObjectOnly;
 
 export interface EntraSchema extends SuperSchema {
   typeName: string;
@@ -26,6 +40,7 @@ export interface EntraSchema extends SuperSchema {
   requiredProperties: Set<string>;
   handlers: Record<string, { permissions: string[]; timeoutInMinutes: number }>;
   endpoint: string;
+  discriminators?: Record<string, Record<string, string>>;
 }
 
 export type EntraOpenApiDocument = OpenAPIV3_1.Document<
@@ -77,15 +92,15 @@ export interface OperationData {
 export type PropertySet = Set<string>;
 
 export type NormalizedEntraSchema = Extend<
-  JsonSchemaObject,
+  JsonSchemaObjectOnly,
   {
     allOf?: readonly NormalizedEntraSchema[];
     oneOf?: readonly NormalizedEntraSchema[];
     anyOf?: readonly NormalizedEntraSchema[];
     items?: NormalizedEntraSchema;
     properties?: Record<string, NormalizedEntraSchema>;
-    patternProperties?: Record<string, NormalizedEntraSchema>;
     additionalProperties?: NormalizedEntraSchema;
+    discriminators?: Record<string, Record<string, string>>;
   }
 >;
 
