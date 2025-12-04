@@ -87,11 +87,120 @@ export function mergeResourceOperations(
 
   const resourceValueProperties = { ...getProps.properties };
 
+  // Extract identifier field from the endpoint path
+  let identifierField = "id"; // Default
+  const endpointWithId = operations.find(op =>
+    op.endpointHasId && (
+      op.openApiDescription.get ||
+      op.openApiDescription.put ||
+      op.openApiDescription.patch ||
+      op.openApiDescription.delete
+    )
+  );
+
+  if (endpointWithId) {
+    // Extract parameter name from path like /v2/domains/{domain_name}
+    const pathMatch = endpointWithId.endpoint.match(/\{([^}]+)\}$/);
+    if (pathMatch) {
+      const paramName = pathMatch[1];
+
+      // First, check for endpoint-specific mappings to handle conflicts
+      // where the same parameter name means different things in different resources
+      const endpointPath = endpointWithId.endpoint;
+      const endpointSpecificMappings: Record<string, string> = {
+        '/v2/apps/{id}': 'id', // Apps uses 'id' field
+        // VPC NAT Gateways also uses 'id' field - removed incorrect 'name' mapping
+      };
+
+      if (endpointSpecificMappings[endpointPath]) {
+        identifierField = endpointSpecificMappings[endpointPath];
+      } else {
+        // Fall back to parameter name mapping
+        // Map URL parameter names to actual field names in the response
+        // This mapping is derived from comprehensive analysis of POST responses in the OpenAPI spec
+        const paramToFieldMap: Record<string, string> = {
+        // Standard ID parameters
+        'action_id': 'id',
+        'alert_id': 'id',
+        'autoscale_pool_id': 'id',
+        'byoip_prefix_uuid': 'id',
+        'cdn_id': 'id',
+        'certificate_id': 'id',
+        'check_id': 'id',
+        'cluster_id': 'id',
+        'database_cluster_uuid': 'id',
+        'destination_uuid': 'id',
+        'domain_record_id': 'id',
+        'droplet_id': 'id',
+        'firewall_id': 'id',
+        'image_id': 'id',
+        'kubernetes_cluster_id': 'id',
+        'lb_id': 'id',
+        'load_balancer_id': 'id',
+        'logsink_id': 'id',
+        'nfs_id': 'id',
+        'node_pool_id': 'id',
+        'pa_id': 'id',
+        'project_id': 'id',
+        'sink_uuid': 'id',
+        'ssh_key_identifier': 'id',
+        'volume_id': 'id',
+        'vpc_id': 'id',
+        'vpc_peering_id': 'id',
+
+        // Name-based identifiers
+        'access_key': 'access_key', // Spaces Keys - the URL parameter maps to access_key field
+        'domain_name': 'name',
+        'pool_name': 'name',
+        'registry_name': 'name', // Container Registry - uses 'name' field, not 'id'
+        'tag_id': 'name',
+        'topic_name': 'name',
+        'trigger_name': 'name',
+        'username': 'username',
+
+        // UUID-based identifiers
+        'alert_uuid': 'uuid', // Monitoring Alert Policies
+        'namespace_id': 'namespace', // Functions - uses 'namespace' field (fn-xxx format), not 'uuid'
+        'resource_uuid': 'uuid', // Add-Ons
+        'uuid': 'uuid', // GradientAI Platform
+        'workspace_uuid': 'uuid',
+
+        // IP-based identifiers
+        'floating_ip': 'ip', // Floating IPs use 'ip' field
+        'reserved_ip': 'ip', // Reserved IPs use 'ip' field
+        'reserved_ipv6': 'ip', // Reserved IPv6 use 'ip' field
+        };
+
+        identifierField = paramToFieldMap[paramName] || paramName.replace(/_/g, '');
+      }
+    }
+  }
+
+  // Determine update method (PUT or PATCH)
+  // PATCH takes precedence if both exist (per buildHandlersFromOperations logic)
+  let updateMethod: "PUT" | "PATCH" | undefined;
+  if (patchOperation) {
+    updateMethod = "PATCH";
+  } else if (putOperation) {
+    updateMethod = "PUT";
+  }
+
+  // Extract required query parameters from GET operation
+  // Some resources (like NFS) require query parameters for GET/PUT/PATCH/DELETE
+  const requiredQueryParams: string[] = [];
+  if (getOperation?.parameters) {
+    for (const param of getOperation.parameters) {
+      if (param.in === "query" && param.required) {
+        requiredQueryParams.push(param.name);
+      }
+    }
+  }
+
   const onlyProperties: OnlyProperties = {
     createOnly: [],
     readOnly: [],
     writeOnly: [],
-    primaryIdentifier: ["id"], // TODO This is false for some DO assets
+    primaryIdentifier: [identifierField],
   };
 
   // createOnly: only in POST, not in PUT/PATCH
@@ -100,6 +209,14 @@ export function mergeResourceOperations(
       onlyProperties.createOnly.push(prop);
     }
   });
+
+  // Special case: Spaces Keys can only update the name, not grants
+  // The API docs explicitly state: "You can only update the name of the key"
+  // but the OpenAPI spec incorrectly includes grants in PATCH body
+  if (endpoint === "/v2/spaces/keys" && updateProperties.has("grants")) {
+    updateProperties.delete("grants");
+    onlyProperties.createOnly.push("grants");
+  }
 
   // readOnly: in GET but not in POST or PUT/PATCH
   getProperties.forEach((prop) => {
@@ -147,6 +264,9 @@ export function mergeResourceOperations(
     handlers,
     endpoint,
     docTag,
+    identifierField,
+    updateMethod,
+    requiredQueryParams: requiredQueryParams.length > 0 ? requiredQueryParams : undefined,
   };
 
   return {

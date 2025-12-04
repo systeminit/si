@@ -27,6 +27,9 @@ export interface DigitalOceanSchema extends SuperSchema {
   handlers: Record<string, { permissions: string[]; timeoutInMinutes: number }>;
   endpoint: string;
   docTag?: string;
+  identifierField?: string; // The field name to use as resource identifier (e.g., "id", "name", "username")
+  updateMethod?: "PUT" | "PATCH"; // The HTTP method to use for updates (defaults to PUT)
+  requiredQueryParams?: string[]; // Query parameters required for GET/PUT/PATCH/DELETE operations (e.g., ["region"] for NFS)
 }
 
 export type DigitalOceanOpenApiDocument = OpenAPIV3_1.Document<
