@@ -2,7 +2,6 @@ import { Command } from "@cliffy/command";
 import { start_stdio } from "./stdio_transport.ts";
 import { createServer } from "./server.ts";
 import { analytics } from "./analytics.ts";
-import { setAiAgentUserFlag } from "./user_state.ts";
 
 export async function run() {
   const command = new Command()

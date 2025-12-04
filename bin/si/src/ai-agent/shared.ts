@@ -463,6 +463,9 @@ export async function createCodexConfig(
     enabledSiTools, // Explicitly allow these SI tools
   );
 
+  // Write the TOML configuration to the config file
+  await Deno.writeTextFile(configPath, siMcpConfig);
+
   // Create project-level .env file for workspace-specific token
   if (targetDir) {
     try {

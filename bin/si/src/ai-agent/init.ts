@@ -120,7 +120,7 @@ export async function callAiAgentInit(
 
   // Create tool-specific configurations
   switch (tool) {
-    case "claude":
+    case "claude": {
       // Create MCP configuration for Claude
       logger.info("📄 Creating MCP configuration file...");
       const mcpPath = await createMcpConfig(apiToken, targetDir);
@@ -134,8 +134,9 @@ export async function callAiAgentInit(
       const claudeMdPath = await createClaudeMd(targetDir);
       logger.info(`✅ Created CLAUDE.md: ${claudeMdPath}\n`);
       break;
+    }
 
-    case "codex":
+    case "codex": {
       logger.info("📄 Creating OpenAI Codex configuration...");
       const codexConfigPath = await createCodexConfig(apiToken, targetDir);
       logger.info(`✅ Created Codex config: ${codexConfigPath}\n`);
@@ -153,6 +154,7 @@ export async function callAiAgentInit(
       );
       logger.info("   source .codex-env && codex\n");
       break;
+    }
 
     default:
       logger.warn(`Unknown tool: ${tool}. Skipping tool-specific configuration.`);
