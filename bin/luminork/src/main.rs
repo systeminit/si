@@ -42,6 +42,8 @@ async fn async_main() -> Result<()> {
     let main_token = CancellationToken::new();
     let helping_tasks_tracker = TaskTracker::new();
     let helping_tasks_token = CancellationToken::new();
+    let endpoints_tracker = TaskTracker::new();
+    let endpoints_token = CancellationToken::new();
     let telemetry_tracker = TaskTracker::new();
     let telemetry_token = CancellationToken::new();
 
@@ -118,6 +120,8 @@ async fn async_main() -> Result<()> {
             main_token,
             helping_tasks_tracker,
             helping_tasks_token,
+            endpoints_tracker,
+            endpoints_token,
             telemetry_tracker,
             telemetry_token,
             telemetry_shutdown,
@@ -134,10 +138,23 @@ async fn run_server(
     main_token: CancellationToken,
     helping_tasks_tracker: TaskTracker,
     helping_tasks_token: CancellationToken,
+    endpoints_tracker: TaskTracker,
+    endpoints_token: CancellationToken,
     telemetry_tracker: TaskTracker,
     telemetry_token: CancellationToken,
     telemetry_shutdown: TelemetryShutdownGuard,
 ) -> Result<()> {
+    let endpoints_server = if config.service_endpoints().enabled {
+        let endpoints = luminork_server::DefaultServiceEndpoints::from_config("luminork", &config)?;
+        Some(luminork_server::EndpointsServer::new(
+            std::sync::Arc::new(endpoints),
+            config.service_endpoints().clone(),
+            endpoints_token.clone(),
+        ))
+    } else {
+        None
+    };
+
     let server = Server::from_config(
         config,
         main_token.clone(),
@@ -151,9 +168,18 @@ async fn run_server(
         server.run().await
     });
 
+    if let Some(endpoints_server) = endpoints_server {
+        endpoints_tracker.spawn(async move {
+            if let Err(err) = endpoints_server.run().await {
+                error!(error = ?err, "error running luminork endpoints server");
+            }
+        });
+    }
+
     shutdown::graceful()
         .group(main_tracker, main_token)
         .group(helping_tasks_tracker, helping_tasks_token)
+        .group(endpoints_tracker, endpoints_token)
         .group(telemetry_tracker, telemetry_token)
         .telemetry_guard(telemetry_shutdown.into_future())
         .timeout(GRACEFUL_SHUTDOWN_TIMEOUT)

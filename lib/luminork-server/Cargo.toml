@@ -61,6 +61,7 @@ si-jwt-public-key = { path = "../../lib/si-jwt-public-key" }
 si-layer-cache = { path = "../../lib/si-layer-cache" }
 si-pkg = { path = "../../lib/si-pkg" }
 si-posthog = { path = "../../lib/si-posthog-rs" }
+si-service-endpoints = { path = "../../lib/si-service-endpoints" }
 si-settings = { path = "../../lib/si-settings" }
 si-std = { path = "../../lib/si-std" }
 si-tls = { path = "../../lib/si-tls" }
