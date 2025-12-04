@@ -901,13 +901,8 @@ const funcRunKey = "paginatedFuncRuns";
 // We debounce because we frequently get a bunch of FuncRunLogUpdated events in a row, and we
 // don't want to query the server over and over again.
 //
-// TODO we can't set the debounce much lower because the FuncRunLogUpdated WsEvent is emitted
-// *before* the data is committed or rebased or something. In short, if you query
-// for it too quickly, you will not get the updated data. We wait a little bit to
-// give ourselves a better chance.
-//
-// Ultimately we need the WsEvent to fire *after* the data is updated. Then we can make this
-// debounce a little shorter for a snappier UX.
+// NOTE: now the WsEvent fires after the write completes, we lowered the debounce for a snappier experience
+// but still enough so that repeated writes & events dont over-fire the paginated query endpoint
 const invalidatePaginatedFuncRuns = _.debounce(() => {
   const queryKey = [ctx.value.changeSetId, "paginatedFuncRuns"];
   // If the query took longer than 500ms, invalidating would cancel it, and we might never
@@ -917,7 +912,7 @@ const invalidatePaginatedFuncRuns = _.debounce(() => {
     return;
   }
   queryClient.invalidateQueries({ queryKey });
-}, 500);
+}, 250);
 
 onMounted(() => {
   windowResizeHandler();
