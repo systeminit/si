@@ -13,7 +13,6 @@
 
 import type { Context } from "../context.ts";
 import { loadConfig } from "./shared.ts";
-import { join } from "@std/path";
 
 export interface AiAgentStartOptions {
   tool?: string;
