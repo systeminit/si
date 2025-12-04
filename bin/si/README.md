@@ -143,23 +143,13 @@ All commands support these options:
 
 ## Installation
 
-### Remote Installation (Recommended)
-
-Build and install directly from GitHub without cloning the repository:
-
-```bash
-deno compile \
-  --allow-all \
-  --reload \
-  --output=si \
-  --import-map=https://raw.githubusercontent.com/systeminit/si/main/bin/si/deno.json \
-  https://raw.githubusercontent.com/systeminit/si/main/bin/si/main.ts
 ```
+## Linux / macOS
+curl -fsSL https://auth.systeminit.com/install.sh | sh
 
-This downloads the source, compiles it, and creates the `si` executable in the
-current directory.
-
-For a specific version or branch, replace `main` with the desired Git reference.
+## Windows
+irm https://auth.systeminit.com/install.ps1 | iex
+```
 
 ### Local Installation
 
