@@ -1,10 +1,267 @@
 async function main({
   thisComponent,
 }: Input): Promise<Output> {
-  return {
-    status: "ok",
-    message: `Imported `,
-    ops: {
+  const component = thisComponent;
+  const tenantId = requestStorage.getEnv("ENTRA_TENANT_ID") ||
+    requestStorage.getEnv("AZURE_TENANT_ID");
+  const clientId = requestStorage.getEnv("ENTRA_CLIENT_ID") ||
+    requestStorage.getEnv("AZURE_CLIENT_ID");
+  const clientSecret = requestStorage.getEnv("ENTRA_CLIENT_SECRET") ||
+    requestStorage.getEnv("AZURE_CLIENT_SECRET");
+
+  if (!tenantId || !clientId || !clientSecret) {
+    throw new Error("Microsoft credentials not found");
+  }
+
+  const resourceId = _.get(component.properties, ["si", "resourceId"], "");
+  const endpoint = _.get(
+    component.properties,
+    ["domain", "extra", "endpoint"],
+    "",
+  );
+  const resourceType = _.get(
+    component.properties,
+    ["domain", "extra", "EntraResourceType"],
+    "",
+  );
+  const apiVersion = _.get(
+    component.properties,
+    ["domain", "extra", "apiVersion"],
+    "v1.0",
+  );
+  const propUsageMapJson = _.get(
+    component.properties,
+    ["domain", "extra", "PropUsageMap"],
+    "{}",
+  );
+
+  if (!resourceId) {
+    return {
+      status: "error",
+      message: "Resource ID not found in si.resourceId",
+    };
+  }
+
+  if (!endpoint) {
+    return {
+      status: "error",
+      message: "Endpoint not found in domain.extra.endpoint",
+    };
+  }
+
+  if (!resourceType) {
+    return {
+      status: "error",
+      message: "EntraResourceType not found in domain.extra",
+    };
+  }
+
+  // Parse PropUsageMap to get updatable properties
+  let updatableProperties: Set<string>;
+  let createOnlyProperties: Set<string>;
+  let propUsageMap;
+  try {
+    propUsageMap = JSON.parse(propUsageMapJson);
+    updatableProperties = new Set(propUsageMap.updatable || []);
+    createOnlyProperties = new Set(propUsageMap.createOnly || []);
+  } catch (e) {
+    console.warn(
+      `Failed to parse PropUsageMap for ${resourceType}, using empty set:`,
+      e,
+    );
+    updatableProperties = new Set();
+    createOnlyProperties = new Set();
+    propUsageMap = {};
+  }
+
+  console.log(`Importing Entra resource: ${endpoint}/${resourceId}`);
+
+  const token = await getGraphToken(tenantId, clientId, clientSecret);
+  const url =
+    `https://graph.microsoft.com/${apiVersion}/${endpoint}/${resourceId}`;
+
+  const response = await fetch(url, {
+    method: "GET",
+    headers: {
+      "Authorization": `Bearer ${token}`,
+    },
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    return {
+      status: "error",
+      message:
+        `Graph API Error: ${response.status} ${response.statusText} - ${errorText}`,
+    };
+  }
+
+  const resource = await response.json();
+
+  // Transform Graph flat structure to SI nested structure
+  const transformedResource = transformGraphToSI(resource, propUsageMap);
+
+  // Build domain properties by only including writable properties from the resource
+  const resourceDomainProperties: Record<string, any> = {};
+
+  // Copy updatable properties from the resource using full paths
+  for (const path of updatableProperties) {
+    // Strip "/domain/" prefix to get the path within domain
+    if (!path.startsWith("/domain/")) {
+      continue;
+    }
+    const domainPath = path.substring("/domain/".length);
+
+    // Get value from transformedResource using the path
+    const value = _.get(transformedResource, domainPath);
+
+    // Set in resourceDomainProperties if value exists
+    if (value != null) {
+      _.set(resourceDomainProperties, domainPath, value);
+    }
+  }
+
+  const resourcePayload = _.get(
+    component.properties,
+    ["resource", "payload"],
+    "",
+  );
+
+  // Merge properties: start with existing, overlay resource properties
+  const properties = {
+    ...component.properties,
+    domain: {
+      extra: component.properties?.domain?.extra || {
+        EntraResourceType: resourceType,
+        endpoint: endpoint,
+        apiVersion: apiVersion,
+      },
+      ...component.properties?.domain,
+      ...resourceDomainProperties,
     },
   };
+
+  // Only set resource if there's no existing payload
+  let needsRefresh = true;
+  if (!resourcePayload) {
+    properties.resource = transformedResource;
+    needsRefresh = false;
+  }
+
+  const newAttributes: Output["ops"]["create"][string]["attributes"] = {};
+  for (const [skey, svalue] of Object.entries(component.sources || {})) {
+    // Skip createOnly attributes - they can only be set on new components
+    if (createOnlyProperties.has(skey)) {
+      continue;
+    }
+    newAttributes[skey] = {
+      $source: svalue,
+    };
+  }
+
+  const ops = {
+    update: {
+      self: {
+        properties,
+        attributes: newAttributes,
+      },
+    },
+    actions: {
+      self: {
+        remove: ["create"],
+        add: [] as string[],
+      },
+    },
+  };
+
+  if (needsRefresh) {
+    ops.actions.self.add.push("refresh");
+  } else {
+    ops.actions.self.remove.push("refresh");
+  }
+
+  return {
+    status: "ok",
+    message: `Imported ${resourceType}: ${
+      transformedResource.displayName || transformedResource.name || resourceId
+    }`,
+    ops,
+  };
+}
+
+async function getGraphToken(
+  tenantId: string,
+  clientId: string,
+  clientSecret: string,
+): Promise<string> {
+  const tokenUrl =
+    `https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/token`;
+  const body = new URLSearchParams({
+    client_id: clientId,
+    client_secret: clientSecret,
+    scope: "https://graph.microsoft.com/.default",
+    grant_type: "client_credentials",
+  });
+
+  const response = await fetch(tokenUrl, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: body.toString(),
+  });
+
+  if (!response.ok) {
+    throw new Error(
+      `Failed to get Graph API token: ${response.status} ${response.statusText}`,
+    );
+  }
+
+  const data = await response.json();
+  return data.access_token;
+}
+
+function transformGraphToSI(graphResource, propUsageMap) {
+  const transformed = _.cloneDeep(graphResource);
+
+  // Transform discriminators from flat to nested structure
+  for (
+    const [discriminatorProp, subtypeMap] of Object.entries(
+      propUsageMap.discriminators || {},
+    )
+  ) {
+    const discriminatorValue = transformed[discriminatorProp];
+
+    if (!discriminatorValue || typeof discriminatorValue !== "string") {
+      continue;
+    }
+
+    // Reverse lookup: find which subtype has this enum value
+    const subtypeName = Object.entries(subtypeMap).find(
+      ([_, enumValue]) => enumValue === discriminatorValue,
+    )?.[0];
+
+    if (!subtypeName) {
+      continue;
+    }
+
+    // Get the properties that belong to this subtype
+    const subtypeProps =
+      propUsageMap.discriminatorSubtypeProps?.[discriminatorProp]
+        ?.[subtypeName] || [];
+
+    // Create nested structure
+    const subtypeObject = {};
+    for (const propName of subtypeProps) {
+      if (propName in transformed) {
+        subtypeObject[propName] = transformed[propName];
+        delete transformed[propName];
+      }
+    }
+
+    // Replace flat discriminator with nested structure
+    transformed[discriminatorProp] = {
+      [subtypeName]: subtypeObject,
+    };
+  }
+
+  return transformed;
 }
