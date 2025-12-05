@@ -26,10 +26,15 @@ async function getModuleMap(baseUrl: string): Promise<Record<string, string>> {
 
     const moduleMap: Record<string, string> = {};
     for (const module of data.modules) {
+      const schemas = module.metadata.schemas;
+      if (!schemas || schemas.length !== 1) {
+        continue;
+      }
+      const name = schemas[0];
       if (
-        module?.name && module?.schemaId && module.ownerDisplayName === "Clover"
+        name && module?.schemaId
       ) {
-        moduleMap[module.name] = module.schemaId;
+        moduleMap[name] = module.schemaId;
       }
     }
 

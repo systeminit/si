@@ -244,8 +244,6 @@ export function digitalOceanParseRawSchema(
       }
     }
 
-    description = `TEST DIGITALOCEAN ASSET DO NOT DEPLOY\n${description}`
-
     const result = mergeResourceOperations(
       schemaName,
       endpointWithoutId.endpoint,
@@ -304,7 +302,7 @@ const digitalOceanProviderFuncSpecs: ProviderFuncSpecs = {
 
 export const digitalOceanProviderConfig: ProviderConfig = {
   name: "digitalocean",
-  isStable: false,
+  isStable: true,
   functions: digitalOceanProviderFunctions,
   funcSpecs: digitalOceanProviderFuncSpecs,
   loadSchemas: digitalOceanLoadSchemas,
