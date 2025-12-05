@@ -198,7 +198,7 @@ const entraProviderFuncSpecs: ProviderFuncSpecs = {
 
 export const entraProviderConfig: ProviderConfig = {
   name: "entra",
-  isStable: false,
+  isStable: true,
   functions: entraProviderFunctions,
   funcSpecs: entraProviderFuncSpecs,
   loadSchemas: entraLoadSchemas,
