@@ -1,3 +1,7 @@
+# DEPRECTAED
+
+This code now lives in bin/si
+
 # System Initiative MCP Server
 
 A Model Context Protocol (MCP) server that provides Claude Code with direct
@@ -45,7 +49,7 @@ Configure Claude Code to use your local server (without running in a container):
 # From the repository root
 claude mcp add si-mcp-server-dev -- deno run --allow-env --allow-net bin/si-mcp-server/main.ts stdio
 
-# Or from within si-mcp-server directory  
+# Or from within si-mcp-server directory
 claude mcp add si-mcp-server-dev -- deno run --allow-env --allow-net main.ts stdio
 
 # Verify it's working
