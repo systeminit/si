@@ -1869,16 +1869,6 @@ impl FuncRunnerLogsTask {
                 timestamp: item.timestamp,
             });
 
-            WsEvent::func_run_log_updated(
-                &self.ctx,
-                func_run_log.func_run_id(),
-                func_run_log.id(),
-                self.action_id,
-            )
-            .await?
-            .publish_immediately(&self.ctx)
-            .await?;
-
             self.ctx
                 .layer_db()
                 .func_run_log()
@@ -1889,6 +1879,16 @@ impl FuncRunnerLogsTask {
                     self.ctx.events_actor(),
                 )
                 .await?;
+
+            WsEvent::func_run_log_updated(
+                &self.ctx,
+                func_run_log.func_run_id(),
+                func_run_log.id(),
+                self.action_id,
+            )
+            .await?
+            .publish_immediately(&self.ctx)
+            .await?;
         }
 
         // Now that all `OutputStream` messages have been received, we will never
@@ -1909,6 +1909,16 @@ impl FuncRunnerLogsTask {
                 self.ctx.events_actor(),
             )
             .await?;
+
+        WsEvent::func_run_log_updated(
+            &self.ctx,
+            func_run_log.func_run_id(),
+            func_run_log.id(),
+            self.action_id,
+        )
+        .await?
+        .publish_immediately(&self.ctx)
+        .await?;
 
         Ok(())
     }
