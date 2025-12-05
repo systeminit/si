@@ -1,6 +1,6 @@
 import { ExpandedPkgSpec } from "../../spec/pkgs.ts";
 import { PipelineOptions } from "../types.ts";
-import { entraParseRawSchema, entraProviderConfig } from "./provider.ts";
+import { entraParseRawSchema, msgraphProviderConfig } from "./provider.ts";
 import { generateDefaultFuncsFromConfig } from "../generic/index.ts";
 import { getExistingSpecs } from "../../specUpdates.ts";
 import { generateIntrinsicFuncs } from "../generic/generateIntrinsicFuncs.ts";
@@ -20,15 +20,15 @@ export async function generateEntraSpecs(
 
   const existing_specs = await getExistingSpecs(options);
 
-  const schemaPath = path.join(options.providerSchemasPath, "entra.json");
+  const schemaPath = path.join(options.providerSchemasPath, "msgraph.json");
   const openApiSpec = await readEntraOpenApiSpec(schemaPath);
   specs = entraParseRawSchema(openApiSpec);
 
   specs = addDefaultProps(specs);
-  specs = generateDefaultFuncsFromConfig(specs, entraProviderConfig);
+  specs = generateDefaultFuncsFromConfig(specs, msgraphProviderConfig);
   specs = generateIntrinsicFuncs(specs);
   specs = createSuggestionsForPrimaryIdentifiers(specs);
-  specs = applyAssetOverrides(specs, entraProviderConfig);
+  specs = applyAssetOverrides(specs, msgraphProviderConfig);
   specs = reorderProps(specs);
   specs = generateAssetFuncs(specs);
   specs = updateSchemaIdsForExistingSpecs(existing_specs, specs);

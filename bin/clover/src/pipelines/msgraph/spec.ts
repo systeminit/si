@@ -14,6 +14,7 @@ import {
   type OperationData,
   type PropertySet,
 } from "./schema.ts";
+import { getGraphServiceCategory } from "./categories.ts";
 
 export function mergeResourceOperations(
   resourceName: string,
@@ -162,9 +163,11 @@ export function mergeResourceOperations(
       ),
   );
 
-  // Use Azure-style naming: Microsoft.Graph/users
+  // Use Azure-style naming: Microsoft.{Service}/{Resource}
+  // E.g., Microsoft.Identity/users, Microsoft.Teams/teams
+  const serviceCategory = getGraphServiceCategory(resourceName);
   const schema: EntraSchema = {
-    typeName: `Microsoft.Graph/${resourceName}`,
+    typeName: `Microsoft.${serviceCategory}/${resourceName}`,
     description: schemaDescription,
     requiredProperties,
     handlers,

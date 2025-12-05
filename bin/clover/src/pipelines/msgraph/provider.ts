@@ -28,6 +28,7 @@ import { mergeResourceOperations } from "./spec.ts";
 import { generateEntraSpecs } from "./pipeline.ts";
 import { JSONSchema } from "../draft_07.ts";
 import SwaggerParser from "@apidevtools/swagger-parser";
+import { getGraphServiceCategory } from "./categories.ts";
 
 function createDocLink(
   { typeName }: SuperSchema,
@@ -49,9 +50,14 @@ function createDocLink(
   return `${docLink}/${resourceName}`;
 }
 
-function entraCategory(_schema: SuperSchema): string {
-  // Return just the provider name for category (like Azure does)
-  return "Microsoft.Graph";
+function entraCategory(schema: SuperSchema): string {
+  // Extract resource name from typeName (e.g., "Microsoft.Identity/users" -> "users")
+  const resourceName = schema.typeName.split("/")[1] || schema.typeName;
+
+  // Get service category and return with Microsoft prefix
+  // E.g., "users" -> "Identity" -> "Microsoft.Identity"
+  const serviceCategory = getGraphServiceCategory(resourceName);
+  return `Microsoft.${serviceCategory}`;
 }
 
 function entraIsChildRequired(
@@ -155,7 +161,7 @@ export function entraParseRawSchema(
         result.schema,
         htmlToMarkdown(result.schema.description) ?? result.schema.description,
         result.onlyProperties,
-        entraProviderConfig,
+        msgraphProviderConfig,
         result.domainProperties,
         result.resourceValueProperties,
       );
@@ -179,7 +185,7 @@ async function entraFetchSchema() {
   const spec = await SwaggerParser.parse(url);
 
   await Deno.writeTextFile(
-    "./src/provider-schemas/entra.json",
+    "./src/provider-schemas/msgraph.json",
     JSON.stringify(spec, null, 2),
   );
 }
@@ -196,8 +202,8 @@ const entraProviderFuncSpecs: ProviderFuncSpecs = {
   qualification: QUALIFICATION_FUNC_SPECS,
 };
 
-export const entraProviderConfig: ProviderConfig = {
-  name: "entra",
+export const msgraphProviderConfig: ProviderConfig = {
+  name: "msgraph",
   isStable: true,
   functions: entraProviderFunctions,
   funcSpecs: entraProviderFuncSpecs,
@@ -205,8 +211,8 @@ export const entraProviderConfig: ProviderConfig = {
   fetchSchema: entraFetchSchema,
   metadata: {
     color: "#0078D4",
-    displayName: "Microsoft Entra",
-    description: "Microsoft Entra (Azure AD) identity and access management",
+    displayName: "Microsoft Graph",
+    description: "Microsoft Graph API for Microsoft 365 services (Identity, Teams, SharePoint, Intune, and more)",
   },
   normalizeProperty: entraNormalizeProperty,
   isChildRequired: entraIsChildRequired,
@@ -217,4 +223,4 @@ export const entraProviderConfig: ProviderConfig = {
 };
 
 // Register this provider
-PROVIDER_REGISTRY[entraProviderConfig.name] = entraProviderConfig;
+PROVIDER_REGISTRY[msgraphProviderConfig.name] = msgraphProviderConfig;
