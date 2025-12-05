@@ -56,7 +56,7 @@ use crate::diff::patch_list_to_summary;
 mod commands;
 mod diff;
 
-// const CLOVER_DEFAULT_CREATOR: &str = "Clover";
+const CLOVER_DEFAULT_CREATOR: &str = "Clover";
 
 #[derive(Parser, Debug)]
 #[command(name = "hoist", version = "0.1")]
@@ -751,11 +751,11 @@ async fn list_specs(client: ModuleIndexClient) -> Result<Vec<ModuleDetailsRespon
         .await?
         .modules
         .into_iter()
-        // // .filter(|m| {
-        // //     m.owner_display_name
-        // //         .as_ref()
-        //         // .is_some_and(|n| n == CLOVER_DEFAULT_CREATOR)
-        // })
+        .filter(|m| {
+            m.owner_display_name
+                .as_ref()
+                .is_some_and(|n| n == CLOVER_DEFAULT_CREATOR)
+        })
         .collect::<Vec<ModuleDetailsResponse>>())
 }
 

@@ -32,7 +32,7 @@ async function getModuleMap(baseUrl: string): Promise<Record<string, string>> {
       }
       const name = schemas[0];
       if (
-        name && module?.schemaId
+        name && module?.schemaId && module.ownerDisplayName === "Clover"
       ) {
         moduleMap[name] = module.schemaId;
       }
