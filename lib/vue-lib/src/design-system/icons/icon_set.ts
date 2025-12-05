@@ -28,6 +28,7 @@ import XSquare from "./custom-icons/x-square.svg?raw";
 import Minus from "~icons/heroicons/minus-20-solid";
 import MinusCircle from "~icons/heroicons/minus-circle-20-solid";
 import MinusSquare from "./custom-icons/minus-square.svg?raw";
+import CarbonSubtractAlt from "~icons/carbon/subtract-alt";
 
 import SlidersVertical from "./custom-icons/sliders-vertical.svg?raw";
 
@@ -184,6 +185,7 @@ import CarbonRepeat from "~icons/carbon/repeat";
 import CarbonUndo from "~icons/carbon/undo";
 import CarbonInformation from "~icons/carbon/information";
 import CarbonWarning from "~icons/carbon/warning";
+import CarbonRestart from "~icons/carbon/restart";
 
 // streamline
 import StreamlineBracesCircleSolid from "~icons/streamline/braces-circle-solid";
@@ -361,6 +363,7 @@ export const ICONS = Object.freeze({
   minimap: Map,
   minus: Minus,
   "minus-circle": MinusCircle,
+  "minus-circle-outline": CarbonSubtractAlt,
   "minus-hex": MinusHex,
   "minus-hex-outline": MinusHexOutline,
   "minus-square": MinusSquare,
@@ -397,6 +400,7 @@ export const ICONS = Object.freeze({
   "refresh-hex-outline": RefreshHexOutline,
   repeat: CarbonRepeat,
   resize: Resize,
+  restart: CarbonRestart,
   save: Save,
   scissors: Scissors,
   search: Search,

@@ -9,22 +9,27 @@
           'z-[1001] fixed text-sm shadow-[0_4px_8px_0_rgba(0,0,0,0.75)] empty:hidden',
           'flex flex-col',
           {
-            editor: 'rounded border border-neutral-600 min-w-[164px]',
+            editor:
+              'rounded border border-neutral-600 min-w-[164px] text-shade-0 bg-shade-100',
+            classic:
+              'outline outline-offset-0 rounded-md outline-neutral-300 outline-0 dark:outline-1 text-shade-0 bg-shade-100',
+            compact:
+              'outline outline-offset-0 rounded-md outline-neutral-300 outline-0 dark:outline-1 text-shade-0 bg-shade-100',
             contextmenu: [
               'rounded border',
-              themeClasses('border-action-500', 'border-action-300'),
+              themeClasses(
+                'border-action-500 bg-neutral-100 text-shade-100',
+                'border-action-300 bg-neutral-800 text-shade-0',
+              ),
             ],
-            classic:
-              'outline outline-offset-0 rounded-md outline-neutral-300 outline-0 dark:outline-1',
-            compact:
-              'outline outline-offset-0 rounded-md outline-neutral-300 outline-0 dark:outline-1',
+            actionmenu: [
+              'rounded border',
+              themeClasses(
+                'border-neutral-600 bg-neutral-100 text-shade-100',
+                'border-neutral-400 bg-neutral-800 text-shade-0',
+              ),
+            ],
           }[variant],
-          variant === 'contextmenu'
-            ? themeClasses(
-                'bg-neutral-100 text-shade-100',
-                'bg-neutral-800 text-shade-0',
-              )
-            : 'text-shade-0 bg-shade-100',
           isRepositioning && 'opacity-0',
         )
       "
@@ -125,7 +130,8 @@ export type DropdownMenuVariant =
   | "classic"
   | "compact"
   | "editor"
-  | "contextmenu";
+  | "contextmenu"
+  | "actionmenu";
 
 const MENU_EDGE_BUFFER = 10;
 
@@ -178,7 +184,11 @@ const props = defineProps({
   minWidthToAnchor: { type: Boolean }, // forces the width of the menu to match or be bigger than the anchorTo element's width
 });
 
-useThemeContainer(props.variant !== "contextmenu" ? "dark" : undefined);
+useThemeContainer(
+  props.variant !== "contextmenu" && props.variant !== "actionmenu"
+    ? "dark"
+    : undefined,
+);
 
 const internalRef = ref<HTMLElement | null>(null);
 const scrollDivRef = ref();

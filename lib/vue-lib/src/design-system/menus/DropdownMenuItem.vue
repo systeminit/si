@@ -17,7 +17,11 @@
         isFocused &&
           !header &&
           !menuCtx.navigatingSubmenu.value &&
-          themeClasses('bg-action-300', 'bg-action-500'),
+          focusedClasses,
+        !isFocused &&
+          !noInteract &&
+          destructiveOption &&
+          themeClasses('text-destructive-600', 'text-destructive-300'),
         (!menuCtx.isCheckable.value || disableCheckable) &&
           !icon &&
           !$slots.icon &&
@@ -50,14 +54,27 @@
     <slot name="icon">
       <Icon
         v-if="icon"
-        :class="clsx('shrink-0 pointer-events-none', iconClass ?? '')"
+        :class="
+          clsx(
+            'shrink-0 pointer-events-none',
+            iconClass ?? '',
+            destructiveOption && [
+              isFocused
+                ? themeClasses('text-destructive-600', 'text-white')
+                : themeClasses('text-destructive-600', 'text-destructive-300'),
+            ],
+          )
+        "
         :name="icon"
         size="sm"
       />
     </slot>
 
     <div
-      v-if="shortcut && menuCtx.variant === 'contextmenu'"
+      v-if="
+        shortcut &&
+        (menuCtx.variant === 'contextmenu' || menuCtx.variant === 'actionmenu')
+      "
       :class="
         clsx(
           'border rounded px-2xs py-xs min-w-[24px] h-md text-center capsize text-xs',
@@ -206,6 +223,8 @@ export interface DropdownMenuItemProps {
 
   submenuVariant?: DropdownMenuVariant;
 
+  destructiveOption?: boolean;
+
   // Applies a tooltip to this menu item on the right side
   // Not compatible with a menu item that has submenuItems
   tooltip?: string;
@@ -217,7 +236,12 @@ const props = defineProps<DropdownMenuItemProps>();
 
 const SUBMENU_TIMEOUT_LENGTH = 300;
 
-useThemeContainer(props.submenuVariant !== "contextmenu" ? "dark" : undefined);
+useThemeContainer(
+  props.submenuVariant !== "contextmenu" &&
+    props.submenuVariant !== "actionmenu"
+    ? "dark"
+    : undefined,
+);
 
 const noInteract = computed(() => props.disabled || props.header);
 
@@ -257,6 +281,7 @@ const sizeClass = computed(() => {
     compact: tw`px-xs py-2xs pr-xs`,
     editor: [props.header ? tw`p-xs` : tw`p-2xs pr-xs`, tw`h-7`],
     contextmenu: tw`p-xs pr-sm`,
+    actionmenu: tw`p-xs pr-sm`,
   }[menuCtx.variant as DropdownMenuVariant];
 });
 
@@ -287,6 +312,16 @@ const htmlTagOrComponentType = computed(() => {
 
 const isFocused = computed(() => {
   return menuCtx.focusedItemId.value === id;
+});
+
+const focusedClasses = computed(() => {
+  if (props.destructiveOption) {
+    return themeClasses(
+      tw`bg-destructive-200 text-destructive-600`,
+      tw`bg-destructive-500 text-white`,
+    );
+  }
+  return themeClasses(tw`bg-action-300`, tw`bg-action-500`);
 });
 
 function trySelect(event: MouseEvent) {
