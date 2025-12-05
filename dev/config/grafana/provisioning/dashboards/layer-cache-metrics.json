@@ -632,8 +632,8 @@
       },
       "targets": [
         {
-          "expr": "rate(layer_cache_read_fallback{from_backend=\"s3\", to_backend=\"postgres\"}[5m])",
-          "legendFormat": "{{cache_name}} - S3\u2192PG fallback",
+          "expr": "sum by (exported_job, cache_name) (rate(layer_cache_read_fallback{from_backend=\"s3\", to_backend=\"postgres\"}[5m]))",
+          "legendFormat": "{{exported_job}}/{{cache_name}} - S3\u2192PG fallback",
           "refId": "A",
           "datasource": {
             "type": "prometheus",
@@ -687,7 +687,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "s3_write_queue_depth{exported_job=~\"${service}\", cache_name=~\"${cache}\", backend=\"s3\"}",
+          "expr": "sum by (exported_job, cache_name) (s3_write_queue_depth{exported_job=~\"${service}\", cache_name=~\"${cache}\", backend=\"s3\"})",
           "legendFormat": "{{exported_job}}/{{cache_name}}",
           "refId": "A"
         }
@@ -763,7 +763,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "s3_write_backoff_ms{exported_job=~\"${service}\", cache_name=~\"${cache}\", backend=\"s3\"}",
+          "expr": "sum by (exported_job, cache_name) (s3_write_backoff_ms{exported_job=~\"${service}\", cache_name=~\"${cache}\", backend=\"s3\"})",
           "legendFormat": "{{exported_job}}/{{cache_name}}",
           "refId": "A"
         }
@@ -899,8 +899,8 @@
       },
       "targets": [
         {
-          "expr": "rate(s3_write_attempts_total{result=~\"error_.*\"}[5m])",
-          "legendFormat": "{{result}} - {{cache_name}}",
+          "expr": "sum by (exported_job, cache_name, result) (rate(s3_write_attempts_total{result=~\"error_.*\"}[5m]))",
+          "legendFormat": "{{exported_job}}/{{cache_name}} - {{result}}",
           "refId": "A",
           "datasource": {
             "type": "prometheus",
@@ -938,8 +938,8 @@
       },
       "targets": [
         {
-          "expr": "s3_dlq_depth",
-          "legendFormat": "{{cache_name}} - DLQ depth",
+          "expr": "sum by (exported_job, cache_name) (s3_dlq_depth)",
+          "legendFormat": "{{exported_job}}/{{cache_name}} - DLQ depth",
           "refId": "A",
           "datasource": {
             "type": "prometheus",
@@ -1566,7 +1566,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "layer_cache_retry_queue_depth{exported_job=~\"${service}\", cache_name=~\"${cache}\"}",
+          "expr": "sum by (exported_job, cache_name) (layer_cache_retry_queue_depth{exported_job=~\"${service}\", cache_name=~\"${cache}\"})",
           "legendFormat": "{{exported_job}}/{{cache_name}} - queue depth",
           "refId": "A"
         }
@@ -1620,7 +1620,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "layer_cache_retry_queue_depth{exported_job=~\"${service}\", cache_name=~\"${cache}\"}",
+          "expr": "sum by (exported_job, cache_name) (layer_cache_retry_queue_depth{exported_job=~\"${service}\", cache_name=~\"${cache}\"})",
           "legendFormat": "{{exported_job}}/{{cache_name}}",
           "refId": "A"
         }
