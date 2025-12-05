@@ -66,6 +66,7 @@
   "newhotness": {
     "warningdark": "#46392C",
     "destructive": "#332222",
+    "destructive2": "#423131",
     "success": "#354139",
     "purpledark": "#d4b4fe",
     "purplelight": "#631AC2",

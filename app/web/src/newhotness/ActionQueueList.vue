@@ -16,26 +16,56 @@
       class="max-w-[420px]"
     />
   </div>
-  <ul v-else class="actions list">
-    <ActionCard
-      v-for="action in actionViewList"
-      :key="action.id"
-      :ref="(el) => setActionCardRef(action.id, el)"
-      :action="action"
-      :selected="highlightedActionIds.has(action.id)"
-      :failed="highlightedActionIds.has(action.id)"
-      :noInteraction="false"
-    />
-  </ul>
+  <div v-else class="actions list">
+    <template v-for="section in actionDisplayLists" :key="section.title">
+      <div
+        v-if="section.actions.length > 0"
+        class="flex flex-col items-stretch gap-xs p-xs"
+      >
+        <div
+          :class="
+            clsx(
+              'flex flex-row items-center gap-xs w-full h-8',
+              themeClasses(
+                'text-neutral-600 [&_*]:border-neutral-400',
+                'text-neutral-400 [&_*]:border-neutral-600',
+              ),
+            )
+          "
+        >
+          <div class="flex-none">
+            {{ section.title }}
+          </div>
+          <div class="border-b flex-1 h-0" />
+          <NewButton
+            v-if="section.title === 'Failed'"
+            label="Retry All"
+            icon="restart"
+            @click="retryAll"
+          />
+        </div>
+        <ActionQueueListItem
+          v-for="action in section.actions"
+          :key="action.id"
+          :ref="(el) => setActionQueueListItemRef(action.id, el)"
+          :action="action"
+          :actionsById="actionsById"
+          :noInteraction="false"
+        />
+      </div>
+    </template>
+  </div>
 </template>
 
 <script lang="ts" setup>
-import { PropType, ref, watch, nextTick } from "vue";
-import { themeClasses } from "@si/vue-lib/design-system";
+import { PropType, ref, computed, watch, nextTick } from "vue";
+import { NewButton, themeClasses } from "@si/vue-lib/design-system";
 import clsx from "clsx";
+import { ActionState } from "@/api/sdf/dal/action";
 import { ActionProposedView } from "./types";
-import ActionCard from "./ActionCard.vue";
 import EmptyState from "./EmptyState.vue";
+import ActionQueueListItem from "./ActionQueueListItem.vue";
+import { routes, useApi } from "./api_composables";
 
 const props = defineProps({
   actionViewList: {
@@ -48,17 +78,102 @@ const props = defineProps({
   },
 });
 
+// Check if an action has a parent with the state "Queued"
+const hasDisplayedParent = (child: ActionProposedView) => {
+  for (const parentId of child.dependentOn) {
+    const parent = actionsById.value.get(parentId);
+    if (
+      parent &&
+      (parent.state === ActionState.Queued ||
+        parent.state === ActionState.OnHold) &&
+      parent.state === child.state
+    ) {
+      return true;
+    }
+  }
+  return false;
+};
+
+// Create a map of actions by ID for looking up dependencies
+const actionsById = computed(() => {
+  const map = new Map<string, ActionProposedView>();
+  for (const action of props.actionViewList) {
+    map.set(action.id, action);
+  }
+  return map;
+});
+
+const queuedShouldShow = (action: ActionProposedView) => {
+  const blockedByParent = (action.holdStatusInfluencedBy?.length ?? 0) > 0;
+  const hasQueuedOrOnHoldParent = !!action.holdStatusInfluencedBy.find(
+    (parentId) =>
+      actionsById.value.get(parentId) &&
+      (actionsById.value.get(parentId)?.state === ActionState.Queued ||
+        actionsById.value.get(parentId)?.state === ActionState.OnHold),
+  );
+
+  if (blockedByParent && hasQueuedOrOnHoldParent) {
+    return false;
+  }
+  return true;
+};
+
+// Create sorted lists of actions - Failed, Running, Queued
+const actionDisplayLists = computed(() => [
+  {
+    title: "Failed",
+    actions: props.actionViewList.filter(
+      (action) => action.state === ActionState.Failed,
+    ) as ActionProposedView[],
+  },
+  {
+    title: "Running",
+    actions: props.actionViewList.filter(
+      (action) =>
+        action.state === ActionState.Running ||
+        action.state === ActionState.Dispatched,
+    ) as ActionProposedView[],
+  },
+  {
+    title: "Queued",
+    actions: props.actionViewList.filter(
+      (action) =>
+        action.state === ActionState.Queued &&
+        !hasDisplayedParent(action) &&
+        queuedShouldShow(action),
+    ) as ActionProposedView[],
+  },
+  {
+    title: "On Hold",
+    actions: props.actionViewList.filter(
+      (action) =>
+        action.state === ActionState.OnHold && !hasDisplayedParent(action),
+    ) as ActionProposedView[],
+  },
+]);
+
+const retryApi = useApi();
+const retryAll = () => {
+  const failedActions = actionDisplayLists.value[0]?.actions;
+  if (failedActions && failedActions.length > 0) {
+    failedActions.forEach((action) => {
+      const call = retryApi.endpoint(routes.ActionRetry, { id: action.id });
+      call.put({});
+    });
+  }
+};
+
 // Track refs to ActionCard components by action ID
-const actionCardRefs = ref<Map<string, InstanceType<typeof ActionCard>>>(
-  new Map(),
-);
+const actionQueueListItemRefs = ref<
+  Map<string, InstanceType<typeof ActionQueueListItem>>
+>(new Map());
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-const setActionCardRef = (actionId: string, el: any) => {
+const setActionQueueListItemRef = (actionId: string, el: any) => {
   if (el) {
-    actionCardRefs.value.set(actionId, el);
+    actionQueueListItemRefs.value.set(actionId, el);
   } else {
-    actionCardRefs.value.delete(actionId);
+    actionQueueListItemRefs.value.delete(actionId);
   }
 };
 
@@ -82,7 +197,7 @@ watch(
       // Single action: scroll to center it
       const firstAction = highlightedActions[0];
       if (firstAction) {
-        const actionCardRef = actionCardRefs.value.get(firstAction.id);
+        const actionCardRef = actionQueueListItemRefs.value.get(firstAction.id);
         if (actionCardRef && actionCardRef.$el) {
           actionCardRef.$el.scrollIntoView({
             behavior: "smooth",
@@ -97,8 +212,10 @@ watch(
       const lastAction = highlightedActions[highlightedActions.length - 1];
 
       if (firstAction && lastAction) {
-        const firstActionRef = actionCardRefs.value.get(firstAction.id);
-        const lastActionRef = actionCardRefs.value.get(lastAction.id);
+        const firstActionRef = actionQueueListItemRefs.value.get(
+          firstAction.id,
+        );
+        const lastActionRef = actionQueueListItemRefs.value.get(lastAction.id);
 
         if (firstActionRef?.$el && lastActionRef?.$el) {
           // Get the container element (scrollable parent)
@@ -127,7 +244,7 @@ watch(
               const middleIndex = Math.floor(highlightedActions.length / 2);
               const middleAction = highlightedActions[middleIndex];
               if (middleAction) {
-                const middleActionRef = actionCardRefs.value.get(
+                const middleActionRef = actionQueueListItemRefs.value.get(
                   middleAction.id,
                 );
                 if (middleActionRef?.$el) {

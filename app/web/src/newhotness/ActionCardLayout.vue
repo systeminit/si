@@ -3,9 +3,8 @@
     :class="
       clsx(
         'flex flex-row items-center text-sm relative p-2xs min-w-0 w-full border border-transparent',
-        !noInteraction
-          ? 'cursor-pointer hover:border-action-500 dark:hover:border-action-300 group/actioncard'
-          : '',
+        !noInteraction &&
+          'cursor-pointer hover:border-action-500 dark:hover:border-action-300 group/actioncard',
         // Background color for selected state
         selected ? 'dark:bg-action-900 bg-action-100' : '',
         // Border color priority: red for highlighted failed, blue for selected, default for others
