@@ -69,6 +69,7 @@ sodiumoxide = { workspace = true }
 strum = { workspace = true }
 telemetry = { path = "../../lib/telemetry-rs" }
 telemetry-http = { path = "../../lib/telemetry-http-rs" }
+telemetry-utils = { path = "../../lib/telemetry-utils-rs" }
 thiserror = { workspace = true }
 tokio = { workspace = true }
 tokio-stream = { workspace = true }

@@ -117,12 +117,9 @@ pub async fn get_schema(
                     //     warn!("Failed to trigger MV rebuild: {}", e);
                     // }
 
-                    return Ok(SchemaResponseV1::Building(Box::new(BuildingResponseV1 {
-                        status: "building".to_string(),
-                        message: "Schema data is being generated from cached modules, please retry shortly".to_string(),
-                        retry_after_seconds: 2,
-                        estimated_completion_seconds: 10,
-                    })));
+                    return Ok(SchemaResponseV1::Building(Box::new(
+                        BuildingResponseV1::new_and_increment_counter_for_schema_cached_modules(),
+                    )));
                 }
                 Ok(None) => {
                     // Schema doesn't exist in cached_modules at all - return 404
@@ -150,12 +147,9 @@ pub async fn get_schema(
                     //     warn!("Failed to trigger MV rebuild: {}", e);
                     // }
 
-                    return Ok(SchemaResponseV1::Building(Box::new(BuildingResponseV1 {
-                        status: "building".to_string(),
-                        message: "Schema data is being generated from cached modules, please retry shortly".to_string(),
-                        retry_after_seconds: 2,
-                        estimated_completion_seconds: 10,
-                    })));
+                    return Ok(SchemaResponseV1::Building(Box::new(
+                        BuildingResponseV1::new_and_increment_counter_for_schema_cached_modules(),
+                    )));
                 }
                 Ok(None) => {
                     // Schema doesn't exist - return 404

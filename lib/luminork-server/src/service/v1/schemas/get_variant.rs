@@ -152,12 +152,8 @@ pub async fn get_variant(
                     );
                 }
 
-                return Ok(SchemaVariantResponseV1::Building(BuildingResponseV1 {
-                    status: "building".to_string(),
-                    message: "Schema variant data is being generated from workspace graph, please retry shortly".to_string(),
-                    retry_after_seconds: 2,
-                    estimated_completion_seconds: 5,
-                }));
+                return Ok(SchemaVariantResponseV1::Building(BuildingResponseV1::new_and_increment_counter_for_schema_variant_workspace_graph()
+                ));
             }
         }
     }
@@ -216,12 +212,8 @@ pub async fn get_variant(
             match CachedModule::find_latest_for_schema_id(ctx, schema_id).await {
                 Ok(Some(_)) => {
                     // Schema exists in cached_modules but CachedDefaultVariant MV not built yet
-                    return Ok(SchemaVariantResponseV1::Building(BuildingResponseV1 {
-                        status: "building".to_string(),
-                        message: "Schema variant data is being generated from cached modules, please retry shortly".to_string(),
-                        retry_after_seconds: 2,
-                        estimated_completion_seconds: 10,
-                    }));
+                    return Ok(SchemaVariantResponseV1::Building(BuildingResponseV1::new_and_increment_counter_for_schema_variant_cached_modules()
+                    ));
                 }
                 Ok(None) => {
                     // Schema doesn't exist in cached_modules at all - return 404
