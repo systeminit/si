@@ -114,6 +114,20 @@ export function mergeResourceOperations(
     Object.entries(domainProperties).filter(([_, prop]) => !prop.readOnly),
   );
 
+  // Filter out OData metadata properties - these are server-generated and not user-controllable
+  const filteredDomainProperties = Object.fromEntries(
+    Object.entries(writableDomainProperties).filter(([key, _]) =>
+      !isODataMetadataProperty(key)
+    ),
+  );
+
+  // Also filter OData metadata from resource_value properties
+  const filteredResourceValueProperties = Object.fromEntries(
+    Object.entries(resourceValueProperties).filter(([key, _]) =>
+      !isODataMetadataProperty(key)
+    ),
+  );
+
   // Extract schemas for discriminator expansion
   const schemas = allSchemas.components?.schemas as
     | Record<string, JsonSchemaObject>
@@ -122,7 +136,7 @@ export function mergeResourceOperations(
 
   // Normalize domain properties (POST + PATCH = writable)
   const normalizedDomainProperties = Object.fromEntries(
-    Object.entries(writableDomainProperties)
+    Object.entries(filteredDomainProperties)
       .map(([key, prop]) => {
         const normalized = normalizer.normalize(prop);
         // Skip properties that are part of cycles
@@ -136,7 +150,7 @@ export function mergeResourceOperations(
 
   // Normalize resource_value properties (GET response = readable)
   const normalizedResourceValueProperties = Object.fromEntries(
-    Object.entries(resourceValueProperties)
+    Object.entries(filteredResourceValueProperties)
       .map(([key, prop]) => {
         const normalized = normalizer.normalize(prop);
         // Skip properties that are part of cycles
@@ -829,4 +843,8 @@ function isListOperation(operation: EntraOpenApiOperation): boolean {
   }
 
   return false;
+}
+
+function isODataMetadataProperty(propName: string): boolean {
+  return propName.startsWith("@odata.");
 }
