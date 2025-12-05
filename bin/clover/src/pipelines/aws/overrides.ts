@@ -429,6 +429,38 @@ export const AWS_SCHEMA_OVERRIDES = new Map<string, SchemaOverrideFn>([
     (spec: ExpandedPkgSpec) => {
       const variant = spec.schemas[0].variants[0];
 
+      // Convert string properties that should be integers to number type
+      const integerProps = ["MaxSize", "MinSize", "Cooldown", "DesiredCapacity"];
+      integerProps.forEach(propName => {
+        try {
+          const prop = propForOverride(variant.domain, propName);
+          if (prop.kind === "string") {
+            (prop as any).kind = "number";
+          }
+        } catch (error) {
+          // Property might not exist in all versions - skip if not found
+        }
+      });
+
+      // Add custom management functions to handle string-to-integer conversion
+      const { func: discoverFunc, mgmtFuncSpec: discoverFuncSpec } =
+        attachExtraManagementFunction(
+          "./src/pipelines/aws/funcs/overrides/AWS::AutoScaling::AutoScalingGroup/management/discover.ts",
+          "Discover on AWS",
+          "7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b",
+        );
+      spec.funcs.push(discoverFunc);
+      variant.managementFuncs.push(discoverFuncSpec);
+
+      const { func: importFunc, mgmtFuncSpec: importFuncSpec } =
+        attachExtraManagementFunction(
+          "./src/pipelines/aws/funcs/overrides/AWS::AutoScaling::AutoScalingGroup/management/import.ts",
+          "Import from AWS",
+          "8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c",
+        );
+      spec.funcs.push(importFunc);
+      variant.managementFuncs.push(importFuncSpec);
+
       // Modify the existing update function instead of replacing it
       const updateTargetId = ACTION_FUNC_SPECS["Update Asset"].id;
       const newUpdateId =
