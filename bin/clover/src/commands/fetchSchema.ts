@@ -4,7 +4,7 @@ import { FetchSchemaOptions, selectedProviders } from "../pipelines/types.ts";
 import "../pipelines/aws/spec.ts";
 import "../pipelines/hetzner/provider.ts";
 import "../pipelines/azure/provider.ts";
-import "../pipelines/entra/provider.ts";
+import "../pipelines/msgraph/provider.ts";
 import "../pipelines/digitalocean/provider.ts";
 import "../pipelines/dummy/spec.ts";
 
