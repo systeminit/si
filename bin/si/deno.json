@@ -18,6 +18,9 @@
       "tmpl/"
     ]
   },
+  "exports": {
+    ".": "template/run.ts"
+  },
   "tasks": {
     "dev": "deno run --allow-net --allow-env --allow-read --allow-run --env-file=.env.local --allow-write main.ts",
     "build": "deno compile --allow-net --allow-env --allow-read --allow-write --allow-run --allow-import --include=data/templates/SI_Agent_Context.md.tmpl --include=data/templates/template.ts.tmpl main.ts",
