@@ -37,6 +37,7 @@ use tokio::sync::{
 use tokio_util::sync::CancellationToken;
 pub use tracing;
 use tracing::warn;
+pub use tracing_opentelemetry::OpenTelemetrySpanExt;
 
 pub mod prelude {
     pub use tracing::{

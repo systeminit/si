@@ -10,6 +10,7 @@ rust_library(
         "//third-party/rust:tokio",
         "//third-party/rust:tokio-util",
         "//third-party/rust:tracing",
+        "//third-party/rust:tracing-opentelemetry",
     ],
     srcs = glob(["src/**/*.rs"]),
 )
