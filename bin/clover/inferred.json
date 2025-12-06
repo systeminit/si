@@ -17167,6 +17167,12 @@
   "The status of this Amazon DataZone metadata form type.": {
     "enum": null
   },
+  "The storage class for the table": {
+    "enum": null
+  },
+  "The storage class for the table bucket": {
+    "enum": null
+  },
   "The storage server model type of the Exadata infrastructure. For the list of valid model names, use the ListDbSystemShapes operation.": {
     "enum": null
   },
