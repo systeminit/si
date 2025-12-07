@@ -9865,6 +9865,9 @@
   "The IAM Role that execute SyncJob.": {
     "enum": null
   },
+  "The IAM identity center instance arn": {
+    "enum": null
+  },
   "The IAM instance profile.": {
     "enum": null
   },
