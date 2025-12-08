@@ -39,6 +39,7 @@ import { DefaultMap } from "@/utils/defaultmap";
 import { AttributePath, ComponentId } from "@/api/sdf/dal/component";
 import { WorkspacePk } from "@/api/sdf/dal/workspace";
 import { ViewId } from "@/api/sdf/dal/views";
+import { memoizeThrottle } from "@/workers/utils";
 import {
   WorkspaceAtom,
   AtomDocument,
@@ -1029,6 +1030,7 @@ const handleIndexMvPatch = async (db: Database, msg: WorkspaceIndexUpdate) => {
   await tracer.startActiveSpan("IndexMvPatch", async (span) => {
     if (!msg.patch) {
       span.setAttribute("no_patch", true);
+      span.end();
       return;
     }
 
@@ -2685,10 +2687,11 @@ const writeDeploymentAtoms = async (db: Database, atoms: AtomWithData[]) => {
   await dbWrite(db, { sql, bind });
 };
 
-const niflheim = async (
+const _niflheim = async (
   db: Database,
   workspaceId: string,
   changeSetId: ChangeSetId,
+  bootstrap = true,
 ): Promise<-1 | 0 | 1> => {
   // NOTE, we are using this integer return type because we can't handle exceptions over the thread boundary
   return await tracer.startActiveSpan("niflheim", async (span: Span) => {
@@ -2801,23 +2804,14 @@ const niflheim = async (
         false,
         false,
       );
-
-      await bustCacheAndReferences(
-        db,
-        workspaceId,
-        changeSetId,
-        atom.kind,
-        atom.id,
-        false,
-        true,
-      );
     };
 
     for (const atom of finalAtoms) {
       // Atom is in the database, but not in the index? Delete it
       if (!atomSet.has(atomCacheKey(atom))) {
         atomsToUnlink.push(atom);
-      } else {
+      } else if (bootstrap) {
+        // When we are not bootstrapping we dont need to pre process what we already have
         // Placing this in a promise to yield control back to the event loop
         await processAtom(atom);
       }
@@ -2866,6 +2860,25 @@ const niflheim = async (
     return 1;
   });
 };
+
+const niflheim = async (
+  db: Database,
+  workspaceId: string,
+  changeSetId: ChangeSetId,
+): Promise<-1 | 0 | 1> => _niflheim(db, workspaceId, changeSetId, true);
+
+type ColdStartArgs = Parameters<typeof niflheim>;
+const THIRY_SECONDS = 30 * 1000;
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const syncAtoms = (...args: ColdStartArgs) =>
+  memoizeThrottle(
+    (...args: ColdStartArgs): void => {
+      _niflheim(...args, false);
+    },
+    THIRY_SECONDS,
+    { trailing: true },
+    (...args: ColdStartArgs) => `${args[1]}-${args[2]}`,
+  );
 
 const ragnarok = async (
   db: Database,
@@ -4409,9 +4422,15 @@ const dbInterface: TabDBInterface = {
     let interval: NodeJS.Timeout;
     sockets[workspaceId]?.addEventListener("close", () => {
       if (interval) clearInterval(interval);
+      const span = tracer.startSpan("ws_close");
+      span.setAttributes({ workspaceId });
+      span.end();
       updateConnectionStatus(workspaceId, false);
     });
     sockets[workspaceId]?.addEventListener("open", () => {
+      const span = tracer.startSpan("ws_open");
+      span.setAttributes({ workspaceId });
+      span.end();
       updateConnectionStatus(workspaceId, true);
       // heartbeat ping
       interval = setInterval(() => {
@@ -4793,6 +4812,14 @@ const dbInterface: TabDBInterface = {
     return await sqlite.transaction(
       async (db) => await niflheim(db, workspaceId, changeSetId),
     );
+  },
+  async syncAtoms(workspaceId, changeSetId) {
+    if (!sqlite) {
+      throw new Error(DB_NOT_INIT_ERR);
+    }
+    return sqlite.transaction((db) => {
+      syncAtoms(db, workspaceId, changeSetId)(db, workspaceId, changeSetId);
+    });
   },
   encodeDocumentForDB,
   decodeDocumentFromDB,

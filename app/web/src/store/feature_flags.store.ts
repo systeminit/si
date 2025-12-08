@@ -17,6 +17,7 @@ const USER_FLAG_MAPPING = {
   SQLITE_TOOLS: "sqlite-tools",
   COMPONENT_HISTORY_FUNCS: "component-history-funcs",
   GOOGLE_CLOUD_UI: "google-cloud-ui",
+  SHOW_WS_DISCONNECT: "show-ws-disconnect",
 } as const;
 const WORKSPACE_FLAG_MAPPING: Record<string, string> = {
   // STORE_FLAG_NAME: "posthogFlagName",
