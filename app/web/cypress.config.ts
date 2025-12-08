@@ -17,7 +17,7 @@ export default defineConfig({
             console.log(message)
             return null
           }
-        })
+        }),
     },
 
     // Hotfix, needs amended
