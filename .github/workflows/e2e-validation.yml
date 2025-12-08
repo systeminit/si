@@ -218,6 +218,8 @@ jobs:
     runs-on: ubuntu-latest
     needs: [define-test-matrix, launch-ec2-node]
     if: always() && (needs.define-test-matrix.result == 'success') && (inputs.environment != 'ec2-node' || needs.launch-ec2-node.result == 'success')
+    outputs:
+      has-flaky-failures: ${{ steps.set-outputs.outputs.has-flaky-failures }}
     strategy:
       fail-fast: true
       matrix:
@@ -334,6 +336,14 @@ jobs:
               echo "Cypress Test task succeeded!"
               break
             fi
+            
+            # Check if this is a flaky failure (exit code 53)
+            if [ "$exit_code" = "53" ]; then
+              echo "Flaky failure detected (exit code 53) - marking as flaky failure"
+              echo "flaky_failure=true" >> "$GITHUB_ENV"
+              exit 53
+            fi
+            
             n=$((n+1))
             echo "Attempt $n/$max_retries failed with exit code $exit_code! Retrying..."
           done
@@ -350,6 +360,16 @@ jobs:
           name: cypress-recordings-run-${{ matrix.tests }}
           path: app/web/cypress/videos/**/*.mp4
           retention-days: 5
+
+      - name: Set job outputs
+        id: set-outputs
+        if: always()
+        run: |
+          if [ "${{ env.flaky_failure }}" = "true" ]; then
+            echo "has-flaky-failures=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has-flaky-failures=false" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Check Test Results
         if: failure()
@@ -434,7 +454,10 @@ jobs:
               break
             fi
           done
-          if [ "$has_artifacts" = true ] && [ "${{ github.ref_name }}" = "main" ]; then
+          
+          # Only send FireHydrant alert for non-flaky failures on main branch
+          if [ "$has_artifacts" = true ] && [ "${{ github.ref_name }}" = "main" ] && [ "${{ needs.cypress-tests.outputs.has-flaky-failures }}" != "true" ]; then
+            echo "Sending FireHydrant alert for real test failures"
             curl --location "${{ secrets.FIREHYDRANT_WEBHOOK_URL }}" \
               --header "Content-Type: application/json" \
               --data "{
@@ -450,6 +473,8 @@ jobs:
                   \"service:github\"
                 ]
               }"
+          elif [ "${{ needs.cypress-tests.outputs.has-flaky-failures }}" = "true" ]; then
+            echo "Skipping FireHydrant alert - flaky failure detected (exit code 53)"
           fi
 
       - name: Send Slack notification with deployment error
@@ -466,12 +491,22 @@ jobs:
         if: ${{ inputs.environment != 'ec2-node' || (inputs.environment == 'ec2-node' && needs.launch-ec2-node.result != 'failure') }}
         run: |
           failed_tests="${{ steps.failed-tests.outputs.failed_tests }}"
-          if [ -n "$failed_tests" ]; then
+          is_flaky="${{ needs.cypress-tests.outputs.has-flaky-failures }}"
+          
+          if [ "$is_flaky" = "true" ]; then
+            # Flaky failure - send different message
+            curl -X POST \
+            --header 'Content-type: application/json' \
+            --data "{\"text\": \":si: Cypress E2E Test Flaked for ${{ inputs.environment }} (exit code 53): <https://github.com/systeminit/si/actions/runs/$GITHUB_RUN_ID|:test_tube: Link>\n\`\`\`Flaky test failure detected - not paging just notifying\`\`\`\"}" \
+            ${{ secrets.SLACK_WEBHOOK_URL }}
+          elif [ -n "$failed_tests" ]; then
+            # Regular test failure
             curl -X POST \
             --header 'Content-type: application/json' \
             --data "{\"text\": \":si: Failed Cypress E2E Test for ${{ inputs.environment }}: <https://github.com/systeminit/si/actions/runs/$GITHUB_RUN_ID|:test_tube: Link>\n\`\`\`Failed tests: $failed_tests\`\`\`\"}" \
             ${{ secrets.SLACK_WEBHOOK_URL }}
           else
+            # Generic failure
             curl -X POST \
             --header 'Content-type: application/json' \
             --data "{\"text\": \":si: Failed Cypress E2E Test for ${{ inputs.environment }}: <https://github.com/systeminit/si/actions/runs/$GITHUB_RUN_ID|:test_tube: Link>\"}" \

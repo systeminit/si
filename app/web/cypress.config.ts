@@ -2,6 +2,8 @@ import path from 'path'
 import { defineConfig } from 'cypress'
 import vitePreprocessor from 'cypress-vite'
 
+const FLAKY_EXIT_CODE = 53
+
 export default defineConfig({
   e2e: {
     injectDocumentDomain: true,
@@ -11,13 +13,34 @@ export default defineConfig({
         vitePreprocessor(
           path.resolve('./vite.cypress.ts'),
         )
-      ),
-        on('task', {
-          log(message) {
-            console.log(message)
-            return null
-          }
-        }),
+      );
+        
+      on('task', {
+        log(message) {
+          console.log(message)
+          return null
+        },
+        flakyFailure() {
+          console.log('Flaky failure detected - exiting with code', FLAKY_EXIT_CODE)
+          process.exit(FLAKY_EXIT_CODE)
+          return null
+        }
+      });
+
+      on('after:run', (results: any) => {
+        const hasAuth0Failures = results.runs?.some((run: any) => 
+          run.tests?.some((test: any) => 
+            test.displayError?.includes('Auth0') || 
+            test.title?.includes('auth0') ||
+            test.err?.message?.includes('Auth0')
+          )
+        );
+        
+        if (hasAuth0Failures) {
+          console.log('Detected Auth0-related test failures - exiting with code', FLAKY_EXIT_CODE)
+          process.exit(FLAKY_EXIT_CODE)
+        }
+      });
     },
 
     // Hotfix, needs amended

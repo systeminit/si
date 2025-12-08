@@ -111,6 +111,7 @@ Cypress.Commands.add('basicLogin', () => {
     cy.loginToAuth0(AUTH0_USERNAME, AUTH0_PASSWORD);
   } catch (_err) {
     // flaky failures should not ping us
+    cy.task('flakyFailure');
     return;
   }
   cy.visit({

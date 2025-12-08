@@ -18,6 +18,7 @@ describe("web", () => {
       cy.loginToAuth0(AUTH0_USERNAME, AUTH0_PASSWORD);
     } catch (_err) {
       // flaky failures should not ping us
+      cy.task('flakyFailure');
       return;
     }
     // Go to the Synthetic User's Dashboard
