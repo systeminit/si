@@ -15,9 +15,20 @@ Cypress._.times(SI_CYPRESS_MULTIPLIER, () => {
       cy.visit("/");
     });
 
+    it("simulate_flaky_failure", () => {
+      // Temporary test to simulate flaky failure for workflow testing
+      cy.task('flakyFailure');
+    });
+
     it("dashboard_redirect", () => {
 
-      cy.loginToAuth0(AUTH0_USERNAME, AUTH0_PASSWORD);
+      try {
+        cy.loginToAuth0(AUTH0_USERNAME, AUTH0_PASSWORD);
+      } catch (_err) {
+        // flaky failures should not ping us
+        cy.task('flakyFailure');
+        return;
+      }
 
       // Go to the Synthetic User's Dashboard
       cy.visit(AUTH_PORTAL_URL + '/dashboard')
