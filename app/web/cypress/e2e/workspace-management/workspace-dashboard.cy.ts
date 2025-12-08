@@ -15,6 +15,11 @@ Cypress._.times(SI_CYPRESS_MULTIPLIER, () => {
       cy.visit("/");
     });
 
+    it("simulate_flaky_failure", () => {
+      // Temporary test to simulate flaky failure for workflow testing
+      cy.task('flakyFailure');
+    });
+
     it("dashboard_redirect", () => {
 
       try {
