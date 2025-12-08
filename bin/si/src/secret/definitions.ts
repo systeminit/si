@@ -1,4 +1,4 @@
-import { SecretsApi } from "@systeminit/api-client";
+import type { SecretsApi } from "@systeminit/api-client";
 import type { Context } from "../context.ts";
 import type { SecretDefinitionV1 } from "./types.ts";
 
