@@ -18,12 +18,12 @@
         <div
           :class="
             clsx(
-              'flex-grow overflow-y-auto mb-sm border border-neutral-100 dark:border-neutral-700',
+              'flex-grow flex flex-col overflow-hidden mb-sm border border-neutral-100 dark:border-neutral-700',
               approvalsEnabled && 'max-h-[36vh]',
             )
           "
         >
-          <div class="flex flex-row py-xs">
+          <div class="flex-none flex flex-row py-xs">
             <span class="ml-xs text-md">{{ actionsTitle }}</span>
 
             <!-- NOTE(nick): these are right-aligned pill counters for each action kind. -->
@@ -42,7 +42,7 @@
               </PillCounter>
             </div>
           </div>
-          <ul class="actions list">
+          <ul class="actions list scrollable flex-1">
             <!-- NOTE(nick): we are re-using the action cards, but are disallowing interaction. -->
             <ActionCard
               v-for="action in props.actions"
