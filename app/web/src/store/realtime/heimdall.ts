@@ -330,12 +330,15 @@ const updateConnectionStatus: ConnStatusFn = (
 ) => {
   _wsConnections.value[workspaceId] = connected;
 
-  // prevent blips in the UI
+  // always update to connected
+  if (connected) wsConnections.value[workspaceId] = connected;
+
+  // prevent blips in the UI from quick disconnect -> connect flips
   setTimeout(() => {
     Object.entries(_wsConnections.value).forEach(([k, v]) => {
       wsConnections.value[k] = v;
     });
-  }, 7 * 1000);
+  }, 3 * 1000);
 
   if (!noBroadcast) {
     db.broadcastMessage({
@@ -400,12 +403,16 @@ const atomUpdated: UpdateFn = (
 };
 
 export const indexFailures = reactive(new Set<string>());
+export const indexTouches = reactive(new Map<string, number>());
 
 const lobbyExit: LobbyExitFn = async (
   workspaceId: WorkspacePk,
   changeSetId: ChangeSetId,
   noBroadcast?: boolean,
 ) => {
+  // keep track of each change set's index touch
+  indexTouches.set(changeSetId, Date.now());
+
   // Only navigate away from lobby if user is currently in the lobby
   // for this change set
   if (muspelheimStatuses.value[changeSetId] === true) {
@@ -827,7 +834,7 @@ export const muspelheim = async (workspaceId: WorkspacePk, force?: boolean) => {
     muspelheimStatuses.value[changeSet.id] = false;
   }
 
-  await niflheim(workspaceId, baseChangeSetId, force);
+  await niflheim(workspaceId, baseChangeSetId, force, true);
 
   niflheimQueue.add(async () => {
     await vanaheim(workspaceId);
@@ -838,7 +845,7 @@ export const muspelheim = async (workspaceId: WorkspacePk, force?: boolean) => {
     }
 
     const run = async () => {
-      await niflheim(workspaceId, changeSet.id, force);
+      await niflheim(workspaceId, changeSet.id, force, true);
     };
     niflheimQueue.add(run);
   }
@@ -858,11 +865,14 @@ export const registerBearerToken = async (
 };
 
 // cold start
+const FIVE_MIN = 1000 * 60 * 5;
+const buildingRetryIntervals = {} as Record<string, NodeJS.Timeout>;
 export const niflheim = async (
   workspaceId: WorkspacePk,
   changeSetId: ChangeSetId,
   force = false,
   lobbyOnFailure = true,
+  retryOnBuilding = false,
 ): Promise<-1 | 0 | 1> => {
   await waitForInitCompletion();
   const start = performance.now();
@@ -880,6 +890,27 @@ export const niflheim = async (
     // Index is being rebuilt and is not ready yet.
     if (success === 0 && lobbyOnFailure) {
       muspelheimStatuses.value[changeSetId] = false;
+      // there is an outside chance that the system will fail to send a wsevent
+      // (incident, poor timing of a deploy, etc etc)
+      // to the web worker that tells it the index has been built successfully
+      // so we have a backup cold start interval here
+      // to prevent a user from being stuck in the lobby perpetually
+      if (retryOnBuilding) {
+        const interval = setInterval(async () => {
+          const success = await niflheim(
+            workspaceId,
+            changeSetId,
+            force,
+            lobbyOnFailure,
+            false,
+          );
+          if (success === 1) {
+            const interval = buildingRetryIntervals[changeSetId];
+            clearInterval(interval);
+          }
+        }, FIVE_MIN);
+        buildingRetryIntervals[changeSetId] = interval;
+      }
     } else if (success === 1 || success === -1) {
       // add a failure state for this change set
       if (success === -1) indexFailures.add(changeSetId);
@@ -887,9 +918,13 @@ export const niflheim = async (
       // so we shouldn't block them in the lobby b/c this is never going to load.
       muspelheimStatuses.value[changeSetId] = true;
     }
+    const interval = buildingRetryIntervals[changeSetId];
+    if (success === 1 && interval) clearInterval(interval);
     return success;
   }
 
+  const interval = buildingRetryIntervals[changeSetId];
+  if (interval) clearInterval(interval);
   return 1;
 };
 

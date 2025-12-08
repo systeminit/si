@@ -33,7 +33,7 @@
         :changeSetId="changeSetId"
         :componentId="componentId"
         :viewId="viewId"
-        connected
+        :connected="haveWSConn"
       />
 
       <!-- Right -->
@@ -236,10 +236,10 @@ const changeSetId = computed(() => props.changeSetId);
 
 const coldStartInProgress = computed(() => heimdall.muspelheimInProgress.value);
 
-// const haveWSConn = computed<boolean>(() => {
-//   if (!heimdall.initCompleted.value) return true; // dont show error if we havent gotten started
-//   return !!heimdall.wsConnections.value[props.workspacePk];
-// });
+const haveWSConn = computed<boolean>(() => {
+  if (!heimdall.initCompleted.value) return true; // dont show error if we havent gotten started
+  return !!heimdall.wsConnections.value[props.workspacePk];
+});
 
 // no tan stack queries hitting sqlite until after the cold start has finished
 const queriesEnabled = computed(
@@ -637,9 +637,51 @@ watch(
         return;
       }
       await heimdall.registerBearerToken(newWorkspacePk, workspaceToken);
-      heimdall.niflheim(newWorkspacePk, newChangeSetId, true, false);
+      await heimdall.niflheim(newWorkspacePk, newChangeSetId, true, false);
     }
   },
+);
+
+const EVENTUALLY_CONSISTENT_TIME = 30 * 1000; // 30 seconds
+let indexInterval: NodeJS.Timeout;
+
+watch(
+  () => [props.changeSetId],
+  () => {
+    // clear any interval for other change set
+    if (indexInterval) clearInterval(indexInterval);
+
+    // set a new interval (note: above watcher fires first cold start from the user selection change)
+    indexInterval = setInterval(() => {
+      heimdall.niflheim(
+        props.workspacePk,
+        props.changeSetId,
+        true,
+        false,
+        false,
+      );
+    }, EVENTUALLY_CONSISTENT_TIME);
+  },
+  { immediate: true },
+);
+
+watch(
+  () => heimdall.indexTouches.get(props.changeSetId),
+  () => {
+    // each time we get index updates, clear the interval
+    if (indexInterval) clearInterval(indexInterval);
+    // and restart it
+    indexInterval = setInterval(() => {
+      heimdall.niflheim(
+        props.workspacePk,
+        props.changeSetId,
+        true,
+        false,
+        false,
+      );
+    }, EVENTUALLY_CONSISTENT_TIME);
+  },
+  { immediate: true },
 );
 
 const indexFailedToLoad = computed(() => {

@@ -1029,6 +1029,7 @@ const handleIndexMvPatch = async (db: Database, msg: WorkspaceIndexUpdate) => {
   await tracer.startActiveSpan("IndexMvPatch", async (span) => {
     if (!msg.patch) {
       span.setAttribute("no_patch", true);
+      span.end();
       return;
     }
 
@@ -2801,16 +2802,6 @@ const niflheim = async (
         false,
         false,
       );
-
-      await bustCacheAndReferences(
-        db,
-        workspaceId,
-        changeSetId,
-        atom.kind,
-        atom.id,
-        false,
-        true,
-      );
     };
 
     for (const atom of finalAtoms) {
@@ -4409,9 +4400,15 @@ const dbInterface: TabDBInterface = {
     let interval: NodeJS.Timeout;
     sockets[workspaceId]?.addEventListener("close", () => {
       if (interval) clearInterval(interval);
+      const span = tracer.startSpan("ws_close");
+      span.setAttributes({ workspaceId });
+      span.end();
       updateConnectionStatus(workspaceId, false);
     });
     sockets[workspaceId]?.addEventListener("open", () => {
+      const span = tracer.startSpan("ws_open");
+      span.setAttributes({ workspaceId });
+      span.end();
       updateConnectionStatus(workspaceId, true);
       // heartbeat ping
       interval = setInterval(() => {
