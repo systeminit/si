@@ -21,16 +21,22 @@ export default defineConfig({
           return null
         },
         flakyFailure() {
-          console.log('Flaky failure detected - exiting with code', FLAKY_EXIT_CODE)
-          // Use setTimeout to allow Cypress to receive the return value before exiting
-          setTimeout(() => {
-            process.exit(FLAKY_EXIT_CODE)
-          }, 100)
-          return null
+          console.log('Flaky failure detected - will fail test and exit with code', FLAKY_EXIT_CODE)
+          // Set a flag that can be checked in after:run hook
+          process.env.FLAKY_FAILURE_DETECTED = 'true'
+          // Throw an error to fail the test
+          throw new Error('Simulated flaky failure')
         }
       });
 
       on('after:run', (results: any) => {
+        // Check if flaky failure was explicitly triggered
+        if (process.env.FLAKY_FAILURE_DETECTED === 'true') {
+          console.log('Flaky failure was detected during test run - exiting with code', FLAKY_EXIT_CODE)
+          process.exit(FLAKY_EXIT_CODE)
+        }
+        
+        // Check for Auth0-related failures in test results
         const hasAuth0Failures = results.runs?.some((run: any) => 
           run.tests?.some((test: any) => 
             test.displayError?.includes('Auth0') || 
