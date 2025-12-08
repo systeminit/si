@@ -1068,17 +1068,6 @@ function buildSecretCommand() {
       createSubCommand()
         .description("Create a new secret")
         .arguments("<secret-type:string>")
-        .env(
-          "SI_API_TOKEN=<value:string>",
-          "A System Initiative API Token",
-          {
-            required: true,
-          },
-        )
-        .env(
-          "SI_BASE_URL=<url:string>",
-          "The System Initiative Base URL for your workspace",
-        )
         .option(
           "--name <name:string>",
           "Name for the secret instance",
