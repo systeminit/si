@@ -22,7 +22,10 @@ export default defineConfig({
         },
         flakyFailure() {
           console.log('Flaky failure detected - exiting with code', FLAKY_EXIT_CODE)
-          process.exit(FLAKY_EXIT_CODE)
+          // Use setTimeout to allow Cypress to receive the return value before exiting
+          setTimeout(() => {
+            process.exit(FLAKY_EXIT_CODE)
+          }, 100)
           return null
         }
       });
