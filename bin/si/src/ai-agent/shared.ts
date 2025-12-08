@@ -59,7 +59,7 @@ For full documentation, see: https://docs.systeminit.com
 }
 
 /** Supported AI coding tools */
-export type AiTool = "claude" | "codex";
+export type AiTool = "claude" | "codex" | "opencode";
 
 /** Configuration for the AI Agent */
 export interface AiAgentConfig {
@@ -77,6 +77,7 @@ export const DEFAULT_CONFIG: Omit<AiAgentConfig, "apiToken"> = {
 export const TOOL_COMMANDS: Record<AiTool, string> = {
   claude: "claude",
   codex: "codex",
+  opencode: "opencode",
 };
 
 /** MCP server configuration structure */
@@ -308,20 +309,25 @@ export async function createClaudeSettings(targetDir: string): Promise<string> {
 }
 
 /**
+ * Create a context markdown file for an AI tool
+ * This provides the AI tool with context about working with SI infrastructure
+ */
+async function createContextFile(
+  targetDir: string,
+  filename: string,
+): Promise<string> {
+  const filePath = join(targetDir, filename);
+  const content = await getAgentContextTemplate();
+  await Deno.writeTextFile(filePath, content);
+  return filePath;
+}
+
+/**
  * Create the CLAUDE.md file with System Initiative context
  * This provides Claude Code with context about working with SI infrastructure
  */
-export async function createClaudeMd(targetDir: string): Promise<string> {
-  const claudeMdPath = join(targetDir, "CLAUDE.md");
-
-  // Load the SI Agent Context template (shared with Codex)
-  const content = await getAgentContextTemplate();
-
-  // Write to target directory
-  await Deno.writeTextFile(claudeMdPath, content);
-
-  return claudeMdPath;
-}
+export const createClaudeMd = (targetDir: string): Promise<string> =>
+  createContextFile(targetDir, "CLAUDE.md");
 
 /**
  * Get the Codex config directory
@@ -489,19 +495,44 @@ export SI_API_TOKEN="${apiToken}"
  * This provides Codex with context about working with SI infrastructure
  * Codex reads AGENTS.md from the project root for project-specific instructions
  */
-export async function createAgentsMd(targetDir: string): Promise<string> {
-  // Ensure target directory exists
-  await ensureDir(targetDir);
+export const createAgentsMd = (targetDir: string): Promise<string> =>
+  createContextFile(targetDir, "AGENTS.md");
 
-  const agentsMdPath = join(targetDir, "AGENTS.md");
+/**
+ * Create the OPENCODE.md file with System Initiative context for OpenCode.ai
+ * This provides OpenCode with context about working with SI infrastructure
+ * OpenCode reads context files from the project root
+ */
+export const createOpenCodeMd = (targetDir: string): Promise<string> =>
+  createContextFile(targetDir, "OPENCODE.md");
 
-  // Load the SI Agent Context template (shared with Claude)
-  const content = await getAgentContextTemplate();
+/**
+ * Create the opencode.jsonc configuration file for OpenCode.ai
+ * OpenCode uses a single JSON config file with nested MCP structure
+ */
+export async function createOpenCodeConfig(
+  apiToken: string,
+  targetDir: string,
+): Promise<string> {
+  const siBinaryPath = Deno.execPath();
+  const configPath = join(targetDir, "opencode.jsonc");
 
-  // Write to target directory as AGENTS.md (Codex's project context file)
-  await Deno.writeTextFile(agentsMdPath, content);
+  // OpenCode uses a nested structure under "mcp" key
+  // Note: OpenCode uses "environment" not "env" for environment variables
+  const openCodeConfig = {
+    mcp: {
+      "system-initiative": {
+        type: "local",
+        command: [siBinaryPath, "ai-agent", "stdio"],
+        environment: {
+          SI_API_TOKEN: apiToken,
+        },
+      },
+    },
+  };
 
-  return agentsMdPath;
+  await Deno.writeTextFile(configPath, JSON.stringify(openCodeConfig, null, 2));
+  return configPath;
 }
 
 /**

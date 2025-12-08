@@ -50,9 +50,12 @@ export async function callAiAgentStart(
     throw new Error(`${getToolDisplayName(tool)} not found`);
   }
 
-  // Launch the tool - it will manage the MCP server via .mcp.json
+  // Launch the tool - it will manage the MCP server via config file
   logger.info(`🚀 Launching ${getToolDisplayName(tool)}...`);
-  logger.info("The MCP server will start automatically via .mcp.json\n");
+
+  // Tool-specific configuration file info
+  const configInfo = getToolConfigInfo(tool);
+  logger.info(`The MCP server will start automatically via ${configInfo}\n`);
 
   try {
     const toolProcess = new Deno.Command(toolCommand, {
@@ -100,6 +103,7 @@ function getToolDisplayName(tool: string): string {
   const names: Record<string, string> = {
     claude: "Claude Code",
     codex: "OpenAI Codex",
+    opencode: "OpenCode.ai",
     cursor: "Cursor",
     windsurf: "Windsurf",
   };
@@ -113,8 +117,23 @@ function getToolInstallUrl(tool: string): string {
   const urls: Record<string, string> = {
     claude: "https://www.anthropic.com/claude-code",
     codex: "https://developers.openai.com/codex/cli/",
+    opencode: "https://opencode.ai/",
     cursor: "https://cursor.sh/",
     windsurf: "https://codeium.com/windsurf",
   };
   return urls[tool] || "";
+}
+
+/**
+ * Get configuration file info for a tool
+ */
+function getToolConfigInfo(tool: string): string {
+  const configInfo: Record<string, string> = {
+    claude: ".mcp.json",
+    codex: "~/.codex/config.toml",
+    opencode: "opencode.jsonc",
+    cursor: ".mcp.json",
+    windsurf: ".mcp.json",
+  };
+  return configInfo[tool] || "configuration file";
 }
