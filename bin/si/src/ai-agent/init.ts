@@ -20,6 +20,8 @@ import {
   createClaudeSettings,
   createCodexConfig,
   createMcpConfig,
+  createOpenCodeConfig,
+  createOpenCodeMd,
   DEFAULT_CONFIG,
   getConfigPath,
   loadConfig,
@@ -156,6 +158,17 @@ export async function callAiAgentInit(
       break;
     }
 
+    case "opencode": {
+      logger.info("📄 Creating OpenCode.ai configuration...");
+      const openCodeConfigPath = await createOpenCodeConfig(apiToken, targetDir);
+      logger.info(`✅ Created OpenCode config: ${openCodeConfigPath}\n`);
+
+      logger.info("📄 Creating OPENCODE.md context file...");
+      const openCodeMdPath = await createOpenCodeMd(targetDir);
+      logger.info(`✅ Created OPENCODE.md: ${openCodeMdPath}\n`);
+      break;
+    }
+
     default:
       logger.warn(`Unknown tool: ${tool}. Skipping tool-specific configuration.`);
   }
@@ -164,17 +177,34 @@ export async function callAiAgentInit(
   logger.info("🎉 AI Agent initialization complete!");
   logger.info(`\nTool: ${tool}`);
   logger.info("\nNext steps:");
-  if (tool === "codex") {
-    logger.info("  1. Install Codex CLI if not already installed:");
-    logger.info("     brew install codex  OR  npm install -g @openai/codex");
-    logger.info("  2. Start Codex: codex");
-    logger.info(
-      "     The SI MCP server will be available automatically via ~/.codex/config.toml",
-    );
-    logger.info("  3. Authenticate with your OpenAI/ChatGPT account when prompted");
-  } else {
-    logger.info("  1. Start the AI agent: si ai-agent start");
-    logger.info("     This will start the MCP server and launch your AI tool");
-    logger.info("  2. Check status: si ai-agent status");
+
+  switch (tool) {
+    case "codex":
+      logger.info("  1. Install Codex CLI if not already installed:");
+      logger.info("     brew install codex  OR  npm install -g @openai/codex");
+      logger.info("  2. Start Codex: codex");
+      logger.info(
+        "     The SI MCP server will be available automatically via ~/.codex/config.toml",
+      );
+      logger.info("  3. Authenticate with your OpenAI/ChatGPT account when prompted");
+      break;
+
+    case "opencode":
+      logger.info("  1. Install OpenCode.ai if not already installed:");
+      logger.info("     brew install opencode-ai/tap/opencode");
+      logger.info("     OR curl -fsSL https://raw.githubusercontent.com/opencode-ai/opencode/refs/heads/main/install | bash");
+      logger.info("  2. Start OpenCode: opencode");
+      logger.info(
+        "     The SI MCP server will be available automatically via opencode.jsonc",
+      );
+      logger.info("  3. Use OpenCode interactively or with prompts (opencode -p \"your prompt\")");
+      break;
+
+    case "claude":
+    default:
+      logger.info("  1. Start the AI agent: si ai-agent start");
+      logger.info("     This will start the MCP server and launch your AI tool");
+      logger.info("  2. Check status: si ai-agent status");
+      break;
   }
 }

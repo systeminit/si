@@ -402,7 +402,7 @@ function buildAiAgentCommand() {
         )
         .option(
           "--tool <name:string>",
-          "AI tool to use: claude (default), codex",
+          "AI tool to use: claude (default), codex, opencode",
         )
         .action(async (options) => {
           await callAiAgentInit(Context.instance(), options as AiAgentInitOptions);
