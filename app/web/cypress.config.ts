@@ -33,7 +33,9 @@ export default defineConfig({
         // Check if flaky failure was explicitly triggered
         if (process.env.FLAKY_FAILURE_DETECTED === 'true') {
           console.log('Flaky failure was detected during test run - exiting with code', FLAKY_EXIT_CODE)
-          process.exit(FLAKY_EXIT_CODE)
+          // Use setImmediate to allow Cypress to finish cleanup before exiting
+          setImmediate(() => process.exit(FLAKY_EXIT_CODE))
+          return
         }
         
         // Check for Auth0-related failures in test results
@@ -47,7 +49,7 @@ export default defineConfig({
         
         if (hasAuth0Failures) {
           console.log('Detected Auth0-related test failures - exiting with code', FLAKY_EXIT_CODE)
-          process.exit(FLAKY_EXIT_CODE)
+          setImmediate(() => process.exit(FLAKY_EXIT_CODE))
         }
       });
     },
