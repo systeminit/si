@@ -431,7 +431,30 @@ where
                             "S3 miss, trying PG fallback"
                         );
 
+                        monotonic!(
+                            layer_cache_backend_resolved = 1,
+                            cache_name = self.name.as_str(),
+                            backend = BackendType::S3.as_ref(),
+                            result = "miss"
+                        );
+
+                        monotonic!(
+                            layer_cache_read_fallback = 1,
+                            cache_name = self.name.as_str(),
+                            from_backend = BackendType::S3.as_ref(),
+                            to_backend = BackendType::Postgres.as_ref()
+                        );
+
                         let result = self.pg.get(&key).await?;
+
+                        let result_label: &'static str =
+                            if result.is_some() { "hit" } else { "miss" };
+                        monotonic!(
+                            layer_cache_backend_resolved = 1,
+                            cache_name = self.name.as_str(),
+                            backend = BackendType::Postgres.as_ref(),
+                            result = result_label
+                        );
 
                         debug!(
                             cache.name = self.name.as_str(),
@@ -526,6 +549,13 @@ where
 
                         if !still_not_found.is_empty() {
                             // Try PG fallback for remaining keys
+                            monotonic!(
+                                layer_cache_read_fallback = still_not_found.len() as u64,
+                                cache_name = self.name.as_str(),
+                                from_backend = BackendType::S3.as_ref(),
+                                to_backend = BackendType::Postgres.as_ref()
+                            );
+
                             if let Some(pg_results) = self.pg.get_many(&still_not_found).await? {
                                 // Merge S3 and PG results
                                 let mut combined = s3_results;
@@ -539,6 +569,13 @@ where
                         }
                     } else {
                         // All keys missed S3, try PG fallback
+                        monotonic!(
+                            layer_cache_read_fallback = not_found.len() as u64,
+                            cache_name = self.name.as_str(),
+                            from_backend = BackendType::S3.as_ref(),
+                            to_backend = BackendType::Postgres.as_ref()
+                        );
+
                         self.pg.get_many(&not_found).await?
                     }
                 }
