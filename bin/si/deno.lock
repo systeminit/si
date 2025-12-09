@@ -14,8 +14,10 @@
     "jsr:@logtape/pretty@^1.1.0": "1.2.0",
     "jsr:@logtape/redaction@^1.1.1": "1.2.0",
     "jsr:@onjara/optic@^2.0.3": "2.0.3",
+    "jsr:@opensrc/deno-open@1": "1.0.0",
     "jsr:@std/assert@*": "1.0.16",
     "jsr:@std/assert@1": "1.0.16",
+    "jsr:@std/assert@~0.218.2": "0.218.2",
     "jsr:@std/assert@~1.0.6": "1.0.16",
     "jsr:@std/encoding@^1.0.10": "1.0.10",
     "jsr:@std/encoding@~1.0.5": "1.0.10",
@@ -24,9 +26,11 @@
     "jsr:@std/fs@1": "1.0.20",
     "jsr:@std/internal@^1.0.12": "1.0.12",
     "jsr:@std/io@~0.224.9": "0.224.9",
+    "jsr:@std/path@^1.0.6": "1.1.3",
     "jsr:@std/path@^1.0.8": "1.1.3",
     "jsr:@std/path@^1.1.2": "1.1.3",
     "jsr:@std/path@^1.1.3": "1.1.3",
+    "jsr:@std/path@~0.218.2": "0.218.2",
     "jsr:@std/path@~1.0.6": "1.0.9",
     "jsr:@std/text@~1.0.7": "1.0.16",
     "jsr:@std/ulid@1": "1.0.0",
@@ -124,8 +128,18 @@
     "@onjara/optic@2.0.3": {
       "integrity": "b4bf8cae0820a3c3f362ba4d78939237fcfa23e3087bbd3f9fd3c883839820f1",
       "dependencies": [
-        "jsr:@std/fmt@^1.0.2"
+        "jsr:@std/fmt@^1.0.2",
+        "jsr:@std/path@^1.0.6"
       ]
+    },
+    "@opensrc/deno-open@1.0.0": {
+      "integrity": "590decada8cf2d50f4b35c7d3a8d642e18e45d6e47078ea02a4dbf0096bbf9fd",
+      "dependencies": [
+        "jsr:@std/path@~0.218.2"
+      ]
+    },
+    "@std/assert@0.218.2": {
+      "integrity": "7f0a5a1a8cf86607cd6c2c030584096e1ffad27fc9271429a8cb48cfbdee5eaf"
     },
     "@std/assert@1.0.16": {
       "integrity": "6a7272ed1eaa77defe76e5ff63ca705d9c495077e2d5fd0126d2b53fc5bd6532",
@@ -157,6 +171,12 @@
     },
     "@std/io@0.224.9": {
       "integrity": "4414664b6926f665102e73c969cfda06d2c4c59bd5d0c603fd4f1b1c840d6ee3"
+    },
+    "@std/path@0.218.2": {
+      "integrity": "b568fd923d9e53ad76d17c513e7310bda8e755a3e825e6289a0ce536404e2662",
+      "dependencies": [
+        "jsr:@std/assert@~0.218.2"
+      ]
     },
     "@std/path@1.0.9": {
       "integrity": "260a49f11edd3db93dd38350bf9cd1b4d1366afa98e81b86167b4e3dd750129e"
@@ -825,6 +845,7 @@
       "jsr:@logtape/pretty@^1.1.0",
       "jsr:@logtape/redaction@^1.1.1",
       "jsr:@onjara/optic@^2.0.3",
+      "jsr:@opensrc/deno-open@1",
       "jsr:@std/assert@1",
       "jsr:@std/encoding@^1.0.10",
       "jsr:@std/fs@1",

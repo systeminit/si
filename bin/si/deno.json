@@ -39,6 +39,7 @@
     "@logtape/redaction": "jsr:@logtape/redaction@^1.1.1",
     "@modelcontextprotocol/sdk": "npm:@modelcontextprotocol/sdk@^1.16.0",
     "@onjara/optic": "jsr:@onjara/optic@^2.0.3",
+    "@opensrc/deno-open": "jsr:@opensrc/deno-open@^1.0.0",
     "@std/assert": "jsr:@std/assert@1",
     "@std/encoding": "jsr:@std/encoding@^1.0.10",
     "@std/fs": "jsr:@std/fs@^1.0.0",

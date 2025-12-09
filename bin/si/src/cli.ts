@@ -72,6 +72,10 @@ import {
   callChangeSetList,
   type ChangeSetListOptions,
 } from "./change-set/list.ts";
+import {
+  callChangeSetOpen,
+  type ChangeSetOpenOptions,
+} from "./change-set/open.ts";
 
 /**
  * Global options available to all commands
@@ -1142,6 +1146,18 @@ function buildChangeSetCommand() {
             ...options,
             changeSetIdOrName: changeSetIdOrName as string,
           } as ChangeSetAbandonOptions);
+        }),
+    )
+    .command(
+      "open",
+      createSubCommand()
+        .description("Open a change set in the browser")
+        .arguments("<change-set-id-or-name:string>")
+        .action(async (options, changeSetIdOrName) => {
+          await callChangeSetOpen({
+            ...options,
+            changeSetIdOrName: changeSetIdOrName as string,
+          } as ChangeSetOpenOptions);
         }),
     )
     .command(
