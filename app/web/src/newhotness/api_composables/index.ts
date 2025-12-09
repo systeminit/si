@@ -1,10 +1,10 @@
-import { unref, inject, ref, Ref, watch, computed, ComputedRef } from "vue";
+import { computed, ComputedRef, inject, Ref, ref, unref, watch } from "vue";
 import { AxiosInstance, AxiosResponse } from "axios";
-import { trace, Span } from "@opentelemetry/api";
+import { Span, trace } from "@opentelemetry/api";
 import { RouteLocationRaw } from "vue-router";
 import {
-  sdfApiInstance as sdf,
   authApiInstance as auth,
+  sdfApiInstance as sdf,
 } from "@/store/apis.web";
 import { changeSetExists, muspelheimStatuses } from "@/store/realtime/heimdall";
 import router from "@/router";
@@ -29,7 +29,6 @@ export enum routes {
   ApplyChangeSet = "ApplyChangeSet",
   AuditLogs = "AuditLogs",
   AuditLogsForComponent = "AuditLogsForComponent",
-  AutosubscribeComponent = "AutosubscribeComponent",
   ChangeSetApprovalStatus = "ChangeSetApprovalStatus",
   ChangeSetApprove = "ChangeSetApprove",
   ChangeSetCancelApprovalRequest = "ChangeSetCancelApprovalRequest",
@@ -109,7 +108,6 @@ const _routes: Record<routes, string> = {
   ApplyChangeSet: "/apply",
   AuditLogs: "/audit-logs",
   AuditLogsForComponent: "/audit-logs/<componentId>",
-  AutosubscribeComponent: "/components/autosubscribe",
   ChangeSetApprovalStatus: "/approval_status",
   ChangeSetApprove: "/approve",
   ChangeSetCancelApprovalRequest: "/cancel_approval_request",
@@ -245,11 +243,12 @@ export class APICall<Response, Args> {
 
   pathWithArgs(): string {
     let path = this.path.slice(); // slice() acts like a clone
-    if (this.endpointArgs)
+    if (this.endpointArgs) {
       Object.entries(this.endpointArgs).forEach(([k, v]) => {
         // tsc gets a little confused in that `k` could be a symbol?
         path = path.replace(`<${k.toString()}>`, v as string);
       });
+    }
     return path;
   }
 
@@ -488,8 +487,9 @@ export const useApi = <SpecificArgs extends EndpointArgs = EndpointArgs>(
   const endpoint = <Response>(key: routes, args?: SpecificArgs) => {
     const path = _routes[key];
     const needsArgs = path.includes("<") && path.includes(">");
-    if (!args && needsArgs)
+    if (!args && needsArgs) {
       throw new Error(`Endpoint ${key}, ${path} requires arguments`);
+    }
     assertIsDefined(ctx);
 
     const canMutateHead = CAN_MUTATE_ON_HEAD.includes(key);
