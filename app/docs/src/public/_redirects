@@ -1,2 +1,23 @@
 # Force to https
 http://*   https://:splat  301!
+
+# Redirect moved IaC comparison doc
+/reference/iac-comparison  /explanation/iac-comparison  301
+
+# Redirect moved architecture docs
+/reference/architecture/index  /explanation/architecture/index  301
+/reference/architecture/ai  /explanation/architecture/ai  301
+/reference/architecture/change-control  /explanation/architecture/change-control  301
+/reference/architecture/digital-twin  /explanation/architecture/digital-twin  301
+/reference/architecture/engine  /explanation/architecture/engine  301
+/reference/architecture/functions  /explanation/architecture/functions  301
+/reference/architecture/snapshot  /explanation/architecture/snapshot  301
+/reference/architecture/tenancy  /explanation/architecture/tenancy  301
+
+# Redirect moved cloud provider docs
+/reference/providers  /explanation/cloud-providers  301
+/reference/providers/aws  /explanation/cloud-providers/aws  301
+/reference/providers/azure  /explanation/cloud-providers/azure  301
+/reference/providers/digital-ocean  /explanation/cloud-providers/digital-ocean  301
+/reference/providers/hetzner  /explanation/cloud-providers/hetzner  301
+/explanation/aws-authentication  /explanation/cloud-providers/aws  301

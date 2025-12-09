@@ -1,7 +1,7 @@
 # Creating Components
 
 This tutorial will teach you how to create new
-[Components](/reference/vocabulary#components).
+Components.
 
 To follow along, you should:
 
@@ -39,7 +39,7 @@ Click the `Beaker` icon to switch to the Customize screen.
 Click the `New Asset` button (represented by a `+` icon) in the Assets pallete
 in the left side panel.
 
-Name your [Asset](/reference/vocabulary#asset) `Hello World`.
+Name your Asset `Hello World`.
 
 Click `Create Asset`.
 
@@ -417,9 +417,3 @@ To learn more, explore the reference documentation:
   how to author Asset Schemas.
 - [Asset Function Reference](/reference/asset/function.md) for more information
   on how to write functions
-
-## Vocabulary
-
-In this tutorial bits of System Initiative Vocabulary will be shown with a
-capital letter. All definitions for these can be found here:
-[System Initative - Vocabulary](https://docs.systeminit.com/reference/vocabulary)

@@ -170,16 +170,8 @@ export default withMermaid(defineConfig({
             link: "/reference/secrets",
           },
           {
-            text: "Vocabulary",
-            link: "/reference/vocabulary",
-          },
-          {
             text: "Writing Templates",
             link: "/reference/templating",
-          },
-          {
-            text: "Providers",
-            link: "/reference/providers",
           },
           {
             text: "TypeScript Function API",
@@ -189,45 +181,6 @@ export default withMermaid(defineConfig({
             text: "Public API",
             link: "/reference/public-api",
           },
-          {
-            text: "IaC vs System Initiative",
-            link: "/reference/iac-comparison",
-          },
-          {
-            text: "Architecture",
-            link: "/reference/architecture/index",
-            collapsed: true,
-            items: [
-              {
-                text: "The Distributed Exection Engine",
-                link: "/reference/architecture/engine",
-              },
-              {
-                text: "The Data Model",
-                link: "/reference/architecture/snapshot",
-              },
-              {
-                text: "Change Control",
-                link: "/reference/architecture/change-control",
-              },
-              {
-                text: "Digital Twin",
-                link: "/reference/architecture/digital-twin",
-              },
-              {
-                text: "Function Execution Framework",
-                link: "/reference/architecture/functions",
-              },
-              {
-                text: "Tenancy and Access Control",
-                link: "/reference/architecture/tenancy",
-              },
-              {
-                text: "AI Native Collaboration",
-                link: "/reference/architecture/ai",
-              },
-            ],
-          },
         ],
       },
       {
@@ -235,10 +188,6 @@ export default withMermaid(defineConfig({
         link: "/explanation/",
         collapsed: false,
         items: [
-          {
-            text: "AWS Authentication",
-            link: "/explanation/aws-authentication",
-          },
           {
             text: "Working on System Initiative",
             link: "/explanation/working-on-si",
@@ -250,6 +199,68 @@ export default withMermaid(defineConfig({
           {
             text: "Create Workspace API Tokens",
             link: "/explanation/generate-a-workspace-api-token",
+          },
+          {
+            text: "IaC vs System Initiative",
+            link: "/explanation/iac-comparison",
+          },
+          {
+            text: "Cloud Providers",
+            link: "/explanation/cloud-providers/index",
+            collapsed: true,
+            items: [
+              {
+                text: "AWS",
+                link: "/explanation/cloud-providers/aws",
+              },
+              {
+                text: "Azure",
+                link: "/explanation/cloud-providers/azure",
+              },
+              {
+                text: "DigitalOcean",
+                link: "/explanation/cloud-providers/digital-ocean",
+              },
+              {
+                text: "Hetzner Cloud",
+                link: "/explanation/cloud-providers/hetzner",
+              },
+            ],
+          },
+          {
+            text: "Architecture",
+            link: "/explanation/architecture/index",
+            collapsed: true,
+            items: [
+              {
+                text: "The Distributed Exection Engine",
+                link: "/explanation/architecture/engine",
+              },
+              {
+                text: "The Data Model",
+                link: "/explanation/architecture/snapshot",
+              },
+              {
+                text: "Change Control",
+                link: "/explanation/architecture/change-control",
+              },
+              {
+                text: "Digital Twin",
+                link: "/explanation/architecture/digital-twin",
+              },
+              {
+                text: "Function Execution Framework",
+                link: "/explanation/architecture/functions",
+              },
+              {
+                text: "Tenancy and Access Control",
+                link: "/explanation/architecture/tenancy",
+              },
+              {
+                text: "AI Native Collaboration",
+                link: "/explanation/architecture/ai",
+              },
+            ],
           },
         ],
       },
