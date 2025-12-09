@@ -1,4 +1,5 @@
 import { AxiosError } from "axios";
+import { WorkspaceDetails } from "./cli/auth.ts";
 
 export function unknownValueToErrorMessage(value: unknown): string {
   if (typeof value === "string") return value;
@@ -169,4 +170,16 @@ export async function logComponentWithSchema(
   }
 
   ctx.logger.info(messageTemplate, logContext);
+}
+
+/**
+ * Generates the URL for a change set in the System Initiative web application
+ */
+export function generateChangeSetUrl(
+  workspace: WorkspaceDetails,
+  changeSetId: string
+): string {
+  const baseUrl = workspace.instanceUrl;
+
+  return `${baseUrl}/n/${workspace.id}/${changeSetId}`;
 }
