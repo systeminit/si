@@ -52,10 +52,7 @@ export const DEBUG_PROVIDER_CHOICE = undefined;
         <div
           :class="
             clsx(
-              'flex flex-col items-center w-full h-full relative',
-              featureFlagsStore.DIGITAL_OCEAN_ONBOARDING
-                ? 'min-w-[700px]'
-                : 'min-w-[900px]',
+              'flex flex-col items-center w-full h-full relative min-w-[700px]',
             )
           "
         >
@@ -122,12 +119,7 @@ export const DEBUG_PROVIDER_CHOICE = undefined;
                   beta
                   @select="pickProvider"
                 />
-                <template
-                  v-if="
-                    windowWidthReactive >= 1100 &&
-                    featureFlagsStore.DIGITAL_OCEAN_ONBOARDING
-                  "
-                >
+                <template v-if="windowWidthReactive >= 1100">
                   <OnboardingProviderTile
                     provider="Hetzner"
                     beta
@@ -139,21 +131,10 @@ export const DEBUG_PROVIDER_CHOICE = undefined;
                     @select="pickProvider"
                   />
                 </template>
-                <OnboardingProviderTile
-                  v-else-if="!featureFlagsStore.DIGITAL_OCEAN_ONBOARDING"
-                  provider="Hetzner"
-                  beta
-                  @select="pickProvider"
-                />
               </div>
               <div :class="onboardingTileRowClasses">
                 <!-- Secondary Providers -->
-                <template
-                  v-if="
-                    windowWidthReactive < 1100 &&
-                    featureFlagsStore.DIGITAL_OCEAN_ONBOARDING
-                  "
-                >
+                <template v-if="windowWidthReactive < 1100">
                   <OnboardingProviderTile
                     provider="Hetzner"
                     beta
@@ -313,7 +294,9 @@ export const DEBUG_PROVIDER_CHOICE = undefined;
                               data-1p-ignore
                               data-bwignore
                               data-form-type="other"
-                              @paste="(ev: ClipboardEvent) => tryMatchOnPaste(ev)"
+                              @paste="
+                                (ev: ClipboardEvent) => tryMatchOnPaste(ev)
+                              "
                               @focus="
                                 onboardingTracking(
                                   `focused_secret_field_${title
