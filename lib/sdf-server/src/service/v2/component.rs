@@ -29,7 +29,6 @@ use si_id::ComponentId;
 use crate::app_state::AppState;
 
 pub mod attributes;
-pub mod autosubscribe;
 pub mod debug_component;
 pub mod delete_components;
 pub mod get_json;
@@ -109,10 +108,6 @@ pub fn v2_routes() -> Router<AppState> {
         .route("/upgrade", post(upgrade_components::upgrade_components))
         .route("/delete", delete(delete_components::delete_components))
         .route("/restore", put(restore_components::restore_components))
-        .route(
-            "/autosubscribe",
-            post(autosubscribe::autosubscribe_component),
-        )
         .nest(
             "/:componentId",
             Router::new()
