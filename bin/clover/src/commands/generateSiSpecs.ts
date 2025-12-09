@@ -16,6 +16,7 @@ import "../pipelines/aws/spec.ts";
 import "../pipelines/hetzner/provider.ts";
 import "../pipelines/msgraph/provider.ts";
 import "../pipelines/digitalocean/provider.ts";
+import "../pipelines/gcp/provider.ts";
 import "../pipelines/dummy/spec.ts";
 
 // set this boolean to true to print out duplicates instead of throwing an error
