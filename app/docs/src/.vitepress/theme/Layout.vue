@@ -34,4 +34,11 @@ router.onAfterRouteChanged = setupMediumZoom;
 .medium-zoom-image--opened {
   z-index: 999;
 }
+
+/* Enable soft-wrapping for code blocks */
+div[class*='language-'] pre,
+div[class*='language-'] code {
+  white-space: pre-wrap !important;
+  word-break: break-word;
+}
 </style>

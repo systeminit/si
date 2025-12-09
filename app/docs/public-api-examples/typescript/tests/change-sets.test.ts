@@ -64,4 +64,60 @@ describe('Change Sets API', () => {
 
     console.log(`Found ${response.data.changeSets.length} change set(s)`);
   });
+
+  it('should apply a change set', async () => {
+    // Create a change set to apply
+    const changeSetName = `test-apply-${Date.now()}`;
+    const createResponse = await changeSetsApi.createChangeSet({
+      workspaceId,
+      createChangeSetV1Request: { changeSetName },
+    });
+
+    expect(createResponse.status).toBe(200);
+    const changeSetId = createResponse.data.changeSet.id;
+
+    console.log('Created change set to apply:', {
+      id: changeSetId,
+      name: changeSetName,
+    });
+
+    // Apply the change set
+    const applyResponse = await changeSetsApi.forceApply({
+      workspaceId,
+      changeSetId,
+    });
+
+    expect(applyResponse.status).toBe(200);
+    expect(applyResponse.data.success).toBe(true);
+
+    console.log('Applied change set:', changeSetId);
+  });
+
+  it('should abandon a change set', async () => {
+    // Create a change set to abandon
+    const changeSetName = `test-abandon-${Date.now()}`;
+    const createResponse = await changeSetsApi.createChangeSet({
+      workspaceId,
+      createChangeSetV1Request: { changeSetName },
+    });
+
+    expect(createResponse.status).toBe(200);
+    const changeSetId = createResponse.data.changeSet.id;
+
+    console.log('Created change set to abandon:', {
+      id: changeSetId,
+      name: changeSetName,
+    });
+
+    // Abandon the change set
+    const abandonResponse = await changeSetsApi.abandonChangeSet({
+      workspaceId,
+      changeSetId,
+    });
+
+    expect(abandonResponse.status).toBe(200);
+    expect(abandonResponse.data.success).toBe(true);
+
+    console.log('Abandoned change set:', changeSetId);
+  });
 });
