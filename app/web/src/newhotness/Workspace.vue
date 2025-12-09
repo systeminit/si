@@ -7,6 +7,7 @@
   >
     <!-- nav itself is fixed at 60 px-->
     <nav
+      v-if="!showOnboarding"
       :class="
         clsx(
           'navbar relative shadow-[0_4px_4px_0_rgba(0,0,0,0.15)] border-b',
