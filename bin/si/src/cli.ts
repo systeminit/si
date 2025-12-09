@@ -86,6 +86,8 @@ import {
   writeWorkspace,
 } from "./cli/config.ts";
 import { AuthApiClient, isTokenAboutToExpire } from "./cli/auth.ts";
+import { callComponentCreate, type ComponentCreateOptions } from "./component/create.ts";
+import { callComponentErase, type ComponentEraseOptions } from "./component/erase.ts";
 
 /**
  * Global options available to all commands
@@ -1131,6 +1133,35 @@ function buildComponentCommand() {
         }),
     )
     .command(
+      "create",
+      createSubCommand(true)
+        .description("Create component from JSON/YAML file (idempotent)")
+        .arguments("<input-file:string>")
+        .option(
+          "-c, --change-set <id:string>",
+          "Change set ID or name (defaults to HEAD)",
+        )
+        .option(
+          "-o, --output <format:string>",
+          "Output format: info (default), json, or yaml",
+          { default: "info" },
+        )
+        .option(
+          "--cache <file:string>",
+          "Cache output to file; format (JSON/YAML) determined by file extension (.json, .yaml, .yml)",
+        )
+        .option(
+          "--raw",
+          "Output raw API response as JSON and exit",
+        )
+        .action(async (options, inputFile) => {
+          await callComponentCreate(
+            inputFile,
+            options as ComponentCreateOptions,
+          );
+        }),
+    )
+    .command(
       "update",
       createSubCommand(true)
         .description("Update a component from JSON/YAML file (idempotent)")
@@ -1167,6 +1198,29 @@ function buildComponentCommand() {
           await callComponentDelete(
             component as string,
             options as ComponentDeleteOptions,
+          );
+        }),
+    )
+    .command(
+      "erase",
+      createSubCommand(true)
+        .description(
+          "Erase a component by name or ID",
+        )
+        .arguments("<component:string>")
+        .option(
+          "-c, --change-set <id-or-name:string>",
+          "Change set ID or name",
+          { required: true },
+        )
+        .option(
+          "--dry-run",
+          "Preview deletion without applying changes",
+        )
+        .action(async (options, component) => {
+          await callComponentErase(
+            component as string,
+            options as ComponentEraseOptions,
           );
         }),
     )

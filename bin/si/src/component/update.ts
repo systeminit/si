@@ -43,7 +43,9 @@ export interface ComponentUpdateOptions {
  * @returns Parsed component data
  * @throws Error if file cannot be read or parsed
  */
-async function loadComponentFile(filePath: string): Promise<ComponentGetCache> {
+export async function loadComponentFile(
+  filePath: string,
+): Promise<ComponentGetCache> {
   const ctx = Context.instance();
   ctx.logger.debug(`Loading component file: {filePath}`, { filePath });
 

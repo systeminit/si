@@ -166,6 +166,10 @@ export default withMermaid(defineConfig({
             link: "/reference/change-sets",
           },
           {
+            text: "Components",
+            link: "/reference/components",
+          },
+          {
             text: "Actions",
             link: "/reference/actions",
           },
