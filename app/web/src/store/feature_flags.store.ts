@@ -19,7 +19,6 @@ const USER_FLAG_MAPPING = {
   COMPONENT_HISTORY_FUNCS: "component-history-funcs",
   REVERSE_TRUNCATION: "reverse-truncation",
   VIEWS_BUTTON: "views-button-component-details",
-  DIGITAL_OCEAN_ONBOARDING: "digital-ocean-onboarding",
 } as const;
 const WORKSPACE_FLAG_MAPPING: Record<string, string> = {
   // STORE_FLAG_NAME: "posthogFlagName",

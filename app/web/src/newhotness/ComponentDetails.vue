@@ -398,14 +398,6 @@
           <template #header>
             <span class="text-sm">Debug</span>
           </template>
-          <template #headerIcons>
-            <NewButton
-              v-if="featureFlagsStore.VIEWS_BUTTON"
-              v-tooltip="'Views (V)'"
-              label="Views"
-              @click.stop="openViewsModal"
-            />
-          </template>
           <ComponentDebugPanel :componentId="component.id" />
         </CollapsingFlexItem>
         <DocumentationPanel
@@ -421,13 +413,6 @@
     <DeleteModal
       ref="deleteModalRef"
       @delete="(mode) => componentsFinishDelete(mode)"
-    />
-    <ComponentViewsModal
-      v-if="component && featureFlagsStore.VIEWS_BUTTON"
-      ref="viewsModalRef"
-      :componentName="component.name"
-      :componentId="componentId"
-      :availableViewListOptions="availableViewListOptions"
     />
     <ComponentImportModal ref="importModalRef" @submit="doImport" />
   </section>
@@ -459,13 +444,11 @@ import {
   bifrostExists,
   useMakeArgs,
   useMakeKey,
-  bifrostList,
 } from "@/store/realtime/heimdall";
 import {
   AttributeTree,
   BifrostComponent,
   EntityKind,
-  View,
   IncomingConnections,
   MgmtFuncKind,
 } from "@/workers/types/entity_kind_types";
@@ -505,11 +488,6 @@ import { useComponentActions } from "./logic_composables/component_actions";
 import { prevPage } from "./logic_composables/navigation_stack";
 import { openWorkspaceMigrationDocumentation } from "./util";
 import { useContext } from "./logic_composables/context";
-import ComponentViewsModal from "./ComponentViewsModal.vue";
-import {
-  availableViewListOptionsForComponentIds,
-  useComponentsAndViews,
-} from "./logic_composables/view";
 import ComponentImportModal from "./ComponentImportModal.vue";
 
 const showSkeleton = computed(
@@ -536,8 +514,6 @@ const docsOpen = ref(true);
 const componentId = computed(() => props.componentId);
 
 const attributePanelRef = ref<InstanceType<typeof AttributePanel>>();
-
-const featureFlagsStore = useFeatureFlagsStore();
 
 const componentQuery = useQuery<BifrostComponent | null>({
   queryKey: key(EntityKind.Component, componentId),
@@ -952,14 +928,6 @@ const shortcuts: { [Key in string]: (e: KeyDetails[Key]) => void } = {
       upgradeComponent();
     }
   },
-  v: (e) => {
-    if (e.metaKey || e.ctrlKey) {
-      return;
-    }
-    if (featureFlagsStore.VIEWS_BUTTON) {
-      openViewsModal();
-    }
-  },
   // w: undefined,
   // x: undefined,
   // y: undefined,
@@ -1148,38 +1116,6 @@ const navigateToFuncRunDetails = (funcRunId: string) => {
     },
   });
 };
-
-const componentsAndViews = useComponentsAndViews();
-
-const viewsModalRef = ref<InstanceType<typeof ComponentViewsModal>>();
-const openViewsModal = () => {
-  viewsModalRef.value?.open();
-};
-
-const viewListQuery = useQuery<View[]>({
-  queryKey: key(EntityKind.ViewList),
-  queryFn: async () => {
-    const views = await bifrostList<View[]>(args(EntityKind.ViewList));
-    if (!views) return [];
-    else return views;
-  },
-});
-const viewListOptions = computed(() => {
-  const list = viewListQuery.data.value ?? [];
-
-  // This is ID-sorted in the backend, not name-sorted.
-  return list
-    .map((l) => ({ value: l.id, label: l.name }))
-    .sort((a, b) => a.label.localeCompare(b.label));
-});
-const availableViewListOptions = computed(() =>
-  availableViewListOptionsForComponentIds(
-    [props.componentId],
-    viewListOptions.value,
-    componentsAndViews,
-    true,
-  ),
-);
 
 const doImport = (resourceId: string) => {
   attributePanelRef.value?.doImport(resourceId);

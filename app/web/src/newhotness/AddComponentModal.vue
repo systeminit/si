@@ -214,7 +214,6 @@ import {
   CachedDefaultVariant,
 } from "@/workers/types/entity_kind_types";
 import { getKind, useMakeArgs, useMakeKey } from "@/store/realtime/heimdall";
-import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import AddComponentModalListRow, {
   AddComponentRowData,
 } from "@/newhotness/AddComponentModalListRow.vue";
@@ -530,7 +529,6 @@ export type UISchemaKey = {
   schemaId: string;
   schemaVariantId?: string;
 };
-const ffStore = useFeatureFlagsStore();
 const defaultSchemaKey = makeKey(EntityKind.CachedDefaultVariant);
 const defaultSchemas = useQuery({
   queryKey: defaultSchemaKey,
@@ -907,6 +905,15 @@ const componentFilters = computed((): AssetFilter[] => {
       color: BRAND_COLOR_FILTER_HEX_CODES.Hetzner,
     },
     {
+      name: "DigitalOcean",
+      icon: "logo-digital-ocean",
+      count: getCategoriesAndCountForFilterStrings([
+        "digitalocean",
+        "digital ocean",
+      ]).count,
+      color: BRAND_COLOR_FILTER_HEX_CODES.DigitalOcean,
+    },
+    {
       name: "Fastly",
       icon: pickBrandIconByString("fastly"),
       count: getCategoriesAndCountForFilterStrings("fastly").count,
@@ -918,18 +925,6 @@ const componentFilters = computed((): AssetFilter[] => {
       count: getCategoriesAndCountForFilterStrings("Templates").count,
     },
   ];
-
-  if (ffStore.DIGITAL_OCEAN_ONBOARDING) {
-    filters.splice(4, 0, {
-      name: "DigitalOcean",
-      icon: "logo-digital-ocean",
-      count: getCategoriesAndCountForFilterStrings([
-        "digitalocean",
-        "digital ocean",
-      ]).count,
-      color: BRAND_COLOR_FILTER_HEX_CODES.DigitalOcean,
-    });
-  }
 
   return filters.filter((f) => f.count > 0);
 });
