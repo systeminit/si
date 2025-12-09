@@ -2126,6 +2126,12 @@
       "JSON"
     ]
   },
+  "Type of the DataAutomationProject - Sync or Async": {
+    "enum": [
+      "Sync",
+      "Async"
+    ]
+  },
   "Specifies the log group class for this log group. There are two classes:\n  +  The ``Standard`` log class supports all CWL features.\n  +  The ``Infrequent Access`` log class supports a subset of CWL features and incurs lower costs.\n  \n For details about the features supported by each class, see [Log classes](https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/CloudWatch_Logs_Log_Classes.html)": {
     "enum": [
       "Standard",
@@ -5759,6 +5765,9 @@
     "enum": null
   },
   "For files imported from a data repository, this value determines the stripe count and maximum amount of data per file (in MiB) stored on a single physical disk. The maximum number of disks that a single file can be striped across is limited by the total number of disks that make up the file system or cache.\n The default chunk size is 1,024 MiB (1 GiB) and can go as high as 512,000 MiB (500 GiB). Amazon S3 objects have a maximum size of 5 TB.": {
+    "enum": null
+  },
+  "For files imported from a data repository, this value determines the stripe count and maximum amount of data per file (in MiB) stored on a single physical disk. The maximum number of disks that a single file can be striped across is limited by the total number of disks that make up the file system.": {
     "enum": null
   },
   "For provisioned feature groups with online store enabled, this indicates the read throughput you are billed for and can consume without throttling.": {
@@ -12796,6 +12805,9 @@
   "The generic ARN of the product being subscribed to": {
     "enum": null
   },
+  "The globally unique ID of the file system, assigned by Amazon FSx.": {
+    "enum": null
+  },
   "The globally unique identifier for the identity store.": {
     "enum": null
   },
@@ -16090,6 +16102,9 @@
   "The path to the Amazon S3 data repository that will be linked to the file system. The path can be an S3 bucket or prefix in the format ``s3://myBucket/myPrefix/``. This path specifies where in the S3 data repository files will be imported from or exported to.": {
     "enum": null
   },
+  "The path to the Amazon S3 data repository that will be linked to the file system. The path can be an S3 bucket or prefix in the format s3://myBucket/myPrefix/ . This path specifies where in the S3 data repository files will be imported from or exported to.": {
+    "enum": null
+  },
   "The path to the group. For more information about paths, see [IAM identifiers](https://docs.aws.amazon.com/IAM/latest/UserGuide/Using_Identifiers.html) in the *IAM User Guide*.\n This parameter is optional. If it is not included, it defaults to a slash (/).\n This parameter allows (through its [regex pattern](https://docs.aws.amazon.com/http://wikipedia.org/wiki/regex)) a string of characters consisting of either a forward slash (/) by itself or a string that must begin and end with forward slashes. In addition, it can contain any ASCII character from the ! (``\\u0021``) through the DEL character (``\\u007F``), including most punctuation characters, digits, and upper and lowercased letters.": {
     "enum": null
   },
@@ -18368,6 +18383,9 @@
     "enum": null
   },
   "This parameter is not used.": {
+    "enum": null
+  },
+  "This path specifies where in your file system files will be exported from or imported to. This file system directory can be linked to only one Amazon S3 bucket, and no other S3 bucket can be linked to the directory.": {
     "enum": null
   },
   "This property applies only to Amazon Data Firehose delivery stream subscriptions.": {
