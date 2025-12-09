@@ -6,6 +6,7 @@ rust_library(
         "//lib/si-std:si-std",
         "//lib/si-tls:si-tls",
         "//lib/telemetry-rs:telemetry",
+        "//lib/telemetry-utils-rs:telemetry-utils",
         "//third-party/rust:bytes",
         "//third-party/rust:base64",
         "//third-party/rust:deadpool",

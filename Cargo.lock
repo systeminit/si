@@ -8029,6 +8029,7 @@ dependencies = [
  "si-std",
  "si-tls",
  "telemetry",
+ "telemetry-utils",
  "tempfile",
  "thiserror 2.0.12",
  "tokio",
