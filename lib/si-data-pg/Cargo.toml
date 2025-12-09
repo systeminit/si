@@ -24,6 +24,7 @@ serde = { workspace = true }
 si-std = { path = "../../lib/si-std" }
 si-tls = { path = "../../lib/si-tls" }
 telemetry = { path = "../../lib/telemetry-rs" }
+telemetry-utils = { path = "../../lib/telemetry-utils-rs" }
 tempfile = { workspace = true }
 thiserror = { workspace = true }
 tokio = { workspace = true }

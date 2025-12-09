@@ -55,6 +55,10 @@ use si_tls::{
     TlsError,
 };
 use telemetry::prelude::*;
+use telemetry_utils::{
+    gauge,
+    monotonic,
+};
 use tokio::sync::Mutex;
 use tokio_postgres::{
     CancelToken,
@@ -3019,7 +3023,6 @@ async fn evict_old_and_idle_pgpool_connections(
         let oldest_used = Rc::new(RefCell::new(Duration::default()));
         let oldest_created = Rc::new(RefCell::new(Duration::default()));
 
-        info!("Locking pool for eviction loop");
         pg_pool.retain(|client_wrapper, metrics| {
             *connection_count.borrow_mut() += 1;
             if *oldest_used.borrow() < metrics.last_used() {
@@ -3029,29 +3032,37 @@ async fn evict_old_and_idle_pgpool_connections(
                 *oldest_created.borrow_mut() = metrics.age()
             }
             if client_wrapper.is_closed() {
-                debug!("Evicting closed connection");
+                monotonic!(
+                    db.pool.eviction.connections_removed = 1,
+                    reason = "already_closed"
+                );
                 *evicted_connections.borrow_mut() += 1;
                 *closed_count.borrow_mut() += 1;
                 false
             } else if metrics.last_used() > max_idle_time {
-                debug!("Evicting connection due to idle time");
+                monotonic!(
+                    db.pool.eviction.connections_removed = 1,
+                    reason = "idle_timeout"
+                );
                 *evicted_connections.borrow_mut() += 1;
                 false
             } else if metrics.age() > max_age {
-                debug!("Evicting connection due to total age");
+                monotonic!(db.pool.eviction.connections_removed = 1, reason = "max_age");
                 *evicted_connections.borrow_mut() += 1;
                 false
             } else {
                 true
             }
         });
-        info!(
-            "Checked {} connection(s), evicted {}, already closed {}, oldest {:?}, least recently used {:?}",
-            connection_count.borrow(),
-            evicted_connections.borrow(),
-            closed_count.borrow(),
-            oldest_created.borrow(),
-            oldest_used.borrow(),
-        );
+
+        // Extract values from RefCells for metrics
+        let conn_count = *connection_count.borrow();
+        let oldest_created_duration = *oldest_created.borrow();
+        let oldest_used_duration = *oldest_used.borrow();
+
+        // Emit gauge metrics
+        gauge!(db.pool.eviction.connections_checked = conn_count as f64);
+        gauge!(db.pool.connection.max_age_seconds = oldest_created_duration.as_secs_f64());
+        gauge!(db.pool.connection.max_idle_seconds = oldest_used_duration.as_secs_f64());
     }
 }
