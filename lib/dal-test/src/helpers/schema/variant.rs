@@ -4,6 +4,7 @@ use dal::{
     Schema,
     SchemaVariant,
     SchemaVariantId,
+    action::prototype::ActionKind,
     func::{
         authoring::FuncAuthoringClient,
         binding::EventualParent,
@@ -38,6 +39,42 @@ pub async fn create(
     update_asset_func(ctx, variant.id, asset_func).await?;
     VariantAuthoringClient::regenerate_variant(ctx, variant.id).await?;
     Ok(variant.id)
+}
+
+/// Create an action function of the given kind
+pub async fn create_action_func(
+    ctx: &DalContext,
+    variant: impl SchemaVariantKey,
+    kind: ActionKind,
+    code: impl Into<String>,
+) -> Result<FuncId> {
+    let variant_id = id(ctx, variant).await?;
+    let variant = SchemaVariant::get_by_id(ctx, variant_id).await?;
+    create_named_action_func(
+        ctx,
+        variant_id,
+        kind,
+        format!("{}_{}", kind, variant.display_name()),
+        code,
+    )
+    .await
+}
+
+/// Create an action function of the given kind, with a specific name
+pub async fn create_named_action_func(
+    ctx: &DalContext,
+    variant: impl SchemaVariantKey,
+    kind: ActionKind,
+    name: impl Into<String>,
+    code: impl Into<String>,
+) -> Result<FuncId> {
+    let variant_id = id(ctx, variant).await?;
+    let func =
+        FuncAuthoringClient::create_new_action_func(ctx, Some(name.into()), kind, variant_id)
+            .await?;
+
+    FuncAuthoringClient::save_code(ctx, func.id, code.into()).await?;
+    Ok(func.id)
 }
 
 /// Create a management function for the given schema variant
