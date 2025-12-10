@@ -21,7 +21,11 @@ use si_frontend_mv_types::object::patch::{
     StreamingPatch,
 };
 use si_id::WorkspacePk;
-use telemetry::prelude::*;
+use telemetry::{
+    OpenTelemetrySpanExt,
+    prelude::*,
+};
+use telemetry_nats::propagation;
 use thiserror::Error;
 
 #[remain::sorted]
@@ -71,12 +75,12 @@ impl EddaUpdates {
     #[instrument(
         name = "edda_updates.publish_change_set_patch_batch",
         level = "debug",
-        skip_all,
-        fields()
+        skip_all
     )]
     pub(crate) async fn publish_change_set_patch_batch(
         &self,
         patch_batch: ChangesetPatchBatch,
+        parent_span: &Span,
     ) -> Result<()> {
         if self.streaming_patches {
             return Ok(());
@@ -90,38 +94,38 @@ impl EddaUpdates {
             patch_batch.kind(),
         );
 
-        self.serialize_compress_publish(subject, patch_batch, true)
+        self.serialize_compress_publish(subject, patch_batch, true, parent_span)
             .await
     }
 
     #[instrument(
         name = "edda_updates.publish_change_set_patch_batch",
         level = "debug",
-        skip_all,
-        fields()
+        skip_all
     )]
     pub(crate) async fn publish_deployment_patch_batch(
         &self,
         patch_batch: DeploymentPatchBatch,
+        parent_span: &Span,
     ) -> Result<()> {
         let subject = nats::subject::deployment_update_for(
             self.subject_prefix.as_deref(),
             patch_batch.kind(),
         );
 
-        self.serialize_compress_publish(subject, patch_batch, true)
+        self.serialize_compress_publish(subject, patch_batch, true, parent_span)
             .await
     }
 
     #[instrument(
         name = "edda_updates.publish_streaming_patch",
         level = "debug",
-        skip_all,
-        fields()
+        skip_all
     )]
     pub(crate) async fn publish_streaming_patch(
         &self,
         streaming_patch: StreamingPatch,
+        parent_span: &Span,
     ) -> Result<()> {
         if !self.streaming_patches {
             return Ok(());
@@ -137,6 +141,7 @@ impl EddaUpdates {
             ),
             streaming_patch,
             true,
+            parent_span,
         )
         .await
     }
@@ -144,12 +149,12 @@ impl EddaUpdates {
     #[instrument(
         name = "edda_updates.publish_change_set_index_update",
         level = "debug",
-        skip_all,
-        fields()
+        skip_all
     )]
     pub(crate) async fn publish_change_set_index_update(
         &self,
         index_update: ChangesetIndexUpdate,
+        parent_span: &Span,
     ) -> Result<()> {
         let mut id_buf = WorkspacePk::array_to_str_buf();
 
@@ -159,26 +164,26 @@ impl EddaUpdates {
             index_update.kind(),
         );
 
-        self.serialize_compress_publish(subject, index_update, false)
+        self.serialize_compress_publish(subject, index_update, false, parent_span)
             .await
     }
 
     #[instrument(
         name = "edda_updates.publish_deployment_index_update",
         level = "debug",
-        skip_all,
-        fields()
+        skip_all
     )]
     pub(crate) async fn publish_deployment_index_update(
         &self,
         index_update: DeploymentIndexUpdate,
+        parent_span: &Span,
     ) -> Result<()> {
         let subject = nats::subject::deployment_update_for(
             self.subject_prefix.as_deref(),
             index_update.kind(),
         );
 
-        self.serialize_compress_publish(subject, index_update, false)
+        self.serialize_compress_publish(subject, index_update, false, parent_span)
             .await
     }
 
@@ -196,6 +201,7 @@ impl EddaUpdates {
         subject: Subject,
         object: S,
         should_compress: bool,
+        parent_span: &Span,
     ) -> Result<()>
     where
         S: Serialize + Sync + Send + 'static,
@@ -227,6 +233,10 @@ impl EddaUpdates {
         if should_compress {
             header::insert_content_encoding(&mut headers, header::value::ContentEncoding::DEFLATE);
         }
+
+        // Inject with a given parent span so that we can see patches before they are sent to
+        // clients processing MV patches.
+        propagation::inject_opentelemetry_context(&parent_span.context(), &mut headers);
 
         if payload.len() > self.max_payload {
             let compressed = if should_compress { payload.len() } else { 0 };

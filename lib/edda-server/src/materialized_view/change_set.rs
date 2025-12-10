@@ -104,7 +104,7 @@ pub async fn try_reuse_mv_index_for_new_change_set(
             };
             let index_update = ChangesetIndexUpdate::new(meta, pointer.index_checksum, None);
             edda_updates
-                .publish_change_set_index_update(index_update)
+                .publish_change_set_index_update(index_update, &span)
                 .await?;
             return Ok(true);
         }
@@ -166,6 +166,7 @@ pub async fn build_all_mv_for_change_set(
         ctx.workspace_pk()?,
         ctx.change_set_id(),
         &changes,
+        &span,
     )
     .await?;
     span.record("si.edda.mv.count", build_count);
@@ -215,10 +216,10 @@ pub async fn build_all_mv_for_change_set(
         .await?;
 
     edda_updates
-        .publish_change_set_patch_batch(patch_batch)
+        .publish_change_set_patch_batch(patch_batch, &span)
         .await?;
     edda_updates
-        .publish_change_set_index_update(index_update)
+        .publish_change_set_index_update(index_update, &span)
         .await?;
 
     Ok(())
@@ -363,6 +364,7 @@ pub async fn build_mv_for_changes_in_change_set(
         workspace_id,
         change_set_id,
         &combined_changes,
+        &span,
     )
     .await?;
     span.record("si.edda.mv.count", build_count);
@@ -449,10 +451,10 @@ pub async fn build_mv_for_changes_in_change_set(
         .await?;
 
     edda_updates
-        .publish_change_set_patch_batch(patch_batch)
+        .publish_change_set_patch_batch(patch_batch, &span)
         .await?;
     edda_updates
-        .publish_change_set_index_update(index_update)
+        .publish_change_set_index_update(index_update, &span)
         .await?;
 
     Ok(())

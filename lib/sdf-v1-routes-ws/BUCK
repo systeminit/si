@@ -19,6 +19,7 @@ rust_library(
         "//lib/si-frontend-mv-types-rs:si-frontend-mv-types",
         "//lib/si-frontend-types-rs:si-frontend-types",
         "//lib/si-posthog-rs:si-posthog",
+        "//lib/telemetry-nats-rs:telemetry-nats",
         "//lib/telemetry-rs:telemetry",
         "//third-party/rust:axum",
         "//third-party/rust:bytes",

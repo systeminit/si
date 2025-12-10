@@ -34,6 +34,7 @@ si-frontend-mv-types = { path = "../si-frontend-mv-types-rs" }
 si-frontend-types = { path = "../si-frontend-types-rs" }
 si-posthog = { path = "../si-posthog-rs" }
 telemetry = { path = "../telemetry-rs" }
+telemetry-nats = { path = "../telemetry-nats-rs" }
 thiserror = { workspace = true }
 tokio = { workspace = true }
 tokio-stream = { workspace = true }

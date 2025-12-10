@@ -33,10 +33,7 @@
 use std::fmt::Debug;
 
 use nats_multiplexer_core::MultiplexerRequest;
-use si_data_nats::{
-    Message,
-    subject::ToSubject,
-};
+use si_data_nats::subject::ToSubject;
 use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::sync::{
@@ -57,6 +54,9 @@ pub enum MultiplexerClientError {
 
 #[allow(missing_docs)]
 pub type MultiplexerClientResult<T> = Result<T, MultiplexerClientError>;
+
+/// Re-export the payload that the client will use.
+pub use nats_multiplexer_core::MultiplexerRequestPayload;
 
 /// The client used for getting receivers from a running multiplexer.
 ///
@@ -79,8 +79,9 @@ impl MultiplexerClient {
     pub async fn receiver(
         &self,
         subject: impl ToSubject,
-    ) -> MultiplexerClientResult<broadcast::Receiver<Message>> {
-        let (reply_tx, reply_rx) = oneshot::channel::<broadcast::Receiver<Message>>();
+    ) -> MultiplexerClientResult<broadcast::Receiver<MultiplexerRequestPayload>> {
+        let (reply_tx, reply_rx) =
+            oneshot::channel::<broadcast::Receiver<MultiplexerRequestPayload>>();
 
         // We convert to a subject and then to a string because we need to ensure that it is a valid subject.
         self.tx.send(MultiplexerRequest::Add((

@@ -106,6 +106,7 @@ mod workspace_updates {
     use nats_multiplexer_client::{
         MultiplexerClient,
         MultiplexerClientError,
+        MultiplexerRequestPayload,
     };
     use serde::{
         Deserialize,
@@ -219,7 +220,7 @@ mod workspace_updates {
     pub struct WorkspaceUpdatesStarted {
         workspace_pk: WorkspacePk,
         nats: NatsClient,
-        receiver: broadcast::Receiver<si_data_nats::Message>,
+        receiver: broadcast::Receiver<MultiplexerRequestPayload>,
         token: CancellationToken,
     }
 
@@ -302,8 +303,8 @@ mod workspace_updates {
                     }
                     recv_result = self.receiver.recv() => {
                         // NOTE(nick): in the long term, determine if we want to return this result or just log it.
-                        let nats_msg =  recv_result?;
-                        let msg = ws::Message::Text(String::from_utf8_lossy(nats_msg.payload()).to_string());
+                        let payload = recv_result?;
+                        let msg = ws::Message::Text(String::from_utf8_lossy(payload.nats_message.payload()).to_string());
 
                         if let Err(err) = ws.send(msg).await {
                             match err

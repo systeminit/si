@@ -180,6 +180,7 @@ pub type BuildMvInnerReturn = (
     &'static str,
 );
 
+#[allow(clippy::too_many_arguments)]
 #[instrument(
     name = "materialized_view.build_mv_inner",
     level = "debug",
@@ -197,6 +198,7 @@ pub async fn build_mv_inner(
     workspace_pk: si_id::WorkspacePk,
     change_set_id: ChangeSetId,
     changes: &[Change],
+    parent_span: &Span,
 ) -> Result<BuildMvInnerReturn, MaterializedViewError> {
     let mut frontend_objects = Vec::new();
     let mut patches = Vec::new();
@@ -290,7 +292,7 @@ pub async fn build_mv_inner(
                             patch.patch.clone(),
                         );
                         edda_updates
-                            .publish_streaming_patch(streaming_patch)
+                            .publish_streaming_patch(streaming_patch, parent_span)
                             .await?;
 
                         debug!("Patch!: {:?}", patch);
