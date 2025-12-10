@@ -3,10 +3,8 @@ import {
   ComponentsApi,
   SchemasApi,
   SecretsApi,
-  type SecretV1,
 } from "@systeminit/api-client";
 import { Context } from "../context.ts";
-import type { SecretDefinitionV1, SecretFieldValues } from "./types.ts";
 import type { SecretCreateOptions } from "./types.ts";
 
 export type { SecretCreateOptions };
@@ -18,19 +16,14 @@ import {
 } from "./definitions.ts";
 import {
   promptForDescription,
-  promptForFields,
   promptForSecretName,
 } from "./prompts.ts";
-import { discoverCredentials } from "./discovery.ts";
-
-/**
- * JWT payload structure for System Initiative API tokens.
- */
-interface SIJwtPayload {
-  workspaceId: string;
-  userId: string;
-  [key: string]: unknown;
-}
+import {
+  getOrCreateChangeSet,
+  collectFieldValues,
+  displaySecretDryRun,
+  displaySecretSuccess,
+} from "./shared.ts";
 
 /**
  * Attempt to install a missing secret schema
@@ -99,164 +92,6 @@ async function tryInstallSecretSchema(
 }
 
 /**
- * Get or create a change set for the secret operation
- */
-async function getOrCreateChangeSet(
-  ctx: Context,
-  changeSetsApi: ChangeSetsApi,
-  workspaceId: string,
-  options: SecretCreateOptions,
-): Promise<string> {
-  // If change set specified, use it
-  if (options.changeSet) {
-    // TODO: Validate that the change set exists
-    // For now, just return it
-    return options.changeSet;
-  }
-
-  // Create a new change set
-  const changeSetName = `Create ${options.secretType} - ${Date.now()}`;
-
-  ctx.logger.info(`Creating change set: ${changeSetName}`);
-
-  const response = await changeSetsApi.createChangeSet({
-    workspaceId,
-    createChangeSetV1Request: {
-      changeSetName,
-    },
-  });
-
-  const changeSetId = response.data.changeSet.id;
-
-  ctx.logger.debug(`Created change set: ${changeSetId}`);
-
-  return changeSetId;
-}
-
-/**
- * Collect field values from various sources
- */
-async function collectFieldValues(
-  ctx: Context,
-  definition: SecretDefinitionV1,
-  options: SecretCreateOptions,
-): Promise<SecretFieldValues> {
-  // Start with any field values provided via CLI arguments
-  let fieldValues: SecretFieldValues = options.fields || {};
-
-  // If --use-local-profile, try to discover credentials
-  if (options.useLocalProfile) {
-    ctx.logger.info("Discovering credentials from local environment...");
-
-    const discovered = discoverCredentials(definition.formData);
-
-    if (discovered) {
-      ctx.logger.info(
-        `✓ Found ${
-          Object.keys(discovered).length
-        } credential(s) in local environment`,
-      );
-
-      // Merge discovered values with any CLI-provided values (CLI takes precedence)
-      fieldValues = { ...discovered, ...fieldValues };
-    } else {
-      ctx.logger.warn("Could not discover credentials from local environment");
-      ctx.logger.info(
-        "You can set environment variables or use --interactive mode",
-      );
-    }
-  }
-
-  // Check if we need to prompt for any values
-  // Only prompt if interactive mode is explicitly requested
-  if (options.interactive) {
-    ctx.logger.info("");
-    const promptedValues = await promptForFields(
-      definition.formData,
-      fieldValues,
-    );
-
-    // Merge prompted values (only non-empty ones)
-    for (const [key, value] of Object.entries(promptedValues)) {
-      if (value && value.trim().length > 0) {
-        fieldValues[key] = value;
-      }
-    }
-  }
-
-  return fieldValues;
-}
-
-/**
- * Display the secret that would be created (dry run mode)
- */
-function displayDryRun(
-  ctx: Context,
-  secretName: string,
-  description: string,
-  definition: SecretDefinitionV1,
-  fieldValues: SecretFieldValues,
-): void {
-  ctx.logger.info("");
-  ctx.logger.info("[DRY RUN] Would create secret with:");
-  ctx.logger.info(`  Name: ${secretName}`);
-  ctx.logger.info(`  Definition: ${definition.secretDefinition}`);
-
-  if (description) {
-    ctx.logger.info(`  Description: ${description}`);
-  }
-
-  ctx.logger.info("  Fields:");
-
-  for (const field of definition.formData) {
-    const value = fieldValues[field.name];
-
-    if (value) {
-      // Mask sensitive values
-      const displayValue =
-        field.kind === "password"
-          ? "********"
-          : value.length > 20
-            ? `${value.substring(0, 20)}... (${value.length} characters)`
-            : value;
-
-      ctx.logger.info(`    - ${field.name}: ${displayValue}`);
-    } else {
-      ctx.logger.info(`    - ${field.name}: (not set)`);
-    }
-  }
-
-  ctx.logger.info("");
-  ctx.logger.info("No changes made. Remove --dry-run to create the secret.");
-}
-
-/**
- * Display success message after secret creation
- */
-function displaySuccess(
-  ctx: Context,
-  secret: SecretV1,
-  changeSetId: string,
-  componentId: string,
-): void {
-  ctx.logger.info("");
-  ctx.logger.info("✓ Credential created successfully!");
-  ctx.logger.info(`  Component ID: ${componentId}`);
-  ctx.logger.info(`  Secret ID: ${secret.id}`);
-  ctx.logger.info(`  Secret Name: ${secret.name}`);
-  ctx.logger.info(`  Change Set ID: ${changeSetId}`);
-
-  if (secret.description) {
-    ctx.logger.info(`  Description: ${secret.description}`);
-  }
-
-  ctx.logger.info("");
-  ctx.logger.info("Next steps:");
-  ctx.logger.info(`  1. Apply the change set to make the credential available`);
-  ctx.logger.info(`  2. Other components can now use this credential`);
-}
-
-/**
  * Main entry point for the secret create command
  */
 export async function callSecretCreate(
@@ -267,21 +102,22 @@ export async function callSecretCreate(
   const apiConfig = Context.apiConfig();
   const workspaceId = Context.workspaceId();
 
+  // Create API clients
+  const changeSetsApi = new ChangeSetsApi(apiConfig);
+  const secretsApi = new SecretsApi(apiConfig);
+  const schemasApi = new SchemasApi(apiConfig);
+  const componentsApi = new ComponentsApi(apiConfig);
+
+  // Get or create change set
+  const { changeSetId, wasCreated } = await getOrCreateChangeSet(
+    ctx,
+    changeSetsApi,
+    workspaceId,
+    options.changeSet,
+    `Create ${options.secretType}`,
+  );
+
   try {
-    // Create API clients
-    const changeSetsApi = new ChangeSetsApi(apiConfig);
-    const secretsApi = new SecretsApi(apiConfig);
-    const schemasApi = new SchemasApi(apiConfig);
-    const componentsApi = new ComponentsApi(apiConfig);
-
-    // Get or create change set
-    const changeSetId = await getOrCreateChangeSet(
-      ctx,
-      changeSetsApi,
-      workspaceId,
-      options,
-    );
-
     // Query available secret definitions
     ctx.logger.debug("Querying available secret definitions...");
 
@@ -365,30 +201,22 @@ export async function callSecretCreate(
     }
 
     // Collect field values
-    const fieldValues = await collectFieldValues(ctx, definition, options);
-
-    // Check if we have at least some values to create a secret
-    // We don't validate all fields as required since some may be optional
-    if (Object.keys(fieldValues).length === 0) {
-      ctx.logger.error("No credential values provided.");
-      ctx.logger.info("");
-      ctx.logger.info("Available options:");
-      ctx.logger.info(
-        "  --use-local-profile : Discover credentials from environment",
-      );
-      ctx.logger.info("  --interactive       : Prompt for values");
-      ctx.logger.info("  --field-<name>      : Provide specific field values");
-      ctx.logger.info("");
-      ctx.logger.info("Available fields for this secret type:");
-      for (const field of definition.formData) {
-        ctx.logger.info(`  - ${field.name}`);
-      }
-      Deno.exit(1);
-    }
+    // For creates, don't allow empty field values
+    const fieldValues = await collectFieldValues(ctx, definition, options, false);
 
     // Dry run mode - show what would be created
     if (options.dryRun) {
-      displayDryRun(ctx, secretName, description, definition, fieldValues);
+      displaySecretDryRun(
+        ctx,
+        {
+          operation: "create",
+          secretName,
+          definition: definition.secretDefinition,
+          description,
+        },
+        definition,
+        fieldValues,
+      );
       return;
     }
 
@@ -444,9 +272,33 @@ export async function callSecretCreate(
     ctx.logger.info(`✓ Secret attached to component`);
 
     // Display success
-    displaySuccess(ctx, secret, changeSetId, componentId);
+    displaySecretSuccess(ctx, {
+      operation: "created",
+      secret,
+      changeSetId,
+      componentId,
+      nextSteps: [
+        "Apply the change set to make the credential available",
+        "Other components can now use this credential",
+      ],
+    });
   } catch (error) {
     ctx.logger.error(`Failed to create secret: ${error}`);
+
+    // Abandon the change set if we created it
+    if (wasCreated) {
+      ctx.logger.info("Abandoning change set due to error...");
+      try {
+        await changeSetsApi.abandonChangeSet({
+          workspaceId,
+          changeSetId,
+        });
+        ctx.logger.debug(`Abandoned change set: ${changeSetId}`);
+      } catch (abandonError) {
+        ctx.logger.warn(`Failed to abandon change set: ${abandonError}`);
+      }
+    }
+
     Deno.exit(1);
   }
 }

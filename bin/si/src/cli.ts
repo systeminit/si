@@ -55,6 +55,10 @@ import {
 } from "./ai-agent/config.ts";
 import { callSecretCreate, type SecretCreateOptions } from "./secret/create.ts";
 import {
+  callSecretUpdate,
+  type SecretUpdateOptions,
+} from "./secret/update.ts";
+import {
   callChangeSetCreate,
   type ChangeSetCreateOptions,
 } from "./change-set/create.ts";
@@ -1236,6 +1240,55 @@ function buildSecretCommand() {
             secretType: secretType as string,
             fields,
           } as SecretCreateOptions);
+        }),
+    )
+    .command(
+      "update",
+      createSubCommand(true)
+        .description("Update an existing secret")
+        .option(
+          "--secret-id <id:string>",
+          "Secret ID to update (use this or --secret-name)",
+        )
+        .option(
+          "--secret-name <name:string>",
+          "Secret name to update (use this or --secret-id)",
+        )
+        .option(
+          "--name <name:string>",
+          "New name for the secret",
+        )
+        .option(
+          "--description <desc:string>",
+          "New description for the secret",
+        )
+        .option(
+          "-c, --change-set <id-or-name:string>",
+          "Change set ID or name (creates new change set if not specified)",
+        )
+        .option(
+          "--use-local-profile",
+          "Discover credentials from local environment (e.g., AWS credentials)",
+        )
+        .option(
+          "--interactive",
+          "Prompt for all values interactively",
+        )
+        .option(
+          "--dry-run",
+          "Show what would be updated without making changes",
+        )
+        .action(async (options) => {
+          // Parse --field-* options from remaining args
+          const fields: Record<string, string> = {};
+
+          // Extract field options (--field-name value pattern)
+          // Note: Cliffy doesn't support dynamic options, so we'll handle this in the action
+
+          await callSecretUpdate({
+            ...options,
+            fields,
+          } as SecretUpdateOptions);
         }),
     );
 }
