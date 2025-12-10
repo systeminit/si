@@ -167,6 +167,6 @@ In this tutorial, you learned:
 - [Workspaces](../reference/workspaces.md): learn more about how workspaces enable isolation, and how to manage them.
 - [Secrets](../reference/secrets.md): learn more about how System Initiative handles secrets
 - [AI Agent](../reference/ai-agent.md): learn more about how our AI Agent works
-- [Authenticating with AWS](../explanation/aws-authentication.md): more details about how to authenticate with AWS
+- [Authenticating with AWS](../explanation/cloud-providers/aws.md): more details about how to authenticate with AWS
 
 

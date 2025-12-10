@@ -10,9 +10,3 @@ rather than explaining why things work the way they do.
   manage your resources.
 - [Creating Components](./creating-components.md) - how to extend System
   Initiative by creating your own new assets.
-
-## Vocabulary
-
-In this tutorial bits of System Initiative Vocabulary will be shown with a
-capital letter. All definitions for these can be found here:
-[System Initative - Vocabulary](https://docs.systeminit.com/reference/vocabulary)

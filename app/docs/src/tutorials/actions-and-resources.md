@@ -1,7 +1,7 @@
 # Actions and Resources
 
-This tutorial will teach you how to use [actions](/reference/vocabulary#actions)
-and manage your [resources](/reference/vocabulary#resource) in System
+This tutorial will teach you how to use actions
+and manage your resources in System
 Initiative.
 
 To follow along, you should:
@@ -68,7 +68,7 @@ Set your created `region` and `AWS Credential` properties.
 
 ![Investigate the Actions tab for the VPC](./actions-and-resources/investigate-the-actions-tab-for-the-vpc.png)
 
-Click the `Actions` tab on the left hand side underneath the Attributes panel. You will see a list of all the available [Actions](/reference/vocabulary#actions) for the VPC.
+Click the `Actions` tab on the left hand side underneath the Attributes panel. You will see a list of all the available Actions for the VPC.
 
 The `Tutorial Network` Component was created in this Change Set - so System
 Initiative has automatically enqueued the `Create VPC` action for you.
@@ -191,7 +191,7 @@ You'll see the action execute and succeed!
 :::tip
 
 System Initiative records your intent to take an action, and it remains present
-on [HEAD](/reference/vocabulary#HEAD) until it succeeds or is intentionally
+on HEAD until it succeeds or is intentionally
 removed from the list.
 
 :::
@@ -220,7 +220,7 @@ You will see output similar to this:
 ```
 
 Your Action result contains the information System
-Initiative will then use to populate the [resource](/reference/vocabulary#resource) via a Refresh Action, using for example the `resourceId` which runs automatically after a successful Create.
+Initiative will then use to populate the resource via a Refresh Action, using for example the `resourceId` which runs automatically after a successful Create.
 
 Note that the `payload/State` field is currently set to `null`.
 
@@ -368,6 +368,3 @@ In this tutorial you learned:
 - Actions set a Components resource value through their return value
 - Resources can be refreshed as needed, to ensure an accurate view of the system
 
-## Vocabulary
-In this tutorial bits of System Initiative Vocabulary will be shown with a capital letter.
-All definitions for these can be found here: [System Initative - Vocabulary](https://docs.systeminit.com/reference/vocabulary)

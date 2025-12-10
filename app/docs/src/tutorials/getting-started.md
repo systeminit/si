@@ -446,9 +446,3 @@ You've seen how System Initiative meets you where you are - working with
 existing infrastructure rather than requiring a greenfield approach, and how the
 AI Agent can guide you through complex operational challenges from security
 reviews to policy compliance.
-
-## Vocabulary
-
-In this tutorial bits of System Initiative Vocabulary will be shown with a
-capital letter. All definitions for these can be found here:
-[System Initative - Vocabulary](https://docs.systeminit.com/reference/vocabulary)

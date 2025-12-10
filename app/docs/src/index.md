@@ -8,9 +8,9 @@ Start by [learning what System Initiative is](./what-is-si.md).
 
 Follow the [Getting Started](./tutorials/getting-started.md) guide.
 
-Learn about the [architecture](./reference/architecture/index.md) that powers System Initiative.
+Learn about the [architecture](./explanation/architecture/index.md) that powers System Initiative.
 
-Understand how existing [IaC capabilities map](./reference/iac-comparison.md) to System Intiative functionality.
+Understand how existing [IaC capabilities map](./explanation/iac-comparison.md) to System Intiative functionality.
 
 ## Getting help
 
@@ -24,8 +24,7 @@ get help. The community is eager to answer your questions and to help.
 - [How-To Guides](./how-tos/index.md) show you how to accomplish tasks with
   System Initiative. They assume knowledge of both System Initiative and the
   task they are teaching.
-- [Reference guides](./reference/index.md) give you just the facts about APIs
-  and Vocabulary.
+- [Reference guides](./reference/index.md) give you just the facts about how to use the System Initiative CLI, AI Agent, Web Interface and APIs.
 - [Explanations](./explanation/index.md) provides the more detailed material to
   clarify how to use particular parts of the system.
 - The [Changelog](./changelog/index.md) keeps you up to date on the latest

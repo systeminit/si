@@ -313,8 +313,3 @@ Click `Apply Change Set`.
 
 All your new resources should be deleted from your AWS account.
 
-## Vocabulary
-
-In this guide bits of System Initiative Vocabulary will be shown with a capital
-letter. All definitions for these can be found here:
-[System Initative - Vocabulary](https://docs.systeminit.com/reference/vocabulary)

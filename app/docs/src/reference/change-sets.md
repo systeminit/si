@@ -26,7 +26,7 @@ The ability to track the *downstream effects* of a particular update is a critic
 
 ## How changes are applied to HEAD
 
-Each change is an [Operational Transfomation](https://en.wikipedia.org/wiki/Operational_transformation) to our core data-model. When a Change Set is applied to HEAD, the set of Operational Transforms are applied to the underlying [graph data model](../reference/architecture/snapshot.md). Each change is idempotent, convergent, and ordered in time - which ensures that as multiple changes are applied they will never conflict.
+Each change is an [Operational Transfomation](https://en.wikipedia.org/wiki/Operational_transformation) to our core data-model. When a Change Set is applied to HEAD, the set of Operational Transforms are applied to the underlying [graph data model](../explanation/architecture/snapshot.md). Each change is idempotent, convergent, and ordered in time - which ensures that as multiple changes are applied they will never conflict.
 
 ## Creating a Change Set
 

@@ -20,7 +20,7 @@ AI Agent from your terminal.
 ## Provider Coverage (In Public Beta)
 
 We are expanding our list of supported
-[providers](https://docs.systeminit.com/reference/providers), starting with
+[cloud providers](https://docs.systeminit.com/explanation/cloud-providers), starting with
 Azure and Google Cloud. These new providers will be available in Q4 2025.
 
 - Azure (in public beta)

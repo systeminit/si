@@ -100,7 +100,7 @@ The agent itself is quite effective at improving your prompt. Try asking it to i
 
 ### Embrace Iteration
 
-System Initiative makes it easy to iterate on your infrastructure. [Change Sets](./architecture/change-control.md) ensure that nothing will change without your approval. Rather than trying to get everything done in one shot, work in iterations. For example, it's better to:
+System Initiative makes it easy to iterate on your infrastructure. [Change Sets](../explanation/architecture/change-control.md) ensure that nothing will change without your approval. Rather than trying to get everything done in one shot, work in iterations. For example, it's better to:
 
 - Ask the agent to create a best practices network layer
 - Configure a cluster
