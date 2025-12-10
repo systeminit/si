@@ -87,14 +87,14 @@ const gcpProviderFuncSpecs: ProviderFuncSpecs = {
 };
 
 export const gcpProviderConfig: ProviderConfig = {
-  name: "gcp",
+  name: "google cloud",
   isStable: false,
   functions: gcpProviderFunctions,
   funcSpecs: gcpProviderFuncSpecs,
   loadSchemas: generateGcpSpecs,
   fetchSchema: fetchGcpDiscoveryDocuments,
   metadata: {
-    color: "#4285F4", // Google Blue
+    color: "#EF6255",
     displayName: "Google Cloud",
     description: "Google Cloud Platform infrastructure resources",
   },

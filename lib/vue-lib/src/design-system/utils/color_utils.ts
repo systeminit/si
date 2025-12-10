@@ -8,7 +8,7 @@ export const COLOR_PALETTE = colorsJson;
 export const BRAND_COLOR_FILTER_HEX_CODES = {
   DigitalOcean: "#ABF7FF",
   "Digital Ocean": "#ABF7FF",
-  "Google Cloud": "#EF6255",
+  GoogleCloud: "#EF6255",
   "Open AI": "#FFBE19",
   AWS: "#FF9900",
   MS: "rgb(0, 120, 212)",

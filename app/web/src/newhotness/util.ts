@@ -33,6 +33,11 @@ export const pickBrandIconByString = (name: string): IconNames => {
   ) {
     return "logo-azure";
   } else if (
+    name.toLowerCase().includes("google cloud") ||
+    name.toLowerCase().includes("gcp")
+  ) {
+    return "logo-google-cloud";
+  } else if (
     name.toLowerCase().includes("digitalocean") ||
     name.toLowerCase().includes("digital ocean")
   ) {
