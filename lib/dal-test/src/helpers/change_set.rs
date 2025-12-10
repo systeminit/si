@@ -40,6 +40,13 @@ pub async fn commit(ctx: &mut DalContext) -> Result<()> {
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await
 }
 
+/// Wait for all actions queued to complete, and for DVU to complete.
+pub async fn wait_for_actions(ctx: &mut DalContext) -> Result<()> {
+    ChangeSetTestHelpers::wait_for_actions_to_run(ctx).await?;
+    ChangeSet::wait_for_dvu(ctx, false).await?;
+    Ok(())
+}
+
 /// Creates a new fork from head and returns the new `DalContext`. The original context
 pub async fn fork(ctx: &DalContext) -> Result<DalContext> {
     let mut ctx = ctx.clone();
