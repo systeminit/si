@@ -35,11 +35,6 @@ export async function executeChanges(
 ): Promise<void> {
   const apiConfig = ctx.apiConfig();
   const workspaceId = ctx.workspaceId();
-
-  if (!apiConfig || !workspaceId) {
-    throw new Error("API configuration not available");
-  }
-
   const componentsApi = new ComponentsApi(apiConfig);
 
   // Track workingSet ID → created SI ID mapping
@@ -169,9 +164,10 @@ export async function executeChanges(
             },
           );
           // Add this component to failed set so its dependents also skip
-          const wsId = change.existingComponent.attributes?.[
-            "/si/tags/templateWorkingSetId"
-          ];
+          const wsId =
+            change.existingComponent.attributes?.[
+              "/si/tags/templateWorkingSetId"
+            ];
           if (wsId && typeof wsId === "string") {
             failedComponentIds.add(wsId);
           }
@@ -220,9 +216,10 @@ export async function executeChanges(
         failedComponentIds.add(change.workingSetComponent.id);
       } else if (change.type === "update") {
         // For updates, track by the templateWorkingSetId if available
-        const wsId = change.existingComponent.attributes?.[
-          "/si/tags/templateWorkingSetId"
-        ];
+        const wsId =
+          change.existingComponent.attributes?.[
+            "/si/tags/templateWorkingSetId"
+          ];
         if (wsId && typeof wsId === "string") {
           failedComponentIds.add(wsId);
         }
@@ -291,9 +288,7 @@ export async function getOrCreateChangeSet(
   // List existing change sets
   const response = await changeSetsApi.listChangeSets({ workspaceId });
   const changeSets = response.data.changeSets as ChangeSetViewV1[];
-  const existing = changeSets.find(
-    (cs) => cs.name === changeSetName,
-  );
+  const existing = changeSets.find((cs) => cs.name === changeSetName);
 
   if (existing) {
     ctx.logger.debug("Found existing change set: {name}", {
@@ -419,8 +414,8 @@ function dryRunCreate(
   const comp = change.workingSetComponent;
 
   // Get schema name from cache
-  const schemaName = ctx.schemaCache().get(comp.schemaId)?.name ||
-    comp.schemaId;
+  const schemaName =
+    ctx.schemaCache().get(comp.schemaId)?.name || comp.schemaId;
 
   ctx.logger.info("Dry Run: Creating {schemaName} {name} ({current}/{total})", {
     schemaName,
@@ -526,8 +521,8 @@ function dryRunUpdate(
   const comp = change.existingComponent;
 
   // Get schema name from cache
-  const schemaName = ctx.schemaCache().get(comp.schemaId)?.name ||
-    comp.schemaId;
+  const schemaName =
+    ctx.schemaCache().get(comp.schemaId)?.name || comp.schemaId;
 
   ctx.logger.info("Dry Run: Updating {schemaName} {name} ({current}/{total})", {
     schemaName,
@@ -606,8 +601,8 @@ function dryRunDelete(
   const comp = change.existingComponent;
 
   // Get schema name from cache
-  const schemaName = ctx.schemaCache().get(comp.schemaId)?.name ||
-    comp.schemaId;
+  const schemaName =
+    ctx.schemaCache().get(comp.schemaId)?.name || comp.schemaId;
 
   ctx.logger.info("Dry Run: Deleting {schemaName} {name} ({current}/{total})", {
     schemaName,
@@ -644,9 +639,8 @@ function checkDependenciesAvailable(
       if (workingSetIds.has(componentRef)) {
         if (failedComponentIds.has(componentRef)) {
           // This dependency failed - get its name for error message
-          const depName = workingSet?.find((c) =>
-            c.id === componentRef
-          )?.name ||
+          const depName =
+            workingSet?.find((c) => c.id === componentRef)?.name ||
             componentRef;
           failedDeps.push(depName);
         }
@@ -715,10 +709,9 @@ function resolveSubscriptionPlaceholders(
 
         if (!resolvedId) {
           // Working set ID hasn't been resolved yet - this is a dependency problem
-          const refComponentName = workingSet?.find((c) =>
-            c.id === componentRef
-          )
-            ?.name || componentRef;
+          const refComponentName =
+            workingSet?.find((c) => c.id === componentRef)?.name ||
+            componentRef;
 
           throw new Error(
             `Subscription resolution failed for component "${componentName}":\n` +
@@ -734,9 +727,9 @@ function resolveSubscriptionPlaceholders(
               `Debug info:\n` +
               `  - Total working set components: ${workingSetIds.size}\n` +
               `  - Components created so far: ${createdIds.size}\n` +
-              `  - Available created IDs: ${
-                Array.from(createdIds.keys()).join(", ")
-              }`,
+              `  - Available created IDs: ${Array.from(createdIds.keys()).join(
+                ", ",
+              )}`,
           );
         }
 

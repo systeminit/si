@@ -2,7 +2,6 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod-v3";
 import { ChangeSetsApi, FuncsApi } from "@systeminit/api-client";
-import { apiConfig, WORKSPACE_ID } from "../si_client.ts";
 import {
   errorResponse,
   findHeadChangeSet,
@@ -11,11 +10,11 @@ import {
   withAnalytics,
 } from "./commonBehavior.ts";
 import { decodeBase64 } from "@std/encoding/base64";
+import { Context } from "../../../context.ts";
 
 const name = "func-run-get";
 const title = "Get a function run information";
-const description =
-  `<description>Get the information about a function execution run. Returns the state of the function run, the componentId and componentName it was for, the schemaName, and the function name, description, kind, arguments, and result - if asked, it will also return the logs and the executed source code. On failure, returns error details</description><usage>Use this tool when the user asks you to work with or troubleshoot a function run - for example, when an action, qualification, or other kind of function as failed.</usage>`;
+const description = `<description>Get the information about a function execution run. Returns the state of the function run, the componentId and componentName it was for, the schemaName, and the function name, description, kind, arguments, and result - if asked, it will also return the logs and the executed source code. On failure, returns error details</description><usage>Use this tool when the user asks you to work with or troubleshoot a function run - for example, when an action, qualification, or other kind of function as failed.</usage>`;
 
 const GetFuncRunInputSchemaRaw = {
   changeSetId: z
@@ -163,6 +162,9 @@ export function funcRunGetTool(server: McpServer) {
       result: showResult,
     }): Promise<CallToolResult> => {
       return await withAnalytics(name, async () => {
+        const apiConfig = Context.apiConfig();
+        const workspaceId = Context.workspaceId();
+
         if (!changeSetId) {
           const changeSetsApi = new ChangeSetsApi(apiConfig);
           const headChangeSet = await findHeadChangeSet(changeSetsApi, false);
@@ -176,7 +178,7 @@ export function funcRunGetTool(server: McpServer) {
         const siApi = new FuncsApi(apiConfig);
         try {
           const response = await siApi.getFuncRun({
-            workspaceId: WORKSPACE_ID,
+            workspaceId,
             changeSetId: changeSetId,
             funcRunId: funcRunId,
           });
@@ -187,7 +189,8 @@ export function funcRunGetTool(server: McpServer) {
             componentId: response.data.funcRun.componentId,
             componentName: response.data.funcRun.componentName,
             schemaName: response.data.funcRun.schemaName,
-            functionName: response.data.funcRun.functionDisplayName ||
+            functionName:
+              response.data.funcRun.functionDisplayName ||
               response.data.funcRun.functionName,
             functionKind: response.data.funcRun
               .functionKind as FuncRunResult["functionKind"],

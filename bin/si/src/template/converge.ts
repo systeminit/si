@@ -47,10 +47,6 @@ export async function convergeTemplate(
   const apiConfig = ctx.apiConfig();
   const workspaceId = ctx.workspaceId();
 
-  if (!apiConfig || !workspaceId) {
-    throw new Error("API configuration not available");
-  }
-
   // Get or create change set
   const changeSetName = ctx.changeSet() as string;
   ctx.logger.info("Getting or creating change set: {name}", {

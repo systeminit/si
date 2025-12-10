@@ -2,7 +2,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod-v3";
 import { ComponentsApi, SchemasApi, SearchApi } from "@systeminit/api-client";
-import { apiConfig, WORKSPACE_ID } from "../si_client.ts";
+import { Context } from "../../../context.ts";
 import {
   errorResponse,
   generateDescription,
@@ -23,18 +23,26 @@ const description = `
   `;
 
 const TemplateGenerateInputSchemaRaw = {
-  changeSetId: z.string().describe(
-    "The change set to generate a template in; templates cannot be generated on the HEAD change set",
-  ),
-  componentIds: z.array(
-    z.string().describe(
-      "the component id to be included in the generated template",
+  changeSetId: z
+    .string()
+    .describe(
+      "The change set to generate a template in; templates cannot be generated on the HEAD change set",
     ),
-  ).optional().describe(
-    "the list of component ids to be included in the generated template, if none provided the tool will search",
-  ),
-  searchQuery: z.string().optional().describe(
-    `
+  componentIds: z
+    .array(
+      z
+        .string()
+        .describe("the component id to be included in the generated template"),
+    )
+    .optional()
+    .describe(
+      "the list of component ids to be included in the generated template, if none provided the tool will search",
+    ),
+  searchQuery: z
+    .string()
+    .optional()
+    .describe(
+      `
     <description>
     when componentIds are not provided this search query will be used to search for componentIds to include in the template
     </description>
@@ -84,61 +92,73 @@ const TemplateGenerateInputSchemaRaw = {
     </documentation>
 
     `,
-  ),
-  templateName: z.string().describe(
-    "the name of the template that will be generated",
-  ),
-  secrets: z.boolean().optional().describe(
-    "include secret-defining components in the template to be generated; useful for excluding common base components and not tying in credential setup into templates; the user may want to make this decision themselves",
-  ),
-  region: z.boolean().optional().describe(
-    "include components that define the region for your infrastructure in the template to be generated; useful for excluding common base components; the user may want to make this decision themselves",
-  ),
+    ),
+  templateName: z
+    .string()
+    .describe("the name of the template that will be generated"),
+  secrets: z
+    .boolean()
+    .optional()
+    .describe(
+      "include secret-defining components in the template to be generated; useful for excluding common base components and not tying in credential setup into templates; the user may want to make this decision themselves",
+    ),
+  region: z
+    .boolean()
+    .optional()
+    .describe(
+      "include components that define the region for your infrastructure in the template to be generated; useful for excluding common base components; the user may want to make this decision themselves",
+    ),
 };
 
 const TemplateGenerateOutputSchemaRaw = {
   status: z.enum(["success", "failure"]),
-  errorMessage: z.string().optional().describe(
-    "If the status is failure, the error message will contain information about what went wrong",
-  ),
-  data: z.object({
-    schemaId: z.string().describe("the schema id of the generated template"),
-    schemaVariantId: z.string().describe(
-      "the schema variant id of the generated template",
+  errorMessage: z
+    .string()
+    .optional()
+    .describe(
+      "If the status is failure, the error message will contain information about what went wrong",
     ),
-    funcId: z.string().describe(
-      "the func id for running the generated template",
-    ),
-    schema: z.object({
-      // FIXME(nick,aaron): re-use this type from the "find-schema" tool rather than hard copy/paste.
-      schemaId: z.string().describe("the schema id for the generated template"),
-      schemaName: z.string().describe(
-        "the name of the schema for the generated template",
-      ),
-      description: z
+  data: z
+    .object({
+      schemaId: z.string().describe("the schema id of the generated template"),
+      schemaVariantId: z
         .string()
-        .optional()
-        .describe(
-          "a description of the schema for the generated template, frequently containing documentation",
-        ),
-      link: z
+        .describe("the schema variant id of the generated template"),
+      funcId: z
         .string()
-        .url()
+        .describe("the func id for running the generated template"),
+      schema: z
+        .object({
+          // FIXME(nick,aaron): re-use this type from the "find-schema" tool rather than hard copy/paste.
+          schemaId: z
+            .string()
+            .describe("the schema id for the generated template"),
+          schemaName: z
+            .string()
+            .describe("the name of the schema for the generated template"),
+          description: z
+            .string()
+            .optional()
+            .describe(
+              "a description of the schema for the generated template, frequently containing documentation",
+            ),
+          link: z
+            .string()
+            .url()
+            .optional()
+            .describe(
+              "an external URL that contains documentation about what this schema for the generated template is modeling; this will likely be null because we just generated it",
+            ),
+        })
         .optional()
-        .describe(
-          "an external URL that contains documentation about what this schema for the generated template is modeling; this will likely be null because we just generated it",
-        ),
+        .describe("the information for the schema for the generated template"),
     })
-      .optional()
-      .describe("the information for the schema for the generated template"),
-  }).describe(
-    "the information for the generated template including all ids relevant for future tasks; the ids are not as important to the user, but there is not need to obfuscate them either",
-  ),
+    .describe(
+      "the information for the generated template including all ids relevant for future tasks; the ids are not as important to the user, but there is not need to obfuscate them either",
+    ),
 };
 
-const TemplateGenerateOutputSchema = z.object(
-  TemplateGenerateOutputSchemaRaw,
-);
+const TemplateGenerateOutputSchema = z.object(TemplateGenerateOutputSchemaRaw);
 
 type TemplateGenerateResult = z.infer<
   typeof TemplateGenerateOutputSchema
@@ -157,10 +177,15 @@ export function templateGenerateTool(server: McpServer) {
       inputSchema: TemplateGenerateInputSchemaRaw,
       outputSchema: TemplateGenerateOutputSchemaRaw,
     },
-    async (
-      { changeSetId, componentIds, templateName, searchQuery },
-    ): Promise<CallToolResult> => {
+    async ({
+      changeSetId,
+      componentIds,
+      templateName,
+      searchQuery,
+    }): Promise<CallToolResult> => {
       return await withAnalytics(name, async () => {
+        const apiConfig = Context.apiConfig();
+        const workspaceId = Context.workspaceId();
         const siComponentsApi = new ComponentsApi(apiConfig);
         const siSchemasApi = new SchemasApi(apiConfig);
         const siSearchApi = new SearchApi(apiConfig);
@@ -173,14 +198,14 @@ export function templateGenerateTool(server: McpServer) {
             templateComponentIds = componentIds;
           } else if (!hasListOfIds && searchQuery) {
             const searchResponse = await siSearchApi.search({
-              workspaceId: WORKSPACE_ID,
+              workspaceId: workspaceId,
               changeSetId: changeSetId,
               q: searchQuery,
             });
 
-            templateComponentIds = searchResponse.data.components.map((
-              component,
-            ) => component.id);
+            templateComponentIds = searchResponse.data.components.map(
+              (component) => component.id,
+            );
 
             if (templateComponentIds.length < 1) {
               return errorResponse(
@@ -198,7 +223,7 @@ export function templateGenerateTool(server: McpServer) {
           }
 
           const response = await siComponentsApi.generateTemplate({
-            workspaceId: WORKSPACE_ID,
+            workspaceId: workspaceId,
             changeSetId: changeSetId,
             generateTemplateV1Request: {
               componentIds: templateComponentIds,
@@ -208,7 +233,7 @@ export function templateGenerateTool(server: McpServer) {
           });
 
           const schemaResponse = await siSchemasApi.findSchema({
-            workspaceId: WORKSPACE_ID,
+            workspaceId: workspaceId,
             changeSetId: changeSetId,
             schemaId: response.data.schemaId,
           });
@@ -220,9 +245,7 @@ export function templateGenerateTool(server: McpServer) {
             schema: schemaResponse.data,
           };
 
-          return successResponse(
-            result,
-          );
+          return successResponse(result);
         } catch (error) {
           return errorResponse(error);
         }

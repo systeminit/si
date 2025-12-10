@@ -1,5 +1,5 @@
 import { PostHog } from "posthog-node";
-import { USER_ID, WORKSPACE_ID } from "./si_client.ts";
+import { Context } from "../../context.ts";
 
 export class Analytics {
   private posthog: PostHog | null = null;
@@ -11,8 +11,9 @@ export class Analytics {
   }
 
   private initializePostHog() {
-    // deno-lint-ignore si-rules/no-deno-env-get
-    const apiKey = Deno.env.get("POSTHOG_API_KEY") ||
+    const apiKey =
+      // deno-lint-ignore si-rules/no-deno-env-get
+      Deno.env.get("POSTHOG_API_KEY") ||
       "phc_KpehlXOqtU44B2MeW6WjqR09NxRJCYEiUReA58QcAYK"; // Prod Posthog
     // deno-lint-ignore si-rules/no-deno-env-get
     const host = Deno.env.get("POSTHOG_HOST") || "https://e.systeminit.com";
@@ -23,18 +24,18 @@ export class Analytics {
   }
 
   private getDistinctId(): string {
-    return USER_ID || "";
+    return Context.userId();
   }
   private getWorkspaceId(): string {
-    return WORKSPACE_ID || "";
+    return Context.workspaceId();
   }
 
   identifyUser() {
-    if (!this.posthog || !USER_ID) return;
+    if (!this.posthog) return;
     this.posthog.identify({
-      distinctId: USER_ID,
+      distinctId: this.getDistinctId(),
       properties: {
-        userId: USER_ID,
+        userId: this.getDistinctId(),
       },
     });
   }

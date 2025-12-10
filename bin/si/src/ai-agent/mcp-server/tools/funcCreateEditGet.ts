@@ -2,7 +2,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod-v3";
 import { validateFunctionCode } from "../validators/funcValidator.ts";
 import { FuncsApi, SchemasApi } from "@systeminit/api-client";
-import { apiConfig, WORKSPACE_ID } from "../si_client.ts";
+import { Context } from "../../../context.ts";
 import {
   errorResponse,
   generateDescription,
@@ -51,21 +51,18 @@ const DEFAULT_QUALIFICATION_FUNCTION = `function main() {
     return { result: "success", message: "All good!" };
 }`;
 
-const DEFAULT_CODEGEN_FUNCTION =
-  `async function main(component: Input): Promise<Output> {
+const DEFAULT_CODEGEN_FUNCTION = `async function main(component: Input): Promise<Output> {
   return {
     format: "json",
     code: JSON.stringify(component),
   };
 }`;
 
-const DEFAULT_MANAGEMENT_FUNCTION =
-  `async function main({ thisComponent, components }: Input): Promise<Output> {
+const DEFAULT_MANAGEMENT_FUNCTION = `async function main({ thisComponent, components }: Input): Promise<Output> {
   throw new Error("unimplemented!");
 }`;
 
-const DEFAULT_ACTION_FUNCTION =
-  `async function main(component: Input): Promise<Output> {
+const DEFAULT_ACTION_FUNCTION = `async function main(component: Input): Promise<Output> {
   throw new Error("unimplemented!");
 }`;
 
@@ -1020,6 +1017,8 @@ export function funcCreateEditGetTool(server: McpServer) {
             "Provide a function type in the request body.",
           );
         }
+        const apiConfig = Context.apiConfig();
+        const workspaceId = Context.workspaceId();
         const siSchemasApi = new SchemasApi(apiConfig);
         const siFuncsApi = new FuncsApi(apiConfig);
 
@@ -1030,15 +1029,15 @@ export function funcCreateEditGetTool(server: McpServer) {
 
           // first ensure that the schema for this function is installed
           await siSchemasApi.installSchema({
-            workspaceId: WORKSPACE_ID,
+            workspaceId: workspaceId,
             changeSetId,
             schemaId,
           });
 
           // then get the default variant
-          const responseGetDefaultVariant = await siSchemasApi
-            .getDefaultVariant({
-              workspaceId: WORKSPACE_ID,
+          const responseGetDefaultVariant =
+            await siSchemasApi.getDefaultVariant({
+              workspaceId: workspaceId,
               changeSetId,
               schemaId,
             });
@@ -1050,7 +1049,7 @@ export function funcCreateEditGetTool(server: McpServer) {
               // EDIT
               // Fetch the existing function
               const responseGetFunc = await siFuncsApi.getFunc({
-                workspaceId: WORKSPACE_ID,
+                workspaceId: workspaceId,
                 changeSetId,
                 funcId,
               });
@@ -1083,7 +1082,7 @@ export function funcCreateEditGetTool(server: McpServer) {
               };
 
               await siFuncsApi.updateFunc({
-                workspaceId: WORKSPACE_ID,
+                workspaceId: workspaceId,
                 changeSetId,
                 funcId,
                 updateFuncV1Request,
@@ -1092,7 +1091,8 @@ export function funcCreateEditGetTool(server: McpServer) {
               return successResponse(
                 {
                   funcId: funcId,
-                  name: responseGetFunc.data.displayName ||
+                  name:
+                    responseGetFunc.data.displayName ||
                     responseGetFunc.data.name,
                   functionCode: updateFuncV1Request.code,
                 },
@@ -1143,7 +1143,7 @@ export function funcCreateEditGetTool(server: McpServer) {
                 // Create an action function
                 const code = functionCode ?? DEFAULT_ACTION_FUNCTION;
                 const responseCreate = await siSchemasApi.createVariantAction({
-                  workspaceId: WORKSPACE_ID,
+                  workspaceId: workspaceId,
                   changeSetId,
                   schemaId,
                   schemaVariantId,
@@ -1166,9 +1166,9 @@ export function funcCreateEditGetTool(server: McpServer) {
               } else if (functionType === "management") {
                 // Create a management function
                 const code = functionCode ?? DEFAULT_MANAGEMENT_FUNCTION;
-                const responseCreate = await siSchemasApi
-                  .createVariantManagement({
-                    workspaceId: WORKSPACE_ID,
+                const responseCreate =
+                  await siSchemasApi.createVariantManagement({
+                    workspaceId: workspaceId,
                     changeSetId,
                     schemaId,
                     schemaVariantId,
@@ -1191,7 +1191,7 @@ export function funcCreateEditGetTool(server: McpServer) {
                 // Create a codegen function
                 const code = functionCode ?? DEFAULT_CODEGEN_FUNCTION;
                 const responseCreate = await siSchemasApi.createVariantCodegen({
-                  workspaceId: WORKSPACE_ID,
+                  workspaceId: workspaceId,
                   changeSetId,
                   schemaId,
                   schemaVariantId,
@@ -1213,9 +1213,9 @@ export function funcCreateEditGetTool(server: McpServer) {
               } else if (functionType === "qualification") {
                 // Create a qualification function
                 const code = functionCode ?? DEFAULT_QUALIFICATION_FUNCTION;
-                const responseCreate = await siSchemasApi
-                  .createVariantQualification({
-                    workspaceId: WORKSPACE_ID,
+                const responseCreate =
+                  await siSchemasApi.createVariantQualification({
+                    workspaceId: workspaceId,
                     changeSetId,
                     schemaId,
                     schemaVariantId,
@@ -1243,21 +1243,21 @@ export function funcCreateEditGetTool(server: McpServer) {
 
             // first fetch existing data about the function
             const responseGetFunc = await siFuncsApi.getFunc({
-              workspaceId: WORKSPACE_ID,
+              workspaceId: workspaceId,
               changeSetId,
               funcId,
             });
 
             // ensure that the schema is unlocked
             const responseUnlockSchema = await siSchemasApi.unlockSchema({
-              workspaceId: WORKSPACE_ID,
+              workspaceId: workspaceId,
               changeSetId,
               schemaId,
             });
 
             // next make sure that the function is unlocked
             const responseUnlockFunc = await siFuncsApi.unlockFunc({
-              workspaceId: WORKSPACE_ID,
+              workspaceId: workspaceId,
               changeSetId,
               funcId,
               unlockFuncV1Request: {
@@ -1285,7 +1285,7 @@ export function funcCreateEditGetTool(server: McpServer) {
             ) {
               // finally hit the luminork API endpoint with the update
               await siFuncsApi.updateFunc({
-                workspaceId: WORKSPACE_ID,
+                workspaceId,
                 changeSetId,
                 funcId: touchedFuncId,
                 updateFuncV1Request,
@@ -1316,7 +1316,7 @@ export function funcCreateEditGetTool(server: McpServer) {
 
             // then unlock the schema we will be creating a function on
             const responseUnlockSchema = await siSchemasApi.unlockSchema({
-              workspaceId: WORKSPACE_ID,
+              workspaceId,
               changeSetId,
               schemaId,
             });
@@ -1324,7 +1324,7 @@ export function funcCreateEditGetTool(server: McpServer) {
 
             // prepare the function create parameters
             const baseParams = {
-              workspaceId: WORKSPACE_ID,
+              workspaceId,
               changeSetId,
               schemaId,
               schemaVariantId,

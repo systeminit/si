@@ -1,9 +1,6 @@
 /**
  * Lint rule to prevent direct usage of Deno.env.get() which bypasses
  * proper environment variable handling and configuration management.
- *
- * Exceptions are allowed for bootstrap/initialization files like context.ts,
- * config.ts, and si_client.ts which need to read environment variables directly.
  */
 export const noDenoEnvGet = {
   // deno-lint-ignore no-explicit-any
@@ -16,11 +13,7 @@ export const noDenoEnvGet = {
       ) {
         // Allow Deno.env.get() in specific bootstrap/initialization files
         const filename = context.getFilename();
-        const allowedFiles = [
-          "context.ts",
-          "config.ts",
-          "si_client.ts",
-        ];
+        const allowedFiles: string[] = [];
 
         const isAllowed = allowedFiles.some((file) => filename.endsWith(file));
 

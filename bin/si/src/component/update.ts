@@ -17,7 +17,6 @@ import {
 import { parse as parseYaml } from "@std/yaml";
 import { extname } from "@std/path";
 import { Context } from "../context.ts";
-import { apiConfig, WORKSPACE_ID } from "../si_client.ts";
 import { resolveChangeSet } from "./change_set.ts";
 import { filterAttributes } from "./attribute_utils.ts";
 import { updateComponent } from "./update_utils.ts";
@@ -44,9 +43,7 @@ export interface ComponentUpdateOptions {
  * @returns Parsed component data
  * @throws Error if file cannot be read or parsed
  */
-async function loadComponentFile(
-  filePath: string,
-): Promise<ComponentGetCache> {
+async function loadComponentFile(filePath: string): Promise<ComponentGetCache> {
   const ctx = Context.instance();
   ctx.logger.debug(`Loading component file: {filePath}`, { filePath });
 
@@ -66,9 +63,7 @@ async function loadComponentFile(
     }
 
     // Validate that required fields exist
-    if (
-      typeof data !== "object" || data === null || !("attributes" in data)
-    ) {
+    if (typeof data !== "object" || data === null || !("attributes" in data)) {
       throw new Error(
         "Invalid component file format: missing 'attributes' field",
       );
@@ -135,11 +130,8 @@ export async function callComponentUpdate(
   options: ComponentUpdateOptions,
 ): Promise<void> {
   const ctx = Context.instance();
-
-  // Verify workspace ID is available
-  if (!WORKSPACE_ID) {
-    throw new Error("Workspace ID not available from API token");
-  }
+  const apiConfig = Context.apiConfig();
+  const workspaceId = Context.workspaceId();
 
   // Load input file
   ctx.logger.info(`Loading component data from {file}`, { file: inputFile });
@@ -157,7 +149,7 @@ export async function callComponentUpdate(
   ctx.logger.info(`Resolving change set: {changeSet}`, {
     changeSet: options.changeSet,
   });
-  const changeSetId = await resolveChangeSet(WORKSPACE_ID, options.changeSet);
+  const changeSetId = await resolveChangeSet(workspaceId, options.changeSet);
 
   // Initialize API client
   const api = new ComponentsApi(apiConfig);
@@ -168,7 +160,7 @@ export async function callComponentUpdate(
   });
   const currentComponent = await fetchCurrentComponent(
     api,
-    WORKSPACE_ID,
+    workspaceId,
     componentIdOrName,
     changeSetId,
   );
@@ -176,7 +168,7 @@ export async function callComponentUpdate(
   // Fetch schema information for display
   const schemasApi = new SchemasApi(apiConfig);
   const schemaResponse = await schemasApi.getSchema({
-    workspaceId: WORKSPACE_ID,
+    workspaceId,
     changeSetId: changeSetId,
     schemaId: currentComponent.component?.schemaId,
   });
@@ -204,7 +196,7 @@ export async function callComponentUpdate(
   await resolveSubscriptionsInAttributes(
     desiredAttributes,
     searchApi,
-    WORKSPACE_ID,
+    workspaceId,
     changeSetId,
     ctx.logger,
   );
@@ -223,8 +215,11 @@ export async function callComponentUpdate(
   }
 
   // Check if there are any changes
-  const hasChanges = diff.set.size > 0 || diff.unset.length > 0 ||
-    diff.subscriptions.size > 0 || nameChange !== undefined;
+  const hasChanges =
+    diff.set.size > 0 ||
+    diff.unset.length > 0 ||
+    diff.subscriptions.size > 0 ||
+    nameChange !== undefined;
 
   if (!hasChanges) {
     ctx.logger.info("No changes to apply");
@@ -271,7 +266,7 @@ export async function callComponentUpdate(
 
   await updateComponent(
     api,
-    WORKSPACE_ID,
+    workspaceId,
     changeSetId,
     componentId,
     diff,

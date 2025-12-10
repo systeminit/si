@@ -7,7 +7,7 @@ import {
   type ComponentsApiListComponentsRequest,
   type Configuration,
 } from "@systeminit/api-client";
-import { apiConfig, WORKSPACE_ID } from "../si_client.ts";
+import { Context } from "../../../context.ts";
 import {
   errorResponse,
   findHeadChangeSet,
@@ -38,51 +38,72 @@ const description = `
       </usage>  `;
 
 const ListComponentsInputSchemaRaw = {
-  changeSetId: z.string().optional().describe(
-    "The change set to look up components in; if not provided, HEAD will be used",
-  ),
-  filters: z.object({
-    logic: z.enum(["AND", "OR"]).optional().describe(
-      "Logic operator between filter groups (default: AND)",
+  changeSetId: z
+    .string()
+    .optional()
+    .describe(
+      "The change set to look up components in; if not provided, HEAD will be used",
     ),
-    filterGroups: z.array(
-      z.object({
-        responseField: z.enum(["componentName", "componentId", "schemaName"])
-          .describe("the response field to filter on"),
-        logic: z.enum(["AND", "OR"]).optional().describe(
-          "Logic operator between regular expressions within this filter group (default: OR)",
-        ),
-        regularExpressions: z.array(
-          z.string().describe("a javascript regular expression string"),
-        ).describe(
-          "an array of javascript compatible regular expression strings",
-        ),
-      }).describe(
-        "a filter group, consisting of a responseField to filter and an array of regularExpressions",
-      ),
-    ).describe("an array of filter groups"),
-  }).optional().describe(
-    "filtering configuration with configurable AND/OR logic both between filter groups and within each group's regular expressions",
-  ),
+  filters: z
+    .object({
+      logic: z
+        .enum(["AND", "OR"])
+        .optional()
+        .describe("Logic operator between filter groups (default: AND)"),
+      filterGroups: z
+        .array(
+          z
+            .object({
+              responseField: z
+                .enum(["componentName", "componentId", "schemaName"])
+                .describe("the response field to filter on"),
+              logic: z
+                .enum(["AND", "OR"])
+                .optional()
+                .describe(
+                  "Logic operator between regular expressions within this filter group (default: OR)",
+                ),
+              regularExpressions: z
+                .array(
+                  z.string().describe("a javascript regular expression string"),
+                )
+                .describe(
+                  "an array of javascript compatible regular expression strings",
+                ),
+            })
+            .describe(
+              "a filter group, consisting of a responseField to filter and an array of regularExpressions",
+            ),
+        )
+        .describe("an array of filter groups"),
+    })
+    .optional()
+    .describe(
+      "filtering configuration with configurable AND/OR logic both between filter groups and within each group's regular expressions",
+    ),
 };
 
 const ListComponentsOutputSchemaRaw = {
   status: z.enum(["success", "failure"]),
-  errorMessage: z.string().optional().describe(
-    "If the status is failure, the error message will contain information about what went wrong",
-  ),
-  data: z.array(
-    z.object({
-      componentId: z.string().describe("the component id"),
-      componentName: z.string().describe("the component name"),
-      schemaName: z.string().describe("the schema name for the component"),
-    }).describe("an individual component"),
-  )
+  errorMessage: z
+    .string()
+    .optional()
+    .describe(
+      "If the status is failure, the error message will contain information about what went wrong",
+    ),
+  data: z
+    .array(
+      z
+        .object({
+          componentId: z.string().describe("the component id"),
+          componentName: z.string().describe("the component name"),
+          schemaName: z.string().describe("the schema name for the component"),
+        })
+        .describe("an individual component"),
+    )
     .describe("the list of components"),
 };
-const ListComponentsOutputSchema = z.object(
-  ListComponentsOutputSchemaRaw,
-);
+const ListComponentsOutputSchema = z.object(ListComponentsOutputSchemaRaw);
 type ListComponents = z.infer<typeof ListComponentsOutputSchema>;
 
 export function componentListTool(server: McpServer) {
@@ -103,6 +124,8 @@ export function componentListTool(server: McpServer) {
     },
     async ({ changeSetId, filters }): Promise<CallToolResult> => {
       return await withAnalytics(name, async () => {
+        const apiConfig = Context.apiConfig();
+        const workspaceId = Context.workspaceId();
         if (!changeSetId) {
           const changeSetsApi = new ChangeSetsApi(apiConfig);
           const headChangeSet = await findHeadChangeSet(changeSetsApi, false);
@@ -113,11 +136,13 @@ export function componentListTool(server: McpServer) {
           }
         }
         try {
-          const response = await listAllComponents(apiConfig, changeSetId);
-          const filteredResponse = applyFilters(response, filters);
-          return successResponse(
-            filteredResponse,
+          const response = await listAllComponents(
+            apiConfig,
+            workspaceId,
+            changeSetId,
           );
+          const filteredResponse = applyFilters(response, filters);
+          return successResponse(filteredResponse);
         } catch (error) {
           return errorResponse(error);
         }
@@ -126,9 +151,9 @@ export function componentListTool(server: McpServer) {
   );
 }
 
-
 async function listAllComponents(
   apiConfig: Configuration,
+  workspaceId: string,
   changeSetId: string,
   cursor?: string,
   componentList?: Array<ListComponents["data"][number]>,
@@ -140,14 +165,14 @@ async function listAllComponents(
   let args: ComponentsApiListComponentsRequest;
   if (cursor) {
     args = {
-      workspaceId: WORKSPACE_ID,
+      workspaceId: workspaceId,
       changeSetId: changeSetId,
       limit: "300",
       cursor,
     };
   } else {
     args = {
-      workspaceId: WORKSPACE_ID,
+      workspaceId,
       changeSetId: changeSetId,
       limit: "300",
     };
@@ -164,6 +189,7 @@ async function listAllComponents(
   if (response.data.nextCursor) {
     componentList = await listAllComponents(
       apiConfig,
+      workspaceId,
       changeSetId,
       response.data.nextCursor,
       componentList,

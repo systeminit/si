@@ -9,22 +9,24 @@ import {
   withAnalytics,
 } from "./commonBehavior.ts";
 import { ChangeSetsApi, SchemasApi } from "@systeminit/api-client";
-import { apiConfig, WORKSPACE_ID } from "../si_client.ts";
+import { Context } from "../../../context.ts";
 import { buildAttributesStructure } from "../data/schemaAttributes.ts";
 import { isValid } from "ulid";
 
 const name = "schema-attributes-list";
 const title = "List all the attributes of a schema";
-const description =
-  `<description>Lists all the attributes of a schema. Returns the schema name and an array of attribute objects that contain the Attribute Name, Path, and if it is Required. On failure, returns error details.</description><usage>Use this tool to discover what attributes (sometimes called properties) are available for a schema.</usage>`;
+const description = `<description>Lists all the attributes of a schema. Returns the schema name and an array of attribute objects that contain the Attribute Name, Path, and if it is Required. On failure, returns error details.</description><usage>Use this tool to discover what attributes (sometimes called properties) are available for a schema.</usage>`;
 
 const ListSchemaAttributesInputSchemaRaw = {
-  schemaNameOrId: z.string().describe(
-    "The Schema Name or Schema ID to retrieve the attributes for.",
-  ),
-  changeSetId: z.string().optional().describe(
-    "The change set to retreive the schema attributes in. If none is provided, the HEAD change set is used.",
-  ),
+  schemaNameOrId: z
+    .string()
+    .describe("The Schema Name or Schema ID to retrieve the attributes for."),
+  changeSetId: z
+    .string()
+    .optional()
+    .describe(
+      "The change set to retreive the schema attributes in. If none is provided, the HEAD change set is used.",
+    ),
 };
 
 const ListSchemaAttributesOutputSchemaRaw = {
@@ -82,6 +84,8 @@ export function schemaAttributesListTool(server: McpServer) {
     },
     async ({ schemaNameOrId, changeSetId }): Promise<CallToolResult> => {
       return await withAnalytics(name, async () => {
+        const apiConfig = Context.apiConfig();
+        const workspaceId = Context.workspaceId();
         let responseData: ListSchemaAttributesOutput["data"];
 
         if (!changeSetId) {
@@ -100,18 +104,16 @@ export function schemaAttributesListTool(server: McpServer) {
           if (!isValid(schemaNameOrId)) {
             try {
               const response = await siSchemasApi.findSchema({
-                workspaceId: WORKSPACE_ID,
+                workspaceId: workspaceId,
                 changeSetId: changeSetId!,
                 schema: schemaNameOrId,
               });
               schemaId = response.data.schemaId;
             } catch (error) {
-              const errorMessage = error instanceof Error
-                ? error.message
-                : String(error);
+              const errorMessage =
+                error instanceof Error ? error.message : String(error);
               return errorResponse({
-                message:
-                  `Unable to find the schema - check the name and try again. Tell the user we are sorry: ${errorMessage}`,
+                message: `Unable to find the schema - check the name and try again. Tell the user we are sorry: ${errorMessage}`,
               });
             }
           } else {
@@ -119,7 +121,7 @@ export function schemaAttributesListTool(server: McpServer) {
           }
 
           const response = await siSchemasApi.getDefaultVariant({
-            workspaceId: WORKSPACE_ID,
+            workspaceId: workspaceId,
             changeSetId: changeSetId!,
             schemaId,
           });

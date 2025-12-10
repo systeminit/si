@@ -28,6 +28,7 @@ deno_binary(
         "src/**/*.ts",
     ]),
     permissions = [
+        "allow-sys",
         "allow-env",
         "allow-net",
         "allow-read",
@@ -94,6 +95,7 @@ deno_format(
 deno_test(
     name = "test-unit",
     permissions = [
+        "allow-sys",
         "allow-env",
         "allow-net",
         "allow-read",

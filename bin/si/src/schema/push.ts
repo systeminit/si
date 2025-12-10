@@ -5,11 +5,10 @@ import {
   type GetFuncV1Response,
   SchemasApi,
 } from "@systeminit/api-client";
-import type { Context } from "../context.ts";
-import type { AuthenticatedCliContext } from "../cli/helpers.ts";
+import { Context } from "../context.ts";
 import {
   generateChangeSetUrl,
-  unknownValueToErrorMessage
+  unknownValueToErrorMessage,
 } from "../helpers.ts";
 import { SCHEMA_FILE_FORMAT_VERSION } from "./config.ts";
 import {
@@ -20,6 +19,7 @@ import {
 } from "./project.ts";
 import type { Logger } from "@logtape/logtape";
 import { wrapInChangeSet } from "./change_set.ts";
+import { getWorkspaceDetails } from "../cli/helpers.ts";
 
 async function parseActions(
   ctx: Context,
@@ -55,11 +55,9 @@ async function parseActions(
   } catch (error) {
     if (!(error instanceof Deno.errors.NotFound)) {
       throw new Error(
-        `Error reading actions directory for asset "${schemaName}": ${
-          unknownValueToErrorMessage(
-            error,
-          )
-        }`,
+        `Error reading actions directory for asset "${schemaName}": ${unknownValueToErrorMessage(
+          error,
+        )}`,
       );
     }
     // If actions folder doesn't exist, that's ok - just continue
@@ -71,8 +69,7 @@ async function parseActions(
   // For each listed file, get the contents and the required metadata file ({kind}.json)
   for (const { kind, strippedFileName } of actionFiles) {
     const actionTsPath = `${funcBasePath.toString()}/${strippedFileName}.ts`;
-    const actionJsonPath =
-      `${funcBasePath.toString()}/${strippedFileName}.metadata.json`;
+    const actionJsonPath = `${funcBasePath.toString()}/${strippedFileName}.metadata.json`;
 
     try {
       // Read the TypeScript file
@@ -126,11 +123,9 @@ async function parseActions(
       actions.push(actionObject);
     } catch (error) {
       logger.error(
-        `Error processing action "${strippedFileName}" for asset "${schemaName}": ${
-          unknownValueToErrorMessage(
-            error,
-          )
-        }, skipping...`,
+        `Error processing action "${strippedFileName}" for asset "${schemaName}": ${unknownValueToErrorMessage(
+          error,
+        )}, skipping...`,
       );
     }
   }
@@ -168,11 +163,9 @@ async function parseSimpleFuncDirectory(
   } catch (error) {
     if (!(error instanceof Deno.errors.NotFound)) {
       throw new Error(
-        `Error reading funcs directory "${funcBasePath}" for asset "${schemaName}": ${
-          unknownValueToErrorMessage(
-            error,
-          )
-        }`,
+        `Error reading funcs directory "${funcBasePath}" for asset "${schemaName}": ${unknownValueToErrorMessage(
+          error,
+        )}`,
       );
     }
     // If folder doesn't exist, skip by returning early
@@ -183,8 +176,7 @@ async function parseSimpleFuncDirectory(
 
   for (const strippedFileName of files) {
     const funcTsPath = `${funcBasePath.toString()}/${strippedFileName}.ts`;
-    const funcJsonPath =
-      `${funcBasePath.toString()}/${strippedFileName}.metadata.json`;
+    const funcJsonPath = `${funcBasePath.toString()}/${strippedFileName}.metadata.json`;
 
     try {
       // Read the TypeScript file
@@ -220,11 +212,9 @@ async function parseSimpleFuncDirectory(
       funcs.push(funcObject);
     } catch (error) {
       logger.error(
-        `Error processing "${strippedFileName}" for asset "${schemaName}": ${
-          unknownValueToErrorMessage(
-            error,
-          )
-        }, skipping...`,
+        `Error processing "${strippedFileName}" for asset "${schemaName}": ${unknownValueToErrorMessage(
+          error,
+        )}, skipping...`,
       );
     }
   }
@@ -266,16 +256,19 @@ function allSchemaFuncsWithKind(schema: Schema) {
 }
 
 export async function callRemoteSchemaPush(
-  cliContext: AuthenticatedCliContext,
   project: Project,
   filterSchemaNames: string[],
   updateBuiltins: boolean,
   skipConfirmation?: boolean,
 ) {
-  const { apiConfiguration, workspace, ctx } = cliContext;
-  const logger = ctx.logger;
+  const ctx = Context.instance();
+  const apiConfiguration = Context.apiConfig();
+  const workspaceId = Context.workspaceId();
 
-  const { instanceUrl: workspaceUrlPrefix, id: workspaceId } = workspace;
+  const workspaceDetails = await getWorkspaceDetails(workspaceId);
+  const workspaceUrlPrefix = workspaceDetails.instanceUrl;
+
+  const logger = ctx.logger;
 
   const siFuncsApi = new FuncsApi(apiConfiguration);
   const changeSetsApi = new ChangeSetsApi(apiConfiguration);
@@ -320,9 +313,10 @@ export async function callRemoteSchemaPush(
         const formatContent = await versionFilePath.readTextFile();
         thisFormatVersion = parseInt(formatContent);
       } catch (error) {
-        const msg = error instanceof Deno.errors.NotFound
-          ? `.format-version file not found on the ${schemaDirName} directory`
-          : unknownValueToErrorMessage(error);
+        const msg =
+          error instanceof Deno.errors.NotFound
+            ? `.format-version file not found on the ${schemaDirName} directory`
+            : unknownValueToErrorMessage(error);
         logger.error(msg);
         continue;
       }
@@ -353,9 +347,8 @@ export async function callRemoteSchemaPush(
         let link: string;
         let color: string;
 
-        const schemaMetadataPath = project.schemas.schemaMetadataPath(
-          schemaDirName,
-        );
+        const schemaMetadataPath =
+          project.schemas.schemaMetadataPath(schemaDirName);
         try {
           const metadataContent = await schemaMetadataPath.readTextFile();
           const metadata = JSON.parse(metadataContent);
@@ -382,9 +375,10 @@ export async function callRemoteSchemaPush(
           link = metadata.documentation ?? null;
           color = metadata.color ?? "#000000";
         } catch (error) {
-          const msg = error instanceof Deno.errors.NotFound
-            ? `metadata.json file not found on the ${schemaDirName} directory`
-            : unknownValueToErrorMessage(error);
+          const msg =
+            error instanceof Deno.errors.NotFound
+              ? `metadata.json file not found on the ${schemaDirName} directory`
+              : unknownValueToErrorMessage(error);
           logger.error(msg);
           continue;
         }
@@ -503,13 +497,14 @@ export async function callRemoteSchemaPush(
       `Error reading assets directory: ${unknownValueToErrorMessage(error)}`,
     );
   }
-  const failedSchemaDirectories = readSchemas - schemasFromFilesystem.length - skippedSchemas;
+  const failedSchemaDirectories =
+    readSchemas - schemasFromFilesystem.length - skippedSchemas;
 
   // ==================================
   // Pre check: Compare schema and funcs to head
   // ==================================
-  const changeSets = (await changeSetsApi.listChangeSets({ workspaceId }))
-    .data.changeSets as { id: string; isHead: boolean }[]; // Mocking this type since the client lib does not have it right now
+  const changeSets = (await changeSetsApi.listChangeSets({ workspaceId })).data
+    .changeSets as { id: string; isHead: boolean }[]; // Mocking this type since the client lib does not have it right now
 
   const headChangesetId = changeSets.find((cs) => cs.isHead)?.id;
 
@@ -553,11 +548,13 @@ export async function callRemoteSchemaPush(
       `schema ${filesystemSchema.name} already exists. checking if it needs an update...`,
     );
 
-    const existingVariant = (await siSchemasApi.getDefaultVariant({
-      workspaceId,
-      changeSetId: headChangesetId,
-      schemaId: existingSchema.schemaId,
-    })).data;
+    const existingVariant = (
+      await siSchemasApi.getDefaultVariant({
+        workspaceId,
+        changeSetId: headChangesetId,
+        schemaId: existingSchema.schemaId,
+      })
+    ).data;
 
     if (!updateBuiltins && existingVariant.installedFromUpstream) {
       logger.warn(
@@ -567,11 +564,13 @@ export async function callRemoteSchemaPush(
       continue;
     }
 
-    const existingVariantCode = (await siFuncsApi.getFunc({
-      workspaceId,
-      changeSetId: headChangesetId,
-      funcId: existingVariant.assetFuncId,
-    })).data.code;
+    const existingVariantCode = (
+      await siFuncsApi.getFunc({
+        workspaceId,
+        changeSetId: headChangesetId,
+        funcId: existingVariant.assetFuncId,
+      })
+    ).data.code;
 
     const variantDataChanged = !schemaContentsMatch(filesystemSchema, {
       name: existingSchema.schemaName,
@@ -589,21 +588,29 @@ export async function callRemoteSchemaPush(
     );
 
     // Go through the functions to see what needs to be done
-    const existingFuncByName = {} as Record<string, {
-      id: string;
-      data: GetFuncV1Response;
-    }>;
-    const funcsToUnbindByName = {} as Record<string, {
-      id: string;
-      name: string;
-      kind: string;
-    }>;
+    const existingFuncByName = {} as Record<
+      string,
+      {
+        id: string;
+        data: GetFuncV1Response;
+      }
+    >;
+    const funcsToUnbindByName = {} as Record<
+      string,
+      {
+        id: string;
+        name: string;
+        kind: string;
+      }
+    >;
     for (const { id: existingFuncId } of existingVariant.variantFuncs) {
-      const existingFunc = (await siFuncsApi.getFunc({
-        workspaceId,
-        changeSetId: headChangesetId,
-        funcId: existingFuncId,
-      })).data;
+      const existingFunc = (
+        await siFuncsApi.getFunc({
+          workspaceId,
+          changeSetId: headChangesetId,
+          funcId: existingFuncId,
+        })
+      ).data;
 
       existingFuncByName[existingFunc.name] = {
         id: existingFuncId,
@@ -634,9 +641,9 @@ export async function callRemoteSchemaPush(
     let modifiedFuncs = 0;
     let skippedFuncs = 0;
 
-    for (
-      const filesystemFuncAndKind of allSchemaFuncsWithKind(filesystemSchema)
-    ) {
+    for (const filesystemFuncAndKind of allSchemaFuncsWithKind(
+      filesystemSchema,
+    )) {
       const filesystemFunc = filesystemFuncAndKind.funcData;
       const filesystemFuncKind = filesystemFuncAndKind.kind;
 
@@ -697,8 +704,8 @@ export async function callRemoteSchemaPush(
       logger.debug(`- removing ${kind} function: ${funcName}`);
     }
 
-    const functionsModified = createdFuncs > 0 || modifiedFuncs > 0 ||
-      detachedFuncs > 0;
+    const functionsModified =
+      createdFuncs > 0 || modifiedFuncs > 0 || detachedFuncs > 0;
 
     if (!variantDataChanged && !functionsModified) {
       logger.info(`- no changes to push. skipping...`);
@@ -738,13 +745,13 @@ export async function callRemoteSchemaPush(
   }
 
   if (!skipConfirmation) {
-    const failureMsg = failedSchemaDirectories > 0
-      ? ` Failed to read ${failedSchemaDirectories} asset description(s).`
-      : "";
+    const failureMsg =
+      failedSchemaDirectories > 0
+        ? ` Failed to read ${failedSchemaDirectories} asset description(s).`
+        : "";
 
-    const skipsMsg = skippedSchemas > 0
-      ? ` ${skippedSchemas} asset(s) filtered out.`
-      : "";
+    const skipsMsg =
+      skippedSchemas > 0 ? ` ${skippedSchemas} asset(s) filtered out.` : "";
 
     console.log(
       `Found ${schemasToPush.length} asset(s) to push.${failureMsg}${skipsMsg}`,
@@ -761,7 +768,7 @@ export async function callRemoteSchemaPush(
       if (input === "l") {
         console.log("\nAssets to be pushed:");
         schemasToPush.forEach((schema) =>
-          console.log(`  - ${schema.schemaPayload.name}`)
+          console.log(`  - ${schema.schemaPayload.name}`),
         );
         console.log();
       } else if (input === "y") {
@@ -795,7 +802,7 @@ export async function callRemoteSchemaPush(
 
         const updatableFuncIdsByName =
           existingSchemaData?.updatableFuncIdsByName ??
-            {} as Record<string, string>;
+          ({} as Record<string, string>);
         const funcsToUnbind = existingSchemaData?.funcsToUnbind ?? [];
 
         if (existingSchemaData) {
@@ -857,19 +864,12 @@ export async function callRemoteSchemaPush(
 
         for (const { id: funcId, kind, name: funcName } of funcsToUnbind) {
           logger.trace(`${kind} "${funcName}": detaching`);
-          await unbindFunc(
-            siSchemasApi,
-            baseVariantPayload,
-            kind,
-            funcId,
-          );
+          await unbindFunc(siSchemasApi, baseVariantPayload, kind, funcId);
         }
 
-        for (
-          const filesystemFuncAndKind of allSchemaFuncsWithKind(
-            schemaData.schemaPayload,
-          )
-        ) {
+        for (const filesystemFuncAndKind of allSchemaFuncsWithKind(
+          schemaData.schemaPayload,
+        )) {
           const filesystemFunc = filesystemFuncAndKind.funcData;
           const filesystemFuncKind = filesystemFuncAndKind.kind;
           const funcName = filesystemFunc.name;
@@ -880,14 +880,16 @@ export async function callRemoteSchemaPush(
               `${filesystemFuncKind} "${funcName}": unlocking and updating`,
             );
 
-            const unlockedFuncId = (await siFuncsApi.unlockFunc({
-              workspaceId,
-              changeSetId,
-              funcId: existingFuncId,
-              unlockFuncV1Request: {
-                schemaVariantId,
-              },
-            })).data.unlockedFuncId;
+            const unlockedFuncId = (
+              await siFuncsApi.unlockFunc({
+                workspaceId,
+                changeSetId,
+                funcId: existingFuncId,
+                unlockFuncV1Request: {
+                  schemaVariantId,
+                },
+              })
+            ).data.unlockedFuncId;
 
             await siFuncsApi.updateFunc({
               workspaceId,
@@ -914,8 +916,7 @@ export async function callRemoteSchemaPush(
         pushedSchemas += 1;
       }
 
-      const changeSetUrl =
-        `${workspaceUrlPrefix}/w/${workspaceId}/${changeSetId}/l/a`;
+      const changeSetUrl = `${workspaceUrlPrefix}/w/${workspaceId}/${changeSetId}/l/a`;
 
       ctx.analytics.trackEvent("push_assets", {
         pushedSchemasCount: pushedSchemas,
@@ -933,13 +934,13 @@ export async function callRemoteSchemaPush(
 }
 
 export async function callRemoteSchemaOverlaysPush(
-  cliContext: AuthenticatedCliContext,
   project: Project,
   skipConfirmation?: boolean,
 ) {
-  const { apiConfiguration, workspace, ctx } = cliContext;
+  const ctx = Context.instance();
+  const apiConfiguration = Context.apiConfig();
+  const workspaceId = Context.workspaceId();
   const logger = ctx.logger;
-  const { id: workspaceId } = workspace;
 
   const siSchemasApi = new SchemasApi(apiConfiguration);
   const siFuncsApi = new FuncsApi(apiConfiguration);
@@ -950,8 +951,8 @@ export async function callRemoteSchemaOverlaysPush(
   logger.info("");
 
   // Get HEAD change set
-  const changeSets = (await changeSetsApi.listChangeSets({ workspaceId }))
-    .data.changeSets as { id: string; isHead: boolean }[];
+  const changeSets = (await changeSetsApi.listChangeSets({ workspaceId })).data
+    .changeSets as { id: string; isHead: boolean }[];
 
   const headChangesetId = changeSets.find((cs) => cs.isHead)?.id;
 
@@ -1001,11 +1002,13 @@ export async function callRemoteSchemaOverlaysPush(
     }
 
     // Get variant data
-    const existingVariant = (await siSchemasApi.getDefaultVariant({
-      workspaceId,
-      changeSetId: headChangesetId,
-      schemaId: existingSchema.schemaId,
-    })).data;
+    const existingVariant = (
+      await siSchemasApi.getDefaultVariant({
+        workspaceId,
+        changeSetId: headChangesetId,
+        schemaId: existingSchema.schemaId,
+      })
+    ).data;
 
     // Check if asset is a builtin
     if (!existingVariant.installedFromUpstream) {
@@ -1014,20 +1017,25 @@ export async function callRemoteSchemaOverlaysPush(
     }
 
     // Get existing overlay functions from remote
-    const existingOverlayFuncByName = {} as Record<string, {
-      id: string;
-      data: GetFuncV1Response;
-    }>;
+    const existingOverlayFuncByName = {} as Record<
+      string,
+      {
+        id: string;
+        data: GetFuncV1Response;
+      }
+    >;
 
     for (const { id: funcId, isOverlay } of existingVariant.variantFuncs) {
       if (!isOverlay) {
         continue;
       }
-      const func = (await siFuncsApi.getFunc({
-        workspaceId,
-        changeSetId: headChangesetId,
-        funcId,
-      })).data;
+      const func = (
+        await siFuncsApi.getFunc({
+          workspaceId,
+          changeSetId: headChangesetId,
+          funcId,
+        })
+      ).data;
 
       existingOverlayFuncByName[func.name] = {
         id: funcId,
@@ -1092,9 +1100,9 @@ export async function callRemoteSchemaOverlaysPush(
     >;
 
     // Track all remote functions for unbinding
-    for (
-      const [name, { id, data }] of Object.entries(existingOverlayFuncByName)
-    ) {
+    for (const [name, { id, data }] of Object.entries(
+      existingOverlayFuncByName,
+    )) {
       funcsToUnbindByName[name] = {
         id,
         name,
@@ -1146,7 +1154,8 @@ export async function callRemoteSchemaOverlaysPush(
     );
 
     if (
-      funcsToCreate.length === 0 && funcsToUpdate.length === 0 &&
+      funcsToCreate.length === 0 &&
+      funcsToUpdate.length === 0 &&
       Object.keys(funcsToUnbindByName).length === 0
     ) {
       logger.trace("  No functions to push, skipping...");
@@ -1183,7 +1192,7 @@ export async function callRemoteSchemaOverlaysPush(
       if (input === "l") {
         console.log("\nSchemas with overlays to be pushed:");
         schemasToPush.forEach((schema) =>
-          console.log(`  - ${schema.schemaName}`)
+          console.log(`  - ${schema.schemaName}`),
         );
         console.log();
       } else if (input === "y") {
@@ -1212,17 +1221,14 @@ export async function callRemoteSchemaOverlaysPush(
           schemaVariantId: schema.schemaVariantId,
         };
 
-        for (
-          const { name: funcName, id: funcId, kind } of schema.funcsToUnbind
-        ) {
+        for (const {
+          name: funcName,
+          id: funcId,
+          kind,
+        } of schema.funcsToUnbind) {
           logger.trace(`${kind} "${funcName}": detaching`);
 
-          await unbindFunc(
-            siSchemasApi,
-            baseVariantPayload,
-            kind,
-            funcId,
-          );
+          await unbindFunc(siSchemasApi, baseVariantPayload, kind, funcId);
         }
 
         for (const { kind, data: funcData } of schema.funcsToCreate) {
@@ -1238,9 +1244,11 @@ export async function callRemoteSchemaOverlaysPush(
           );
         }
 
-        for (
-          const { id: funcId, data: funcData, kind } of schema.funcsToUpdate
-        ) {
+        for (const {
+          id: funcId,
+          data: funcData,
+          kind,
+        } of schema.funcsToUpdate) {
           const funcName = funcData.name;
           logger.trace(`${kind} "${funcName}": updating`);
 
@@ -1253,6 +1261,7 @@ export async function callRemoteSchemaOverlaysPush(
         }
       }
 
+      const workspace = await getWorkspaceDetails(workspaceId);
       const changeSetUrl = `${generateChangeSetUrl(workspace, changeSetId)}/l/a`;
 
       const pushedSchemasCount = schemasToPush.length;
@@ -1299,9 +1308,9 @@ async function tryFindSchema(
     return response.data;
   } catch (error) {
     if (
-      typeof error === 'object' &&
+      typeof error === "object" &&
       error !== null &&
-      'status' in error &&
+      "status" in error &&
       error.status === 404
     ) {
       // Swallow error if it's a schema not found error
@@ -1347,7 +1356,7 @@ async function createFunc(
   const payload = {
     ...funcData,
     skipOverlay: updateBuiltins,
-  }
+  };
 
   switch (kind) {
     case "Action":
@@ -1388,9 +1397,7 @@ async function createFunc(
       });
       break;
     default:
-      throw new Error(
-        `Unknown func kind for func "${payload.name}": ${kind}`,
-      );
+      throw new Error(`Unknown func kind for func "${payload.name}": ${kind}`);
   }
 }
 async function unbindFunc(

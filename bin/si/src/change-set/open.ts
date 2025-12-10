@@ -7,14 +7,12 @@
  * @module
  */
 
-import { open } from "@opensrc/deno-open";
+import { open } from "jsr:@opensrc/deno-open";
 import { Context } from "../context.ts";
-import { WORKSPACE_ID } from "../si_client.ts";
 import type { ChangeSetOpenOptions } from "./types.ts";
 import { resolveChangeSet } from "./utils.ts";
-import { initializeCliContextWithAuth } from "../cli/helpers.ts";
-import { WorkspaceDetails } from "../cli/auth.ts";
 import { generateChangeSetUrl } from "../helpers.ts";
+import { getWorkspaceDetails } from "../cli/helpers.ts";
 
 export type { ChangeSetOpenOptions };
 
@@ -25,18 +23,13 @@ export async function callChangeSetOpen(
   options: ChangeSetOpenOptions,
 ): Promise<void> {
   const ctx = Context.instance();
-  const { workspace } = await initializeCliContextWithAuth({ ctx: Context.instance() });
+  const workspaceId = Context.workspaceId();
+  const workspace = await getWorkspaceDetails(workspaceId);
 
   try {
-    if (!WORKSPACE_ID) {
-      throw new Error(
-        "API token not found. Set SI_API_TOKEN environment variable or use --api-token flag.",
-      );
-    }
-
     // Resolve the change set ID from the provided ID or name
     const changeSetId = await resolveChangeSet(
-      WORKSPACE_ID,
+      workspaceId,
       options.changeSetIdOrName,
     );
 

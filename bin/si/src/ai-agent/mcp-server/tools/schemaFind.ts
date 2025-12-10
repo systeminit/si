@@ -2,7 +2,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod-v3";
 import { ChangeSetsApi, SchemasApi } from "@systeminit/api-client";
-import { apiConfig, WORKSPACE_ID } from "../si_client.ts";
+import { Context } from "../../../context.ts";
 import {
   errorResponse,
   findHeadChangeSet,
@@ -14,8 +14,7 @@ import { isValid } from "ulid";
 
 const name = "schema-find";
 const title = "Find component schemas";
-const description =
-  `<description>Finds component schemas by name or Schema ID. Returns the Schema ID, Name, Description, and external documentation Link. On failure, returns error details. When looking for AWS Schemas, you can use the AWS Cloudformation Resource name (examples: AWS::EC2::Instance, AWS::Bedrock::Agent, or AWS::ControlTower::EnabledBaseline). When looking for Azure Schemas, you can use the Azure ARM Resource name (examples: Microsoft.Compute/sshKeys, Microsoft.Compute/virtualMachineScaleSets,  Microsoft.Cdn/profiles or Microsoft.KeyVault/vaults)</description><usage>Use this tool to find if a schema exists in System Initiative, to look up the Schema Name or Schema ID if you need it, or to display high level information about the schema.</usage>`;
+const description = `<description>Finds component schemas by name or Schema ID. Returns the Schema ID, Name, Description, and external documentation Link. On failure, returns error details. When looking for AWS Schemas, you can use the AWS Cloudformation Resource name (examples: AWS::EC2::Instance, AWS::Bedrock::Agent, or AWS::ControlTower::EnabledBaseline). When looking for Azure Schemas, you can use the Azure ARM Resource name (examples: Microsoft.Compute/sshKeys, Microsoft.Compute/virtualMachineScaleSets,  Microsoft.Cdn/profiles or Microsoft.KeyVault/vaults)</description><usage>Use this tool to find if a schema exists in System Initiative, to look up the Schema Name or Schema ID if you need it, or to display high level information about the schema.</usage>`;
 
 const FindSchemaInputSchemaRaw = {
   changeSetId: z
@@ -81,6 +80,8 @@ export function schemaFindTool(server: McpServer) {
     },
     async ({ changeSetId, schemaNameOrId }): Promise<CallToolResult> => {
       return await withAnalytics(name, async () => {
+        const apiConfig = Context.apiConfig();
+        const workspaceId = Context.workspaceId();
         if (!changeSetId) {
           const changeSetsApi = new ChangeSetsApi(apiConfig);
           const headChangeSet = await findHeadChangeSet(changeSetsApi, false);
@@ -96,18 +97,16 @@ export function schemaFindTool(server: McpServer) {
           if (!isValid(schemaNameOrId)) {
             try {
               const response = await siApi.findSchema({
-                workspaceId: WORKSPACE_ID,
+                workspaceId: workspaceId,
                 changeSetId: changeSetId!,
                 schema: schemaNameOrId,
               });
               schemaId = response.data.schemaId;
             } catch (error) {
-              const errorMessage = error instanceof Error
-                ? error.message
-                : String(error);
+              const errorMessage =
+                error instanceof Error ? error.message : String(error);
               return errorResponse({
-                message:
-                  `Unable to find the schema - check the name and try again. Tell the user we are sorry: ${errorMessage}`,
+                message: `Unable to find the schema - check the name and try again. Tell the user we are sorry: ${errorMessage}`,
               });
             }
           } else {
@@ -115,7 +114,7 @@ export function schemaFindTool(server: McpServer) {
           }
 
           const response = await siApi.getDefaultVariant({
-            workspaceId: WORKSPACE_ID,
+            workspaceId: workspaceId,
             changeSetId: changeSetId!,
             schemaId: schemaId,
           });

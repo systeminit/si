@@ -7,7 +7,6 @@ import {
   ComponentsApi,
   SchemasApi,
 } from "@systeminit/api-client";
-import { apiConfig, WORKSPACE_ID } from "../si_client.ts";
 import {
   errorResponse,
   findHeadChangeSet,
@@ -16,11 +15,11 @@ import {
   withAnalytics,
 } from "./commonBehavior.ts";
 import { type ActionList, ActionSchema } from "../data/actions.ts";
+import { Context } from "../../../context.ts";
 
 const name = "action-list";
 const title = "List actions";
-const description =
-  `<description>Lists all actions. Returns an array of actions with actionId, componentId, Name, kind, and state. On failure, returns error details</description><usage>Use this tool when the user asks what actions are present.</usage>`;
+const description = `<description>Lists all actions. Returns an array of actions with actionId, componentId, Name, kind, and state. On failure, returns error details</description><usage>Use this tool when the user asks what actions are present.</usage>`;
 
 const ListActionsInputSchemaRaw = {
   changeSetId: z
@@ -60,6 +59,9 @@ export function actionListTool(server: McpServer) {
       outputSchema: ListActionsOutputSchemaRaw,
     },
     async ({ changeSetId }): Promise<CallToolResult> => {
+      const apiConfig = Context.apiConfig();
+      const workspaceId = Context.workspaceId();
+
       return await withAnalytics(name, async () => {
         if (!changeSetId) {
           const changeSetsApi = new ChangeSetsApi(apiConfig);
@@ -73,7 +75,7 @@ export function actionListTool(server: McpServer) {
         const siApi = new ActionsApi(apiConfig);
         try {
           const response = await siApi.getActions({
-            workspaceId: WORKSPACE_ID,
+            workspaceId,
             changeSetId: changeSetId,
           });
           const actionList: Array<ActionList> = [];
@@ -85,7 +87,7 @@ export function actionListTool(server: McpServer) {
               try {
                 const compApi = new ComponentsApi(apiConfig);
                 const comp = await compApi.getComponent({
-                  workspaceId: WORKSPACE_ID,
+                  workspaceId,
                   changeSetId,
                   componentId: action.componentId,
                 });
@@ -94,21 +96,19 @@ export function actionListTool(server: McpServer) {
                 try {
                   const schemaApi = new SchemasApi(apiConfig);
                   const schema = await schemaApi.getSchema({
-                    workspaceId: WORKSPACE_ID,
+                    workspaceId,
                     changeSetId,
                     schemaId: compSchemaId,
                   });
                   compSchemaName = schema.data.name;
                 } catch (error) {
                   return errorResponse({
-                    message:
-                      `Error getting schema for extra details while listing actions; bug! ${error}`,
+                    message: `Error getting schema for extra details while listing actions; bug! ${error}`,
                   });
                 }
               } catch (error) {
                 return errorResponse({
-                  message:
-                    `Error getting component for extra details while listing actions; bug! ${error}`,
+                  message: `Error getting component for extra details while listing actions; bug! ${error}`,
                 });
               }
             }

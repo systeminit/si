@@ -2,18 +2,17 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod-v3";
 import { ChangeSetsApi } from "@systeminit/api-client";
-import { apiConfig, WORKSPACE_ID } from "../si_client.ts";
 import {
   errorResponse,
   generateDescription,
   successResponse,
   withAnalytics,
 } from "./commonBehavior.ts";
+import { Context } from "../../../context.ts";
 
 const name = "change-set-update-status";
 const title = "Apply a change set";
-const description =
-  `<description>Apply a change set. Returns 'success' if the status was changed. On failure, returns error details</description><usage>Use this tool to Apply a change set. If the change set requires approval, you should be told that it's waiting for approval on the web application and you should review the changes on that page before merging. You may *never* update the status of the HEAD change set.</usage>`;
+const description = `<description>Apply a change set. Returns 'success' if the status was changed. On failure, returns error details</description><usage>Use this tool to Apply a change set. If the change set requires approval, you should be told that it's waiting for approval on the web application and you should review the changes on that page before merging. You may *never* update the status of the HEAD change set.</usage>`;
 
 const UpdateChangeSetInputSchemaRaw = {
   changeSetId: z.string().describe("the ID of the change set to apply"),
@@ -58,10 +57,12 @@ export function changeSetUpdateTool(server: McpServer) {
           });
         }
 
+        const apiConfig = Context.apiConfig();
+        const workspaceId = Context.workspaceId();
         const siApi = new ChangeSetsApi(apiConfig);
         try {
           const response = await siApi.getChangeSet({
-            workspaceId: WORKSPACE_ID,
+            workspaceId,
             changeSetId,
           });
           if (response.data.changeSet.isHead) {
@@ -77,12 +78,12 @@ export function changeSetUpdateTool(server: McpServer) {
         try {
           // Confirm the change set you want to manipulate isn't HEAD
           const response = await siApi.requestApproval({
-            workspaceId: WORKSPACE_ID,
+            workspaceId,
             changeSetId,
           });
           try {
             const newResponse = await siApi.getChangeSet({
-              workspaceId: WORKSPACE_ID,
+              workspaceId,
               changeSetId,
             });
             if (newResponse.data.changeSet.status == "NeedsApproval") {

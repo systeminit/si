@@ -4,9 +4,8 @@ import {
   SchemasApi,
   type SchemaVariantFunc,
 } from "@systeminit/api-client";
-import type { ApiContext } from "../cli/api.ts";
 import { SCHEMA_FILE_FORMAT_VERSION } from "./config.ts";
-import type { Context } from "../context.ts";
+import { Context } from "../context.ts";
 import type { FunctionMetadata, SchemaMetadata } from "./generators.ts";
 import * as materialize from "./materialize.ts";
 import {
@@ -82,7 +81,6 @@ async function searchSchemas(
 export async function callRemoteSchemaPull(
   ctx: Context,
   project: Project,
-  apiCtx: ApiContext,
   schemaNames: string[],
   includeBuiltins = false,
 ) {
@@ -90,14 +88,17 @@ export async function callRemoteSchemaPull(
   logger.info("---");
   logger.info("");
 
+  const apiConfig = Context.apiConfig();
+  const workspaceId = Context.workspaceId();
+
   const api = {
-    schemas: new SchemasApi(apiCtx.config),
-    funcs: new FuncsApi(apiCtx.config),
-    changeSets: new ChangeSetsApi(apiCtx.config),
+    schemas: new SchemasApi(apiConfig),
+    funcs: new FuncsApi(apiConfig),
+    changeSets: new ChangeSetsApi(apiConfig),
   };
 
   const changeSetCoord = {
-    workspaceId: apiCtx.workspace.id,
+    workspaceId,
     changeSetId: "HEAD",
   };
 
@@ -289,10 +290,7 @@ async function pullSchemaByName(
       );
     }
 
-    logger.info(
-      "{schemaName}: pulling builtin schema",
-      { schemaName },
-    );
+    logger.info("{schemaName}: pulling builtin schema", { schemaName });
   }
 
   const formatVersionBody = SCHEMA_FILE_FORMAT_VERSION.toString();
@@ -311,8 +309,8 @@ async function pullSchemaByName(
     schemaName,
     false,
   );
-  const { formatVersionPath } = await materialize
-    .materializeSchemaFormatVersion(
+  const { formatVersionPath } =
+    await materialize.materializeSchemaFormatVersion(
       project,
       schemaName,
       formatVersionBody,
@@ -545,7 +543,9 @@ async function getSchemaAndVariantBySchemaName(
       authIds: funcs.nonOverlays().byKind(FunctionKind.Auth).ids(),
       codegenIds: funcs.nonOverlays().byKind(FunctionKind.Codegen).ids(),
       managementIds: funcs.nonOverlays().byKind(FunctionKind.Management).ids(),
-      qualificationIds: funcs.nonOverlays().byKind(FunctionKind.Qualification)
+      qualificationIds: funcs
+        .nonOverlays()
+        .byKind(FunctionKind.Qualification)
         .ids(),
     },
     overlays: {
@@ -553,7 +553,9 @@ async function getSchemaAndVariantBySchemaName(
       authIds: funcs.overlays().byKind(FunctionKind.Auth).ids(),
       codegenIds: funcs.overlays().byKind(FunctionKind.Codegen).ids(),
       managementIds: funcs.overlays().byKind(FunctionKind.Management).ids(),
-      qualificationIds: funcs.overlays().byKind(FunctionKind.Qualification)
+      qualificationIds: funcs
+        .overlays()
+        .byKind(FunctionKind.Qualification)
         .ids(),
     },
   };
@@ -698,11 +700,7 @@ async function pullFunctionsByKind(
         localName,
         functionKind,
       );
-      const codePath = module.funcCodePath(
-        schemaName,
-        localName,
-        functionKind,
-      );
+      const codePath = module.funcCodePath(schemaName, localName, functionKind);
 
       await deleteFunctionFiles(project, metadataPath, codePath);
       deletedPaths.push({ metadataPath, codePath });
@@ -751,8 +749,8 @@ class SchemaVariantFuncs {
         );
         break;
       case FunctionKind.Management:
-        filtered = this.funcs.filter((svf) =>
-          svf.funcKind.kind === "management"
+        filtered = this.funcs.filter(
+          (svf) => svf.funcKind.kind === "management",
         );
         break;
       case FunctionKind.Qualification:
@@ -770,15 +768,11 @@ class SchemaVariantFuncs {
   }
 
   public overlays() {
-    return new SchemaVariantFuncs(this
-      .funcs
-      .filter((f) => f.isOverlay));
+    return new SchemaVariantFuncs(this.funcs.filter((f) => f.isOverlay));
   }
 
   public nonOverlays() {
-    return new SchemaVariantFuncs(this
-      .funcs
-      .filter((f) => !f.isOverlay));
+    return new SchemaVariantFuncs(this.funcs.filter((f) => !f.isOverlay));
   }
 
   public ids() {

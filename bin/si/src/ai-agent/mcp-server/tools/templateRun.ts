@@ -2,7 +2,6 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod-v3";
 import { ComponentsApi, SchemasApi } from "@systeminit/api-client";
-import { apiConfig, WORKSPACE_ID } from "../si_client.ts";
 import {
   errorResponse,
   generateDescription,
@@ -11,51 +10,54 @@ import {
 } from "./commonBehavior.ts";
 import { AttributesSchema } from "../data/components.ts";
 import { buildAttributesStructure } from "../data/schemaAttributes.ts";
+import { Context } from "../../../context.ts";
 
 const name = "template-run";
 const title = "Run a Template";
-const description =
-  `<description>Run a template to create new components based on the template's definition. This tool is used to run templates that were previously generated using template-generate or found using template-list. The template execution will create new components according to the template's definition prefixed with a 'Name Prefix' which can be automatically genereated or chosen by the user.</description><usage>Use this tool to run a template. First, use template-list to discover available templates, and finally use this tool to run the template.</usage>`;
+const description = `<description>Run a template to create new components based on the template's definition. This tool is used to run templates that were previously generated using template-generate or found using template-list. The template execution will create new components according to the template's definition prefixed with a 'Name Prefix' which can be automatically genereated or chosen by the user.</description><usage>Use this tool to run a template. First, use template-list to discover available templates, and finally use this tool to run the template.</usage>`;
 
 const TemplateRunInputSchemaRaw = {
-  changeSetId: z.string().describe(
-    "The change set to run the template in",
-  ),
-  schemaName: z.string().describe(
-    "The schema name for the template to create and run",
-  ),
+  changeSetId: z.string().describe("The change set to run the template in"),
+  schemaName: z
+    .string()
+    .describe("The schema name for the template to create and run"),
   attributes: AttributesSchema.describe(
     "attributes to set on the component before running a template; this *must* include setting a raw value for /domain/Name Prefix which ends with a '-'; for AWS resources, this *must* include setting a subscription (usually from /secrets/AWS Credential on an AWS Credential component) for the AWS Credential, and *must* include setting a subscription (usually from /domain/region on a Region component) for /domain/extra/Region as well",
   ),
-  templateName: z.string().describe(
-    "The name of the template to create and run",
-  ),
+  templateName: z
+    .string()
+    .describe("The name of the template to create and run"),
 };
 
 const TemplateRunOutputSchemaRaw = {
   status: z.enum(["success", "failure"]),
-  errorMessage: z.string().optional().describe(
-    "If the status is failure, the error message will contain information about what went wrong",
-  ),
-  data: z.object({
-    managementFuncJobStateId: z.string().describe(
-      "The job state ID for the enqueued or executed management function",
+  errorMessage: z
+    .string()
+    .optional()
+    .describe(
+      "If the status is failure, the error message will contain information about what went wrong",
     ),
-    message: z.string().nullable().optional().describe(
-      "Optional message from the management function execution",
+  data: z
+    .object({
+      managementFuncJobStateId: z
+        .string()
+        .describe(
+          "The job state ID for the enqueued or executed management function",
+        ),
+      message: z
+        .string()
+        .nullable()
+        .optional()
+        .describe("Optional message from the management function execution"),
+    })
+    .describe(
+      "Information about the template execution including job state and results",
     ),
-  }).describe(
-    "Information about the template execution including job state and results",
-  ),
 };
 
-const TemplateRunOutputSchema = z.object(
-  TemplateRunOutputSchemaRaw,
-);
+const TemplateRunOutputSchema = z.object(TemplateRunOutputSchemaRaw);
 
-type TemplateRunResult = z.infer<
-  typeof TemplateRunOutputSchema
->["data"];
+type TemplateRunResult = z.infer<typeof TemplateRunOutputSchema>["data"];
 
 export function templateRunTool(server: McpServer) {
   server.registerTool(
@@ -70,23 +72,27 @@ export function templateRunTool(server: McpServer) {
       inputSchema: TemplateRunInputSchemaRaw,
       outputSchema: TemplateRunOutputSchemaRaw,
     },
-    async (
-      { changeSetId, schemaName, attributes, templateName },
-    ): Promise<CallToolResult> => {
+    async ({
+      changeSetId,
+      schemaName,
+      attributes,
+      templateName,
+    }): Promise<CallToolResult> => {
       return await withAnalytics(name, async () => {
         try {
+          const apiConfig = Context.apiConfig();
           const siComponentsApi = new ComponentsApi(apiConfig);
           const siSchemasApi = new SchemasApi(apiConfig);
 
           const findSchemaResponse = await siSchemasApi.findSchema({
-            workspaceId: WORKSPACE_ID,
+            workspaceId: Context.workspaceId(),
             changeSetId,
             schema: schemaName,
           });
           const schemaId = findSchemaResponse.data.schemaId;
 
           const defaultVariantResponse = await siSchemasApi.getDefaultVariant({
-            workspaceId: WORKSPACE_ID,
+            workspaceId: Context.workspaceId(),
             changeSetId,
             schemaId,
           });
@@ -101,14 +107,14 @@ export function templateRunTool(server: McpServer) {
           const attributesStructure = buildAttributesStructure(
             defaultVariantResponse.data,
           );
-          const needsExtraRegion = attributesStructure.attributes.some((a) =>
-            a.path === "/domain/extra/Region"
+          const needsExtraRegion = attributesStructure.attributes.some(
+            (a) => a.path === "/domain/extra/Region",
           );
-          const needsAwsCredential = attributesStructure.attributes.some((a) =>
-            a.path === "/secrets/AWS Credential"
+          const needsAwsCredential = attributesStructure.attributes.some(
+            (a) => a.path === "/secrets/AWS Credential",
           );
-          const needsNamePrefix = attributesStructure.attributes.some((a) =>
-            a.path === "/domain/Name Prefix"
+          const needsNamePrefix = attributesStructure.attributes.some(
+            (a) => a.path === "/domain/Name Prefix",
           );
 
           let hasExtraRegion = false;
@@ -134,19 +140,16 @@ export function templateRunTool(server: McpServer) {
             let message =
               "There are missing or malformed required attributes for the template component to be run.";
             if (missingNamePrefix) {
-              message =
-                `${message} All Templates must have a /domain/Name Prefix set by a raw value.`;
+              message = `${message} All Templates must have a /domain/Name Prefix set by a raw value.`;
             }
             if (missingExtraRegion || missingAwsCredential) {
               message = `${message} This template contains AWS resources.`;
             }
             if (missingExtraRegion) {
-              message =
-                `${message} We must have /domain/extra/Region set to a subscription or by a raw value.`;
+              message = `${message} We must have /domain/extra/Region set to a subscription or by a raw value.`;
             }
             if (missingAwsCredential) {
-              message =
-                `${message} We must have /secrets/AWS Credential set to a subscription.`;
+              message = `${message} We must have /secrets/AWS Credential set to a subscription.`;
             }
             return errorResponse({
               response: { status: "bad prereq", data: {} },
@@ -156,7 +159,7 @@ export function templateRunTool(server: McpServer) {
 
           const createComponentResponse = await siComponentsApi.createComponent(
             {
-              workspaceId: WORKSPACE_ID,
+              workspaceId: Context.workspaceId(),
               changeSetId: changeSetId,
               createComponentV1Request: {
                 name: templateName,
@@ -167,9 +170,9 @@ export function templateRunTool(server: McpServer) {
           );
 
           const managementFunction = { function: "Run Template" };
-          const executeResponse = await siComponentsApi
-            .executeManagementFunction({
-              workspaceId: WORKSPACE_ID,
+          const executeResponse =
+            await siComponentsApi.executeManagementFunction({
+              workspaceId: Context.workspaceId(),
               changeSetId,
               componentId: createComponentResponse.data.component.id,
               executeManagementFunctionV1Request: {

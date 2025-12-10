@@ -3,7 +3,7 @@ import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod-v3";
 import { ChangeSetsApi } from "@systeminit/api-client";
 import { ComponentsApi } from "@systeminit/api-client";
-import { apiConfig, WORKSPACE_ID } from "../si_client.ts";
+import { Context } from "../../../context.ts";
 import {
   errorResponse,
   findHeadChangeSet,
@@ -11,8 +11,7 @@ import {
   successResponse,
 } from "./commonBehavior.ts";
 
-const description =
-  `<description>Generates a URL for a component details page, the change set review screen, the change set map view or the default link for the workspace.</description><usage>Use this tool to generate a url to a component details page, change set review screen, the change set map view or the default change set page in the System Initiative web application. You should never try and create a component to match the users request. You should never offer to link the user to another component and you should never try and find a matching component in a different change set once a change set has been specified.</usage>`;
+const description = `<description>Generates a URL for a component details page, the change set review screen, the change set map view or the default link for the workspace.</description><usage>Use this tool to generate a url to a component details page, change set review screen, the change set map view or the default change set page in the System Initiative web application. You should never try and create a component to match the users request. You should never offer to link the user to another component and you should never try and find a matching component in a different change set once a change set has been specified.</usage>`;
 
 const GenerateSiUrlInputSchemaRaw = {
   changeSetId: z
@@ -80,6 +79,8 @@ export function generateSiUrlTool(server: McpServer) {
       getMapView,
       getWorkspaceDefaultLink,
     }): Promise<CallToolResult> => {
+      const apiConfig = Context.apiConfig();
+      const workspaceId = Context.workspaceId();
       if (!changeSetId) {
         const changeSetsApi = new ChangeSetsApi(apiConfig);
         const headChangeSet = await findHeadChangeSet(changeSetsApi, false);
@@ -117,15 +118,14 @@ export function generateSiUrlTool(server: McpServer) {
         const siApi = new ComponentsApi(apiConfig);
         try {
           await siApi.getComponent({
-            workspaceId: WORKSPACE_ID,
+            workspaceId: workspaceId,
             changeSetId: changeSetId,
             componentId,
           });
           result.url = generateComponentLink(changeSetId, componentId);
         } catch {
           return errorResponse({
-            message:
-              `No component found in that change set. Tell the user to ensure they are using the correct change set.`,
+            message: `No component found in that change set. Tell the user to ensure they are using the correct change set.`,
           });
         }
       }
@@ -176,12 +176,15 @@ interface LinkConfig {
 }
 
 function createLinkConfig(): LinkConfig {
-  // deno-lint-ignore si-rules/no-deno-env-get
-  const baseUrl = Deno.env.get("SI_BASE_URL") || "https://api.systeminit.com";
+  const baseUrl = Context.apiConfig().basePath;
+  if (!baseUrl) {
+    throw new Error("this should be unreachable");
+  }
+
   const webUrl = baseUrl.replace("api", "app");
 
   return {
     baseUrl: webUrl,
-    workspaceId: WORKSPACE_ID,
+    workspaceId: Context.workspaceId(),
   };
 }

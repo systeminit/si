@@ -10,7 +10,6 @@
 import { ChangeSetsApi, type ChangeSetViewV1 } from "@systeminit/api-client";
 import { stringify as stringifyYaml } from "@std/yaml";
 import { Context } from "../context.ts";
-import { apiConfig, WORKSPACE_ID } from "../si_client.ts";
 import type { ChangeSetListOptions } from "./types.ts";
 
 export type { ChangeSetListOptions };
@@ -24,11 +23,8 @@ export async function callChangeSetList(
   const ctx = Context.instance();
 
   try {
-    if (!apiConfig || !WORKSPACE_ID) {
-      throw new Error(
-        "API token not found. Set SI_API_TOKEN environment variable or use --api-token flag.",
-      );
-    }
+    const apiConfig = Context.apiConfig();
+    const workspaceId = Context.workspaceId();
 
     // Determine output format early to control logging
     const outputFormat = options.output || "info";
@@ -41,7 +37,7 @@ export async function callChangeSetList(
     const changeSetsApi = new ChangeSetsApi(apiConfig);
 
     const response = await changeSetsApi.listChangeSets({
-      workspaceId: WORKSPACE_ID,
+      workspaceId,
     });
 
     const changeSets = response.data.changeSets as ChangeSetViewV1[];

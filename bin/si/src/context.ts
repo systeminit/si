@@ -31,7 +31,7 @@
  */
 
 import type { Logger } from "@logtape/logtape";
-import type { Configuration } from "@systeminit/api-client";
+import { Configuration } from "@systeminit/api-client";
 import { Analytics } from "./analytics.ts";
 import type { UserData } from "./cli/jwt.ts";
 import {
@@ -40,6 +40,9 @@ import {
   isInteractive as loggerIsInteractive,
   type VerbosityLevel,
 } from "./logger.ts";
+import type { GlobalOptions } from "./cli.ts";
+import { type Config, extractConfig } from "./cli/config.ts";
+import * as jwt from "./cli/jwt.ts";
 
 /** Event prefix for all analytics events tracked by this application. */
 const ANALYTICS_EVENT_PREFIX = "si";
@@ -57,6 +60,18 @@ export interface ContextOptions {
   userData?: UserData;
   /** Verbosity level for logging (0=errors only, 4=trace). */
   verbose?: number;
+  /** Auth API Url **/
+  authApiUrl?: string;
+  /** Auth API token */
+  authApiToken?: string;
+  /** System Initiative API base url **/
+  baseUrl?: string;
+  /** System Initiative API token */
+  apiToken?: string;
+  /** Current Workspace ID */
+  workspaceId?: string;
+  /** Current User ID */
+  userId?: string;
 }
 
 /**
@@ -67,7 +82,7 @@ export interface ContextOptions {
  * singleton pattern to avoid passing dependencies through every function call.
  */
 export class Context {
-  private static context: Context;
+  private static context?: Context;
 
   /** Logger instance for application logging. */
   public readonly logger: Logger;
@@ -78,27 +93,42 @@ export class Context {
   /** Whether or not the CLI is running in an interactive session. */
   public readonly isInteractive: boolean;
 
-  /** System Initiative API client configuration (if initialized). */
-  public readonly apiConfig?: Configuration;
+  /** Auth API url **/
+  public readonly authApiUrl: string;
 
-  /** Workspace ID extracted from API token (if initialized). */
+  /** System Initiative API base url **/
+  public readonly baseUrl?: string;
+
+  /** System Initiative workspace level API token **/
+  public readonly apiToken?: string;
+
+  /** System Initiative auth API level API token **/
+  public readonly authApiToken?: string;
+
+  /** Current Workspace ID (if initialized). */
   public readonly workspaceId?: string;
 
-  /** User ID extracted from API token (if initialized). */
+  /** Current User ID (if initialized). */
   public readonly userId?: string;
 
   private constructor(
     logger: Logger,
     analytics: Analytics,
     isInteractive: boolean,
-    apiConfig?: Configuration,
+    authApiUrl: string,
+    authApiToken?: string,
+    baseUrl?: string,
+    apiToken?: string,
     workspaceId?: string,
     userId?: string,
   ) {
     this.logger = logger;
     this.analytics = analytics;
     this.isInteractive = isInteractive;
-    this.apiConfig = apiConfig;
+    this.authApiUrl = authApiUrl;
+    this.authApiToken = authApiToken;
+    this.baseUrl = baseUrl;
+    this.apiToken = apiToken;
     this.workspaceId = workspaceId;
     this.userId = userId;
   }
@@ -127,41 +157,73 @@ export class Context {
    */
   public static async init(options: ContextOptions): Promise<Context> {
     const verbosity = (options.verbose ?? 0) as VerbosityLevel;
-    await configureLogger(verbosity, options.noColor);
-    const logger = getLogger();
+    if (typeof this.context?.logger === "undefined") {
+      await configureLogger(verbosity, options.noColor);
+    }
 
+    const logger = getLogger();
     const analytics = new Analytics(ANALYTICS_EVENT_PREFIX, options.userData);
 
     const isInteractive = loggerIsInteractive();
-
-    // Conditionally initialize SI client if API token is present
-    let apiConfig: Configuration | undefined;
-    let workspaceId: string | undefined;
-    let userId: string | undefined;
-
-    if (Deno.env.get("SI_API_TOKEN")) {
-      try {
-        const siClient = await import("./si_client.ts");
-        apiConfig = siClient.apiConfig;
-        workspaceId = siClient.WORKSPACE_ID;
-        userId = siClient.USER_ID;
-      } catch (error) {
-        // If si_client initialization fails, it will exit the process
-        // This catch is here for any unexpected errors
-        logger.error(`Failed to initialize SI client: ${error}`);
-      }
-    }
 
     this.context = new Context(
       logger,
       analytics,
       isInteractive,
-      apiConfig,
-      workspaceId,
-      userId,
+      options.authApiUrl ?? "https://auth-api.systeminit.com",
+      options.authApiToken,
+      options.baseUrl,
+      options.apiToken,
+      options.workspaceId,
+      options.userId,
     );
 
     return this.context;
+  }
+
+  public static async initFromConfig(options: GlobalOptions): Promise<Context> {
+    const authApiUrl = options.authApiUrl;
+    const baseUrlOverride = options.baseUrl;
+    const apiTokenOverride = options.apiToken;
+
+    // Scaffold the api client configuration here based on the stored
+    // tokens, or command line or env variable overrides.
+    let config: Config | undefined;
+    try {
+      // Try to get token from stored config or environment variables
+      config = extractConfig(authApiUrl);
+    } catch (_error) {
+      // If token decode fails or config extraction fails, just continue
+      // without user data. this allows commands to run without
+      // authentication when appropriate
+      config = undefined;
+    }
+    if (!config) {
+      config = {
+        baseUrl: baseUrlOverride ?? "https://api.systeminit.com",
+        authApiUrl,
+      };
+    }
+
+    config.apiToken = apiTokenOverride ?? config.apiToken;
+    config.baseUrl = baseUrlOverride ?? config.baseUrl;
+    if (!config.baseUrl) {
+      config.baseUrl = "https://api.systeminit.com";
+    }
+
+    const userData = config?.apiToken
+      ? jwt.getUserDataFromToken(config?.apiToken)
+      : undefined;
+
+    return await Context.init({
+      ...options,
+      baseUrl: config.baseUrl,
+      apiToken: config.apiToken,
+      workspaceId: userData?.workspaceId,
+      userId: userData?.userId,
+      authApiUrl,
+      userData,
+    });
   }
 
   /**
@@ -194,6 +256,45 @@ export class Context {
     } else {
       return false;
     }
+  }
+
+  public static workspaceId(): string {
+    const ctx = Context.instance();
+    if (!ctx.workspaceId) {
+      throw new Error(
+        "No workspace id configured. Run `si login` or set SI_API_TOKEN and SI_BASE_URL",
+      );
+    }
+    return ctx.workspaceId;
+  }
+
+  public static userId(): string {
+    const ctx = Context.instance();
+    if (!ctx.userId) {
+      throw new Error(
+        "No user id configured. Run `si login` or set SI_API_TOKEN and SI_BASE_URL",
+      );
+    }
+    return ctx.userId;
+  }
+
+  public static apiConfig(): Configuration {
+    const ctx = Context.instance();
+    if (!ctx.apiToken) {
+      throw new Error(
+        "No API Context configured! Run `si login` or set SI_API_TOKEN",
+      );
+    }
+
+    return new Configuration({
+      basePath: ctx.baseUrl,
+      accessToken: ctx.apiToken,
+      baseOptions: {
+        headers: {
+          Authorization: `Bearer ${ctx.apiToken}`,
+        },
+      },
+    });
   }
 }
 

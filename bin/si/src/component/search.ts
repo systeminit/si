@@ -19,13 +19,13 @@ import {
 } from "@systeminit/api-client";
 import { stringify as stringifyYaml } from "@std/yaml";
 import { Context } from "../context.ts";
-import { apiConfig, getHeadChangeSetId, WORKSPACE_ID } from "../si_client.ts";
 import { resolveChangeSet } from "./change_set.ts";
 import { cleanForYaml, type ComponentGetCache } from "./cache.ts";
 import { displayAttributes, displayComponentInfo } from "./get.ts";
 import { cachedGetComponent, cachedGetSchema } from "./cache_api.ts";
 import { isSubscription } from "../template/attribute_diff.ts";
 import { filterAttributes } from "./attribute_utils.ts";
+import { getHeadChangeSetId } from "../cli/helpers.ts";
 
 /**
  * Options for the component search command
@@ -242,7 +242,8 @@ function isQualified(
   qualifications: Array<{ status: string }>,
 ): boolean {
   // Check if there's a qualification attribute
-  const qualAttr = component.attributes["/si/qualification"] ||
+  const qualAttr =
+    component.attributes["/si/qualification"] ||
     component.attributes["/domain/qualified"];
 
   if (qualAttr !== undefined) {
@@ -309,10 +310,8 @@ export async function callComponentSearch(
   options: ComponentSearchOptions,
 ): Promise<void> {
   const ctx = Context.instance();
-
-  if (!apiConfig || !WORKSPACE_ID) {
-    throw new Error("API configuration not initialized");
-  }
+  const apiConfig = Context.apiConfig();
+  const workspaceId = Context.workspaceId();
 
   // Determine output format early to control logging
   const outputFormat = options.output || "info";
@@ -324,15 +323,15 @@ export async function callComponentSearch(
 
   // Resolve change set
   const changeSetId = options.changeSet
-    ? await resolveChangeSet(WORKSPACE_ID, options.changeSet)
-    : await getHeadChangeSetId(apiConfig, WORKSPACE_ID);
+    ? await resolveChangeSet(workspaceId, options.changeSet)
+    : await getHeadChangeSetId();
 
   ctx.logger.debug(`Using change set: {changeSetId}`, { changeSetId });
 
   // Execute search
   const searchApi = new SearchApi(apiConfig);
   const searchResponse = await searchApi.search({
-    workspaceId: WORKSPACE_ID,
+    workspaceId,
     changeSetId,
     q: query,
   });
@@ -379,7 +378,7 @@ export async function callComponentSearch(
         component,
         options.attribute,
         componentsApi,
-        WORKSPACE_ID,
+        workspaceId,
         changeSetId,
       );
     }
@@ -388,7 +387,7 @@ export async function callComponentSearch(
     if (options.fullComponent) {
       // Fetch the full component data
       const fullComponentResponse = await componentsApi.findComponent({
-        workspaceId: WORKSPACE_ID,
+        workspaceId,
         changeSetId,
         componentId: component.id,
       });
@@ -397,7 +396,7 @@ export async function callComponentSearch(
       // Fetch schema name
       const schemasApi = new SchemasApi(apiConfig);
       const schemaResponse = await schemasApi.getSchema({
-        workspaceId: WORKSPACE_ID,
+        workspaceId,
         changeSetId,
         schemaId: fullComponent.schemaId,
       });
@@ -406,7 +405,7 @@ export async function callComponentSearch(
       // Fetch actions
       const actionsApi = new ActionsApi(apiConfig);
       const actionsResponse = await actionsApi.getActions({
-        workspaceId: WORKSPACE_ID,
+        workspaceId,
         changeSetId,
       });
       const actions = actionsResponse.data.actions as ActionViewV1[];
@@ -456,7 +455,7 @@ export async function callComponentSearch(
         schemaCache,
         componentsApi,
         schemasApi,
-        WORKSPACE_ID,
+        workspaceId,
         changeSetId,
       );
 
