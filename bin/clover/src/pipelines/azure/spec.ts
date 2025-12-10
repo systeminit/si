@@ -66,6 +66,8 @@ const IGNORE_RESOURCE_TYPES = new Set<string>([
   "Microsoft.Insights/components/ProactiveDetectionConfigs",
   "Microsoft.HDInsight/clusters/extensions",
 
+  // Incompatible property type: 'string' vs 'object' in schema normalization
+  "Microsoft.Authorization/accessReviewScheduleDefinitions",
   // Response schema is not an object
   "Microsoft.Web/serverfarms/virtualNetworkConnections/routes",
 
@@ -971,6 +973,22 @@ export function parseEndpointPath(path: string) {
   if (!path.startsWith("/")) {
     throw new Error(`Endpoint path not absolute: ${path}`);
   }
+
+  // Handle scope-based paths by normalizing them to subscription-based paths
+  // The {scope} parameter in Azure Authorization APIs can represent:
+  // - /subscriptions/{subscriptionId}
+  // - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}
+  // - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}
+  // - /providers/Microsoft.Management/managementGroups/{managementGroup}
+  // Nothing in the spec tells us what the scope could be, so we go for the most
+  // permissive shape to ensure we always have the required props
+  if (path.startsWith("/{scope}/providers/")) {
+    path = path.replace(
+      "/{scope}/providers/",
+      "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/",
+    );
+  }
+
   const segments = path.slice(1).split("/");
 
   // /subscriptions/{subscriptionId}
