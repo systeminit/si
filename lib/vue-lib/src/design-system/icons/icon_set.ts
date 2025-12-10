@@ -158,6 +158,7 @@ import HetznerLogo from "./custom-icons/hetzner.svg?raw";
 import HetznerLogotype from "./custom-icons/hetzner-logotype.svg?raw";
 import AzureLogo from "./custom-icons/azure-icon.svg?raw";
 import DigitalOceanLogo from "~icons/mdi/digital-ocean";
+import GoogleCloudLogo from "./custom-icons/logo-google-cloud.svg?raw";
 
 // carbon
 import Create from "~icons/carbon/intent-request-create";
@@ -455,6 +456,7 @@ export const SPINNABLE_ICONS = Object.freeze({
 export const LOGO_ICONS = Object.freeze({
   "logo-aws": AwsLogo,
   "logo-azure": AzureLogo,
+  "logo-google-cloud": GoogleCloudLogo,
   "logo-coreos": CoreOsLogo,
   "logo-digital-ocean": DigitalOceanLogo,
   "logo-docker": DockerLogo,
@@ -480,6 +482,7 @@ const VIEWBOX32 = { viewBoxX: 32, viewBoxY: 32 };
 export const LOGO_FORCED_SIZE_NUMBERS = {
   "logo-aws": VIEWBOX32,
   "logo-azure": VIEWBOX24,
+  "logo-google-cloud": VIEWBOX24,
   "logo-coreos": VIEWBOX24,
   "logo-digital-ocean": VIEWBOX24,
   "logo-docker": VIEWBOX24,

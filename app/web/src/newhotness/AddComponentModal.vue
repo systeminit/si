@@ -218,6 +218,7 @@ import AddComponentModalListRow, {
   AddComponentRowData,
 } from "@/newhotness/AddComponentModalListRow.vue";
 import { trackEvent } from "@/utils/tracking";
+import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import { useFzf } from "./logic_composables/fzf";
 import FilterTile from "./layout_components/FilterTile.vue";
 import { assertIsDefined, Context, ExploreContext } from "./types";
@@ -225,6 +226,8 @@ import { componentTypes, routes, useApi } from "./api_composables";
 import EmptyState from "./EmptyState.vue";
 import MarkdownRender from "./MarkdownRender.vue";
 import { pickBrandIconByString } from "./util";
+
+const featureFlagsStore = useFeatureFlagsStore();
 
 const ctx: Context | undefined = inject("CONTEXT");
 assertIsDefined(ctx);
@@ -925,6 +928,15 @@ const componentFilters = computed((): AssetFilter[] => {
       count: getCategoriesAndCountForFilterStrings("Templates").count,
     },
   ];
+
+  if (featureFlagsStore.GOOGLE_CLOUD_UI) {
+    filters.splice(3, 0, {
+      name: "Google Cloud",
+      icon: pickBrandIconByString("google cloud"),
+      count: getCategoriesAndCountForFilterStrings("google cloud").count,
+      color: BRAND_COLOR_FILTER_HEX_CODES.GoogleCloud,
+    });
+  }
 
   return filters.filter((f) => f.count > 0);
 });
