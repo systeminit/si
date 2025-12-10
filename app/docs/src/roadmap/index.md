@@ -5,12 +5,12 @@ outline:
 
 # Roadmap
 
-Updated November 25, 2025.
+Updated December 10, 2025.
 
 Want to influence the road map?
 [Learn more about how to work on System Initiative](../explanation/working-on-si.md).
 
-## SI CLI (In development)
+## SI CLI (In public beta)
 
 We are introducing a CLI for System Initiative. It gives you tools to manage
 your workspace without the web app. You can manage components, author schemas,
@@ -26,6 +26,7 @@ Azure and Google Cloud. These new providers will be available in Q4 2025.
 - Azure (in public beta)
 - Hetzner Cloud (in public beta)
 - DigitalOcean (in public beta)
+- Google Cloud (in development)
 
 ## AI Authoring (Generally Available)
 
