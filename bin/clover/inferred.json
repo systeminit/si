@@ -5299,6 +5299,9 @@
   "Defines the operating system the patch baseline applies to. The Default value is WINDOWS.": {
     "enum": null
   },
+  "Defines the server-side encryption type for index encryption configuration. Defaults to the parent vector bucket's encryption settings when unspecified.": {
+    "enum": null
+  },
   "Defines the session timeout in minutes": {
     "enum": null
   },
@@ -6523,6 +6526,9 @@
   "Maximum resolution for multitrack input. Required if enabled is true.": {
     "enum": null
   },
+  "Maximum ring time for outbound calls in seconds": {
+    "enum": null
+  },
   "Maximum size of a data record in KiB allowed to be put into Kinesis stream.": {
     "enum": null
   },
@@ -7364,6 +7370,9 @@
     "enum": null
   },
   "Route Table ID": {
+    "enum": null
+  },
+  "Routing policy label": {
     "enum": null
   },
   "Rule number to assign to the entry, such as 100. ACL entries are processed in ascending order by rule number. Entries can't use the same rule number unless one is an egress rule and the other is an ingress rule": {
@@ -9361,6 +9370,9 @@
   "The Amazon Resource Name (ARN) of the notification target that Amazon EC2 Auto Scaling uses to notify you when an instance is in the transition state for the lifecycle hook. You can specify an Amazon SQS queue or an Amazon SNS topic. The notification message includes the following information: lifecycle action token, user account ID, Auto Scaling group name, lifecycle hook name, instance ID, lifecycle transition, and notification metadata.": {
     "enum": null
   },
+  "The Amazon Resource Name (ARN) of the prefix list.": {
+    "enum": null
+  },
   "The Amazon Resource Name (ARN) of the profile association.": {
     "enum": null
   },
@@ -10268,6 +10280,9 @@
     "enum": null
   },
   "The ID of the container cluster": {
+    "enum": null
+  },
+  "The ID of the core network.": {
     "enum": null
   },
   "The ID of the customer gateway at your end of the VPN connection.": {
@@ -11216,6 +11231,9 @@
     "enum": null
   },
   "The alias of the image version.": {
+    "enum": null
+  },
+  "The alias of the prefix list": {
     "enum": null
   },
   "The alias qualifier for the target function. If TargetFunctionArn is unqualified then Qualifier must be passed.": {
@@ -12296,6 +12314,9 @@
     "enum": null
   },
   "The description of the workflow.": {
+    "enum": null
+  },
+  "The description of the workspace": {
     "enum": null
   },
   "The description of the workspace.": {
@@ -15397,6 +15418,9 @@
   "The name of the workload identity. The name must be unique within your account.": {
     "enum": null
   },
+  "The name of the workspace.": {
+    "enum": null
+  },
   "The name of the zip file that contains the build files or script files.": {
     "enum": null
   },
@@ -17497,6 +17521,9 @@
   "The timezone of the data source run.": {
     "enum": null
   },
+  "The title of the workspace": {
+    "enum": null
+  },
   "The title string.": {
     "enum": null
   },
@@ -18269,6 +18296,9 @@
     "enum": null
   },
   "The view content hash to be checked.": {
+    "enum": null
+  },
+  "The visibility of the workspace. Will always be set to ASSIGNED oninitial creation.": {
     "enum": null
   },
   "The volume type": {

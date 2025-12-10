@@ -79,7 +79,9 @@ services:
       - SI_INSTANCE_ID=${SI_INSTANCE_ID}
       - AWS_REGION=${AWS_REGION:-us-east-1}
       - HEALTH_ENDPOINT=http://host.docker.internal:8080/health
-      - SLEEP_INTERVAL=15
+      - SLEEP_INTERVAL=${SLEEP_INTERVAL:-15}
+      - STARTUP_GRACE_PERIOD=${STARTUP_GRACE_PERIOD:-150}
+      - UNHEALTHY_THRESHOLD=${UNHEALTHY_THRESHOLD:-3}
       - ENABLE_ASG_ACTIONS=${ENABLE_ASG_ACTIONS:-true}
     extra_hosts:
       - "host.docker.internal:host-gateway"

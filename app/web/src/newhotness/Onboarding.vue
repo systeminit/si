@@ -608,41 +608,64 @@ export const DEBUG_PROVIDER_CHOICE = undefined;
                       </div>
                       <div>
                         <span>
-                          Clone the
-                          <NewButton
-                            aria-label="ai-agent-repo-main"
+                          Install the SI CLI locally
+                          <!-- <NewButton
+                           aria-label="si-cli-link"
+                           :class="
+                             clsx(
+                               'underline',
+                               themeClasses(
+                                 'hover:text-action-500',
+                                 'hover:text-action-300',
+                               ),
+                             )
+                           "
+                           tone="nostyle"
+                           href="" <----- we need to link our to where we talk about the CLI
+                           target="_blank"
+                           label="setup script"
+                           @mousedown="
+                             onboardingTracking('external_link_si_cli')
+                           "
+                         /> -->
+                        </span>
+                        <CopyableTextBlock
+                          :text="installCommand"
+                          @copied="
+                            onboardingTracking(
+                              'copied_si_cli_install_instructions',
+                            )
+                          "
+                        />
+                        <span
+                          ><NewButton
+                            aria-label="si-cli-install-link"
                             :class="
                               clsx(
-                                'underline',
+                                'hover:underline',
                                 themeClasses(
-                                  'hover:text-action-500',
-                                  'hover:text-action-300',
+                                  'text-neutral-800',
+                                  'text-neutral-300',
                                 ),
                               )
                             "
                             tone="nostyle"
-                            href="https://github.com/systeminit/si-ai-agent"
+                            href="https://docs.systeminit.com/reference/si-cli#installation"
                             target="_blank"
-                            label="AI Agent repository"
+                            label="Alternative setup options"
                             @mousedown="
-                              onboardingTracking('external_link_ai_agent_repo')
+                              onboardingTracking(
+                                'external_link_si_cli_installation_instructions',
+                              )
                             "
-                          />
-                          locally
-                        </span>
-                        <CopyableTextBlock
-                          text="git clone https://github.com/systeminit/si-ai-agent.git"
-                          @copied="
-                            onboardingTracking('copied_git_clone_ai_repo')
-                          "
-                        />
+                        /></span>
                       </div>
                       <div>
                         <div class="flex flex-col">
                           <span>
-                            Run the AI Agent
+                            Configure the
                             <NewButton
-                              aria-label="setup-script-link"
+                              aria-label="ai-agent-link"
                               :class="
                                 clsx(
                                   'underline',
@@ -653,11 +676,13 @@ export const DEBUG_PROVIDER_CHOICE = undefined;
                                 )
                               "
                               tone="nostyle"
-                              href="https://github.com/systeminit/si-ai-agent/blob/main/setup.sh"
+                              href="https://docs.systeminit.com/reference/ai-agent"
                               target="_blank"
-                              label="setup script"
+                              label="SI AI Agent"
                               @mousedown="
-                                onboardingTracking('external_link_setup_script')
+                                onboardingTracking(
+                                  'external_link_ai_agent_information',
+                                )
                               "
                             />
                           </span>
@@ -671,16 +696,15 @@ export const DEBUG_PROVIDER_CHOICE = undefined;
                               )
                             "
                           >
-                            Open your terminal in the root of the repository to
-                            run the script, which will connect the Agent to your
-                            workspace.
+                            Open your terminal and run the command, which will
+                            configure the Agent for your workspace.
                           </span>
                         </div>
                         <CopyableTextBlock
-                          text="./setup.sh"
+                          text="si ai-agent init"
                           @copied="
                             onboardingTracking(
-                              'copied_ai_setup_script_run_command',
+                              'copied_ai_setup_script_init_command',
                             )
                           "
                         />
@@ -698,7 +722,7 @@ export const DEBUG_PROVIDER_CHOICE = undefined;
                               )
                             "
                           >
-                            In your terminal, the setup script will ask for the
+                            In your terminal, the ai-agent will ask for the
                             System Initiative API token. Paste it there. The
                             input is hidden for security. Press Enter to save
                             and proceed.
@@ -730,11 +754,47 @@ export const DEBUG_PROVIDER_CHOICE = undefined;
                         />
                       </div>
                       <div>
-                        <span> Run Claude Code </span>
+                        <span>
+                          Start the
+                          <NewButton
+                            aria-label="ai-agent-link"
+                            :class="
+                              clsx(
+                                'underline',
+                                themeClasses(
+                                  'hover:text-action-500',
+                                  'hover:text-action-300',
+                                ),
+                              )
+                            "
+                            tone="nostyle"
+                            href="https://docs.systeminit.com/reference/ai-agent"
+                            target="_blank"
+                            label="SI AI Agent"
+                            @mousedown="
+                              onboardingTracking(
+                                'external_link_ai_agent_information',
+                              )
+                            "
+                          />
+                        </span>
+                        <span
+                          :class="
+                            clsx(
+                              themeClasses(
+                                'text-neutral-800',
+                                'text-neutral-300',
+                              ),
+                            )
+                          "
+                        >
+                          This will start claude code and connect it to the SI
+                          AI Agent.
+                        </span>
                         <CopyableTextBlock
-                          text="claude"
+                          text="si ai-agent start"
                           @copied="
-                            onboardingTracking('copied_run_claude_command')
+                            onboardingTracking('copied_start_ai_agent_command')
                           "
                         />
                       </div>
@@ -780,38 +840,6 @@ export const DEBUG_PROVIDER_CHOICE = undefined;
                           ready to start.
                         </ErrorMessage>
                       </div>
-                    </div>
-                  </template>
-                  <template #footerLeft>
-                    <div
-                      :class="
-                        clsx(
-                          'text-sm leading-none',
-                          themeClasses('text-neutral-800', 'text-neutral-300'),
-                        )
-                      "
-                    >
-                      Checkout our
-                      <NewButton
-                        aria-label="our-repo"
-                        :class="
-                          clsx(
-                            'underline',
-                            themeClasses(
-                              'text-black hover:text-action-500',
-                              'text-white hover:text-action-300',
-                            ),
-                          )
-                        "
-                        tone="nostyle"
-                        href="https://github.com/systeminit/si-ai-agent"
-                        target="_blank"
-                        label="GitHub repo"
-                        @mousedown="
-                          onboardingTracking('checkout_our_github_repo')
-                        "
-                      />
-                      for more guidance
                     </div>
                   </template>
                   <template #footerRight>
@@ -1037,7 +1065,7 @@ export const DEBUG_PROVIDER_CHOICE = undefined;
                     >
                       The
                       <NewButton
-                        aria-label="ai-agent-repo-right"
+                        aria-label="ai-agent-docs-right"
                         :class="
                           clsx(
                             'underline',
@@ -1048,9 +1076,9 @@ export const DEBUG_PROVIDER_CHOICE = undefined;
                           )
                         "
                         tone="nostyle"
-                        href="https://github.com/systeminit/si-ai-agent"
+                        href="https://docs.systeminit.com/reference/ai-agent"
                         target="_blank"
-                        label="si-ai-agent repository"
+                        label="si ai-agent"
                         @mousedown="
                           onboardingTracking('external_link_ai_agent_repo')
                         "
@@ -1075,11 +1103,49 @@ export const DEBUG_PROVIDER_CHOICE = undefined;
                         )
                       "
                     >
-                      Not to get started. We have found that Claude Code is the
-                      best agent for System Initiative, and we have
-                      pre-configured it for a great experience. Once you have
-                      experienced it, you can configure the MCP server to work
-                      with any Agent you want.
+                      We have found that Claude Code is the best agent for
+                      System Initiative, and we have pre-configured it for a
+                      great experience. Once you have experienced it, you can
+                      configure the MCP server to work with any Agent you want.
+                      We also support
+                      <NewButton
+                        aria-label="ai-agent-opencode-right"
+                        :class="
+                          clsx(
+                            'underline',
+                            themeClasses(
+                              'hover:text-action-500',
+                              'hover:text-action-300',
+                            ),
+                          )
+                        "
+                        tone="nostyle"
+                        href="https://opencode.ai"
+                        target="_blank"
+                        label="opencode.ai"
+                        @mousedown="
+                          onboardingTracking('external_link_opencode')
+                        "
+                      />
+                      and
+                      <NewButton
+                        aria-label="ai-agent-codex-right"
+                        :class="
+                          clsx(
+                            'underline',
+                            themeClasses(
+                              'hover:text-action-500',
+                              'hover:text-action-300',
+                            ),
+                          )
+                        "
+                        tone="nostyle"
+                        href="https://openai.com/codex/"
+                        target="_blank"
+                        label="OpenAI Codex"
+                        @mousedown="onboardingTracking('external_link_codex')"
+                      />
+                      with more tools coming soon.
                     </div>
                   </CollapsingFlexItem>
                 </div>
@@ -1212,6 +1278,16 @@ const scheduleWithUsLink =
   "https://calendly.com/d/cw8r-6rq-b3n/share-your-use-case-with-system-initiative";
 // const scheduleADemoLink =
 //   "https://calendly.com/d/cns7-v2b-jkz/system-initiative-demo";
+
+const installCommand = computed(() => {
+  const userAgent = navigator.userAgent.toLowerCase();
+
+  if (userAgent.includes("win")) {
+    return "irm https://auth.systeminit.com/install.ps1 | iex";
+  }
+
+  return "curl -fsSL https://auth.systeminit.com/install.sh | sh";
+});
 
 const ctx = useContext();
 

@@ -182,6 +182,7 @@ export const AWS_SCHEMA_OVERRIDES = new Map<string, SchemaOverrideFn>([
     "AWS::EC2::Instance",
     (spec: ExpandedPkgSpec) => {
       const variant = spec.schemas[0].variants[0];
+      const domainId = variant.domain.uniqueId;
 
       const overrideUserDataAttributeFuncCode = Deno.readTextFileSync(
         "./src/pipelines/aws/funcs/overrides/AWS::EC2::Instance/attribute/base64EncodeUserData.ts",
@@ -241,6 +242,21 @@ export const AWS_SCHEMA_OVERRIDES = new Map<string, SchemaOverrideFn>([
         );
       spec.funcs.push(startFunc);
       variant.actionFuncs.push(startActionFuncSpec);
+      
+      if (domainId) {
+        const { func, leafFuncSpec } = attachQualificationFunction(
+          "./src/pipelines/aws/funcs/overrides/AWS::EC2::Instance/qualifications/isValidEc2InstanceType.ts",
+          "Is Valid EC2 Instance Type",
+          "e7aff7bc9553442c95e4446e86d239d0d8d25a31fff38fbcfe00cd18da8236f1",
+          domainId,
+        );
+
+        // This qualification needs to have secrets as part of the input
+        leafFuncSpec.inputs.push("secrets");
+
+        spec.funcs.push(func);
+        variant.leafFunctions.push(leafFuncSpec);
+      }
     },
   ],
   [

@@ -7,7 +7,10 @@ import {
 } from "@systeminit/api-client";
 import type { Context } from "../context.ts";
 import type { AuthenticatedCliContext } from "../cli/helpers.ts";
-import { unknownValueToErrorMessage } from "../helpers.ts";
+import {
+  generateChangeSetUrl,
+  unknownValueToErrorMessage
+} from "../helpers.ts";
 import { SCHEMA_FILE_FORMAT_VERSION } from "./config.ts";
 import {
   type AbsoluteDirectoryPath,
@@ -936,7 +939,7 @@ export async function callRemoteSchemaOverlaysPush(
 ) {
   const { apiConfiguration, workspace, ctx } = cliContext;
   const logger = ctx.logger;
-  const { instanceUrl: workspaceUrlPrefix, id: workspaceId } = workspace;
+  const { id: workspaceId } = workspace;
 
   const siSchemasApi = new SchemasApi(apiConfiguration);
   const siFuncsApi = new FuncsApi(apiConfiguration);
@@ -1250,8 +1253,7 @@ export async function callRemoteSchemaOverlaysPush(
         }
       }
 
-      const changeSetUrl =
-        `${workspaceUrlPrefix}/w/${workspaceId}/${changeSetId}/l/a`;
+      const changeSetUrl = `${generateChangeSetUrl(workspace, changeSetId)}/l/a`;
 
       const pushedSchemasCount = schemasToPush.length;
       ctx.analytics.trackEvent("push_overlays", {
