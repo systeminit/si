@@ -11,10 +11,23 @@ sources:
       SYSLOG_IDENTIFIER: ["sdf-migration"]
     journal_directory: "/var/log/journal"
 
+transforms:
+  filter_empty_docker:
+    type: filter
+    inputs: ["docker"]
+    condition: |
+      !is_null(.message) && .message != ""
+
+  filter_empty_journal:
+    type: filter
+    inputs: ["{{ service_name }}-journal", "sdf-migration"]
+    condition: |
+      !is_null(.message) && .message != ""
+
 sinks:
   cloudwatch:
     type: "aws_cloudwatch_logs"
-    inputs: ["{{ service_name }}-journal", "sdf-migration"]
+    inputs: ["filter_empty_journal"]
     compression: "gzip"
     encoding:
       codec: "text"
@@ -23,7 +36,7 @@ sinks:
     stream_name: "{{ instance_id }}"
   cloudwatch-docker:
     type: "aws_cloudwatch_logs"
-    inputs: ["docker"]
+    inputs: ["filter_empty_docker"]
     compression: "gzip"
     encoding:
       codec: "text"
