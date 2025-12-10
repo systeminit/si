@@ -15,7 +15,7 @@ import {
   MANAGEMENT_FUNCS,
   QUALIFICATION_FUNC_SPECS,
 } from "./funcs.ts";
-import { GcpSchema } from "./schema.ts";
+import { GcpSchema, NormalizedGcpSchema } from "./schema.ts";
 import { normalizeGcpProperty } from "./spec.ts";
 import { generateGcpSpecs } from "./pipeline.ts";
 import { fetchGcpDiscoveryDocuments } from "./discovery.ts";
@@ -61,6 +61,11 @@ function gcpNormalizeProperty(
   prop: JSONSchema,
   _context: PropertyNormalizationContext,
 ): CfProperty {
+  // JSONSchema can be a boolean, but we only handle objects
+  if (typeof prop === "boolean") {
+    return { type: prop ? "object" : "never" } as CfProperty;
+  }
+
   let propToNormalize = prop;
   if (
     typeof prop === "object" &&
@@ -71,7 +76,7 @@ function gcpNormalizeProperty(
     propToNormalize = { ...prop, type: "object" } as CfProperty;
   }
 
-  return normalizeGcpProperty(propToNormalize as JSONSchema) as CfProperty;
+  return normalizeGcpProperty(propToNormalize as NormalizedGcpSchema) as CfProperty;
 }
 
 const gcpProviderFunctions: ProviderFunctions = {
