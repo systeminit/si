@@ -12,13 +12,10 @@ const USER_FLAG_MAPPING = {
   // STORE_FLAG_NAME: "posthogFlagName",
   MODULES_TAB: "modules_tab",
   ADMIN_PANEL_ACCESS: "si_admin_panel_access",
-  AUTOCONNECT: "autoconnect-component-input-sockets",
   PRIVATE_SCOPED_MODULES: "private-scoped-modules",
   SIMPLE_SOCKET_UI: "simple-socket-ui",
   SQLITE_TOOLS: "sqlite-tools",
   COMPONENT_HISTORY_FUNCS: "component-history-funcs",
-  REVERSE_TRUNCATION: "reverse-truncation",
-  VIEWS_BUTTON: "views-button-component-details",
   GOOGLE_CLOUD_UI: "google-cloud-ui",
 } as const;
 const WORKSPACE_FLAG_MAPPING: Record<string, string> = {

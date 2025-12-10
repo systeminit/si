@@ -52,18 +52,12 @@
         class="place-self-center my-auto mt-[7px]"
       />
       <h2>
-        <TruncateWithTooltip
-          class="pb-xs text-sm"
-          :reverse="featureFlagsStore.REVERSE_TRUNCATION"
-        >
+        <TruncateWithTooltip class="pb-xs text-sm">
           {{ component.name }}
         </TruncateWithTooltip>
       </h2>
       <h3>
-        <TruncateWithTooltip
-          class="pb-xs text-xs"
-          :reverse="featureFlagsStore.REVERSE_TRUNCATION"
-        >
+        <TruncateWithTooltip class="pb-xs text-xs">
           {{ component.schemaName }}
         </TruncateWithTooltip>
       </h3>
@@ -239,7 +233,6 @@ import clsx from "clsx";
 import { computed, inject, ref, watch } from "vue";
 import { ComponentInList } from "@/workers/types/entity_kind_types";
 import StatusIndicatorIcon from "@/components/StatusIndicatorIcon.vue";
-import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import { pickBrandIconByString } from "../util";
 import { assertIsDefined, Context, ExploreContext } from "../types";
 import ComponentTileQualificationStatus from "../ComponentTileQualificationStatus.vue";
@@ -255,8 +248,6 @@ const props = defineProps<{
   hasRunningActions?: boolean;
   pendingActionCounts?: Record<string, { count: number; hasFailed: boolean }>;
 }>();
-
-const featureFlagsStore = useFeatureFlagsStore();
 
 const isHovering = ref(false);
 const showSelectionCheckbox = computed(
