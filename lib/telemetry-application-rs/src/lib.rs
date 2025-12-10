@@ -44,7 +44,14 @@ use logroller::{
 };
 use opentelemetry_sdk::{
     Resource,
-    metrics::SdkMeterProvider,
+    metrics::{
+        Aggregation,
+        Instrument,
+        PeriodicReader,
+        SdkMeterProvider,
+        Stream,
+        reader::DefaultTemporalitySelector,
+    },
     propagation::TraceContextPropagator,
     resource::EnvResourceDetector,
     runtime,
@@ -146,6 +153,46 @@ pub mod prelude {
         LogFormat,
         TelemetryConfig,
     };
+}
+
+/// Configuration for a metric with custom histogram buckets
+struct HistogramBucketConfig {
+    metric_name: &'static str,
+    boundaries: &'static [f64],
+}
+
+impl HistogramBucketConfig {
+    const fn new(metric_name: &'static str, boundaries: &'static [f64]) -> Self {
+        Self {
+            metric_name,
+            boundaries,
+        }
+    }
+}
+
+/// Returns all metrics that need custom histogram bucket configurations.
+/// To add a new metric with custom buckets, add an entry to the returned vec.
+fn custom_histogram_configs() -> Vec<HistogramBucketConfig> {
+    vec![
+        HistogramBucketConfig::new(
+            "layer_cache_insert_size_bytes",
+            &[
+                1_024.0,       // 1 KiB
+                10_240.0,      // 10 KiB
+                102_400.0,     // 100 KiB
+                524_288.0,     // 512 KiB
+                1_048_576.0,   // 1 MiB
+                2_097_152.0,   // 2 MiB
+                5_242_880.0,   // 5 MiB
+                10_485_760.0,  // 10 MiB
+                20_971_520.0,  // 20 MiB
+                52_428_800.0,  // 50 MiB
+                78_643_200.0,  // 75 MiB
+                104_857_600.0, // 100 MiB
+            ],
+        ),
+        // Add future custom histograms here
+    ]
 }
 
 // Rust crates that will not output span or event telemetry, no matter what the default level is
@@ -568,16 +615,39 @@ fn otel_tracer(config: &TelemetryConfig) -> Result<Tracer> {
 }
 
 fn otel_metrics(config: &TelemetryConfig) -> result::Result<SdkMeterProvider, MetricsError> {
-    opentelemetry_otlp::new_pipeline()
-        .metrics(opentelemetry_sdk::runtime::Tokio)
-        .with_exporter(opentelemetry_otlp::new_exporter().tonic())
-        .with_resource(Resource::new(vec![KeyValue::new(
-            "service.name",
-            config.service_name,
-        )]))
-        .with_period(Duration::from_secs(1))
+    // Build the exporter
+    let exporter = opentelemetry_otlp::new_exporter()
+        .tonic()
+        .build_metrics_exporter(Box::new(DefaultTemporalitySelector::new()))?;
+
+    // Build the reader
+    let reader = PeriodicReader::builder(exporter, opentelemetry_sdk::runtime::Tokio)
+        .with_interval(Duration::from_secs(1))
         .with_timeout(Duration::from_secs(10))
-        .build()
+        .build();
+
+    // Build the meter provider with custom views
+    let mut provider = SdkMeterProvider::builder().with_reader(reader);
+
+    // Apply custom histogram configurations
+    for histogram_config in custom_histogram_configs() {
+        let view = opentelemetry_sdk::metrics::new_view(
+            Instrument::new().name(histogram_config.metric_name),
+            Stream::new().aggregation(Aggregation::ExplicitBucketHistogram {
+                boundaries: histogram_config.boundaries.to_vec(),
+                record_min_max: true,
+            }),
+        )?;
+        provider = provider.with_view(view);
+    }
+
+    // Add resource
+    provider = provider.with_resource(Resource::new(vec![KeyValue::new(
+        "service.name",
+        config.service_name,
+    )]));
+
+    Ok(provider.build())
 }
 
 fn text_layer<S>(

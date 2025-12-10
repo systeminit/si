@@ -140,6 +140,19 @@ impl PersisterClient {
     }
 
     pub fn write_event(&self, event: LayeredEvent) -> LayerDbResult<PersisterStatusReader> {
+        let byte_size = event.payload.value.len();
+        let cache_name = event.payload.db_name.as_str();
+
+        monotonic!(layer_cache_inserts = 1, cache_name = cache_name);
+        monotonic!(
+            layer_cache_insert_bytes = byte_size,
+            cache_name = cache_name
+        );
+        histogram!(
+            layer_cache_insert_size_bytes = byte_size as f64,
+            cache_name = cache_name
+        );
+
         let (status_write, status_read) = self.get_status_channels();
         self.tx
             .send(PersistMessage::Write((event, status_write)))
