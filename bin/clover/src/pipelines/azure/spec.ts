@@ -22,6 +22,9 @@ import { htmlToMarkdown } from "../../util.ts";
 /// to be references and will just have "id")
 const MAX_EXPANDED_RESOURCE_DEPTH = 3;
 
+/// Maximum resource type depth to process (e.g. Microsoft.Storage/storageAccounts/blobServices/containers = depth 3)
+const MAX_RESOURCE_TYPE_DEPTH = 4;
+
 /// resource types (e.g. Microsoft.ServiceFabricMesh/applications) to ignore them until it's fixed
 /// Make sure you also add a comment explaining why--all resource types should either be supported,
 /// or ignored for a specific reason detected by heuristic!
@@ -46,10 +49,13 @@ const IGNORE_RESOURCE_TYPES = new Set<string>([
   // Discriminator with no definitions
   "Microsoft.DataMigration/services/serviceTasks",
   "Microsoft.DataMigration/services/projects",
+  "Microsoft.DataMigration/services/projects/tasks",
 
   // Unsupported format: url
   "Microsoft.MachineLearningServices/workspaces/connections",
+  "Microsoft.MachineLearningServices/workspaces/connections/deployments",
   "Microsoft.MachineLearningServices/workspaces/endpoints",
+  "Microsoft.MachineLearningServices/workspaces/endpoints/deployments",
 
   // Incompatible property x-ms-client-name: 'JobBaseProperties' vs 'LabelingJobProperties'
   "Microsoft.MachineLearningServices/workspaces/labelingJobs",
@@ -59,6 +65,12 @@ const IGNORE_RESOURCE_TYPES = new Set<string>([
   "Microsoft.Insights/components/favorites",
   "Microsoft.Insights/components/ProactiveDetectionConfigs",
   "Microsoft.HDInsight/clusters/extensions",
+
+  // Response schema is not an object
+  "Microsoft.Web/serverfarms/virtualNetworkConnections/routes",
+
+  // Category case sensitivity issues
+  "microsoft.insights/components/pricingPlans",
 ]);
 
 interface ResourceSpec {
@@ -124,10 +136,8 @@ export function parseAzureSpec(
     if (
       resourceTypesFilter && !resourceTypesFilter.has(resource.resourceType)
     ) continue;
-    // Skip subresources > 2 levels deep for now
-    // TODO pick which of these to support
     const resourceDepth = resource.resourceType.split("/").length - 1;
-    if (resourceDepth > 2) continue;
+    if (resourceDepth > MAX_RESOURCE_TYPE_DEPTH) continue;
     // We only support readonly resources if they are top-level
     if (!resource.put && resourceDepth > 1) continue;
 
@@ -650,10 +660,9 @@ function intersectAzureSchema(
           !util.isDeepStrictEqual(intersected[key], prop[key])
         ) {
           throw new Error(
-            `Incompatible property ${key}: ${
-              util.inspect(
-                intersected[key],
-              )
+            `Incompatible property ${key}: ${util.inspect(
+              intersected[key],
+            )
             } vs ${util.inspect(prop[key])}`,
           );
         }
@@ -767,13 +776,11 @@ function buildDomainAndResourceValue(
     // If it's a writeable resource, the result must have ID so we can update/delete
     if (!(resourceValue.properties && "id" in resourceValue.properties)) {
       throw new Error(
-        `No id property in GET response: ${get.operation.operationId}\n\n${
-          util.inspect(get.operation, { depth: 12 })
-        }\n\n${
-          util.inspect(
-            get.operation.responses?.["200"]?.schema,
-            { depth: 4 },
-          )
+        `No id property in GET response: ${get.operation.operationId}\n\n${util.inspect(get.operation, { depth: 12 })
+        }\n\n${util.inspect(
+          get.operation.responses?.["200"]?.schema,
+          { depth: 4 },
+        )
         }`,
       );
     }
@@ -802,8 +809,8 @@ function buildDomainAndResourceValue(
 
   const description = htmlToMarkdown(
     get.operation.description ||
-      (get.operation.summary as string) ||
-      `Azure ${resourceType} resource`,
+    (get.operation.summary as string) ||
+    `Azure ${resourceType} resource`,
   ) || `Azure ${resourceType} resource`;
 
   const primaryIdentifier = ["id"];
@@ -994,11 +1001,18 @@ export function parseEndpointPath(path: string) {
   // /virtualMachines/{vmName}[/extensions/{vmExtensionName}...]
   while (segments.length >= 2) {
     resourceType = `${resourceType}/${segments.shift()!}`;
-    // Validate that the resource name segment is a parameter
-    // TODO maybe constants or substring replacements are supported? Check
-    if (!segments[0].startsWith("{")) return undefined;
-    if (!segments[0].endsWith("}")) return undefined;
-    segments.shift();
+    // Next segment should be a parameter or a well-known literal
+    const nextSegment = segments[0];
+    if (nextSegment.startsWith("{") && nextSegment.endsWith("}")) {
+      // Parameter - consume it
+      segments.shift();
+    } else if (nextSegment === "default" || nextSegment === "current") {
+      // Well-known literal segments used in Azure APIs - consume it
+      segments.shift();
+    } else {
+      // Unknown literal or invalid format
+      return undefined;
+    }
   }
 
   // /operation (the final segment)
