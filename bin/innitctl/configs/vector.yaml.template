@@ -11,27 +11,6 @@ sources:
       SYSLOG_IDENTIFIER: ["sdf-migration"]
     journal_directory: "/var/log/journal"
 
-transforms:
-  honeycomb_format:
-    type: remap
-    inputs: ["{{ service_name }}-journal", "sdf-migration"]
-    source: |-
-      if exists(.message) {
-        message = string!(.message)
-
-        if contains(message, "ERROR") {
-          .level = "error"
-        } else if contains(message, "WARN") {
-          .level = "warn"
-        } else if contains(message, "DEBUG") {
-          .level = "debug"
-        } else if contains(message, "TRACE") {
-          .level = "trace"
-        } else {
-          .level = "info"
-        }
-      }
-
 sinks:
   cloudwatch:
     type: "aws_cloudwatch_logs"
@@ -51,8 +30,3 @@ sinks:
     region: "us-east-1"
     group_name: "/ec2/{{ host_environment }}-{{ service_name }}-docker"
     stream_name: "{{ instance_id }}"
-  honeycomb:
-    type: "honeycomb"
-    inputs: ["honeycomb_format"]
-    api_key: "{{ honeycomb_api_key }}"
-    dataset: "{{ service_name }}"
