@@ -150,6 +150,10 @@ export async function generateSchemaFunction(
   );
 }
 
+export interface SharedFunctionReference {
+  [functionName: string]: string; // e.g., "create": "@shared/actions/aws-create"
+}
+
 export interface SchemaMetadata {
   /** The name of the schema */
   name: string;
@@ -161,6 +165,14 @@ export interface SchemaMetadata {
   documentation?: string | null;
   /** Color that represents the schema */
   color: string;
+  /** Optional shared function references */
+  sharedFunctions?: {
+    actions?: SharedFunctionReference;
+    codeGenerators?: SharedFunctionReference;
+    management?: SharedFunctionReference;
+    authentication?: SharedFunctionReference;
+    qualifications?: SharedFunctionReference;
+  };
 }
 
 export interface FunctionMetadata {
