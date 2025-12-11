@@ -26,7 +26,10 @@
     while_true
 )]
 
-use si_data_nats::Message;
+use si_data_nats::{
+    Message,
+    OpenTelemetryContext,
+};
 use tokio::sync::{
     broadcast,
     oneshot,
@@ -46,7 +49,16 @@ pub enum MultiplexerRequest {
     Add(
         (
             MultiplexerKey,
-            oneshot::Sender<broadcast::Receiver<Message>>,
+            oneshot::Sender<broadcast::Receiver<MultiplexerRequestPayload>>,
         ),
     ),
+}
+
+/// The payload within a [`MultiplexerRequest`].
+#[derive(Debug, Clone)]
+pub struct MultiplexerRequestPayload {
+    /// The core NATS message found via the subscription to be sent to all multiplexer clients.
+    pub nats_message: Message,
+    /// An optional [`OpenTelemetryContext`] that can be used for span linking or following a parent span.
+    pub otel_ctx: Option<OpenTelemetryContext>,
 }

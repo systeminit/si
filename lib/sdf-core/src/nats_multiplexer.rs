@@ -6,8 +6,10 @@ use std::{
 
 use dal::WorkspacePk;
 use edda_core::nats;
-use nats_multiplexer_client::MultiplexerClient;
-use si_data_nats::Message;
+use nats_multiplexer_client::{
+    MultiplexerClient,
+    MultiplexerRequestPayload,
+};
 use tokio::sync::{
     Mutex,
     broadcast,
@@ -44,7 +46,7 @@ impl EddaUpdatesMultiplexerClient {
         &self,
         prefix: Option<&str>,
         workspace_id: WorkspacePk,
-    ) -> Result<broadcast::Receiver<Message>, Box<dyn error::Error>> {
+    ) -> Result<broadcast::Receiver<MultiplexerRequestPayload>, Box<dyn error::Error>> {
         let mut id_buf = WorkspacePk::array_to_str_buf();
 
         let subject = nats::subject::all_workspace_updates_for_workspace(
@@ -62,7 +64,7 @@ impl EddaUpdatesMultiplexerClient {
     pub async fn messages_for_deployment(
         &self,
         prefix: Option<&str>,
-    ) -> Result<broadcast::Receiver<Message>, Box<dyn error::Error>> {
+    ) -> Result<broadcast::Receiver<MultiplexerRequestPayload>, Box<dyn error::Error>> {
         let subject = nats::subject::all_deployment_updates(prefix);
 
         self.inner

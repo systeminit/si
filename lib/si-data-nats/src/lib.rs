@@ -62,6 +62,7 @@ pub use message::{
     Message,
 };
 pub use subscriber::Subscriber;
+pub use telemetry::opentelemetry::Context as OpenTelemetryContext;
 
 pub type NatsError = Error;
 

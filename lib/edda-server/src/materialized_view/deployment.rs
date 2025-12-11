@@ -109,10 +109,10 @@ pub async fn build_all_mvs_for_deployment(
 
     // publish updates
     edda_updates
-        .publish_deployment_patch_batch(patch_batch)
+        .publish_deployment_patch_batch(patch_batch, &span)
         .await?;
     edda_updates
-        .publish_deployment_index_update(index_update)
+        .publish_deployment_index_update(index_update, &span)
         .await?;
     info!("Started building all deployment MVs");
     Ok(())
@@ -300,10 +300,10 @@ pub async fn build_outdated_mvs_for_deployment(
 
     // publish updates
     edda_updates
-        .publish_deployment_patch_batch(patch_batch)
+        .publish_deployment_patch_batch(patch_batch, &span)
         .await?;
     edda_updates
-        .publish_deployment_index_update(index_update)
+        .publish_deployment_index_update(index_update, &span)
         .await?;
 
     Ok(())

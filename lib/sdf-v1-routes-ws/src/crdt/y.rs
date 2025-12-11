@@ -13,8 +13,8 @@ use futures::{
     Stream,
 };
 use futures_lite::future::FutureExt;
+use nats_multiplexer_client::MultiplexerRequestPayload;
 use si_data_nats::{
-    Message,
     NatsClient,
     Subject,
 };
@@ -81,10 +81,10 @@ impl Sink<Vec<u8>> for YSink {
     }
 }
 
-pub struct YStream(BroadcastStream<Message>);
+pub struct YStream(BroadcastStream<MultiplexerRequestPayload>);
 
 impl YStream {
-    pub fn new(receiver: broadcast::Receiver<Message>) -> Self {
+    pub fn new(receiver: broadcast::Receiver<MultiplexerRequestPayload>) -> Self {
         Self(BroadcastStream::new(receiver))
     }
 }
@@ -96,8 +96,10 @@ impl Stream for YStream {
         match Pin::new(&mut self.0).poll_next(cx) {
             Poll::Pending => Poll::Pending,
             Poll::Ready(None) => Poll::Ready(None),
-            Poll::Ready(Some(message)) => match message {
-                Ok(message) => Poll::Ready(Some(Ok(message.into_parts().0.payload.into()))),
+            Poll::Ready(Some(payload_result)) => match payload_result {
+                Ok(payload) => {
+                    Poll::Ready(Some(Ok(payload.nats_message.into_parts().0.payload.into())))
+                }
                 Err(error) => match error {
                     error @ BroadcastStreamRecvError::Lagged(number_of_missed_messages) => {
                         error!(

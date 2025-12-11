@@ -118,12 +118,14 @@ impl Server {
             services_context.nats_conn(),
             WS_MULTIPLEXER_SUBJECT,
             helping_tasks_token.clone(),
+            None,
         )
         .await?;
         let (crdt_multiplexer, crdt_multiplexer_client) = Multiplexer::new(
             services_context.nats_conn(),
             CRDT_MULTIPLEXER_SUBJECT,
             helping_tasks_token.clone(),
+            None,
         )
         .await?;
         let (edda_updates_multiplexer, edda_updates_multiplexer_client) = Multiplexer::new(
@@ -132,6 +134,7 @@ impl Server {
                 services_context.nats_conn().metadata().subject_prefix(),
             ),
             helping_tasks_token.clone(),
+            None, // FIXME(nick,fletcher): this shouldn't even be running in luminork... this is a temporary measure to not add instrumentation until this is gone.
         )
         .await?;
         let edda_updates_multiplexer_client =

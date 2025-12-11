@@ -6,6 +6,7 @@ rust_library(
         "//lib/nats-multiplexer-client:nats-multiplexer-client",
         "//lib/nats-multiplexer-core:nats-multiplexer-core",
         "//lib/si-data-nats:si-data-nats",
+        "//lib/telemetry-nats-rs:telemetry-nats",
         "//lib/telemetry-rs:telemetry",
         "//third-party/rust:futures",
         "//third-party/rust:remain",

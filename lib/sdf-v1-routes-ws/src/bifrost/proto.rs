@@ -23,7 +23,10 @@ use dal::{
 };
 use frigg::FriggStore;
 use miniz_oxide::inflate;
-use nats_multiplexer_client::MultiplexerClientError;
+use nats_multiplexer_client::{
+    MultiplexerClientError,
+    MultiplexerRequestPayload,
+};
 use nats_std::header::{
     self,
     value::ContentEncoding,
@@ -36,16 +39,16 @@ use serde::{
     Deserialize,
     Serialize,
 };
-use si_data_nats::{
-    ConnectionMetadata,
-    Message,
-};
+use si_data_nats::ConnectionMetadata;
 use si_frontend_types::FrontEndObjectRequest;
 use task::{
     BifrostFriggReadsTask,
     BifrostFriggReadsTaskHandle,
 };
-use telemetry::prelude::*;
+use telemetry::{
+    OpenTelemetrySpanExt,
+    prelude::*,
+};
 use thiserror::Error;
 use tokio::sync::mpsc;
 use tokio_stream::{
@@ -203,7 +206,10 @@ impl Bifrost {
 
 pub struct BifrostStarted {
     compute_executor: DedicatedExecutor,
-    nats_messages: Merge<BroadcastStream<Message>, BroadcastStream<Message>>,
+    nats_messages: Merge<
+        BroadcastStream<MultiplexerRequestPayload>,
+        BroadcastStream<MultiplexerRequestPayload>,
+    >,
     requests_tx: mpsc::Sender<WsFrontEndOjbectRequest>,
     responses_rx: mpsc::Receiver<WsFrontEndObjectResponse>,
     handle: BifrostFriggReadsTaskHandle,
@@ -363,8 +369,8 @@ impl BifrostStarted {
                 maybe_nats_message_result = self.nats_messages.next() => {
                     match maybe_nats_message_result {
                         // We have a message
-                        Some(Ok(nats_message)) => {
-                            let ws_message = match self.build_ws_message(nats_message).await {
+                        Some(Ok(payload_with_nats_message)) => {
+                            let ws_message = match self.build_ws_message(payload_with_nats_message).await {
                                 Ok(ws_message) => ws_message,
                                 Err(err) => {
                                     warn!(
@@ -418,37 +424,51 @@ impl BifrostStarted {
     }
 
     #[instrument(
-        name = "build_ws_message",
-        level = "debug",
+        name = "sdf.bifrost.build_ws_message",
+        level = "info",
         skip_all,
         fields(
             bytes.size.compressed = Empty,
             bytes.size.uncompressed = Empty,
         ),
     )]
-    async fn build_ws_message(&self, msg: si_data_nats::Message) -> Result<ws::Message> {
-        let span = current_span_for_instrument_at!("debug");
+    async fn build_ws_message(&self, payload: MultiplexerRequestPayload) -> Result<ws::Message> {
+        let span = current_span_for_instrument_at!("info");
 
-        let payload_buf = if header::content_encoding_is(msg.headers(), ContentEncoding::DEFLATE) {
-            span.record("bytes.size.compressed", msg.payload().len());
+        if let Some(otel_ctx) = payload.otel_ctx {
+            span.set_parent(otel_ctx);
+        }
+
+        let payload_buf = if header::content_encoding_is(
+            payload.nats_message.headers(),
+            ContentEncoding::DEFLATE,
+        ) {
+            span.record(
+                "bytes.size.compressed",
+                payload.nats_message.payload().len(),
+            );
             self.compute_executor
                 .spawn(async move {
-                    let compressed = msg.into_inner().payload;
+                    let compressed = payload.nats_message.into_inner().payload;
                     inflate::decompress_to_vec(&compressed)
                 })
                 .await?
                 .map_err(|decompress_err| Error::Decompress(decompress_err.to_string()))?
-        } else if header::content_encoding_is(msg.headers(), ContentEncoding::ZLIB) {
-            span.record("bytes.size.compressed", msg.payload().len());
+        } else if header::content_encoding_is(payload.nats_message.headers(), ContentEncoding::ZLIB)
+        {
+            span.record(
+                "bytes.size.compressed",
+                payload.nats_message.payload().len(),
+            );
             self.compute_executor
                 .spawn(async move {
-                    let compressed = msg.into_inner().payload;
+                    let compressed = payload.nats_message.into_inner().payload;
                     inflate::decompress_to_vec_zlib(&compressed)
                 })
                 .await?
                 .map_err(|decompress_err| Error::Decompress(decompress_err.to_string()))?
         } else {
-            msg.into_inner().payload.into()
+            payload.nats_message.into_inner().payload.into()
         };
 
         span.record("bytes.size.uncompressed", payload_buf.len());

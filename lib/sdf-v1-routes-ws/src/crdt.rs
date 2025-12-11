@@ -25,6 +25,7 @@ use futures::{
     Stream,
     StreamExt,
 };
+use nats_multiplexer_client::MultiplexerRequestPayload;
 use sdf_core::{
     BroadcastGroups,
     nats_multiplexer::NatsMultiplexerClients,
@@ -150,8 +151,8 @@ pub async fn crdt_handle<W, R>(
     nats: NatsClient,
     broadcast_groups: BroadcastGroups,
     subject: Subject,
-    receiver: broadcast::Receiver<si_data_nats::Message>,
-    ws_receiver: broadcast::Receiver<si_data_nats::Message>,
+    receiver: broadcast::Receiver<MultiplexerRequestPayload>,
+    ws_receiver: broadcast::Receiver<MultiplexerRequestPayload>,
     workspace_pk: WorkspacePk,
     id: String,
     token: CancellationToken,
@@ -194,8 +195,8 @@ pub async fn crdt_handle<W, R>(
                 }
                 maybe_message_result = ws_receiver_stream.next() => {
                     match maybe_message_result {
-                        Some(Ok(message)) => {
-                            let bytes = message.into_inner().payload.into();
+                        Some(Ok(payload)) => {
+                            let bytes = payload.nats_message.into_inner().payload.into();
                             if let Err(_item) = sink.send(Message::Binary(bytes)).await {
                                 warn!("failed to send message from nats to client");
                             }

@@ -37,15 +37,21 @@ use nats_multiplexer_client::MultiplexerClient;
 use nats_multiplexer_core::{
     MultiplexerKey,
     MultiplexerRequest,
+    MultiplexerRequestPayload,
 };
 use si_data_nats::{
     Message,
     NatsClient,
+    OpenTelemetryContext,
     Subject,
     Subscriber,
     subject::ToSubject,
 };
-use telemetry::prelude::*;
+use telemetry::{
+    OpenTelemetrySpanExt,
+    prelude::*,
+};
+use telemetry_nats::propagation;
 use thiserror::Error;
 use tokio::sync::{
     broadcast,
@@ -76,19 +82,23 @@ pub type MultiplexerResult<T> = Result<T, MultiplexerError>;
 pub struct Multiplexer {
     subject: Subject,
     subscriber: Subscriber,
-    channels: HashMap<MultiplexerKey, broadcast::Sender<Message>>,
+    channels: HashMap<MultiplexerKey, broadcast::Sender<MultiplexerRequestPayload>>,
     client_rx: mpsc::UnboundedReceiver<MultiplexerRequest>,
     token: CancellationToken,
+    activate_instrumentation_with_name: Option<String>,
 }
 
 impl Multiplexer {
     const NAME: &'static str = "nats_multiplexter::multiplexer";
 
     /// Creates a new [`Multiplexer`].
+    ///
+    /// **Warning:** if you add instrumentation, you may produce _many_ spans. Buyer beware!
     pub async fn new(
         nats: &NatsClient,
         subject: impl ToSubject,
         token: CancellationToken,
+        activate_instrumentation_with_name: Option<String>,
     ) -> MultiplexerResult<(Self, MultiplexerClient)> {
         let subject = subject.to_subject();
         let subscriber = nats.subscribe(subject.clone()).await?;
@@ -100,6 +110,7 @@ impl Multiplexer {
                 client_rx,
                 subject,
                 token,
+                activate_instrumentation_with_name,
             },
             MultiplexerClient::new(client_tx),
         ))
@@ -112,13 +123,31 @@ impl Multiplexer {
         loop {
             tokio::select! {
                 Some(message) = self.subscriber.next() => {
-                    if let Err(e) = self.process_message(message) {
-                        error!("{e}");
+                    match &self.activate_instrumentation_with_name {
+                        Some(name) => {
+                            if let Err(err) = self.process_message_with_instrumentation(message, name) {
+                                error!(
+                                    si.error.message = ?err,
+                                    "error when processing message in nats multiplexer"
+                                );
+                            }
+                        }
+                        None => {
+                            if let Err(err) = self.process_message(message, None) {
+                                error!(
+                                    si.error.message = ?err,
+                                    "error when processing message in nats multiplexer"
+                                );
+                            }
+                        }
                     }
                 }
                 Some(request) = self.client_rx.recv() => {
-                    if let Err(e) = self.process_client_request(request) {
-                        error!("{e}");
+                    if let Err(err) = self.process_client_request(request) {
+                        error!(
+                            si.error.message = ?err,
+                            "error when processing client request in nats multiplexer"
+                        );
                     }
                 }
                 _ = self.token.cancelled() => {
@@ -129,8 +158,11 @@ impl Multiplexer {
                     );
 
                     // NOTE(nick,fletcher): we may not want to unsubscribe here.
-                    if let Err(e) = self.subscriber.unsubscribe().await {
-                        error!("{e}");
+                    if let Err(err) = self.subscriber.unsubscribe().await {
+                        error!(
+                            si.error.message = ?err,
+                            "error when unsubscribing in nats multiplexer"
+                        );
                     }
                     break;
                 },
@@ -140,7 +172,26 @@ impl Multiplexer {
         debug!(task = Self::NAME, subject = %self.subject, "shutdown complete");
     }
 
-    fn process_message(&self, message: Message) -> MultiplexerResult<()> {
+    #[instrument(name = "nats_multiplexer.multiplexer.process_message", level = "info", skip_all, fields(si.nats_multiplexer.name = %name))]
+    fn process_message_with_instrumentation(
+        &self,
+        message: Message,
+        name: &str,
+    ) -> MultiplexerResult<()> {
+        let span = current_span_for_instrument_at!("info");
+
+        if let Some(headers) = message.headers() {
+            span.set_parent(propagation::extract_opentelemetry_context(headers));
+        }
+
+        self.process_message(message, Some(span.context()))
+    }
+
+    fn process_message(
+        &self,
+        message: Message,
+        otel_ctx: Option<OpenTelemetryContext>,
+    ) -> MultiplexerResult<()> {
         let subject = message.subject().to_string();
 
         // We need to fan out not only to those receiving for the literal subject, but also for those using wildcards.
@@ -148,7 +199,13 @@ impl Multiplexer {
         for key in parsing::keys_for_potential_receivers(subject.clone()) {
             if let Some(sender) = self.channels.get(&key) {
                 trace!(%subject, %key, "sending message for receiver corresponding to key");
-                if sender.send(message.clone()).is_err() {
+                if sender
+                    .send(MultiplexerRequestPayload {
+                        nats_message: message.clone(),
+                        otel_ctx: otel_ctx.clone(),
+                    })
+                    .is_err()
+                {
                     trace!(%subject, %key, "unable to send message (likely there are no receivers left)");
                 }
             }
@@ -157,7 +214,6 @@ impl Multiplexer {
     }
 
     fn process_client_request(&mut self, request: MultiplexerRequest) -> MultiplexerResult<()> {
-        debug!(?request, "found request");
         match request {
             MultiplexerRequest::Add((subject, reply_tx)) => {
                 // NOTE(nick): major props to fnichol for this idea.
@@ -168,7 +224,7 @@ impl Multiplexer {
 
                 // NOTE(nick): this returns what it couldn't send when erroring.
                 if reply_tx.send(sender.subscribe()).is_err() {
-                    error!("could not process client request");
+                    error!("could not process client request in nats multiplexer");
                 }
             }
         }
