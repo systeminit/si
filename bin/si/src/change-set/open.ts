@@ -26,6 +26,11 @@ export async function callChangeSetOpen(
   const workspaceId = Context.workspaceId();
   const workspace = await getWorkspaceDetails(workspaceId);
 
+  if (!Context.instance().isInteractive) {
+    ctx.logger.error("Can't open browser from non-interactive shell. Exiting.");
+    return;
+  }
+
   try {
     // Resolve the change set ID from the provided ID or name
     const changeSetId = await resolveChangeSet(
