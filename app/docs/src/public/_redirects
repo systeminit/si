@@ -21,3 +21,6 @@ http://*   https://:splat  301!
 /reference/providers/digital-ocean  /explanation/cloud-providers/digital-ocean  301
 /reference/providers/hetzner  /explanation/cloud-providers/hetzner  301
 /explanation/aws-authentication  /explanation/cloud-providers/aws  301
+
+# Redirect moved explanation docs
+/explanation/search-syntax  /reference/search  301

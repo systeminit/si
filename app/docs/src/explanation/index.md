@@ -6,8 +6,6 @@
   Initiative with us
 - [Creating Workspace API Tokens](./generate-a-workspace-api-token.md) - how to
   create a token to work with the public System Initiative API.
-- [Search Syntax](./search-syntax.md) - how to search for components in a large
-  System Initiative workspace
 
 ## Cloud Providers
 

@@ -174,6 +174,10 @@ export default withMermaid(defineConfig({
             link: "/reference/actions",
           },
           {
+            text: "Search",
+            link: "/reference/search",
+          },
+          {
             text: "Secrets",
             link: "/reference/secrets",
           },
