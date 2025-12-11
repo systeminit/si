@@ -47,21 +47,42 @@ async function main(component: Input): Promise<Output> {
     );
   }
 
-  // Handle Azure Long-Running Operations (LRO) - status 201/202
+  // Handle Azure Long-Running Operations (LRO)
+  // 202 is always async, 201 is async only if polling headers are present
   if (response.status === 201 || response.status === 202) {
-    console.log(`[CREATE] LRO detected (${response.status}), polling for completion...`);
-
     // Get the polling URL - prefer Azure-AsyncOperation over Location
     const asyncOpUrl = response.headers.get("Azure-AsyncOperation");
     const locationUrl = response.headers.get("Location");
 
+    // If no polling headers, treat as synchronous completion (especially for 201)
     if (!asyncOpUrl && !locationUrl) {
-      throw new Error("LRO response missing polling URL headers");
+      if (response.status === 201) {
+        console.log(`[CREATE] 201 response with no polling headers, treating as synchronous completion`);
+        const result = await parseJsonResponse(response, "CREATE");
+        console.log(`[CREATE] Synchronous create successful, resourceId: ${result.id}`);
+        return {
+          payload: result,
+          resourceId: result.id,
+          status: "ok",
+        };
+      } else {
+        // 202 without polling headers is an error
+        throw new Error("LRO response missing polling URL headers");
+      }
     }
+
+    console.log(`[CREATE] LRO detected (${response.status}), polling for completion...`);
 
     // Azure-AsyncOperation returns status in body, Location returns 200 when done
     const isAsyncOpPattern = !!asyncOpUrl;
-    const pollingUrl = asyncOpUrl || locationUrl;
+    let pollingUrl = asyncOpUrl || locationUrl;
+
+    // Location header can be relative (starting with /) or absolute
+    // Convert relative URLs to absolute
+    if (pollingUrl && pollingUrl.startsWith('/')) {
+      pollingUrl = `https://management.azure.com${pollingUrl}`;
+      console.log(`[CREATE] Converted relative Location URL to absolute: ${pollingUrl}`);
+    }
 
     console.log(`[CREATE] Using ${isAsyncOpPattern ? 'Azure-AsyncOperation' : 'Location'} polling pattern`);
 
