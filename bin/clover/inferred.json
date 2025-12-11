@@ -5299,6 +5299,9 @@
   "Defines the operating system the patch baseline applies to. The Default value is WINDOWS.": {
     "enum": null
   },
+  "Defines the replication state of a key": {
+    "enum": null
+  },
   "Defines the server-side encryption type for index encryption configuration. Defaults to the parent vector bucket's encryption settings when unspecified.": {
     "enum": null
   },
