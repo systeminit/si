@@ -8,7 +8,7 @@
  * @module
  */
 
-import { ChangeSetsApi } from "@systeminit/api-client";
+import { ActionsApi, ChangeSetsApi, ActionViewV1 } from "@systeminit/api-client";
 import { Context } from "../context.ts";
 import type { ChangeSetApplyOptions } from "./types.ts";
 import { resolveChangeSet } from "./utils.ts";
@@ -29,8 +29,8 @@ export async function callChangeSetApply(
     const apiConfig = Context.apiConfig();
     const workspaceId = Context.workspaceId();
 
-
     const changeSetsApi = new ChangeSetsApi(apiConfig);
+    const actionsApi = new ActionsApi(apiConfig);
 
     ctx.logger.info("Gathering change set data...");
 
@@ -57,9 +57,18 @@ export async function callChangeSetApply(
     let status;
     let applyAttempts = 0;
     const MAX_APPLY_ATTEMPTS = 4;
+    let actions = [] as ActionViewV1[];
     do {
       await sleep(1000 * applyAttempts)
       applyAttempts++;
+
+      const actionsResponse = await actionsApi.getActions({
+        workspaceId,
+        changeSetId,
+      });
+
+      actions = actionsResponse.data.actions.filter((a) => a.state === "Queued");
+
       // Apply the change set (request approval)
       const response = await changeSetsApi.requestApproval({
         workspaceId,
@@ -104,6 +113,25 @@ export async function callChangeSetApply(
       name: getResponse.data.changeSet.name,
       status: updatedResponse.data.changeSet.status,
     });
+
+    // TODO(victor) - get component and asset names
+    // TODO(victor) - block terminal and keep pooling action statuses until they're done, unless detach arg is passed in (see docker run)
+    // Get enqueued actions from HEAD
+    if (actions.length > 0) {
+      ctx.logger.info(
+        `Found ${actions.length} enqueued action(s):`,
+      );
+      for (const action of actions) {
+        ctx.logger.info("  - {name}({id}) of kind {kind}, for component {componentId}", {
+          id: action.id,
+          name: action.name,
+          kind: action.kind,
+          componentId: action.componentId,
+        });
+      }
+
+    }
+
 
   } catch (error) {
     ctx.logger.error(`Failed to apply change set: ${error}`);
