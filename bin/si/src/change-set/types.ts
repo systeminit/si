@@ -16,3 +16,5 @@ export interface ChangeSetByIdOrNameOptions extends GlobalOptions {
 export type ChangeSetAbandonOptions = ChangeSetByIdOrNameOptions;
 
 export type ChangeSetOpenOptions = ChangeSetByIdOrNameOptions;
+
+export type ChangeSetApplyOptions = ChangeSetByIdOrNameOptions;

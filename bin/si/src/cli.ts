@@ -67,6 +67,10 @@ import {
   type ChangeSetAbandonOptions,
 } from "./change-set/abandon.ts";
 import {
+  callChangeSetApply,
+  type ChangeSetApplyOptions,
+} from "./change-set/apply.ts";
+import {
   callChangeSetList,
   type ChangeSetListOptions,
 } from "./change-set/list.ts";
@@ -1331,7 +1335,7 @@ function buildChangeSetCommand() {
     )
     .command(
       "open",
-      createSubCommand()
+      createSubCommand(true)
         .description("Open a change set in the browser")
         .arguments("<change-set-id-or-name:string>")
         .action(async (options, changeSetIdOrName) => {
@@ -1339,6 +1343,18 @@ function buildChangeSetCommand() {
             ...options,
             changeSetIdOrName: changeSetIdOrName as string,
           } as ChangeSetOpenOptions);
+        }),
+    )
+    .command(
+      "apply",
+      createSubCommand(true)
+        .description("Apply a change set to HEAD")
+        .arguments("<change-set-id-or-name:string>")
+        .action(async (options, changeSetIdOrName) => {
+          await callChangeSetApply({
+            ...options,
+            changeSetIdOrName: changeSetIdOrName as string,
+          } as ChangeSetApplyOptions);
         }),
     )
     .command(
