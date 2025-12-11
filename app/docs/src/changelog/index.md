@@ -2,6 +2,58 @@
 
 All notable changes to System Initiative will be documented in this file.
 
+## December 2nd to 7th, 2025
+
+### ✨ Added
+
+- Added support for generating templates in the SI binary.
+- Added the ability to create secrets from the SI CLI.
+- Added support for fetching remote templates via the CLI.
+- Added change set management capabilities to the SI CLI.
+
+### 🔄 Changed
+
+- Ensured automation tokens are revoked when a workspace is deleted.
+- Updated the styling of the Actions panel in the Web App.
+
+### 🐞 Fixed
+
+- Fixed an issue where `NotFound` components were not treated as 404 responses
+  in the Public API.
+- Fixed an issue hiding hidden parent props in the Web App Attribute Panel.
+- Fixed indexing issues in the Web App with SQLite to support multiple tabs
+  correctly.
+- Fixed an issue where the AI Agent did not correctly write Codex configuration
+  to disk.
+- Fixed outdated function run logs in the Web App.
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/saN-K5Kay8g?si=xNJ81ga20rQXEx42" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+
+## November 24th to 30th, 2025
+
+### ✨ Added
+
+- Added the option to skip creating overlays when using the SI binary for
+  authoring.
+- Added workspace filtering on the Web App home page.
+- Added the ability to contribute modules through the Public API.
+- Released a new SI binary in the artifacts store.
+- Added support for OpenAI Codex in the AI Agent (available via the SI binary).
+- Introduced Unix and Windows installers for the SI binary.
+
+### 🔄 Changed
+
+- Improved component import workflows in the Web Application.
+- Removed template creation from both the Web App and the Public API.
+
+### 🐞 Fixed
+
+- Fixed an Auth API issue where workspace names containing domains were
+  incorrectly sent as links.
+- Fixed an onboarding flow issue in the Web App when using the override option.
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/2wmX-Ss-cfk?si=BA-HDZxQcrMHdexN" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+
 ## November 17th to 23rd, 2025
 
 ### ✨ Added
@@ -30,6 +82,8 @@ All notable changes to System Initiative will be documented in this file.
   function type.
 - Fixed schema color handling when authoring via the **SI binary**.
 - Fixed an issue creating a **template from baseline** in the SI binary.
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/J-bAGaiJoPk?si=n9_KXq29W6rVxI-4" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
 
 ## November 10th to 16th, 2025
 
