@@ -5,7 +5,7 @@
   "tags": [
     "frigg",
     "materialized-view",
-    "change-set-index"
+    "edda"
   ],
   "timezone": "browser",
   "schemaVersion": 16,

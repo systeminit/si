@@ -21,6 +21,7 @@ rust_library(
         "//lib/si-posthog-rs:si-posthog",
         "//lib/telemetry-nats-rs:telemetry-nats",
         "//lib/telemetry-rs:telemetry",
+        "//lib/telemetry-utils-rs:telemetry-utils",
         "//third-party/rust:axum",
         "//third-party/rust:bytes",
         "//third-party/rust:futures",

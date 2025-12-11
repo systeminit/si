@@ -634,7 +634,7 @@ mod handlers {
     /// variants under that schema.
     #[instrument(
         level = "info",
-        name = "edda.requests.chnage_set.process.post_process_changes",
+        name = "edda.requests.change_set.process.post_process_changes",
         skip_all
     )]
     async fn post_process_changes(ctx: &DalContext, changes: &mut Vec<Change>) -> Result<()> {
