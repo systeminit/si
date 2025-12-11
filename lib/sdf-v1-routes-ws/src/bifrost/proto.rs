@@ -39,7 +39,10 @@ use serde::{
     Deserialize,
     Serialize,
 };
-use si_data_nats::ConnectionMetadata;
+use si_data_nats::{
+    ConnectionMetadata,
+    OpenTelemetryContext,
+};
 use si_frontend_types::FrontEndObjectRequest;
 use task::{
     BifrostFriggReadsTask,
@@ -49,6 +52,7 @@ use telemetry::{
     OpenTelemetrySpanExt,
     prelude::*,
 };
+use telemetry_utils::monotonic;
 use thiserror::Error;
 use tokio::sync::mpsc;
 use tokio_stream::{
@@ -339,7 +343,7 @@ impl BifrostStarted {
                                 .map_err(BifrostError::FriggReadsTaskResponseSerialize)?;
                             let msg = ws::Message::Text(payload);
 
-                            match Self::send_ws_client_message(ws_client, msg).await {
+                            match Self::send_ws_client_message(ws_client, msg, None).await {
                                 // Web socket closed, tear down
                                 Some(Ok(_)) => {
                                     debug!(
@@ -370,7 +374,8 @@ impl BifrostStarted {
                     match maybe_nats_message_result {
                         // We have a message
                         Some(Ok(payload_with_nats_message)) => {
-                            let ws_message = match self.build_ws_message(payload_with_nats_message).await {
+                            let MultiplexerRequestPayload { nats_message, otel_ctx } = payload_with_nats_message;
+                            let ws_message = match self.build_ws_message(nats_message).await {
                                 Ok(ws_message) => ws_message,
                                 Err(err) => {
                                     warn!(
@@ -381,7 +386,7 @@ impl BifrostStarted {
                                 }
                             };
 
-                            match Self::send_ws_client_message(ws_client, ws_message).await {
+                            match Self::send_ws_client_message(ws_client, ws_message, otel_ctx).await {
                                 // Web socket closed, tear down
                                 Some(Ok(_)) => {
                                     debug!(
@@ -425,51 +430,38 @@ impl BifrostStarted {
 
     #[instrument(
         name = "sdf.bifrost.build_ws_message",
-        level = "info",
+        level = "debug",
         skip_all,
         fields(
             bytes.size.compressed = Empty,
             bytes.size.uncompressed = Empty,
         ),
     )]
-    async fn build_ws_message(&self, payload: MultiplexerRequestPayload) -> Result<ws::Message> {
-        let span = current_span_for_instrument_at!("info");
+    async fn build_ws_message(&self, nats_message: si_data_nats::Message) -> Result<ws::Message> {
+        let span = current_span_for_instrument_at!("debug");
 
-        if let Some(otel_ctx) = payload.otel_ctx {
-            span.set_parent(otel_ctx);
-        }
-
-        let payload_buf = if header::content_encoding_is(
-            payload.nats_message.headers(),
-            ContentEncoding::DEFLATE,
-        ) {
-            span.record(
-                "bytes.size.compressed",
-                payload.nats_message.payload().len(),
-            );
-            self.compute_executor
-                .spawn(async move {
-                    let compressed = payload.nats_message.into_inner().payload;
-                    inflate::decompress_to_vec(&compressed)
-                })
-                .await?
-                .map_err(|decompress_err| Error::Decompress(decompress_err.to_string()))?
-        } else if header::content_encoding_is(payload.nats_message.headers(), ContentEncoding::ZLIB)
-        {
-            span.record(
-                "bytes.size.compressed",
-                payload.nats_message.payload().len(),
-            );
-            self.compute_executor
-                .spawn(async move {
-                    let compressed = payload.nats_message.into_inner().payload;
-                    inflate::decompress_to_vec_zlib(&compressed)
-                })
-                .await?
-                .map_err(|decompress_err| Error::Decompress(decompress_err.to_string()))?
-        } else {
-            payload.nats_message.into_inner().payload.into()
-        };
+        let payload_buf =
+            if header::content_encoding_is(nats_message.headers(), ContentEncoding::DEFLATE) {
+                span.record("bytes.size.compressed", nats_message.payload().len());
+                self.compute_executor
+                    .spawn(async move {
+                        let compressed = nats_message.into_inner().payload;
+                        inflate::decompress_to_vec(&compressed)
+                    })
+                    .await?
+                    .map_err(|decompress_err| Error::Decompress(decompress_err.to_string()))?
+            } else if header::content_encoding_is(nats_message.headers(), ContentEncoding::ZLIB) {
+                span.record("bytes.size.compressed", nats_message.payload().len());
+                self.compute_executor
+                    .spawn(async move {
+                        let compressed = nats_message.into_inner().payload;
+                        inflate::decompress_to_vec_zlib(&compressed)
+                    })
+                    .await?
+                    .map_err(|decompress_err| Error::Decompress(decompress_err.to_string()))?
+            } else {
+                nats_message.into_inner().payload.into()
+            };
 
         span.record("bytes.size.uncompressed", payload_buf.len());
         let payload_str = String::from_utf8(payload_buf).map_err(Error::PayloadStringParse)?;
@@ -477,10 +469,19 @@ impl BifrostStarted {
         Ok(ws::Message::Text(payload_str))
     }
 
+    #[instrument(name = "sdf.bifrost.send_ws_client_message", level = "info", skip_all)]
     async fn send_ws_client_message(
         ws_client: &mut ws::WebSocket,
         ws_message: ws::Message,
+        parent_otel_ctx: Option<OpenTelemetryContext>,
     ) -> Option<Result<()>> {
+        monotonic!(sdf_bifrost_send_ws_client_message = 1);
+
+        let span = current_span_for_instrument_at!("info");
+        if let Some(otel_ctx) = parent_otel_ctx {
+            span.set_parent(otel_ctx);
+        }
+
         if let Err(err) = ws_client.send(ws_message).await {
             match err
                 .source()

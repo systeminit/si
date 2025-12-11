@@ -26,6 +26,7 @@ use telemetry::{
     prelude::*,
 };
 use telemetry_nats::propagation;
+use telemetry_utils::monotonic;
 use thiserror::Error;
 
 #[remain::sorted]
@@ -72,20 +73,27 @@ impl EddaUpdates {
         }
     }
 
-    #[instrument(
-        name = "edda_updates.publish_change_set_patch_batch",
-        level = "debug",
-        skip_all
-    )]
     pub(crate) async fn publish_change_set_patch_batch(
         &self,
         patch_batch: ChangesetPatchBatch,
-        parent_span: &Span,
     ) -> Result<()> {
+        // Only publish a change set patch batch if we are not streaming patches.
         if self.streaming_patches {
-            return Ok(());
+            Ok(())
+        } else {
+            self.publish_change_set_patch_batch_inner(patch_batch).await
         }
+    }
 
+    #[instrument(
+        name = "edda_updates.publish_change_set_patch_batch",
+        level = "info",
+        skip_all
+    )]
+    async fn publish_change_set_patch_batch_inner(
+        &self,
+        patch_batch: ChangesetPatchBatch,
+    ) -> Result<()> {
         let mut id_buf = WorkspacePk::array_to_str_buf();
 
         let subject = nats::subject::workspace_update_for(
@@ -94,45 +102,57 @@ impl EddaUpdates {
             patch_batch.kind(),
         );
 
-        self.serialize_compress_publish(subject, patch_batch, true, parent_span)
+        monotonic!(edda_updates_publish = 1, kind = "change_set_patch_batch");
+        let span = current_span_for_instrument_at!("info");
+        self.serialize_compress_publish(subject, patch_batch, true, &span)
             .await
     }
 
     #[instrument(
-        name = "edda_updates.publish_change_set_patch_batch",
-        level = "debug",
+        name = "edda_updates.publish_deployment_patch_batch",
+        level = "info",
         skip_all
     )]
     pub(crate) async fn publish_deployment_patch_batch(
         &self,
         patch_batch: DeploymentPatchBatch,
-        parent_span: &Span,
     ) -> Result<()> {
         let subject = nats::subject::deployment_update_for(
             self.subject_prefix.as_deref(),
             patch_batch.kind(),
         );
 
-        self.serialize_compress_publish(subject, patch_batch, true, parent_span)
+        monotonic!(edda_updates_publish = 1, kind = "deployment_patch_batch");
+        let span = current_span_for_instrument_at!("info");
+        self.serialize_compress_publish(subject, patch_batch, true, &span)
             .await
+    }
+
+    pub(crate) async fn publish_streaming_patch(
+        &self,
+        streaming_patch: StreamingPatch,
+    ) -> Result<()> {
+        // Only publish streaming patch if we are streaming patches.
+        if self.streaming_patches {
+            self.publish_streaming_patch_inner(streaming_patch).await
+        } else {
+            Ok(())
+        }
     }
 
     #[instrument(
         name = "edda_updates.publish_streaming_patch",
-        level = "debug",
+        level = "info",
         skip_all
     )]
-    pub(crate) async fn publish_streaming_patch(
-        &self,
-        streaming_patch: StreamingPatch,
-        parent_span: &Span,
-    ) -> Result<()> {
-        if !self.streaming_patches {
-            return Ok(());
-        }
-
+    async fn publish_streaming_patch_inner(&self, streaming_patch: StreamingPatch) -> Result<()> {
         let mut id_buf = WorkspacePk::array_to_str_buf();
 
+        monotonic!(
+            edda_updates_publish = 1,
+            kind = "change_set_streaming_patch"
+        );
+        let span = current_span_for_instrument_at!("info");
         self.serialize_compress_publish(
             nats::subject::workspace_update_for(
                 self.subject_prefix.as_deref(),
@@ -141,20 +161,19 @@ impl EddaUpdates {
             ),
             streaming_patch,
             true,
-            parent_span,
+            &span,
         )
         .await
     }
 
     #[instrument(
         name = "edda_updates.publish_change_set_index_update",
-        level = "debug",
+        level = "info",
         skip_all
     )]
     pub(crate) async fn publish_change_set_index_update(
         &self,
         index_update: ChangesetIndexUpdate,
-        parent_span: &Span,
     ) -> Result<()> {
         let mut id_buf = WorkspacePk::array_to_str_buf();
 
@@ -164,26 +183,29 @@ impl EddaUpdates {
             index_update.kind(),
         );
 
-        self.serialize_compress_publish(subject, index_update, false, parent_span)
+        monotonic!(edda_updates_publish = 1, kind = "change_set_index_update");
+        let span = current_span_for_instrument_at!("info");
+        self.serialize_compress_publish(subject, index_update, false, &span)
             .await
     }
 
     #[instrument(
         name = "edda_updates.publish_deployment_index_update",
-        level = "debug",
+        level = "info",
         skip_all
     )]
     pub(crate) async fn publish_deployment_index_update(
         &self,
         index_update: DeploymentIndexUpdate,
-        parent_span: &Span,
     ) -> Result<()> {
         let subject = nats::subject::deployment_update_for(
             self.subject_prefix.as_deref(),
             index_update.kind(),
         );
 
-        self.serialize_compress_publish(subject, index_update, false, parent_span)
+        monotonic!(edda_updates_publish = 1, kind = "deployment_index_update");
+        let span = current_span_for_instrument_at!("info");
+        self.serialize_compress_publish(subject, index_update, false, &span)
             .await
     }
 
@@ -247,7 +269,7 @@ impl EddaUpdates {
                 "message payload size {} exceeds NATS max_payload size {}; {}",
                 payload.len(),
                 self.max_payload,
-                "message will fail to be publised on NATS",
+                "message will fail to be published on NATS",
             );
         }
 

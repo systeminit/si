@@ -52,6 +52,7 @@ use telemetry::{
     prelude::*,
 };
 use telemetry_nats::propagation;
+use telemetry_utils::monotonic;
 use thiserror::Error;
 use tokio::sync::{
     broadcast,
@@ -73,8 +74,7 @@ pub enum MultiplexerError {
     Nats(#[from] si_data_nats::Error),
 }
 
-#[allow(missing_docs)]
-pub type MultiplexerResult<T> = Result<T, MultiplexerError>;
+type Result<T> = std::result::Result<T, MultiplexerError>;
 
 /// A [NATS](https://nats.io) multiplexer, will contains a subscription to one subject and contains a map of channels
 /// for those wishing to receive from the same or more-specific subjects.
@@ -99,7 +99,7 @@ impl Multiplexer {
         subject: impl ToSubject,
         token: CancellationToken,
         activate_instrumentation_with_name: Option<String>,
-    ) -> MultiplexerResult<(Self, MultiplexerClient)> {
+    ) -> Result<(Self, MultiplexerClient)> {
         let subject = subject.to_subject();
         let subscriber = nats.subscribe(subject.clone()).await?;
         let (client_tx, client_rx) = mpsc::unbounded_channel();
@@ -118,11 +118,10 @@ impl Multiplexer {
 
     /// Runs the [`Multiplexer`] with a given shutdown receiver.
     pub async fn run(mut self) {
-        debug!(%self.subject, "running channel multiplexer");
-
         loop {
             tokio::select! {
                 Some(message) = self.subscriber.next() => {
+                    monotonic!(nats_multiplexer.incoming_message = 1, subject = self.subject.as_str());
                     match &self.activate_instrumentation_with_name {
                         Some(name) => {
                             if let Err(err) = self.process_message_with_instrumentation(message, name) {
@@ -173,11 +172,7 @@ impl Multiplexer {
     }
 
     #[instrument(name = "nats_multiplexer.multiplexer.process_message", level = "info", skip_all, fields(si.nats_multiplexer.name = %name))]
-    fn process_message_with_instrumentation(
-        &self,
-        message: Message,
-        name: &str,
-    ) -> MultiplexerResult<()> {
+    fn process_message_with_instrumentation(&self, message: Message, name: &str) -> Result<()> {
         let span = current_span_for_instrument_at!("info");
 
         if let Some(headers) = message.headers() {
@@ -191,7 +186,7 @@ impl Multiplexer {
         &self,
         message: Message,
         otel_ctx: Option<OpenTelemetryContext>,
-    ) -> MultiplexerResult<()> {
+    ) -> Result<()> {
         let subject = message.subject().to_string();
 
         // We need to fan out not only to those receiving for the literal subject, but also for those using wildcards.
@@ -213,7 +208,7 @@ impl Multiplexer {
         Ok(())
     }
 
-    fn process_client_request(&mut self, request: MultiplexerRequest) -> MultiplexerResult<()> {
+    fn process_client_request(&mut self, request: MultiplexerRequest) -> Result<()> {
         match request {
             MultiplexerRequest::Add((subject, reply_tx)) => {
                 // NOTE(nick): major props to fnichol for this idea.

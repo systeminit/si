@@ -198,7 +198,6 @@ pub async fn build_mv_inner(
     workspace_pk: si_id::WorkspacePk,
     change_set_id: ChangeSetId,
     changes: &[Change],
-    parent_span: &Span,
 ) -> Result<BuildMvInnerReturn, MaterializedViewError> {
     let mut frontend_objects = Vec::new();
     let mut patches = Vec::new();
@@ -292,7 +291,7 @@ pub async fn build_mv_inner(
                             patch.patch.clone(),
                         );
                         edda_updates
-                            .publish_streaming_patch(streaming_patch, parent_span)
+                            .publish_streaming_patch(streaming_patch)
                             .await?;
 
                         debug!("Patch!: {:?}", patch);
