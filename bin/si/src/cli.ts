@@ -415,8 +415,12 @@ function buildLoginCommand() {
  */
 function buildLogoutCommand() {
   return createSubCommand()
-    .description("Logout from System Initiative and clear stored credentials")
-    .action(() => {
+    .description("Logout from System Initiative")
+    .option(
+      "--clear",
+      "Also delete stored tokens for the current user from disk",
+    )
+    .action(({ clear }) => {
       const ctx = Context.instance();
 
       // Check if user is logged in
@@ -431,7 +435,7 @@ function buildLogoutCommand() {
       const userEmail = userDetails?.email || "unknown user";
 
       // Clear stored authentication
-      logout();
+      logout(clear ?? false);
 
       ctx.logger.info(`Logged out successfully. Goodbye ${userEmail}!`);
     });

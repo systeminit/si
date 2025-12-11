@@ -30,8 +30,8 @@ export function logAllFunctions(obj: unknown) {
   const allPrototypeProps = Object.getOwnPropertyNames(
     Object.getPrototypeOf(objWithIndex),
   );
-  const prototypeFunctions = allPrototypeProps.filter((name) =>
-    typeof objWithIndex[name] === "function"
+  const prototypeFunctions = allPrototypeProps.filter(
+    (name) => typeof objWithIndex[name] === "function",
   );
   console.log(prototypeFunctions);
 }
@@ -177,14 +177,14 @@ export async function logComponentWithSchema(
  */
 export function generateChangeSetUrl(
   workspace: WorkspaceDetails,
-  changeSetId: string
+  changeSetId: string,
 ): string {
   const baseUrl = workspace.instanceUrl;
 
   return `${baseUrl}/n/${workspace.id}/${changeSetId}`;
 }
 
-export async function sleep(ms: number) {
+export function sleep(ms: number) {
   const positive_ms = Math.max(0, Math.floor(ms));
   return new Promise((resolve) => {
     setTimeout(resolve, positive_ms);

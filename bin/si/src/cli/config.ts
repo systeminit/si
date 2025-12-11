@@ -287,27 +287,17 @@ export function hasStoredConfig(): boolean {
 
 /**
  * Logs out by clearing the current user and workspace settings.
- * This removes the stored authentication state, requiring a new login.
+ *
+ * If clear = true this removes the stored authentication state for the user,
+ * requiring a new tokens to be created.
+ *
  */
-export function logout(): void {
+export function logout(clear: boolean = false): void {
   // Get the current user and workspace IDs before removing the files
   const userId = getCurrentUser();
-  const workspaceId = getCurrentWorkspace();
-
-  // Remove the workspace folder if it exists
-  if (userId && workspaceId) {
-    try {
-      const workspacePath = join(authPath(), userId, workspaceId);
-      Deno.removeSync(workspacePath, { recursive: true });
-    } catch (error) {
-      if (!(error instanceof Deno.errors.NotFound)) {
-        console.warn(`Failed to remove workspace folder: ${error}`);
-      }
-    }
-  }
 
   // Remove the user folder if it exists
-  if (userId) {
+  if (clear && userId) {
     try {
       const userPath = join(authPath(), userId);
       Deno.removeSync(userPath, { recursive: true });
