@@ -1,4 +1,5 @@
 import { getApiUrlForInstance } from "./config.ts";
+import { tryGetUserDataFromToken } from "./jwt.ts";
 
 export interface WorkspaceDetails {
   instanceUrl: string;
@@ -159,3 +160,26 @@ export class AuthApiClient {
     };
   }
 }
+
+export const isTokenAboutToExpire = (
+  token: string,
+  graceMinutes: number = 60,
+): boolean => {
+  try {
+    const userData = tryGetUserDataFromToken(token);
+
+    if (!userData.exp) {
+      return true;
+    }
+
+    const now = new Date();
+    const expirationDate = userData.exp;
+    const gracePeriodMs = graceMinutes * 60 * 1000;
+
+    const timeUntilExpiration = expirationDate.getTime() - now.getTime();
+
+    return timeUntilExpiration <= gracePeriodMs;
+  } catch (_err) {
+    return true;
+  }
+};

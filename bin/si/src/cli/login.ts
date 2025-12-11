@@ -1,7 +1,7 @@
 import { createServer } from "node:net";
 import { open } from "jsr:@opensrc/deno-open";
 import { Context } from "../context.ts";
-import { AuthApiClient } from "./auth.ts";
+import { AuthApiClient, isTokenAboutToExpire } from "./auth.ts";
 import {
   getUserDetails,
   getWorkspaceDetails,
@@ -184,7 +184,7 @@ export async function doLogin(authApiUrl: string): Promise<string> {
     const workspaces = await authApiClient.getWorkspaces();
 
     // Prompt for workspace selection
-    const selectedWorkspaceId = await prompt.workspace(undefined, workspaces);
+    const selectedWorkspaceId = await prompt.workspace(workspaces);
     const details = workspaces.find((w) => w.id === selectedWorkspaceId);
     if (!details) {
       // should be impossible
@@ -194,7 +194,14 @@ export async function doLogin(authApiUrl: string): Promise<string> {
     const { workspaceDetails: _, token: maybeWorkspaceToken } =
       getWorkspaceDetails(userId, selectedWorkspaceId);
     let workspaceAutomationToken;
-    if (!maybeWorkspaceToken) {
+
+    const isAboutToExpire =
+      maybeWorkspaceToken && isTokenAboutToExpire(maybeWorkspaceToken);
+
+    if (!maybeWorkspaceToken || isAboutToExpire) {
+      ctx.logger.debug(
+        `Creating new workspace token for ${selectedWorkspaceId}`,
+      );
       const workspaceToken =
         await authApiClient.createWorkspaceToken(selectedWorkspaceId);
       workspaceAutomationToken = workspaceToken;

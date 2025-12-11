@@ -24,7 +24,7 @@
  * @module
  */
 
-import { Input } from "@cliffy/prompt";
+import { Input, Select } from "@cliffy/prompt";
 import type { InputOptions } from "@cliffy/prompt/input";
 import { Project } from "../schema/project.ts";
 import { isInteractive } from "../logger.ts";
@@ -359,38 +359,23 @@ export async function authName(
  * ```
  */
 export async function workspace(
-  workspaceId: string | undefined,
   existingWorkspaces: WorkspaceDetails[],
 ): Promise<string> {
-  if (workspaceId !== undefined) {
-    return workspaceId;
-  }
-
   if (!isInteractive()) {
-    throw new ValidationError("Missing required argument for Workspace Name");
+    throw new ValidationError("Interactive terminal required");
   }
 
-  // Create a map of display names to IDs for lookup
-  const nameToId = new Map<string, string>();
-  const displayNames: string[] = [];
-
+  const options: { name: string; value: string }[] = [];
   for (const workspace of existingWorkspaces) {
     const displayName = workspace.displayName || workspace.id;
-    const selectionName = `${displayName} (${workspace.baseUrl})`;
-    nameToId.set(selectionName, workspace.id);
-    displayNames.push(selectionName);
+    const selectionName = `${displayName} - ${workspace.id} - (${workspace.baseUrl})`;
+    options.push({ name: selectionName, value: workspace.id });
   }
 
   // Prompt with display names
-  const selectedName = await Input.prompt(
-    createPromptOptions("Set current workspace", displayNames, true, true),
-  );
-
-  // Return the ID corresponding to the selected display name
-  const resolvedId = nameToId.get(selectedName);
-  if (!resolvedId) {
-    throw new ValidationError(`Invalid workspace selection: ${selectedName}`);
-  }
-
-  return resolvedId;
+  return await Select.prompt({
+    message: "Set current workspace",
+    search: true,
+    options,
+  });
 }
