@@ -8,7 +8,7 @@
  * @module
  */
 
-import { ActionsApi, ChangeSetsApi, ActionViewV1 } from "@systeminit/api-client";
+import { ActionsApi, ChangeSetsApi, type ActionViewV1 } from "@systeminit/api-client";
 import { Context } from "../context.ts";
 import type { ChangeSetApplyOptions } from "./types.ts";
 import { resolveChangeSet } from "./utils.ts";
