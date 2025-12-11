@@ -24,8 +24,8 @@ def artifact_publish_impl(ctx: AnalysisContext) -> list[[DefaultInfo, RunInfo]]:
         ctx.attrs.artifact[ArtifactInfo].metadata,
     )
     if ctx.attrs.cname:
-      cmd.add("--cname")
-      cmd.add(ctx.attrs.cname)
+        cmd.add("--cname")
+        cmd.add(ctx.attrs.cname)
 
     ctx.actions.write(cli_args.as_output(), cmd)
 
@@ -82,8 +82,8 @@ def artifact_promote_impl(ctx: AnalysisContext) -> list[[DefaultInfo, RunInfo]]:
         ctx.attrs.variant,
     )
     if ctx.attrs.cname:
-      cmd.add("--cname")
-      cmd.add(ctx.attrs.cname)
+        cmd.add("--cname")
+        cmd.add(ctx.attrs.cname)
 
     ctx.actions.write(cli_args.as_output(), cmd)
 
@@ -130,13 +130,13 @@ artifact_promote = rule(
 
 def artifact_download_impl(ctx: AnalysisContext) -> list[Provider]:
     """Download an artifact from S3 without extraction."""
-    
-    # Construct S3 URL  
+
+    # Construct S3 URL
     filename = "{}-{}-{}-{}.tar.gz".format(
         ctx.attrs.family,
         ctx.attrs.version,
         ctx.attrs.os,
-        ctx.attrs.arch
+        ctx.attrs.arch,
     )
     url = "{}/{}/{}/{}/{}/{}".format(
         ctx.attrs.destination.rstrip("/"),
@@ -144,19 +144,19 @@ def artifact_download_impl(ctx: AnalysisContext) -> list[Provider]:
         ctx.attrs.version,
         ctx.attrs.os,
         ctx.attrs.arch,
-        filename
+        filename,
     )
-    
+
     # Download file
     output_file = ctx.actions.declare_output("{}-{}-{}-{}.tar.gz".format(
         ctx.attrs.family,
         ctx.attrs.version,
         ctx.attrs.os,
-        ctx.attrs.arch
+        ctx.attrs.arch,
     ))
-    
+
     ctx.actions.download_file(output_file.as_output(), url, sha256 = ctx.attrs.sha256)
-    
+
     return [DefaultInfo(default_output = output_file)]
 
 artifact_download = rule(
