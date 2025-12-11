@@ -20,17 +20,17 @@ export function applyAssetOverrides(
     const variant = spec.schemas[0].variants[0];
 
     // If there's a schema-level override for this spec, run it
-    const schemaOverrideFns = providerConfig.overrides.schemaOverrides.get(
-      spec.name,
-    );
-    if (schemaOverrideFns) {
-      logger.debug(`Running schema override for ${spec.name}`);
-      if (Array.isArray(schemaOverrideFns)) {
-        for (const schemaOverrideFn of schemaOverrideFns) {
-          schemaOverrideFn(spec);
+    for (const [matchPattern, schemaOverrideFns] of providerConfig.overrides.schemaOverrides) {
+      // Support exact match or wildcard "*"
+      if (matchPattern === "*" || matchPattern === spec.name) {
+        logger.debug(`Running schema override for ${spec.name} (pattern: ${matchPattern})`);
+        if (Array.isArray(schemaOverrideFns)) {
+          for (const schemaOverrideFn of schemaOverrideFns) {
+            schemaOverrideFn(spec);
+          }
+        } else {
+          schemaOverrideFns(spec);
         }
-      } else {
-        schemaOverrideFns(spec);
       }
     }
 

@@ -151,6 +151,19 @@ function cleanPayload(domain) {
     }
   }
 
+  // Transform userAssignedIdentities from array to map for Azure API
+  // Users provide: ["/subscriptions/.../identity1"]
+  // Azure expects: {"/subscriptions/.../identity1": {}}
+  if (payload.identity?.userAssignedIdentities && Array.isArray(payload.identity.userAssignedIdentities)) {
+    const identities = {};
+    for (const identityId of payload.identity.userAssignedIdentities) {
+      if (identityId) {
+        identities[identityId] = {};
+      }
+    }
+    payload.identity.userAssignedIdentities = identities;
+  }
+
   // Only check top-level properties - once a property is included, keep all its descendants
   const propsToVisit = _.keys(payload).map((k: string) => [k]);
 
