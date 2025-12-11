@@ -1,7 +1,9 @@
 load(
     "@prelude-si//:artifact.bzl",
+    _VALID_RUST_PLATFORM_TARGETS = "VALID_RUST_PLATFORM_TARGETS",
     _artifact_promote = "artifact_promote",
     _artifact_publish = "artifact_publish",
+    _validate_rust_platform_targets = "validate_rust_platform_targets",
 )
 load(
     "@prelude-si//:build_metadata.bzl",
@@ -61,6 +63,7 @@ def rust_binary(
             git_metadata = "prelude-si//build_metadata:git",
             visibility = visibility,
         )
+
         # Automatically wire Git metadata OUT_DIR for version stamping
         base_env["OUT_DIR"] = "$(location :{})".format(git_metadata_target)
 
@@ -390,31 +393,64 @@ def rust_binary_pkg(
         promote_target = "promote-binary",
         artifact_destination = "s3://si-artifacts-prod",
         artifact_cname = "artifacts.systeminit.com",
+        platform_targets = _VALID_RUST_PLATFORM_TARGETS,
+        skip_all_publish = False,
+        skip_all_promote = False,
         visibility = ["PUBLIC"]):
+    """Create Rust binary artifact with publish/promote targets.
+
+    Args:
+        name: Binary name
+        binary: The rust_binary target
+        source_url: Source code URL for metadata
+        author: Author for metadata
+        license: License string for metadata
+        publish_target: Name for publish target (default: "publish-binary")
+        promote_target: Name for promote target (default: "promote-binary")
+        artifact_destination: S3 destination for artifacts
+        artifact_cname: Canonical hostname for artifact URLs
+        platform_targets: List of target platforms. Defaults to Linux native platforms.
+        skip_all_publish: Skip publishing this artifact (default: False)
+        skip_all_promote: Skip promoting this artifact (default: False)
+        visibility: Target visibility
+    """
+
+    # Validate platform_targets
+    _validate_rust_platform_targets(platform_targets, "rust_binary_pkg({})".format(name))
+
+    # Base artifact target
     _rust_binary_artifact(
         name = "{}-artifact-info".format(name),
         binary = binary,
         binary_name = name,
-        author = author,
         family = name,
-        license = license,
-        source_url = source_url,
         variant = "binary",
+        author = author,
+        source_url = source_url,
+        license = license,
+        platform_targets = platform_targets,
+        visibility = visibility,
     )
 
+    # Base publish target
     _artifact_publish(
         name = publish_target,
         artifact = ":{}-artifact-info".format(name),
         destination = artifact_destination,
         cname = artifact_cname,
+        platform_targets = platform_targets,
+        skip_all = skip_all_publish,
         visibility = visibility,
     )
 
+    # Base promote target
     _artifact_promote(
         name = promote_target,
         family = name,
         variant = "binary",
         destination = artifact_destination,
         cname = artifact_cname,
+        platform_targets = platform_targets,
+        skip_all = skip_all_promote,
         visibility = visibility,
     )
