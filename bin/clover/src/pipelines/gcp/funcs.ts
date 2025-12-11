@@ -42,15 +42,10 @@ export const ACTION_FUNC_SPECS = {
   FuncSpecInfo & { actionKind: ActionFuncSpecKind }
 >;
 
-export const CODE_GENERATION_FUNC_SPECS = {
-  "Generate Code": {
-    id: "0000000000000000000000000000000000000005",
-    backendKind: "jsAttribute",
-    responseType: "codeGeneration",
-    displayName: "Generate code for a GCP Asset",
-    path: "./src/pipelines/generic/funcs/codeGeneration/generate.ts",
-  },
-} as const satisfies Record<string, FuncSpecInfo>;
+export const CODE_GENERATION_FUNC_SPECS = {} as const satisfies Record<
+  string,
+  FuncSpecInfo
+>;
 
 export const MANAGEMENT_FUNCS = {
   "Discover on GCP": {
@@ -74,12 +69,7 @@ export const MANAGEMENT_FUNCS = {
   FuncSpecInfo & { handlers: CfHandlerKind[] }
 >;
 
-export const QUALIFICATION_FUNC_SPECS = {
-  "Validate GCP Asset": {
-    id: "0000000000000000000000000000000000000008",
-    backendKind: "jsValidation",
-    responseType: "qualification",
-    displayName: "Validate a GCP Asset",
-    path: "./src/pipelines/generic/funcs/qualification/validate.ts",
-  },
-} as const satisfies Record<string, FuncSpecInfo>;
+export const QUALIFICATION_FUNC_SPECS = {} as const satisfies Record<
+  string,
+  FuncSpecInfo
+>;
