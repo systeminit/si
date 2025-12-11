@@ -71,10 +71,14 @@ Actions follow a specific lifecycle within System Initiative:
 5. **Persistence**: Failed actions remain enqueued until they succeed or are
    manually removed
 
-:::tip System Initiative records your intent to take an action, and it remains
-present on [HEAD](/reference/change-sets#the-head-change-set) until it succeeds
-or is intentionally removed. This means you can retry failed actions without
-having to recreate them. :::
+:::tip
+
+System Initiative records your intent to take an action, and it remains present
+on [HEAD](./change-sets.md#the-head-change-set) until it succeeds or is
+intentionally removed. This means you can retry failed actions without having to
+recreate them.
+
+:::
 
 ## Action Execution Order
 
