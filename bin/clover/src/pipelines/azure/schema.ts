@@ -176,6 +176,7 @@ interface SpecMetadata {
   provider: string;
   version: string;
   isStable: boolean;
+  isDataPlane: boolean;
 }
 
 /**
@@ -320,21 +321,36 @@ function parseSpecPath(specPath: string): SpecMetadata | null {
   );
   if (!match) return null;
 
+  // Detect if this is a data-plane spec (vs resource-manager)
+  const isDataPlane = specPath.includes("/data-plane/");
+
   return {
     provider: match[1],
     version: match[3],
     isStable: match[2] === "stable",
+    isDataPlane,
   };
 }
 
 /**
  * Determine if candidate spec should replace the existing one
- * ALWAYS prefers stable over preview, regardless of version
+ * Priority order:
+ * 1. resource-manager over data-plane
+ * 2. stable over preview
+ * 3. higher version number
  */
 function shouldReplace(
   existing: SpecMetadata,
   candidate: SpecMetadata,
 ): boolean {
+  // Always prefer resource-manager over data-plane
+  if (!existing.isDataPlane && candidate.isDataPlane) {
+    return false;
+  }
+  if (existing.isDataPlane && !candidate.isDataPlane) {
+    return true;
+  }
+
   // If existing is stable and candidate is preview, never replace
   if (existing.isStable && !candidate.isStable) {
     return false;
