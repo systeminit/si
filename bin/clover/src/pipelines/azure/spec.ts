@@ -945,6 +945,16 @@ function removeReadOnlyProperty(
         if (Object.keys(properties).length === 0) return undefined;
         property = { ...property, properties };
       }
+      // Handle additionalProperties (maps/dictionaries)
+      if (property.additionalProperties) {
+        const additionalProps = removeReadOnlyProperty(property.additionalProperties, seen);
+        // For maps with all readOnly fields, keep as empty object instead of removing
+        if (!additionalProps) {
+          property = { ...property, additionalProperties: { type: "object", properties: {} } };
+        } else {
+          property = { ...property, additionalProperties: additionalProps };
+        }
+      }
       break;
     }
     case "array": {
