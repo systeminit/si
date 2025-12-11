@@ -54,10 +54,7 @@ import {
   callAiAgentConfig,
 } from "./ai-agent/config.ts";
 import { callSecretCreate, type SecretCreateOptions } from "./secret/create.ts";
-import {
-  callSecretUpdate,
-  type SecretUpdateOptions,
-} from "./secret/update.ts";
+import { callSecretUpdate, type SecretUpdateOptions } from "./secret/update.ts";
 import {
   callChangeSetCreate,
   type ChangeSetCreateOptions,
@@ -84,7 +81,7 @@ import {
   setCurrentWorkspace,
   writeWorkspace,
 } from "./cli/config.ts";
-import { AuthApiClient } from "./cli/auth.ts";
+import { AuthApiClient, isTokenAboutToExpire } from "./cli/auth.ts";
 
 /**
  * Global options available to all commands
@@ -528,10 +525,7 @@ function buildWorkspaceSwitchCommand() {
         }
 
         // Prompt for new workspace selection
-        const selectedWorkspaceId = await prompt.workspace(
-          undefined,
-          workspaces,
-        );
+        const selectedWorkspaceId = await prompt.workspace(workspaces);
 
         // Check if it's the same workspace
         if (selectedWorkspaceId === currentWorkspaceId) {
@@ -552,12 +546,20 @@ function buildWorkspaceSwitchCommand() {
           selectedWorkspaceId,
         );
 
-        if (!existingToken) {
-          // Generate new workspace token if needed
-          ctx.logger.info("Generating workspace access token...");
+        const isAboutToExpire =
+          existingToken && isTokenAboutToExpire(existingToken);
+
+        if (!existingToken || isAboutToExpire) {
+          ctx.logger.info(
+            `Generating workspace access token for ${selectedWorkspaceId}`,
+          );
           const workspaceToken =
             await authApiClient.createWorkspaceToken(selectedWorkspaceId);
           writeWorkspace(currentUserId, selectedWorkspace, workspaceToken);
+        } else {
+          ctx.logger.info(
+            `Reusing existing workspace token for ${selectedWorkspaceId}`,
+          );
         }
 
         // Update current workspace
@@ -1254,14 +1256,8 @@ function buildSecretCommand() {
           "--secret-name <name:string>",
           "Secret name to update (use this or --secret-id)",
         )
-        .option(
-          "--name <name:string>",
-          "New name for the secret",
-        )
-        .option(
-          "--description <desc:string>",
-          "New description for the secret",
-        )
+        .option("--name <name:string>", "New name for the secret")
+        .option("--description <desc:string>", "New description for the secret")
         .option(
           "-c, --change-set <id-or-name:string>",
           "Change set ID or name (creates new change set if not specified)",
@@ -1270,10 +1266,7 @@ function buildSecretCommand() {
           "--use-local-profile",
           "Discover credentials from local environment (e.g., AWS credentials)",
         )
-        .option(
-          "--interactive",
-          "Prompt for all values interactively",
-        )
+        .option("--interactive", "Prompt for all values interactively")
         .option(
           "--dry-run",
           "Show what would be updated without making changes",
@@ -1358,17 +1351,68 @@ function buildChangeSetCommand() {
 
 async function ensureApiConfig(options: GlobalOptions): Promise<void> {
   const ctx = Context.instance();
-  if (ctx.apiToken && ctx.baseUrl) {
+
+  const authApiToken = ctx.authApiToken;
+  if (authApiToken && isTokenAboutToExpire(authApiToken)) {
+    if (ctx.isInteractive) {
+      await doLogin(options.authApiUrl);
+      await Context.initFromConfig(options);
+      return;
+    } else {
+      ctx.logger.warn(
+        "Your auth token is about to expire or has expired, please run `si login` in an interactive terminal to refresh it",
+      );
+    }
+  }
+
+  const isApiTokenAboutToExpire =
+    ctx.apiToken && isTokenAboutToExpire(ctx.apiToken);
+
+  if (ctx.apiToken && !isApiTokenAboutToExpire) {
     ctx.logger.debug("API configured! Good job");
     return;
   }
 
+  if (options.apiToken && isApiTokenAboutToExpire) {
+    ctx.logger.error(
+      "The api token you set in your environment, or via a command line argument, has expired.",
+    );
+    Deno.exit(78);
+  } else if (
+    ctx.apiToken &&
+    isApiTokenAboutToExpire &&
+    authApiToken &&
+    ctx.isInteractive
+  ) {
+    const currentUserId = getCurrentUser();
+    const currentWorkspaceId = getCurrentWorkspace();
+    if (currentWorkspaceId && currentUserId) {
+      const { workspaceDetails } = getWorkspaceDetails(
+        currentUserId,
+        currentWorkspaceId,
+      );
+      if (workspaceDetails) {
+        ctx.logger.info("Your workspace token is expired. Creating a new one");
+        const authApiClient = new AuthApiClient(
+          options.authApiUrl,
+          authApiToken,
+        );
+        const workspaceToken =
+          await authApiClient.createWorkspaceToken(currentWorkspaceId);
+        writeWorkspace(currentUserId, workspaceDetails, workspaceToken);
+        return;
+      }
+    }
+  }
+
+  // If for some reason we cannot regen the automation token (or if none exists),
+  // just do the login flow again
   if (ctx.isInteractive) {
     await doLogin(options.authApiUrl);
     await Context.initFromConfig(options);
   } else {
     const msg =
-      "No API token configured for any workspace. Run `si login` in an interactive terminal or set SI_API_KEY and SI_BASE_URL.";
+      "No API token configured, or your token is expired/about to expire. Run `si login` in an interactive terminal or set SI_API_KEY and SI_BASE_URL.";
     ctx.logger.error(msg);
     throw new Error(msg);
   }
