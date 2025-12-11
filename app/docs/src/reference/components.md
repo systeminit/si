@@ -19,8 +19,8 @@ Components have attributes that can be assigned values. Attributes are typed
 component's attribute values is tracked in the audit log.
 
 Attributes are organized into hierarchical trees. For example, the
-`AWS::EC2::Subnet` component has a attribute named `VpcId`. It's location in the
-attribute tree, what we call the path, is `/domain/VpcId`.
+`AWS::EC2::Subnet` component has an attribute named `VpcId`. It's location in
+the attribute tree, what we call the path, is `/domain/VpcId`.
 
 System Initiative supports maps, objects, and arrays in the attribute tree.
 `Map` is an arbitrary key-value shape where the user can define the keys.
@@ -319,7 +319,7 @@ $ si component update -c 01KC2F3RWYRYQDZ3BRNG69FC28 mycomponent.json
 </TabPanel>
 <TabPanel value="Web Application">
 
-![Setting a attribute](./components/set-attribute.png)
+![Setting an attribute](./components/set-property.png)
 
 1. Navigate to the component detail page.
 2. Filter and / or scroll to the attribute you wish to update
@@ -428,7 +428,7 @@ $ si component update -c 01KC2F3RWYRYQDZ3BRNG69FC28 mycomponent.json
 </TabPanel>
 <TabPanel value="Web Application">
 
-![Subscribing to a attribute](./components/subscribe-attribute.png)
+![Subscribing to an attribute](./components/subscribe-property.png)
 
 1. Navigate to the component detail page.
 2. Filter and / or scroll to the attribute you wish to make a subscription
