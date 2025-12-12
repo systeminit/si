@@ -7,12 +7,12 @@ load(
     "cmd_script",
 )
 load(
-    "//artifact:toolchain.bzl",
-    "ArtifactToolchainInfo",
-)
-load(
     "@prelude-si//:artifact.bzl",
     "ArtifactInfo",
+)
+load(
+    "//artifact:toolchain.bzl",
+    "ArtifactToolchainInfo",
 )
 load(
     "//deno:toolchain.bzl",
@@ -20,12 +20,12 @@ load(
     "DenoWorkspaceInfo",
 )
 load(
-    "//git.bzl",
-    _git_info = "git_info",
-)
-load(
     "//git:toolchain.bzl",
     "GitToolchainInfo",
+)
+load(
+    "//git.bzl",
+    _git_info = "git_info",
 )
 
 DenoTargetRuntimeInfo = provider(fields = {
@@ -630,6 +630,12 @@ deno_binary_artifact = rule(
         ),
         "license": attrs.string(
             doc = "License string to be used in artifact metadata.",
+        ),
+        "platform_targets": attrs.list(
+            attrs.string(),
+            default = [],
+            doc = """List of target platforms this artifact supports.
+            Used by CI to determine which platforms to build.""",
         ),
         "_git_toolchain": attrs.toolchain_dep(
             default = "toolchains//:git",

@@ -317,6 +317,12 @@ rust_binary_artifact = rule(
         "license": attrs.string(
             doc = """License string to be used in package metadata.""",
         ),
+        "platform_targets": attrs.list(
+            attrs.string(),
+            default = [],
+            doc = """List of target platforms this artifact supports.
+            Used by CI to determine which platforms to build.""",
+        ),
         "_git_toolchain": attrs.toolchain_dep(
             default = "toolchains//:git",
             providers = [GitToolchainInfo],
