@@ -141,7 +141,7 @@
                 "
               >
                 <a
-                  href="https://docs.systeminit.com/explanation/search-syntax"
+                  href="https://docs.systeminit.com/reference/search"
                   target="_blank"
                   rel="noopener noreferrer"
                   :class="
