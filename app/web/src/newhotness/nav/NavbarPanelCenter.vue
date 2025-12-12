@@ -2,7 +2,7 @@
   <div
     class="flex flex-row flex-none items-center h-full justify-center place-items-center mx-auto overflow-hidden"
   >
-    <template v-if="connected">
+    <template v-if="isConnected">
       <NavbarButton
         tooltipText="Compose"
         icon="grid"
@@ -65,10 +65,17 @@ import { computed } from "vue";
 import { useRoute } from "vue-router";
 import { themeClasses, Icon } from "@si/vue-lib/design-system";
 import NavbarButton from "@/components/layout/navbar/NavbarButton.vue";
+import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import { useContext } from "../logic_composables/context";
 
 const ctx = useContext();
 const route = useRoute();
+const ffStore = useFeatureFlagsStore();
+
+const isConnected = computed(() => {
+  if (ffStore.SHOW_WS_DISCONNECT) return props.connected;
+  return true;
+});
 
 const props = defineProps<{
   workspaceId: string;

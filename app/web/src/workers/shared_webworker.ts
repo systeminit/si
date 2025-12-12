@@ -120,6 +120,7 @@ async function withLeader<R>(
 }
 
 const clientInterest: Record<string, number> = {};
+const connectionStatus: Record<string, boolean> = {};
 
 const dbInterface: SharedDBInterface = {
   async broadcastMessage(message: BroadcastMessage) {
@@ -234,6 +235,16 @@ const dbInterface: SharedDBInterface = {
       messageKind: "interest",
       arguments: clientInterest,
     });
+  },
+
+  async setConnections(connections: Record<string, boolean>) {
+    Object.entries(connections).forEach(([k, v]) => {
+      connectionStatus[k] = v;
+    });
+  },
+
+  async getConnections() {
+    return connectionStatus;
   },
 
   async initSocket(workspaceId: string): Promise<void> {
@@ -431,6 +442,12 @@ const dbInterface: SharedDBInterface = {
   ): Promise<-1 | 0 | 1> {
     return await withLeader(
       async (remote) => await remote.niflheim(workspaceId, changeSetId),
+    );
+  },
+
+  async syncAtoms(workspaceId: string, changeSetId: string): Promise<void> {
+    return await withLeader(
+      async (remote) => await remote.syncAtoms(workspaceId, changeSetId),
     );
   },
 

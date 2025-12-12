@@ -254,12 +254,15 @@ export interface SharedDBInterface {
     checksum?: Checksum,
   ): Promise<void>;
   showInterest(workspaceId: string, changeSetId: ChangeSetId): Promise<void>;
+  setConnections(connections: Record<string, boolean>): Promise<void>;
+  getConnections(): Promise<Record<string, boolean>>;
 
   changeSetExists(
     workspaceId: string,
     changeSetId: ChangeSetId,
   ): Promise<boolean>;
   niflheim(workspaceId: string, changeSetId: ChangeSetId): Promise<-1 | 0 | 1>;
+  syncAtoms(workspaceId: string, changeSetId: ChangeSetId): Promise<void>;
   vanaheim(workspaceId: string): Promise<boolean>;
   exec(
     opts: ExecBaseOptions &
@@ -402,6 +405,7 @@ export interface TabDBInterface {
     changeSetId: ChangeSetId,
   ): Promise<boolean>;
   niflheim(workspaceId: string, changeSetId: ChangeSetId): Promise<-1 | 0 | 1>;
+  syncAtoms(workspaceId: string, changeSetId: ChangeSetId): Promise<void>;
   vanaheim(workspaceId: string): Promise<boolean>;
   pruneAtomsForClosedChangeSet(
     workspaceId: WorkspacePk,
