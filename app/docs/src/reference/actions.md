@@ -1,8 +1,9 @@
-# Actions <!-- TODO - add links to other reference pages -->
+# Actions
 
-An action in System Initiative is a kind of function which performs a specific
-operation on a resource, such as creating, updating, or deleting it. Actions are
-the bridge between your intended configuration (components) and their associated
+An action in System Initiative is a kind of [function](./function.md) which
+performs a specific operation on a [resource](./components.md#resources), such
+as creating, updating, or deleting it. Actions are the bridge between your
+intended configuration ([components](./components.md)) and their associated
 resources. When you apply a change set, the actions enqueued within it are
 executed to bring reality into alignment with what you have modeled.
 
@@ -107,7 +108,70 @@ When you work in a change set:
 
 Refresh actions and qualifications are the only functions that can run directly
 on HEAD without going through a change set, since they don't modify resources -
-they only read current state or validate configuration.
+they only read current state or validate configuration.These are the core
+properties set
+
+## Action Arguments
+
+Action functions take an `Input` argument. It has a `properties` field which
+contains an object that has:
+
+- The `si` properties
+
+  These are the metadata properties specific to System Initiative.
+
+- The `domain` properties
+
+  These are the core properties specified in the schema itself, usually 1:1 with
+  the resource properties.
+
+- The `resource` data
+
+  This is the output of the last action, stored as the state of the resource. It
+  contains 3 fields:
+
+  - _status_: a string representing the current status of the resource ("ok",
+    "warning", "error", etc.)
+  - _message_: an optional message
+  - _payload_: the resource payload itself
+
+- The `resource_value` data
+
+  This is information pulled into the component properties from resource payload
+  data. These are properties added with the `addResourceProp()` method of a
+  components schema.
+
+- Any generated `code`
+
+  Generated code is available as a map, whose key is the name of the code
+  generation function that generated it.
+
+## Action Return Value
+
+Actions return a data structure identical to the resource data above. You should
+be careful to always return a payload, even on error - frequently, this is the
+last stored payload if it existed.
+
+```typescript
+if (input?.properties?.resource?.payload) {
+  return {
+    status: "error",
+    message: "Resource already exists",
+    payload: input.properties.resource.payload,
+  };
+}
+```
+
+Remember that `message` is optional:
+
+```typescript
+return {
+  payload: JSON.parse(child.stdout).DBCluster,
+  status: "ok",
+};
+```
+
+Payload should be returned as a JavaScript object.
 
 ## Listing Actions
 
@@ -364,3 +428,9 @@ configuring the SDK to communicate with System Initiative.
 
 </TabPanel>
 </DocTabs>
+
+## See Also
+
+For detailed examples and technical implementation details, see the
+[Action Function Examples](/reference/function#action-function-examples) section
+in the Functions Reference.

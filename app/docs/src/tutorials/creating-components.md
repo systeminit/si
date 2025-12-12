@@ -51,9 +51,9 @@ they are synonymous with Components.
 
 :::
 
-## Set the Hello World meta-data
+## Set the Hello World metadata
 
-![Set the Hello World meta-data](./creating-components/set-the-hello-world-meta-data.png)
+![Set the Hello World metadata](./creating-components/set-the-hello-world-meta-data.png)
 
 Set the `Category` to `Tutorial`.
 
@@ -216,7 +216,7 @@ Qualification function.
 
 Name your Qualification `helloWorldTags` and click `+ Attach new function`.
 
-## Set the Qualifications meta-data
+## Set the Qualifications metadata
 
 In the Asset Functions panel on the bottom left, click `Qualifications`, this is
 where your Qualification functions can be selected for editing.
@@ -397,7 +397,7 @@ then Apply the Change set.
 In this tutorial you learned:
 
 - How to add a new Asset
-- Configure its meta-data
+- Configure its metadata
 - Define its Schema
 - Regenerate the Asset to update its Schema
 - Inspect your new Asset
@@ -413,7 +413,7 @@ In this tutorial you learned:
 
 To learn more, explore the reference documentation:
 
-- [Asset Schema Reference](/reference/asset/schema.md) for more information on
-  how to author Asset Schemas.
-- [Asset Function Reference](/reference/asset/function.md) for more information
+- [Schema Reference](/reference/schema.md) for more information on
+  how to author schemas.
+- [Function Reference](/reference/function.md) for more information
   on how to write functions

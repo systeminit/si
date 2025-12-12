@@ -66,9 +66,11 @@ A typical onboarding to System Initiative looks like:
 It's dramatically more straightforward, takes far less time, and doesn't care at all about how you showed up. Come as you are, and focus on what needs to get done.
 
 ::: tip
+
 Still not sure? Let's try an analogy. When you do Infrastructure Automation with Infrastructure as Code, you are writing code that gets applied to the cloud provider. It only works in one direction - you write code, it gets compiled, and the provider gets updated. You store state in a state file, which can get out of sync with the far side.
 
 System Initiative is more like a programmable database, that models all the information 1:1. When you want to make a change, you make it directly in the database, which keeps track of it. So rather than embedding all the infrastructure declarations as 'code', they are 'data', and you can then write programs that manipulate that data.
+
 :::
 
 ## Use Cases

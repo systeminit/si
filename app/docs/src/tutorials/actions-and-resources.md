@@ -262,7 +262,9 @@ You can click the `Refresh Resource` button, on the `Resource` section, to ensur
 have the most up to date resource data.
 
 ::: tip
+
 You can also refresh the resource data from the `Grid`. Right click the Component, hover over Actions and then click `Refresh Asset`.
+
 :::
 
 ![Refresh Resource via Grid](./actions-and-resources/refresh-resource-via-grid.png)

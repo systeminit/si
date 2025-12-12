@@ -1,18 +1,21 @@
-# Asset Functions Reference
+# Functions Reference
 
-Asset functions are written in TypeScript, and executed within a sandbox
-environment using [Firecracker](https://firecracker-microvm.github.io/).
+A Function is code associated with a [schema](./schema.md) which defines an
+operation that schema can do.
 
-## Asset Function Basics
+Functions are written in TypeScript, and executed within a sandbox environment
+using [Firecracker](https://firecracker-microvm.github.io/).
 
-There are 6 types of asset functions:
+## Function Basics
 
-- Action
-- Attribute
-- Authentication
-- Code Generation
-- Qualification
-- Management
+There are 6 types of functions:
+
+- [Action](/reference/actions)
+- [Attribute](/reference/attribute)
+- [Authentication](/reference/authentication)
+- [Code Generation](/reference/code-generation)
+- [Management](/reference/management)
+- [Qualification](/reference/qualification)
 
 ### Executing shell commands
 
@@ -87,86 +90,88 @@ Or to set an item (used only in authentication functions):
 requestStorage.setItem("foo");
 ```
 
-## Action Functions
+## Authoring Functions
 
-Action functions interact with external systems (such as AWS, GCP, or Azure) and
-return resources. They are are en-queued by users in a change set, and executed
-when applied to HEAD. The order of execution is determined automatically by
-walking the relationships between the components.
+<DocTabs tabs="AI Agent,Public API">
 
-There are four types of action function:
+<TabPanel value="AI Agent">
 
-1. Functions that create a resource
-2. Functions that refresh a resource
-3. Functions that delete a resource
-4. Manual functions that update or transform a resource
+To author a function with the AI Agent, simply tell the agent what kind of
+function you wish to create on which schema. You may also need to supply the
+agent with additional necessary cloud provider documentation for the function to
+use.
 
-Create, refresh, and delete are automatically en-queued when their relevant
-activity is taken on the diagram. Manual functions must be en-queued from the
-actions tab of the attribute panel by the user.
+```prompt
+Please add a qualification function to the "example" schema which fails if the "cool" property's value is less than 100.
+```
 
-### Action function arguments
+```prompt
+⏺ I'll add a qualification function to the "example" schema that fails when the "cool" property is less than 100.
 
-Action functions take an `Input` argument. It has a `properties` field which
-contains an object that has:
+⏺ Perfect! I've added a qualification function to the "example" schema. The function is called "Cool Value Must Be At Least 100" and it:
 
-- The `si` properties
+  - Returns "failure" if the "cool" property value is less than 100
+  - Returns "warning" if the "cool" property is not set
+  - Returns "success" if the value is 100 or greater
 
-  These are the core properties set as meta-data for the function. Name, color,
-  etc.
+  Now whenever you create a component using the "example" schema, this qualification will automatically run to validate that the "cool" property meets the minimum requirement of 100.
+```
 
-- The `domain` properties
+</TabPanel>
 
-  These are the properties specified in the schema itself.
+<TabPanel value="Public API">
 
-- The `resource` data
+To author a function with the Public API, you will need to send a request to the
+appropriate API endpoint with your function code, metadata about the function,
+and the schema and schema variant ids for the schema variant you want to add the
+function to.
 
-  This is the output of the last action, stored as the state of the resource. It
-  contains 3 fields:
+These examples create an action function - for other function types, the format
+is similar but the endpoint is different.
 
-  - _status_: one of "ok", "warning", or "error"
-  - _message_: an optional message
-  - _payload_: the resource payload itself
+::: code-group
 
-- The `resource_value` data
+```typescript [TypeScript]
+const response = await schemasApi.createVariantAction({
+  workspaceId,
+  changeSetId,
+  schemaId,
+  schemaVariantId,
+  createVariantActionFuncV1Request: {
+    name, // the name for your function
+    description, // a description of the function
+    code, // the function code itself
+    kind, // the action kind, only necessary for actions
+  },
+});
+```
 
-  This is information pulled into the component properties from resource payload
-  data. These are properties added with the `addResourceProp()` method of a
-  components schema.
-
-- Any generated `code`
-
-  Generated code is available as a map, whose key is the name of the code
-  generation function that generated it.
-
-### Action function return value
-
-Actions return a data structure identical to the resource data above. You should
-be careful to always return a payload, even on error - frequently, this is the
-last stored payload if it existed.
-
-```typescript
-if (input?.properties?.resource?.payload) {
-  return {
-    status: "error",
-    message: "Resource already exists",
-    payload: input.properties.resource.payload,
-  };
+```python [Python]
+request = {
+  "name": "function name here",
+  "description": "function description here",
+  "code": "function code here",
+  "kind": "create", # the action kind, only necessary for actions
 }
+
+response = schemas_api.create_variant_action(
+    workspace_id=workspace_id,
+    change_set_id=change_set_id,
+    schema_id=schema_id,
+    schema_variant_id=schema_variant_id,
+    create_variant_action_func_v1_request=request,
+)
 ```
 
-Remember that `message` is optional:
+:::
 
-```typescript
-return {
-  payload: JSON.parse(child.stdout).DBCluster,
-  status: "ok",
-};
-```
+</TabPanel>
 
-Payload should be returned as a JavaScript object.
+</DocTabs>
 
-### Create action example
+## Action Function Examples
+
+### Create Action Example
 
 A create action that uses generated code, `siExec` and a secret to create an AWS
 EKS cluster:
@@ -197,7 +202,8 @@ async function main(component: Input): Promise<Output> {
     console.error(child.stderr);
     return {
       status: "error",
-      message: `Unable to create; AWS CLI exited with non zero code: ${child.exitCode}`,
+      message:
+        `Unable to create; AWS CLI exited with non zero code: ${child.exitCode}`,
     };
   }
 
@@ -210,7 +216,7 @@ async function main(component: Input): Promise<Output> {
 }
 ```
 
-### Refresh action example
+### Refresh Action Example
 
 A refresh action example that uses lodash and siExec to update an AWS EKS
 cluster:
@@ -256,7 +262,8 @@ async function main(component: Input): Promise<Output> {
     return {
       status: "error",
       payload: resource,
-      message: `Refresh error; exit code ${child.exitCode}.\n\nSTDOUT:\n\n${child.stdout}\n\nSTDERR:\n\n${child.stderr}`,
+      message:
+        `Refresh error; exit code ${child.exitCode}.\n\nSTDOUT:\n\n${child.stdout}\n\nSTDERR:\n\n${child.stderr}`,
     };
   }
 
@@ -268,11 +275,13 @@ async function main(component: Input): Promise<Output> {
 }
 ```
 
-:::warning
+::: warning
+
 Ensure you include previous resource payload on failure!
+
 :::
 
-### Delete action example
+### Delete Action Example
 
 A delete action example that uses lodash and siExec:
 
@@ -298,12 +307,14 @@ async function main(component: Input): Promise<Output> {
       return {
         status: "error",
         payload,
-        message: `Delete error; exit code ${child.exitCode}.\n\nSTDOUT:\n\n${child.stdout}\n\nSTDERR:\n\n${child.stderr}`,
+        message:
+          `Delete error; exit code ${child.exitCode}.\n\nSTDOUT:\n\n${child.stdout}\n\nSTDERR:\n\n${child.stderr}`,
       };
     } else {
       return {
         status: "error",
-        message: `Delete error; exit code ${child.exitCode}.\n\nSTDOUT:\n\n${child.stdout}\n\nSTDERR:\n\n${child.stderr}`,
+        message:
+          `Delete error; exit code ${child.exitCode}.\n\nSTDOUT:\n\n${child.stdout}\n\nSTDERR:\n\n${child.stderr}`,
       };
     }
   }
@@ -318,7 +329,124 @@ async function main(component: Input): Promise<Output> {
 Note that the payload returned here is `null` - this ensures the resource will
 be removed.
 
-### Manual action example
+### Update Action Example
+
+An update action that updates a DigitalOcean Project with new data.
+
+```typescript
+async function main(component: Input): Promise<Output> {
+  const resource = component.properties.resource?.payload;
+  if (!resource) {
+    return {
+      status: component.properties.resource?.status ?? "error",
+      message: "Could not update, no resource present",
+    };
+  }
+
+  const codeString = component.properties.code?.["DigitalOcean Update Code Gen"]
+    ?.code;
+  if (!codeString) {
+    return {
+      status: "error",
+      message: "Could not find DigitalOcean Update Code Gen code for resource",
+    };
+  }
+
+  const token = requestStorage.getEnv("DO_API_TOKEN");
+  if (!token) {
+    return {
+      status: "error",
+      message: "DO_API_TOKEN not found (hint: you may need a secret)",
+    };
+  }
+
+  const endpoint = _.get(
+    component.properties,
+    ["domain", "extra", "endpoint"],
+    "",
+  );
+
+  const resourceId = component.properties?.si?.resourceId;
+
+  const updateMethod = _.get(
+    component.properties,
+    ["domain", "extra", "UpdateMethod"],
+    "PUT",
+  );
+
+  if (!endpoint) {
+    return {
+      status: "error",
+      message: "No endpoint found in domain configuration",
+    };
+  }
+
+  if (!resourceId) {
+    return {
+      status: "error",
+      message: "No resource ID found for update",
+    };
+  }
+
+  // Construct URL - endpoint already starts with /v2/
+  let url = `https://api.digitalocean.com${endpoint}/${resourceId}`;
+
+  // Append any required query parameters from metadata
+  const requiredQueryParamsJson = _.get(
+    component.properties,
+    ["domain", "extra", "RequiredQueryParams"],
+    "[]",
+  );
+  const requiredQueryParams = JSON.parse(requiredQueryParamsJson);
+
+  if (requiredQueryParams.length > 0) {
+    const queryParts: string[] = [];
+    for (const paramName of requiredQueryParams) {
+      const paramValue = component.properties?.resource?.payload?.[paramName];
+      if (paramValue) {
+        queryParts.push(`${paramName}=${encodeURIComponent(paramValue)}`);
+      }
+    }
+    if (queryParts.length > 0) {
+      url += `?${queryParts.join("&")}`;
+    }
+  }
+
+  const response = await fetch(
+    url,
+    {
+      method: updateMethod,
+      headers: {
+        "Authorization": `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: codeString,
+    },
+  );
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    return {
+      status: "error",
+      message:
+        `Unable to update resource; API returned ${response.status} ${response.statusText}: ${errorText}`,
+    };
+  }
+
+  const responseJson = await response.json();
+  const resourceKey = Object.keys(responseJson).find((key) =>
+    key !== "links" && key !== "meta"
+  );
+  const payload = resourceKey ? responseJson[resourceKey] : responseJson;
+
+  return {
+    payload,
+    status: "ok",
+  };
+}
+```
+
+### Manual Action Example
 
 A manual action that updates the cluster configuration on an AWS EKS cluster,
 usking lodash, siExec and the AWS CLI:
@@ -355,7 +483,8 @@ async function main(component: Input) {
     return {
       status: "error",
       payload: resource,
-      message: `Unable to update the EKS Cluster Access Config, AWS CLI 2 exited with non zero code: ${updateResp.exitCode}`,
+      message:
+        `Unable to update the EKS Cluster Access Config, AWS CLI 2 exited with non zero code: ${updateResp.exitCode}`,
     };
   }
 
@@ -366,57 +495,10 @@ async function main(component: Input) {
 }
 ```
 
-## Attribute functions
+## Attribute Function Examples
 
-Attribute functions are used to set properties on components, either from other
-properties or input sockets, and to set the value of output sockets.
-
-### Attribute function arguments
-
-Actions receive a single `input` object as their argument, whose properties are
-determined from the Arguments section of the right-side meta-data panel.
-
-Arguments have a name, which will be used as the property on the `input` object,
-and a type, which will be one of the following:
-
-- Any
-- Array
-- Boolean
-- Integer
-- JSON
-- Map
-- Object
-- String
-
-These map to their TypeScript equivalents, which also map to the schema property
-kinds.
-
-### Attribute function bindings
-
-Each attribute function has a binding, which specifies:
-
-- The output location as a path where this attribute functions return will be
-  stored
-- A source for each function argument, taken from Input Sockets or other
-  Attributes
-
-For example, an attribute function that writes to the `snack` attribute from the
-value of the `Yummy` input socket would:
-
-- Have a single function argument, `yummy`, whose source is the `Yummy` input
-  socket
-- An output location of `/root/domain/snack`
-
-Bindings can be set from the `Bindings` sub-panel of the functions meta-data.
-
-:::note The UI around setting attribute function bindings is under heavy
-development! Hit us up in discord if you have questions. :::
-
-### Attribute function examples
-
-The AWS Caller Identity function, which has its output set to
-`/root/resource_value` and takes an input argument called `name` which pulls
-from `/root/si/name`:
+The AWS Caller Identity function, which has its output set to `/resource_value`
+and takes an input argument called `name` which pulls from `/si/name`:
 
 ```typescript
 async function main(): Promise<Output> {
@@ -443,8 +525,7 @@ async function main(): Promise<Output> {
 
 This function converts a docker image to a butane systemd unit file. It takes an
 input argument named `images`, which pulls from the Input Socket
-`Container Image`, and writes to the output location
-`/root/domain/systemd/units`:
+`Container Image`, and writes to the output location `/domain/systemd/units`:
 
 ```typescript
 async function main(input: Input): Promise<Output> {
@@ -503,7 +584,8 @@ async function main(input: Input): Promise<Output> {
       let description = name.charAt(0).toUpperCase() + name.slice(1);
 
       // Ensure there is no space between "name" and "ports" as ports are optional.
-      unit.contents = `[Unit]\nDescription=${description}\nAfter=network-online.target\nWants=network-online.target\n\n[Service]\nTimeoutStartSec=0\nExecStartPre=-/bin/podman kill ${name}\nExecStartPre=-/bin/podman rm ${name}\nExecStartPre=/bin/podman pull ${image}\nExecStart=/bin/podman run --name ${name}${ports} ${image}\n\n[Install]\nWantedBy=multi-user.target`;
+      unit.contents =
+        `[Unit]\nDescription=${description}\nAfter=network-online.target\nWants=network-online.target\n\n[Service]\nTimeoutStartSec=0\nExecStartPre=-/bin/podman kill ${name}\nExecStartPre=-/bin/podman rm ${name}\nExecStartPre=/bin/podman pull ${image}\nExecStart=/bin/podman run --name ${name}${ports} ${image}\n\n[Install]\nWantedBy=multi-user.target`;
 
       units.push(unit);
     });
@@ -512,32 +594,7 @@ async function main(input: Input): Promise<Output> {
 }
 ```
 
-## Authentication functions
-
-Authentication functions are set on assets that define secrets (using the
-SecretDefinitionBuilder API). They are then run _before_ any other functions
-that require the secret, and either set environment variables or set items on a
-local storage to pass information between functions.
-
-Authentication functions return nothing.
-
-### Authentication function arguments
-
-The argument to an authentication function is a secret, which maps to the
-property definitions from the SecretDefinitionBuilder.
-
-### The requestStorage API
-
-Authentication functions make use of the requestStorage API. It allows you to:
-
-- Set environment variables with `setEnv`
-- Get environment variables with `getEnv`
-- Store a javascript object as an item by key with `setItem`
-- Get items by their key with `getItem`
-- Check for the existence of an environment key with `getEnvKey` or an item with
-  `getKeys`
-
-### Authentication function examples
+## Authentication Function Examples
 
 The AWS Credential, which supports multiple authentication mechanisms:
 
@@ -650,34 +707,7 @@ async function main(secret: Input): Promise<Output> {
 }
 ```
 
-## Code Generation functions
-
-Code Generation functions generate code from the component data. The results
-show up in the Code tab in the attribute panel, and can be accessed in action
-functions or attribute functions by their function name (in a map).
-
-### Code Generation function arguments
-
-Code Generation functions take a single argument, `component`, which has 3
-possible properties:
-
-- `domain`, which has the domain properties of the component
-- `resource`, which has the resource information
-- `deleted_at`, a string with the time of a deletion
-
-### Code Generation function return value
-
-The return value for a code generation function is a string representing the
-format of the data, and a string for the generated code:
-
-```typescript
-{
-    format: "json",
-    code: '{ "poop": "canoe" }',
-}
-```
-
-### Code Generation function examples
+## Code Generation Function Examples
 
 An AWS IAM Role Policy that generates JSON code:
 
@@ -715,33 +745,7 @@ async function main(input: Input): Promise<Output> {
 }
 ```
 
-## Qualification functions
-
-Qualification functions take in information about the component, resource, and
-generated code, and use it to validate the component.
-
-### Qualification function arguments
-
-Qualification functions take an argument, `component`, which has:
-
-- `code`, available as a map of code generation results keyed on function name
-- `domain`, which has the domain properties of the component
-- `resource`, which has the resource information
-- `deleted_at`, a string with the time of a deletion
-
-### Qualification function return value
-
-Qualification functions return a result, which is one of `success`, `warning`,
-or `failure`, along with a message explaining the result.
-
-```typescript
-return {
-    result: "success",
-    message: "it worked!',
-}
-```
-
-### Qualification function examples
+## Qualification Function Examples
 
 Running the AWS IAM Policy Simulator, based on generated code:
 
@@ -757,7 +761,8 @@ async function main(component: Input): Promise<Output> {
     console.error(child.stderr);
     return {
       result: "failure",
-      message: `Policy simulator failed; AWS CLI 2 exited with non zero code: ${child.exitCode}`,
+      message:
+        `Policy simulator failed; AWS CLI 2 exited with non zero code: ${child.exitCode}`,
     };
   }
   let response = JSON.parse(child.stdout);
@@ -828,256 +833,19 @@ async function main(component: Input): Promise<Output> {
   ]);
   return {
     result: child.exitCode === 0 ? "success" : "failure",
-    message:
-      child.exitCode === 0 ? "successly found" : "docker image not found",
+    message: child.exitCode === 0
+      ? "successly found"
+      : "docker image not found",
   };
 }
 ```
 
-## Management Functions
+## Management Function Examples
 
-A management function allows the creation, configuration, and management of
-other components and connections on the graph. They are executed in a change set
-and can enqueue actions to run when the change set is applied to HEAD.
+### Import Function Example
 
-Management functions are typically used to achieve the following things:
-
-1. Importing existing resources into System Initiative
-2. Creation of a template
-3. Configuring pre-existing components
-
-These functions will also be able to be used for a host of other types of
-use-cases, like:
-
-- Running analyses across a segment of components
-- Manage infrastructure across multiple environments
-
-### Management function arguments
-
-Management functions take an `Input` argument. This argument is an object that
-contains:
-
-- `currentView`
-
-  This is the view in which the management function will execute. This defaults
-  to the `DEFAULT` view on the diagram.
-
-- `thisComponent`
-
-  This is the represention of the component to which the management function is
-  currently running from. In this argument, is the `properties` object, and that
-  will expose `si`, `domain`, and `resource` properties as well as the `geometry`
-  of the current component. The geometry is the `height`, `width`, `x`, and `y`
-  coordinates for the component.
-
-- `components`
-
-  This object contains all of the components that a management
-  function is connected to, keyed by the component id. Each of these components
-  exposes the component type, which is essentially the schema name, the `properties`,
-  `geometry`, `parent` and, an array `connections`.
-
-The entire structure of the input is:
-
-```typescript
-type Input = {
-  currentView: string;
-  thisComponent: {
-    properties: {
-      si?: {
-        name?: string | null;
-        protected?: boolean | null;
-        type?: string | null;
-        color?: string | null;
-        resourceId?: string | null;
-      } | null;
-      domain?: {
-        // Properties based on the type of the component function is attached to
-        // ...
-      } | null;
-      secrets?: {
-        credential?: string | null;
-      } | null;
-      resource?: {
-        status?: "ok" | "warning" | "error" | undefined | null;
-        message?: string | null;
-        payload?: any | null;
-        last_synced?: string | null;
-      } | null;
-      resource_value?: {} | null;
-      code?: Record<
-        string,
-        {
-          code?: string | null;
-          format?: string | null;
-        }
-      > | null;
-      qualification?: Record<
-        string,
-        {
-          result?: string | null;
-          message?: string | null;
-        }
-      > | null;
-      deleted_at?: string | null;
-    };
-    geometry: { [key: string]: Geometry };
-  };
-  components: {
-    [key: string]: {
-      kind: string;
-      properties?: {
-        si?: {
-          name?: string | null;
-          protected?: boolean | null;
-          type?: string | null;
-          color?: string | null;
-          resourceId?: string | null;
-        } | null;
-        domain?: {
-          // Properties based on the type of the component being managed
-          // ...
-        } | null;
-        secrets?: {
-          credential?: string | null;
-        } | null;
-        resource?: {
-          status?: "ok" | "warning" | "error" | undefined | null;
-          message?: string | null;
-          payload?: any | null;
-          last_synced?: string | null;
-        } | null;
-        resource_value?: {} | null;
-        code?: Record<
-          string,
-          {
-            code?: string | null;
-            format?: string | null;
-          }
-        > | null;
-        qualification?: Record<
-          string,
-          {
-            result?: string | null;
-            message?: string | null;
-          }
-        > | null;
-        deleted_at?: string | null;
-      };
-      geometry?: { [key: string]: Geometry };
-      connect?: {
-        from: string;
-        to: {
-          component: string;
-          socket: string;
-        };
-      }[];
-      parent?: string;
-    };
-  };
-};
-```
-
-where the `geometry` object is:
-
-```typescript
-type Geometry = {
-  x?: number;
-  y?: number;
-  width?: number;
-  height?: number;
-};
-```
-
-### Management function return type
-
-The return type for the management function is as follows:
-
-```typescript
-type Output = {
-  status: "ok" | "error";
-  ops?: {
-    create?: {
-      [key: string]: {
-        kind: string;
-        properties?: {
-          si?: {
-            name?: string | null;
-            protected?: boolean | null;
-            type?: string | null;
-            color?: string | null;
-            resourceId?: string | null;
-          } | null;
-          domain?: {
-            // Properties based on the type of the component being managed
-            // ...
-          } | null;
-          secrets?: {
-            credential?: string | null;
-          } | null;
-          resource?: {
-            status?: "ok" | "warning" | "error" | undefined | null;
-            message?: string | null;
-            payload?: any | null;
-            last_synced?: string | null;
-          } | null;
-          resource_value?: {} | null;
-          code?: Record<
-            string,
-            {
-              code?: string | null;
-              format?: string | null;
-            }
-          > | null;
-          qualification?: Record<
-            string,
-            {
-              result?: string | null;
-              message?: string | null;
-            }
-          > | null;
-          deleted_at?: string | null;
-        };
-        geometry?: Geometry;
-        connect?: {
-          from: string;
-          to: {
-            component: string;
-            socket: string;
-          };
-        }[];
-        parent?: string;
-      };
-    };
-    update?: {
-      [key: string]: {
-        properties?: { [key: string]: unknown };
-        geometry?: { [key: string]: Geometry };
-        connect?: {
-          add?: { from: string; to: { component: string; socket: string } }[];
-          remove?: {
-            from: string;
-            to: { component: string; socket: string };
-          }[];
-        };
-        parent?: string;
-      };
-    };
-    actions?: {
-      [key: string]: {
-        add?: ("create" | "update" | "refresh" | "delete" | string)[];
-        remove?: ("create" | "update" | "refresh" | "delete" | string)[];
-      };
-    };
-  };
-  message?: string | null;
-};
-```
-
-### Import function example
-
-The import function is similar in structure to an action refresh function, 
-but import works on the component attribute tree rather than the resource. This
+The import function is similar in structure to an action refresh function, but
+import works on the component attribute tree rather than the resource. This
 means that the functions will change the component in a change set.
 
 ```typescript
@@ -1110,7 +878,8 @@ async function main({ thisComponent }: Input): Promise<Output> {
 
     return {
       status: "error",
-      message: `AWS CLI 2 "aws ec2 describe-subnets" returned non zero exit code(${child.exitCode})`,
+      message:
+        `AWS CLI 2 "aws ec2 describe-subnets" returned non zero exit code(${child.exitCode})`,
     };
   }
 
@@ -1172,13 +941,13 @@ async function main({ thisComponent }: Input): Promise<Output> {
 }
 ```
 
-### Template function example
+### Template Function Example
 
 A management function that creates components and the connections to them. The
-function can use inputs from the connected asset and specify the number
-of components to create. When creating components, the position of a component
-is relative to the position of the management component inside the current view.
-So `x: 100, y: 200` will be 100 units to the right and 200 units below the
+function can use inputs from the connected component and specify the number of
+components to create. When creating components, the position of a component is
+relative to the position of the management component inside the current view. So
+`x: 100, y: 200` will be 100 units to the right and 200 units below the
 management component. When updating the component position, the position is the
 absolute position of the component.
 
@@ -1287,12 +1056,12 @@ async function main({ thisComponent, components }: Input): Promise<Output> {
 }
 ```
 
-### Configuring pre-existing components
+### Configuring Existing Components
 
-An asset with a management component attached to it can have
-`management edges` to other types of components that it is allowed to manage.
-These management edges are the component context the function can act upon
-and allow those components to be configured.
+A component with a management component attached to it can have relationships
+with other types of components that it is allowed to manage. These management
+relationships are the component context the function can act upon and allow
+those components to be configured.
 
 ```typescript
 async function main({ thisComponent, components }: Input): Promise<Output> {
@@ -1387,7 +1156,8 @@ async function main(component: Input): Promise<Output> {
     console.error(child.stderr);
     return {
       status: "error",
-      message: `Unable to create; AWS CLI 2 exited with non zero code: ${child.exitCode}`,
+      message:
+        `Unable to create; AWS CLI 2 exited with non zero code: ${child.exitCode}`,
     };
   }
 
@@ -1450,12 +1220,14 @@ async function main(component: Input): Promise<Output> {
       return {
         status: "error",
         payload,
-        message: `Delete error; exit code ${child.exitCode}.\n\nSTDOUT:\n\n${child.stdout}\n\nSTDERR:\n\n${child.stderr}`,
+        message:
+          `Delete error; exit code ${child.exitCode}.\n\nSTDOUT:\n\n${child.stdout}\n\nSTDERR:\n\n${child.stderr}`,
       };
     } else {
       return {
         status: "error",
-        message: `Delete error; exit code ${child.exitCode}.\n\nSTDOUT:\n\n${child.stdout}\n\nSTDERR:\n\n${child.stderr}`,
+        message:
+          `Delete error; exit code ${child.exitCode}.\n\nSTDOUT:\n\n${child.stdout}\n\nSTDERR:\n\n${child.stderr}`,
       };
     }
   }
@@ -1488,8 +1260,7 @@ Then, find the correct path for the domain property you want to use as the
 argument as it would be specified in the Action function - in this case, it is
 `properties.domain.InstanceProfileName`.
 
-Examine the output of a manual call to the CLI to understand the
-output data:
+Examine the output of a manual call to the CLI to understand the output data:
 
 ```json
 {
@@ -1548,12 +1319,14 @@ async function main(component: Input): Promise<Output> {
       return {
         status: "error",
         payload,
-        message: `Refresh error; exit code ${child.exitCode}.\n\nSTDOUT:\n\n${child.stdout}\n\nSTDERR:\n\n${child.stderr}`,
+        message:
+          `Refresh error; exit code ${child.exitCode}.\n\nSTDOUT:\n\n${child.stdout}\n\nSTDERR:\n\n${child.stderr}`,
       };
     } else {
       return {
         status: "error",
-        message: `Refresh error; exit code ${child.exitCode}.\n\nSTDOUT:\n\n${child.stdout}\n\nSTDERR:\n\n${child.stderr}`,
+        message:
+          `Refresh error; exit code ${child.exitCode}.\n\nSTDOUT:\n\n${child.stdout}\n\nSTDERR:\n\n${child.stderr}`,
       };
     }
   }
