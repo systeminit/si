@@ -32,7 +32,7 @@ usage() {
     usage_text "Usage:" "toggle-maintenance [-p profile] [-r region] [-a automatic] [-s service] [-m maintenance]"
     echo "  $(option "-p profile")        [pull-from-env/<profile-name>] AWS profile to use"
     echo "  $(option "-r region")         AWS region to use"
-    echo "  $(option "-s service")        [sdf/rebaser/pinga/veritech/forklift/edda] SI Service to filter by, defaults to all"
+    echo "  $(option "-s service")        [sdf/rebaser/pinga/veritech/forklift/edda/luminork] SI Service to filter by, defaults to all"
     echo "  $(option "-a automatic")      [Y/N] Run through automatically/no-interact"
     echo "  $(option "-m maintenance")    [Y/N] Whether maintenance should be on"
     section "----------------------------------"
@@ -48,29 +48,29 @@ fi
 # Parse flags
 while getopts ":p:r:a:s:m:" opt; do
     case ${opt} in
-        p)
-            profile=$OPTARG
-            ;;
-        r)
-            region=$OPTARG
-            ;;
-        a)
-            automatic=$OPTARG
-            ;;
-        s)
-            service=$OPTARG
-            ;;
-        m)
-            maintenance=$OPTARG
-            ;;
-        \?)
-            echo "Invalid option: -$OPTARG" >&2
-            usage
-            ;;
-        :)
-            echo "Option -$OPTARG requires an argument." >&2
-            usage
-            ;;
+    p)
+        profile=$OPTARG
+        ;;
+    r)
+        region=$OPTARG
+        ;;
+    a)
+        automatic=$OPTARG
+        ;;
+    s)
+        service=$OPTARG
+        ;;
+    m)
+        maintenance=$OPTARG
+        ;;
+    \?)
+        echo "Invalid option: -$OPTARG" >&2
+        usage
+        ;;
+    :)
+        echo "Option -$OPTARG requires an argument." >&2
+        usage
+        ;;
     esac
 done
 
@@ -81,15 +81,15 @@ echo "$0 being invoked"
 
 # Use the profile if in the invocation
 if [[ "$profile" != "pull-from-env" ]]; then
-  profile=$(get_param_or_env "$profile" "AWS_PROFILE" "Enter the AWS profile to use")
-  export AWS_PROFILE="$profile"
+    profile=$(get_param_or_env "$profile" "AWS_PROFILE" "Enter the AWS profile to use")
+    export AWS_PROFILE="$profile"
 fi
 region=$(get_param_or_env "$region" "AWS_REGION" "Enter the AWS region (e.g., us-west-2)")
 export AWS_REGION="$region"
 
 # List instances with fixed-width columns and filter for the upgradeable instances
 # Based on the filter provided, always include SDF for the maintenance mode enable/disable
-instances=$(list_instances "${service,,}" )
+instances=$(list_instances "${service,,}")
 if [ -z "$instances" ]; then
     echo "No running instances found."
     exit 1
@@ -106,7 +106,7 @@ while read -r line; do
     private_ip=$(echo "$line" | awk '{print $4}')
     printf "%-5s %-20s %-20s %-20s %-20s\n" "$i" "$name" "$instance_id" "$instance_type" "$private_ip"
     ((i++))
-done <<< "$instances"
+done <<<"$instances"
 echo "----------------------------------------"
 
 [[ "${automatic,,}" == "y" ]] || read -p "Would you like to toggle maintenance mode to $maintenance on these hosts? (Y/N) [takes ~10 seconds] " selection
@@ -127,17 +127,17 @@ while read -r line; do
     service_name=$(echo "$line" | awk '{print $1}' | awk -F- '{print $2}')
     start_and_track_ssm_session "$instance_id" "$service_maintenance_script" "$results_directory" "InstanceId=$instance_id,Service=$service_name,Action=$maintenance" &
     ((i++))
-done <<< "$instances"
+done <<<"$instances"
 
 await_file_results "$results_directory" $((i - 1))
 
 concat_and_output_json "$results_directory" "$check_results_file"
 
-if jq --arg maintenance="$maintenance" -e 'all(.[]; .status == "success") and all(.[]; .maintenance == "$maintenance")' "$results_directory/$check_results_file" > /dev/null; then
-  echo "All running service nodes of ${service} have had maintenance mode set to $maintenance"
-  echo "----------------------------------------"
-  exit 0
+if jq --arg maintenance="$maintenance" -e 'all(.[]; .status == "success") and all(.[]; .maintenance == "$maintenance")' "$results_directory/$check_results_file" >/dev/null; then
+    echo "All running service nodes of ${service} have had maintenance mode set to $maintenance"
+    echo "----------------------------------------"
+    exit 0
 else
-  echo "Error: One or more of the checks failed to push a node into maintenance mode, try again later or look at the logs"
-  exit 2
+    echo "Error: One or more of the checks failed to push a node into maintenance mode, try again later or look at the logs"
+    exit 2
 fi
