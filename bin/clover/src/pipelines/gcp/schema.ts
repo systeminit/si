@@ -94,6 +94,7 @@ export interface GcpAuth {
 export interface GcpSchema extends SuperSchema {
   requiredProperties: Set<string>;
   service: string;
+  title: string;
   version: string;
   resourcePath: string[];
   baseUrl: string;
