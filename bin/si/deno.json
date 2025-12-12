@@ -52,6 +52,7 @@
     "ejs": "npm:ejs@^3.1.10",
     "env-paths": "npm:env-paths@^3.0.0",
     "jwt-decode": "npm:jwt-decode@^4.0.0",
+    "listr2": "npm:listr2@^8.2.5",
     "lodash": "npm:lodash@^4.17.21",
     "posthog-node": "npm:posthog-node@^4.2.1",
     "ulid": "npm:ulid@^3.0.1",

@@ -8,11 +8,21 @@
  * @module
  */
 
-import { ActionsApi, ChangeSetsApi, type ActionViewV1 } from "@systeminit/api-client";
+import { ActionsApi, ChangeSetsApi, type ActionViewV1, ComponentsApi, SchemasApi } from "@systeminit/api-client";
+import { Listr } from "listr2";
 import { Context } from "../context.ts";
 import type { ChangeSetApplyOptions } from "./types.ts";
 import { resolveChangeSet } from "./utils.ts";
 import { sleep } from "../helpers.ts";
+import { getHeadChangeSetId } from "../cli/helpers.ts";
+
+/**
+ * Component metadata cache entry
+ */
+interface ComponentMetadata {
+  componentName: string;
+  schemaName: string;
+}
 
 export type { ChangeSetApplyOptions };
 
@@ -31,6 +41,8 @@ export async function callChangeSetApply(
 
     const changeSetsApi = new ChangeSetsApi(apiConfig);
     const actionsApi = new ActionsApi(apiConfig);
+    const componentsApi = new ComponentsApi(apiConfig);
+    const schemasApi = new SchemasApi(apiConfig);
 
     ctx.logger.info("Gathering change set data...");
 
@@ -58,6 +70,10 @@ export async function callChangeSetApply(
     let applyAttempts = 0;
     const MAX_APPLY_ATTEMPTS = 4;
     let actions = [] as ActionViewV1[];
+
+    // Cache for component metadata (componentId -> {componentName, schemaName})
+    const componentMetadataCache = new Map<string, ComponentMetadata>();
+
     do {
       await sleep(1000 * applyAttempts)
       applyAttempts++;
@@ -68,6 +84,48 @@ export async function callChangeSetApply(
       });
 
       actions = actionsResponse.data.actions.filter((a) => a.state === "Queued");
+
+      // Fetch component metadata for each action if not already cached
+      for (const action of actions) {
+        if (action.componentId && !componentMetadataCache.has(action.componentId)) {
+          try {
+            const componentResponse = await componentsApi.getComponent({
+              workspaceId,
+              changeSetId,
+              componentId: action.componentId,
+            });
+
+            const component = componentResponse.data.component;
+            let schemaName = "unknown";
+
+            // Fetch schema name using schemaId
+            if (component.schemaId) {
+              try {
+                const schemaResponse = await schemasApi.getSchema({
+                  workspaceId,
+                  changeSetId,
+                  schemaId: component.schemaId,
+                });
+                schemaName = schemaResponse.data.name || "unknown";
+              } catch (schemaError) {
+                ctx.logger.warn(`Failed to fetch schema for component ${action.componentId}: ${schemaError}`);
+              }
+            }
+
+            componentMetadataCache.set(action.componentId, {
+              componentName: component.name || "unknown",
+              schemaName,
+            });
+          } catch (error) {
+            ctx.logger.warn(`Failed to fetch component metadata for ${action.componentId}: ${error}`);
+            // Set fallback metadata
+            componentMetadataCache.set(action.componentId, {
+              componentName: "unknown",
+              schemaName: "unknown",
+            });
+          }
+        }
+      }
 
       // Apply the change set (request approval)
       const response = await changeSetsApi.requestApproval({
@@ -114,22 +172,212 @@ export async function callChangeSetApply(
       status: updatedResponse.data.changeSet.status,
     });
 
-    // TODO(victor) - get component and asset names
-    // TODO(victor) - block terminal and keep pooling action statuses until they're done, unless detach arg is passed in (see docker run)
-    // Get enqueued actions from HEAD
-    if (actions.length > 0) {
+    if (actions.length === 0) {
+      ctx.logger.info("No enqueued actions found.")
+      return;
+    }
+
+
+    // Detached mode: list actions and return without waiting
+    if (options.detach) {
       ctx.logger.info(
         `Found ${actions.length} enqueued action(s):`,
       );
       for (const action of actions) {
-        ctx.logger.info("  - {name}({id}) of kind {kind}, for component {componentId}", {
-          id: action.id,
-          name: action.name,
-          kind: action.kind,
-          componentId: action.componentId,
-        });
+        const metadata = action.componentId ? componentMetadataCache.get(action.componentId) : undefined;
+        const componentName = metadata?.componentName || "unknown";
+        const schemaName = metadata?.schemaName || "unknown";
+        ctx.logger.info(
+          "  - [{schemaName}] {componentName} - {actionName}",
+          {
+            schemaName,
+            componentName,
+            actionName: action.name || "unknown",
+          }
+        );
       }
 
+      ctx.logger.info("Actions are running in the background. Use the System Initiative web application to monitor progress.");
+      return;
+    }
+
+    // Get HEAD changeset ID for polling actions after apply
+    const headChangeSetId = await getHeadChangeSetId();
+
+    // Helper function to format action title with component metadata
+    const formatActionTitle = (action: ActionViewV1, state: string): string => {
+      const metadata = action.componentId ? componentMetadataCache.get(action.componentId) : undefined;
+      const componentName = metadata?.componentName || "unknown";
+      const schemaName = metadata?.schemaName || "unknown";
+      return `[${schemaName}] ${componentName} - ${action.name || "unknown"} - ${state}`;
+    };
+
+    // Create a map to track action states and their task references
+    const actionStates = new Map<string, string>();
+    const actionTaskRefs = new Map<string, { title: string }>();
+
+    // Initialize action states
+    for (const action of actions) {
+      actionStates.set(action.id, action.state);
+    }
+
+    // Background polling promise that updates action states periodically
+    const pollingPromise = (async () => {
+      while (true) {
+        await sleep(1000);
+
+        try {
+          // Fetch all action states in a single API call
+          const actionsResponse = await actionsApi.getActions({
+            workspaceId,
+            changeSetId: headChangeSetId,
+          });
+
+
+          let runningActionFound = false;
+          // Update states for all actions
+          for (const action of actions) {
+            const currentAction = actionsResponse.data.actions.find(
+              (a) => a.id === action.id
+            );
+
+            if (!currentAction || currentAction.state === "Completed") {
+              // If ction not found on HEAD, we assume it's completed and was removed
+              actionStates.set(action.id, "Completed");
+              const taskRef = actionTaskRefs.get(action.id);
+              if (taskRef) {
+                taskRef.title = formatActionTitle(action, "Success ✓");
+              }
+              continue;
+            }
+
+            const currentState = currentAction.state;
+
+            actionStates.set(action.id, currentState);
+
+            let stateMsg = currentState;
+            if (currentState === "Failed") {
+              stateMsg = "Failed ❌";
+            } else if (currentState === "OnHold") {
+              stateMsg = "On Hold ⏸️";
+            } else {
+              runningActionFound = true;
+            }
+
+            const taskRef = actionTaskRefs.get(action.id);
+
+            if (taskRef) {
+              taskRef.title = formatActionTitle(action, stateMsg);
+            }
+          }
+
+          if (!runningActionFound) {
+            return;
+          }
+        } catch (error) {
+          ctx.logger.warn(`Error polling action states: ${error}`);
+        }
+      }
+    })();
+
+    // Main task list that will contain all action tasks
+    const mainActionsTask = new Listr([
+      {
+        title: `Executing ${actions.length} action(s):`,
+        task: (_ctx: unknown, task) => {
+          // Create subtasks for each action using task.newListr()
+          return task.newListr(
+            actions.map((action) => ({
+              title: formatActionTitle(action, action.state),
+              task: async (_ctx: unknown, subtask: { title: string }) => {
+                // Store reference to this task so polling can update it
+                actionTaskRefs.set(action.id, subtask);
+
+                // Wait for action to complete
+                let completed = false;
+                while (!completed) {
+                  await sleep(500); // Check local state more frequently than we poll API
+
+                  const currentState = actionStates.get(action.id);
+
+                  // Check if action is in a terminal state
+                  if (currentState === undefined || currentState === "Completed") {
+                    completed = true;
+                  } else if (["Failed", "OnHold"].includes(currentState)) {
+                    throw new Error(subtask.title);
+                  }
+                }
+              },
+            })),
+            {
+              concurrent: true,
+              exitOnError: false,
+            }
+          );
+        },
+      },
+    ])
+
+
+    try {
+      if (ctx.isInteractive) {
+        // Interactive mode: show live progress with Listr
+        await Promise.all([
+          mainActionsTask.run(),
+          pollingPromise,
+        ]);
+      } else {
+        // Non-interactive mode: just poll and log final results
+        ctx.logger.info(`Waiting for ${actions.length} action(s) to complete...`);
+
+        // Wait for actions to finish
+        await pollingPromise;
+
+        // Log final results
+        ctx.logger.info("Action execution complete:");
+        for (const action of actions) {
+          const state = actionStates.get(action.id) || "unknown";
+
+          if (state === "Completed") {
+            ctx.logger.info(`  ✓ ${formatActionTitle(action, 'Success')}`);
+          } else if (state === "Failed") {
+            ctx.logger.error(`  ✗ ${formatActionTitle(action, 'Failed')}`);
+          } else if (state === "OnHold") {
+            ctx.logger.warn(`  ⏸ ${formatActionTitle(action, 'On Hold')}`);
+          } else {
+            ctx.logger.info(`  - ${formatActionTitle(action, state)}`);
+          }
+        }
+      }
+
+      // Check if all actions completed successfully
+      const failedActions = Array.from(actionStates.entries())
+        .filter(([_, state]) => state === "Failed");
+
+      if (failedActions.length > 0) {
+        ctx.logger.error(
+          `Change set applied successfully, but ${failedActions.length} action(s) failed.`
+        );
+        Deno.exit(1);
+      }
+
+      ctx.logger.info("All actions completed successfully!");
+    } catch (error) {
+      ctx.logger.error(`Error executing actions: ${error}`);
+
+      // Show final state of all actions
+      ctx.logger.info("Final action states:");
+      for (const action of actions) {
+        const state = actionStates.get(action.id);
+        if (state) {
+          const metadata = action.componentId ? componentMetadataCache.get(action.componentId) : undefined;
+          const componentName = metadata?.componentName || "unknown";
+          const schemaName = metadata?.schemaName || "unknown";
+          ctx.logger.info(`  - [${schemaName}] ${componentName} - ${action.name || "unknown"}: ${state}`);
+        }
+      }
+
+      Deno.exit(1);
     }
 
 

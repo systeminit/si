@@ -1405,6 +1405,10 @@ function buildChangeSetCommand() {
       createSubCommand(true)
         .description("Apply a change set to HEAD")
         .arguments("<change-set-id-or-name:string>")
+        .option(
+          "-d, --detach",
+          "Don't wait for actions to complete, return immediately after applying",
+        )
         .action(async (options, changeSetIdOrName) => {
           await callChangeSetApply({
             ...options,

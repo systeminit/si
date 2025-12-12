@@ -17,4 +17,7 @@ export type ChangeSetAbandonOptions = ChangeSetByIdOrNameOptions;
 
 export type ChangeSetOpenOptions = ChangeSetByIdOrNameOptions;
 
-export type ChangeSetApplyOptions = ChangeSetByIdOrNameOptions;
+export interface ChangeSetApplyOptions extends ChangeSetByIdOrNameOptions {
+  /** Don't wait for actions to complete, return immediately after applying */
+  detach?: boolean;
+}
