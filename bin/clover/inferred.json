@@ -2090,6 +2090,12 @@
       "RejectMessage"
     ]
   },
+  "Specifies the FSx for ONTAP user identity type, accepts either UNIX or WINDOWS.": {
+    "enum": [
+      "UNIX",
+      "WINDOWS"
+    ]
+  },
   "The resolver type.\n  +   *UNIT*: A UNIT resolver type. A UNIT resolver is the default resolver type. You can use a UNIT resolver to run a GraphQL query against a single data source.\n  +   *PIPELINE*: A PIPELINE resolver type. You can use a PIPELINE resolver to invoke a series of ``Function`` objects in a serial manner. You can use a pipeline resolver to run a GraphQL query against multiple data sources.": {
     "enum": [
       "UNIT",
@@ -2952,6 +2958,11 @@
       "R4"
     ]
   },
+  "Specifies the FSx for OpenZFS user identity type, accepts only POSIX.": {
+    "enum": [
+      "POSIX"
+    ]
+  },
   "The provisioning type of the connector. Currently the only supported value is LAMBDA. ": {
     "enum": [
       "LAMBDA"
@@ -3617,6 +3628,9 @@
     "enum": null
   },
   "A database in the GLUDC.": {
+    "enum": null
+  },
+  "A delimiter to delineate log fields": {
     "enum": null
   },
   "A description about the computation model.": {
@@ -5048,6 +5062,9 @@
     "enum": null
   },
   "Campaign name": {
+    "enum": null
+  },
+  "Campaign type": {
     "enum": null
   },
   "Canary run id to be used as base reference for visual testing": {
@@ -7180,6 +7197,9 @@
   "Provisioned Redshift auth type": {
     "enum": null
   },
+  "Public IP DNS hostname type": {
+    "enum": null
+  },
   "Public key algorithm and size, in bits, of the key pair that your CA creates when it issues a certificate.": {
     "enum": null
   },
@@ -7984,6 +8004,9 @@
   "Specifies the value for the key. Currently, this must be the ID of the organization.": {
     "enum": null
   },
+  "Specifies the virtual private cloud (VPC) for the S3 access point VPC configuration, if one exists.": {
+    "enum": null
+  },
   "Specifies the wait interval between traffic shifts, in seconds.": {
     "enum": null
   },
@@ -8071,6 +8094,12 @@
   "Specify a KMSlong key ID to encrypt the managed storage.\n The key must be a single Region key.": {
     "enum": null
   },
+  "Specify a count threshold of unhealthy nodes, above which node auto repair actions will stop. When using this, you cannot also set MaxUnhealthyNodeThresholdPercentage at the same time.": {
+    "enum": null
+  },
+  "Specify a percentage threshold of unhealthy nodes, above which node auto repair actions will stop. When using this, you cannot also set MaxUnhealthyNodeThresholdCount at the same time.": {
+    "enum": null
+  },
   "Specify a target type to define the kinds of resources the document can run on.": {
     "enum": null
   },
@@ -8096,6 +8125,12 @@
     "enum": null
   },
   "Specify the maximum number of application versions to retain.": {
+    "enum": null
+  },
+  "Specify the maximum number of nodes that can be repaired concurrently or in parallel, expressed as a count of unhealthy nodes. This gives you finer-grained control over the pace of node replacements. When using this, you cannot also set MaxParallelNodesRepairedPercentage at the same time.": {
+    "enum": null
+  },
+  "Specify the maximum number of nodes that can be repaired concurrently or in parallel, expressed as a percentage of unhealthy nodes. This gives you finer-grained control over the pace of node replacements. When using this, you cannot also set MaxParallelNodesRepairedCount at the same time.": {
     "enum": null
   },
   "Specify the number of days to retain an application versions.": {
@@ -9835,6 +9870,9 @@
   "The Function response mapping template.": {
     "enum": null
   },
+  "The GID of the file system user.": {
+    "enum": null
+  },
   "The GUID for the customer-managed AWS KMS key to use for encryption. This value can be a globally unique identifier, a fully specified Amazon Resource Name (ARN) to either an alias or a key, or an alias name prefixed by \"alias/\".You can also use a master key owned by Kinesis Data Streams by specifying the alias aws/kinesis.": {
     "enum": null
   },
@@ -10139,6 +10177,12 @@
     "enum": null
   },
   "The ID of the ENI that you want to attach.": {
+    "enum": null
+  },
+  "The ID of the FSx for ONTAP volume that the S3 access point is attached to.": {
+    "enum": null
+  },
+  "The ID of the FSx for OpenZFS volume that the S3 access point is attached to.": {
     "enum": null
   },
   "The ID of the Gateway Load Balancer endpoint.": {
@@ -11047,6 +11091,9 @@
   "The Target Role Arn of the pod identity association.": {
     "enum": null
   },
+  "The UID of the file system user.": {
+    "enum": null
+  },
   "The URI for your schema registry. The correct URI format depends on the type of schema registry you're using.": {
     "enum": null
   },
@@ -11420,6 +11467,9 @@
     "enum": null
   },
   "The base64-encoded XML configuration.": {
+    "enum": null
+  },
+  "The behavior required of the filter.": {
     "enum": null
   },
   "The behavior when a Spot Instance is interrupted. The default is ``terminate``.": {
@@ -14338,6 +14388,9 @@
   "The name of the RestApi. A name is required if the REST API is not based on an OpenAPI specification.": {
     "enum": null
   },
+  "The name of the S3 access point attachment; also used for the name of the S3 access point.": {
+    "enum": null
+  },
   "The name of the S3 bucket associated with an associated S3 repository. It must start with `codeguru-reviewer-`.": {
     "enum": null
   },
@@ -14398,6 +14451,9 @@
   "The name of the Table to create a Data Cells Filter for.": {
     "enum": null
   },
+  "The name of the UNIX user.": {
+    "enum": null
+  },
   "The name of the UsageProfile.": {
     "enum": null
   },
@@ -14420,6 +14476,9 @@
     "enum": null
   },
   "The name of the Windows domain that the SMB server belongs to.": {
+    "enum": null
+  },
+  "The name of the Windows user.": {
     "enum": null
   },
   "The name of the account policy": {
@@ -16522,6 +16581,9 @@
   "The protection strategy for deployment on the container fleet; defaults to WITH_PROTECTION.": {
     "enum": null
   },
+  "The protocol for connections from clients to the load balancer. For Application Load Balancers, the supported protocols are HTTP and HTTPS. For Network Load Balancers, the supported protocols are TCP, TLS, UDP, TCP_UDP, QUIC, and TCP_QUIC. You can’t specify the UDP, TCP_UDP, QUIC, or TCP_QUIC protocol if dual-stack mode is enabled. You can't specify a protocol for a Gateway Load Balancer.": {
+    "enum": null
+  },
   "The protocol for connections from clients to the load balancer. For Application Load Balancers, the supported protocols are HTTP and HTTPS. For Network Load Balancers, the supported protocols are TCP, TLS, UDP, and TCP_UDP. You can’t specify the UDP or TCP_UDP protocol if dual-stack mode is enabled. You can't specify a protocol for a Gateway Load Balancer.": {
     "enum": null
   },
@@ -17578,6 +17640,9 @@
   "The type of AWS Verified Access endpoint. Incoming application requests will be sent to an IP address, load balancer or a network interface depending on the endpoint type specified.The type of AWS Verified Access endpoint. Incoming application requests will be sent to an IP address, load balancer or a network interface depending on the endpoint type specified.": {
     "enum": null
   },
+  "The type of Amazon FSx volume that the S3 access point is attached to.": {
+    "enum": null
+  },
   "The type of PartnerApp.": {
     "enum": null
   },
@@ -17684,6 +17749,9 @@
     "enum": null
   },
   "The type of logs being delivered. Only mandatory when the resourceArn could match more than one. In such a case, the error message will contain all the possible options.": {
+    "enum": null
+  },
+  "The type of logs to generate for WAF.": {
     "enum": null
   },
   "The type of maintenance window.": {
