@@ -13,7 +13,6 @@ export const AZURE_PROP_OVERRIDES: Record<
 > = {};
 
 export const AZURE_SCHEMA_OVERRIDES = new Map<string, SchemaOverrideFn>([
-  ["*", convertUserAssignedIdentitiesToArray],
   [
     "Microsoft.Web/serverfarms",
     (spec: ExpandedPkgSpec) => {
@@ -109,33 +108,3 @@ export const AZURE_SCHEMA_OVERRIDES = new Map<string, SchemaOverrideFn>([
     }),
   ],
 ]);
-
-/**
- * Override to convert identity.userAssignedIdentities from map to array.
- * Users provide: ["/subscriptions/.../identity1"]
- * Action function transforms to Azure format: {"/subscriptions/.../identity1": {}}
- */
-function convertUserAssignedIdentitiesToArray(spec: ExpandedPkgSpec) {
-  const variant = spec.schemas[0].variants[0];
-  try {
-    const identityProp = objectPropForOverride(variant.domain, "identity");
-    const userAssignedProp = propForOverride(
-      identityProp,
-      "userAssignedIdentities",
-    );
-
-    if (userAssignedProp.kind === "map") {
-      // Change from map to array
-      userAssignedProp.kind = "array";
-      userAssignedProp.typeProp.kind = "string";
-      userAssignedProp.typeProp.data.widgetKind = "Text";
-      userAssignedProp.typeProp.data.documentation =
-        "User-assigned identity resource ID. Format: /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.ManagedIdentity/userAssignedIdentities/{identityName}";
-      userAssignedProp.data.widgetKind = "Array";
-      userAssignedProp.data.documentation =
-        "List of user-assigned identity resource IDs to assign to this resource.";
-    }
-  } catch (e) {
-    // Resource doesn't have identity.userAssignedIdentities, skip
-  }
-}
