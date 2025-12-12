@@ -32,12 +32,10 @@ export async function callGenerateTemplate(
   ];
 
   let templateContent = "";
-  let templateShellPath = "";
 
   for (const path of possiblePaths) {
     try {
       templateContent = await Deno.readTextFile(path);
-      templateShellPath = path;
       break;
     } catch {
       // Try next path
@@ -70,6 +68,4 @@ export async function callGenerateTemplate(
   console.log(`\nNext steps:`);
   console.log(`1. Edit ${templatePath} to customize your template`);
   console.log(`2. Run your template with: si template run ${templatePath}`);
-  console.log(`\nTo customize the template shell, edit:`);
-  console.log(`  ${templateShellPath}`);
 }
