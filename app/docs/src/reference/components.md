@@ -124,7 +124,8 @@ To create a Component:
 :::code-group
 
 ```typescript [TypeScript]
-const response = await componentsApi.createComponent({
+const api = new ComponentApi(apiConfig);
+const response = await api.createComponent({
   workspaceId,
   changeSetId,
   createComponentV1Request: {
@@ -140,7 +141,8 @@ request = CreateComponentV1Request(
     schema_name=schema_name,
 )
 
-response = components_api.create_component(
+api = ComponentsApi(client)
+response = api.create_component(
     workspace_id=workspace_id,
     change_set_id=change_set_id,
     create_change_set_v1_request=request,
@@ -226,13 +228,14 @@ $ si component get -c 01KC2F3RWYRYQDZ3BRNG69FC28 MyNodeEC2Instance -o json
 :::code-group
 
 ```typescript [TypeScript]
-const response = await componentsApi.getComponent({
+const api = new ComponentApi(apiConfig);
+const response = await api.getComponent({
   workspaceId,
   changeSetId,
   componentId,
 });
 
-const findResponse = await componentsApi.findComponent({
+const findResponse = await api.findComponent({
   workspaceId,
   changeSetId,
   {
@@ -242,13 +245,14 @@ const findResponse = await componentsApi.findComponent({
 ```
 
 ```python [Python]
-response = components_api.get_component(
+api = ComponentsApi(client)
+response = api.get_component(
     workspace_id=workspace_id,
     change_set_id=change_set_id,
     component_id=component_id,
 )
 
-find_response = components_api.get_component(
+find_response = api.get_component(
     workspace_id=workspace_id,
     change_set_id=change_set_id,
     component=component_name,
@@ -331,7 +335,8 @@ $ si component update -c 01KC2F3RWYRYQDZ3BRNG69FC28 mycomponent.json
 :::code-group
 
 ```typescript [TypeScript]
-const response = await componentsApi.updateComponent({
+const api = new ComponentApi(apiConfig);
+const response = await api.updateComponent({
   workspaceId,
   changeSetId,
   componentId,
@@ -350,7 +355,8 @@ request = UpdateComponentV1Request(
   }
 )
 
-response = components_api.update_component(
+api = ComponentsApi(client)
+response = api.update_component(
     workspace_id=workspace_id,
     change_set_id=change_set_id,
     component_id=component_id,
@@ -444,7 +450,8 @@ subscriptions
 :::code-group
 
 ```typescript [TypeScript]
-const response = await componentsApi.updateComponent({
+const api = new ComponentApi(apiConfig);
+const response = await api.updateComponent({
   workspaceId,
   changeSetId,
   componentId,
@@ -472,7 +479,8 @@ request = UpdateComponentV1Request(
   }
 )
 
-response = components_api.update_component(
+api = ComponentsApi(client)
+response = api.update_component(
     workspace_id=workspace_id,
     change_set_id=change_set_id,
     component_id=component_id,
@@ -532,7 +540,8 @@ To delete a Component:
 :::code-group
 
 ```typescript [TypeScript]
-await componentsApi.deleteComponent({
+const api = new ComponentApi(apiConfig);
+await api.deleteComponent({
   workspaceId,
   changeSetId,
   componentId,
@@ -540,7 +549,8 @@ await componentsApi.deleteComponent({
 ```
 
 ```python [Python]
-response = components_api.delete_component(
+api = ComponentsApi(client)
+response = api.delete_component(
     workspace_id=workspace_id,
     change_set_id=change_set_id,
     component_id=component_id,
@@ -601,7 +611,8 @@ To erase a Component:
 :::code-group
 
 ```typescript [TypeScript]
-await componentsApi.eraseComponent({
+const api = new ComponentApi(apiConfig);
+await api.eraseComponent({
   workspaceId,
   changeSetId,
   componentId,
@@ -609,7 +620,8 @@ await componentsApi.eraseComponent({
 ```
 
 ```python [Python]
-response = components_api.erase_component(
+api = ComponentsApi(client)
+api.erase_component(
     workspace_id=workspace_id,
     change_set_id=change_set_id,
     component_id=component_id,

@@ -129,7 +129,8 @@ const count = components.length;
 ```
 
 ```python [Python]
-response = search_api.search(
+api = SearchApi(client)
+response = api.search(
   workspace_id=workspace_id,
   change_set_id=change_set_id,
   q=query
