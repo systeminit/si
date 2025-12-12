@@ -175,7 +175,19 @@ function buildGcpResourceSpec(
 
   // Build GCP schema
   const fullResourceName = resourcePath.join(".");
-  const typeName = `GCP ${doc.title || doc.name} ${fullResourceName}`;
+
+  // Clean up title: remove "API", version suffixes, etc.
+  const cleanTitle = (doc.title || doc.name)
+    .replace(/\s+API\s*$/i, '')  // Remove trailing "API"
+    .replace(/\s+API\s+/gi, ' ') // Remove "API" in the middle
+    .replace(/\s+v\d+$/i, '')    // Remove version numbers like "v1", "v2"
+    .replace(/\s+I{1,3}$/i, '')  // Remove roman numerals I, II, III
+    .trim();
+
+  let typeName = `Google Cloud ${cleanTitle} ${fullResourceName}`;
+  // Remove duplicate "Cloud" words
+  typeName = typeName.replace(/\bCloud\s+Cloud\b/gi, 'Cloud');
+
   const description = getResponseSchema.description ||
     get.description ||
     `GCP ${doc.name} ${fullResourceName} resource`;
