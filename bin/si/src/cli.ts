@@ -86,8 +86,14 @@ import {
   writeWorkspace,
 } from "./cli/config.ts";
 import { AuthApiClient, isTokenAboutToExpire } from "./cli/auth.ts";
-import { callComponentCreate, type ComponentCreateOptions } from "./component/create.ts";
-import { callComponentErase, type ComponentEraseOptions } from "./component/erase.ts";
+import {
+  callComponentCreate,
+  type ComponentCreateOptions,
+} from "./component/create.ts";
+import {
+  callComponentErase,
+  type ComponentEraseOptions,
+} from "./component/erase.ts";
 
 /**
  * Global options available to all commands
@@ -556,15 +562,16 @@ function buildWorkspaceSwitchCommand() {
           selectedWorkspaceId,
         );
 
-        const isAboutToExpire =
-          existingToken && isTokenAboutToExpire(existingToken);
+        const isAboutToExpire = existingToken &&
+          isTokenAboutToExpire(existingToken);
 
         if (!existingToken || isAboutToExpire) {
           ctx.logger.info(
             `Generating workspace access token for ${selectedWorkspaceId}`,
           );
-          const workspaceToken =
-            await authApiClient.createWorkspaceToken(selectedWorkspaceId);
+          const workspaceToken = await authApiClient.createWorkspaceToken(
+            selectedWorkspaceId,
+          );
           writeWorkspace(currentUserId, selectedWorkspace, workspaceToken);
         } else {
           ctx.logger.info(
@@ -575,8 +582,8 @@ function buildWorkspaceSwitchCommand() {
         // Update current workspace
         setCurrentWorkspace(selectedWorkspaceId);
 
-        const workspaceName =
-          selectedWorkspace.displayName || selectedWorkspaceId;
+        const workspaceName = selectedWorkspace.displayName ||
+          selectedWorkspaceId;
         ctx.logger.info(`Switched to workspace: ${workspaceName}`);
       } catch (error) {
         ctx.logger.error(`Failed to switch workspace: ${error}`);
@@ -1060,9 +1067,6 @@ function buildTemplateCommand() {
       createSubCommand(true)
         .description("Run a SI template file (local path or remote URL)")
         .arguments("<template:string>")
-        .env("SI_API_TOKEN=<value:string>", "A System Initiative API Token", {
-          required: true,
-        })
         .env(
           "SI_BASE_URL=<url:string>",
           "The System Initiative Base URL for your workspace",
@@ -1439,8 +1443,8 @@ async function ensureApiConfig(options: GlobalOptions): Promise<void> {
     }
   }
 
-  const isApiTokenAboutToExpire =
-    ctx.apiToken && isTokenAboutToExpire(ctx.apiToken);
+  const isApiTokenAboutToExpire = ctx.apiToken &&
+    isTokenAboutToExpire(ctx.apiToken);
 
   if (ctx.apiToken && !isApiTokenAboutToExpire) {
     ctx.logger.debug("API configured! Good job");
@@ -1471,8 +1475,9 @@ async function ensureApiConfig(options: GlobalOptions): Promise<void> {
           options.authApiUrl,
           authApiToken,
         );
-        const workspaceToken =
-          await authApiClient.createWorkspaceToken(currentWorkspaceId);
+        const workspaceToken = await authApiClient.createWorkspaceToken(
+          currentWorkspaceId,
+        );
         writeWorkspace(currentUserId, workspaceDetails, workspaceToken);
         return;
       }
