@@ -47,7 +47,33 @@ All "built in" schemas provided by System Initiative have been vetted for ex-fil
 
 ## Creating a Secret
 
-<DocTabs tabs="Web Application,Public API">
+<DocTabs tabs="CLI,Web Application,Public API">
+<TabPanel value="CLI">
+To create a Secret with the CLI:
+
+```shellscript [Create a Secret]
+$ si secret create "AWS Credential" --name "aws-credential-dev" --use-local-profile
+✨ info    si          Creating change set: Create AWS Credential - 1765498265932
+✨ info    si          Discovering credentials from local environment...
+✨ info    si          ✓ Found 3 credential(s) in local environment
+✨ info    si
+✨ info    si          Creating AWS Credential component "aws-credential-dev"...
+✨ info    si          ✓ Component created with ID: 01KC7YBC03EJH2TAM5K4XTX1GE
+✨ info    si          Creating secret data...
+✨ info    si          ✓ Secret created with ID: 01KC7YBEWJAC0K3Q7K1QQ22R17
+✨ info    si          Attaching secret to component...
+✨ info    si          ✓ Secret attached to component
+✨ info    si
+✨ info    si          ✓ Credential created successfully!
+✨ info    si            Component ID: 01KC7YBC03EJH2TAM5K4XTX1GE
+✨ info    si            Secret ID: 01KC7YBEWJAC0K3Q7K1QQ22R17
+✨ info    si            Secret Name: aws-credential-dev
+✨ info    si            Change Set ID: 01KC7YBATRTKY603YKW5WAZXQ0
+```
+
+By using `--use-local-profile` the CLI will read the credentials from your environment. You can also pass `--interactive` and it will prompt the user for the parameters. 
+
+</TabPanel>
 <TabPanel value="Web Application">
 
 Creating a secret is identical to creating any other component.
@@ -184,7 +210,30 @@ component_response = components_api.create_component(
 ## Updating a Secret
 
 
-<DocTabs tabs="Web Application,Public API">
+<DocTabs tabs="CLI,Web Application,Public API">
+<TabPanel value="CLI">
+To update a Secret with the CLI:
+
+```shellscript [Create a Secret]
+$ si secret update --secret-name "aws-credential-dev" --use-local-profile
+✨ info    si          Creating change set: Update secret - 1765498777287
+✨ info    si          Looking for secret: aws-credential-dev
+✨ info    si          Found secret: aws-credential-dev (01KC7YRD7W8GAMXTC6SZPNTK1B)
+✨ info    si          Discovering credentials from local environment...
+✨ info    si          ✓ Found 3 credential(s) in local environment
+✨ info    si
+✨ info    si          Updating secret "aws-credential-dev"...
+✨ info    si          ✓ Secret updated: 01KC7YRD7W8GAMXTC6SZPNTK1B
+✨ info    si
+✨ info    si          ✓ Secret updated successfully!
+✨ info    si            Secret ID: 01KC7YRD7W8GAMXTC6SZPNTK1B
+✨ info    si            Secret Name: aws-credential-dev
+✨ info    si            Change Set ID: 01KC7YTW94K3BKRD91X7PRJ6PN
+```
+
+By using `--use-local-profile` the CLI will read the credentials from your environment. You can also pass `--interactive` and it will prompt the user for the parameters. You can change the name of the secret by passing `--name` and / or the description by passing `--description`.
+
+</TabPanel>
 <TabPanel value="Web Application">
 To update a secret, replace the secret data with the new information.
 
