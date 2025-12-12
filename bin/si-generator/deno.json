@@ -1,8 +1,0 @@
-{
-  "workspace": [],
-  "tasks": {
-    "test": "deno test --allow-run",
-    "dev": "deno run --watch main.ts",
-    "compile": "deno compile --allow-run --output ./out/si-generate main.ts"
-  }
-}
