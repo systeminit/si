@@ -67,6 +67,7 @@ pub fn routes(state: AppState) -> Router<AppState> {
                         Router::new()
                             .route("/", get(super::change_sets::get::get_change_set))
                             .route("/", delete(super::change_sets::delete::abandon_change_set))
+                            .route("/review", get(super::change_sets::get_review::get_review))
                             .nest("/search", super::search::routes())
                             .nest("/components", super::components::routes())
                             .nest("/schemas", super::schemas::routes())

@@ -253,6 +253,25 @@ export interface AttributeArgumentBindingRequest {
 /**
  * 
  * @export
+ * @interface AttributeDiffTreeV1
+ */
+export interface AttributeDiffTreeV1 {
+    /**
+     * The diff for this attribute
+     * @type {object}
+     * @memberof AttributeDiffTreeV1
+     */
+    'diff': object;
+    /**
+     * The full path to this attribute
+     * @type {string}
+     * @memberof AttributeDiffTreeV1
+     */
+    'path': string;
+}
+/**
+ * 
+ * @export
  * @interface BuildingResponseV1
  */
 export interface BuildingResponseV1 {
@@ -424,6 +443,67 @@ export interface ComponentReferenceOneOf1 {
      * @memberof ComponentReferenceOneOf1
      */
     'componentId': string;
+}
+/**
+ * 
+ * @export
+ * @interface ComponentReviewV1
+ */
+export interface ComponentReviewV1 {
+    /**
+     * 
+     * @type {Array<object>}
+     * @memberof ComponentReviewV1
+     */
+    'actionDiffs': Array<object>;
+    /**
+     * 
+     * @type {Array<object>}
+     * @memberof ComponentReviewV1
+     */
+    'attributeDiffTrees': Array<object>;
+    /**
+     * 
+     * @type {string}
+     * @memberof ComponentReviewV1
+     */
+    'color'?: string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof ComponentReviewV1
+     */
+    'diffStatus': string;
+    /**
+     * 
+     * @type {boolean}
+     * @memberof ComponentReviewV1
+     */
+    'hasResource': boolean;
+    /**
+     * 
+     * @type {string}
+     * @memberof ComponentReviewV1
+     */
+    'id': string;
+    /**
+     * 
+     * @type {string}
+     * @memberof ComponentReviewV1
+     */
+    'name': string;
+    /**
+     * 
+     * @type {string}
+     * @memberof ComponentReviewV1
+     */
+    'schemaCategory': string;
+    /**
+     * 
+     * @type {string}
+     * @memberof ComponentReviewV1
+     */
+    'schemaName': string;
 }
 /**
  * Component data in search results.
@@ -2010,6 +2090,19 @@ export interface GetManagementFuncJobStateV1Response {
      * @memberof GetManagementFuncJobStateV1Response
      */
     'state': string;
+}
+/**
+ * 
+ * @export
+ * @interface GetReviewV1Response
+ */
+export interface GetReviewV1Response {
+    /**
+     * 
+     * @type {Array<ComponentReviewV1>}
+     * @memberof GetReviewV1Response
+     */
+    'components': Array<ComponentReviewV1>;
 }
 /**
  * 
@@ -4111,6 +4204,44 @@ export const ChangeSetsApiAxiosParamCreator = function (configuration?: Configur
         },
         /**
          * 
+         * @summary Get a comprehensive review of all changes in a Change Set
+         * @param {string} workspaceId Workspace identifier
+         * @param {string} changeSetId Change Set identifier
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        getReview: async (workspaceId: string, changeSetId: string, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'workspaceId' is not null or undefined
+            assertParamExists('getReview', 'workspaceId', workspaceId)
+            // verify required parameter 'changeSetId' is not null or undefined
+            assertParamExists('getReview', 'changeSetId', changeSetId)
+            const localVarPath = `/v1/w/{workspace_id}/change-sets/{change_set_id}/review`
+                .replace(`{${"workspace_id"}}`, encodeURIComponent(String(workspaceId)))
+                .replace(`{${"change_set_id"}}`, encodeURIComponent(String(changeSetId)));
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'GET', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+
+    
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         * 
          * @summary List all active Change Sets
          * @param {string} workspaceId Workspace identifier
          * @param {*} [options] Override http request option.
@@ -4321,6 +4452,20 @@ export const ChangeSetsApiFp = function(configuration?: Configuration) {
         },
         /**
          * 
+         * @summary Get a comprehensive review of all changes in a Change Set
+         * @param {string} workspaceId Workspace identifier
+         * @param {string} changeSetId Change Set identifier
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async getReview(workspaceId: string, changeSetId: string, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<GetReviewV1Response>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.getReview(workspaceId, changeSetId, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['ChangeSetsApi.getReview']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         * 
          * @summary List all active Change Sets
          * @param {string} workspaceId Workspace identifier
          * @param {*} [options] Override http request option.
@@ -4425,6 +4570,16 @@ export const ChangeSetsApiFactory = function (configuration?: Configuration, bas
         },
         /**
          * 
+         * @summary Get a comprehensive review of all changes in a Change Set
+         * @param {ChangeSetsApiGetReviewRequest} requestParameters Request parameters.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        getReview(requestParameters: ChangeSetsApiGetReviewRequest, options?: RawAxiosRequestConfig): AxiosPromise<GetReviewV1Response> {
+            return localVarFp.getReview(requestParameters.workspaceId, requestParameters.changeSetId, options).then((request) => request(axios, basePath));
+        },
+        /**
+         * 
          * @summary List all active Change Sets
          * @param {ChangeSetsApiListChangeSetsRequest} requestParameters Request parameters.
          * @param {*} [options] Override http request option.
@@ -4511,6 +4666,16 @@ export interface ChangeSetsApiInterface {
      * @memberof ChangeSetsApiInterface
      */
     getChangeSet(requestParameters: ChangeSetsApiGetChangeSetRequest, options?: RawAxiosRequestConfig): AxiosPromise<GetChangeSetV1Response>;
+
+    /**
+     * 
+     * @summary Get a comprehensive review of all changes in a Change Set
+     * @param {ChangeSetsApiGetReviewRequest} requestParameters Request parameters.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof ChangeSetsApiInterface
+     */
+    getReview(requestParameters: ChangeSetsApiGetReviewRequest, options?: RawAxiosRequestConfig): AxiosPromise<GetReviewV1Response>;
 
     /**
      * 
@@ -4639,6 +4804,27 @@ export interface ChangeSetsApiGetChangeSetRequest {
 }
 
 /**
+ * Request parameters for getReview operation in ChangeSetsApi.
+ * @export
+ * @interface ChangeSetsApiGetReviewRequest
+ */
+export interface ChangeSetsApiGetReviewRequest {
+    /**
+     * Workspace identifier
+     * @type {string}
+     * @memberof ChangeSetsApiGetReview
+     */
+    readonly workspaceId: string
+
+    /**
+     * Change Set identifier
+     * @type {string}
+     * @memberof ChangeSetsApiGetReview
+     */
+    readonly changeSetId: string
+}
+
+/**
  * Request parameters for listChangeSets operation in ChangeSetsApi.
  * @export
  * @interface ChangeSetsApiListChangeSetsRequest
@@ -4761,6 +4947,18 @@ export class ChangeSetsApi extends BaseAPI implements ChangeSetsApiInterface {
      */
     public getChangeSet(requestParameters: ChangeSetsApiGetChangeSetRequest, options?: RawAxiosRequestConfig) {
         return ChangeSetsApiFp(this.configuration).getChangeSet(requestParameters.workspaceId, requestParameters.changeSetId, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * 
+     * @summary Get a comprehensive review of all changes in a Change Set
+     * @param {ChangeSetsApiGetReviewRequest} requestParameters Request parameters.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof ChangeSetsApi
+     */
+    public getReview(requestParameters: ChangeSetsApiGetReviewRequest, options?: RawAxiosRequestConfig) {
+        return ChangeSetsApiFp(this.configuration).getReview(requestParameters.workspaceId, requestParameters.changeSetId, options).then((request) => request(this.axios, this.basePath));
     }
 
     /**
