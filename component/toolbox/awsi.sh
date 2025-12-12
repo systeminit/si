@@ -54,4 +54,4 @@ if [[ $# -gt 0 ]]; then
   fi
 fi
 
-docker run "${args[@]}" systeminit/toolbox:stable "$*"
+docker run --dns 1.1.1.1 --dns 8.8.8.8 --dns 9.9.9.9 "${args[@]}" systeminit/toolbox:stable "$*"
