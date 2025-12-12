@@ -213,8 +213,8 @@ export default withMermaid(defineConfig({
             link: "/reference/secrets",
           },
           {
-            text: "Writing Templates",
-            link: "/reference/templating",
+            text: "Templates",
+            link: "/reference/templates",
           },
           {
             text: "TypeScript Function API",
