@@ -17,6 +17,7 @@ import {
   type AbsoluteDirectoryPath,
   type AbsoluteFilePath,
   FunctionKind,
+  functionKindToDirectory,
   normalizeFsName,
   type Project,
 } from "./project.ts";
@@ -177,16 +178,176 @@ export async function callRemoteSchemaPull(
   logger.info(`Pulling ${expandedSchemaNames.length} schema(s)...`);
   logger.info("");
 
+  // Collect all function data from all schemas (for duplicate detection)
+  logger.info("Gathering schemas and functions for analysis...");
+  const allFunctionsData: Map<string, {
+    funcId: string;
+    schemaName: string;
+    funcKind: FunctionKind;
+    code: string;
+    metadata: FunctionMetadata;
+  }[]> = new Map();
+
+  for (const schemaName of expandedSchemaNames) {
+    logger.debug(`  Collecting functions from ${schemaName}...`);
+    const data = await getSchemaAndVariantBySchemaName(
+      api,
+      changeSetCoord,
+      schemaName,
+    );
+
+    if (!data) {
+      continue;
+    }
+
+    // Collect all function IDs with their kinds
+    const funcIdsWithKinds = [
+      ...data.func.actionIds.map((id) => ({ id, kind: FunctionKind.Action })),
+      ...data.func.authIds.map((id) => ({ id, kind: FunctionKind.Auth })),
+      ...data.func.codegenIds.map((id) => ({ id, kind: FunctionKind.Codegen })),
+      ...data.func.managementIds.map((id) => ({
+        id,
+        kind: FunctionKind.Management,
+      })),
+      ...data.func.qualificationIds.map((id) => ({
+        id,
+        kind: FunctionKind.Qualification,
+      })),
+    ];
+
+    // Fetch all functions for this schema
+    for (const { id: funcId, kind } of funcIdsWithKinds) {
+      const { metadata, codeBody } = await fetchFuncMetadataAndCode(api, {
+        funcId,
+        ...changeSetCoord,
+      });
+
+      // Create a unique key based on code + metadata
+      const key =
+        `${kind}:${codeBody.trim()}:${metadata.name}:${metadata.displayName}:${metadata.description}`;
+
+      if (!allFunctionsData.has(key)) {
+        allFunctionsData.set(key, []);
+      }
+
+      allFunctionsData.get(key)!.push({
+        funcId,
+        schemaName,
+        funcKind: kind,
+        code: codeBody,
+        metadata,
+      });
+    }
+  }
+
+  logger.info(
+    `Collected ${allFunctionsData.size} unique function(s) across all schemas`,
+  );
+  logger.info("");
+
+  // Detect duplicate functions (candidates for shared functions)
+  const duplicateFunctions = new Map<string, {
+    funcKind: FunctionKind;
+    code: string;
+    metadata: FunctionMetadata;
+    usedInSchemas: string[];
+  }>();
+
+  for (const [key, funcs] of allFunctionsData.entries()) {
+    // If function appears in 2+ schemas with same code/metadata, it's a duplicate
+    if (funcs.length >= 2) {
+      const first = funcs[0];
+      duplicateFunctions.set(key, {
+        funcKind: first.funcKind,
+        code: first.code,
+        metadata: first.metadata,
+        usedInSchemas: funcs.map((f) => f.schemaName),
+      });
+    }
+  }
+
+  // Materialize duplicate functions as shared functions
+  // Also build a map of schema -> shared function references to update metadata later
+  const schemaSharedFunctionRefs = new Map<
+    string,
+    Map<FunctionKind, Record<string, string>>
+  >();
+
+  if (duplicateFunctions.size > 0) {
+    logger.info("");
+    logger.info(
+      `Found ${duplicateFunctions.size} duplicate function(s) across schemas`,
+    );
+    logger.info("Creating shared functions...");
+
+    for (const [_key, dupFunc] of duplicateFunctions.entries()) {
+      // Generate a shared function name from the metadata name
+      const sharedFuncName = dupFunc.metadata.name;
+      const funcKind = dupFunc.funcKind;
+
+      // Create the shared function directory if needed
+      const sharedBasePath = project.sharedFunctions.sharedFuncBasePath(
+        funcKind,
+      );
+      await sharedBasePath.mkdir({ recursive: true });
+
+      // Write shared function code and metadata
+      const sharedCodePath = project.sharedFunctions.sharedFuncCodePath(
+        sharedFuncName,
+        funcKind,
+      );
+      const sharedMetadataPath = project.sharedFunctions.sharedFuncMetadataPath(
+        sharedFuncName,
+        funcKind,
+      );
+
+      await sharedCodePath.writeTextFile(dupFunc.code);
+      await sharedMetadataPath.writeTextFile(
+        JSON.stringify(dupFunc.metadata, null, 2),
+      );
+
+      // Build the shared function reference
+      const sharedRef = `@shared/${
+        functionKindToDirectory(funcKind)
+      }/${sharedFuncName}`;
+
+      // Track which schemas should reference this shared function
+      for (const schemaName of dupFunc.usedInSchemas) {
+        if (!schemaSharedFunctionRefs.has(schemaName)) {
+          schemaSharedFunctionRefs.set(schemaName, new Map());
+        }
+        const schemaRefs = schemaSharedFunctionRefs.get(schemaName)!;
+
+        if (!schemaRefs.has(funcKind)) {
+          schemaRefs.set(funcKind, {});
+        }
+
+        schemaRefs.get(funcKind)![dupFunc.metadata.name] = sharedRef;
+      }
+
+      logger.info(
+        `  Created shared ${
+          functionKindToDirectory(funcKind)
+        }/${sharedFuncName} (used by ${dupFunc.usedInSchemas.length} schemas)`,
+      );
+    }
+
+    logger.info("");
+  }
+
+  // Pull schemas normally (detection will find the shared functions we just created)
   const results = [];
   const pulledSchemaNames = [];
   const notFoundSchemaNames = [];
   for (const schemaName of expandedSchemaNames) {
+    const sharedRefsForSchema = schemaSharedFunctionRefs.get(schemaName);
     const result = await pullSchemaByName(
       project,
       api,
       changeSetCoord, // Use HEAD changeset for pulling
       schemaName,
       includeBuiltins,
+      sharedRefsForSchema,
     );
     if (result) {
       results.push(result);
@@ -266,6 +427,7 @@ async function pullSchemaByName(
   changeSetCoord: ChangeSetCoordinate,
   schemaName: string,
   includeBuiltins = false,
+  sharedFunctionRefs?: Map<FunctionKind, Record<string, string>>,
 ) {
   logger.info("Pulling schema {schemaName}", { schemaName });
 
@@ -309,8 +471,8 @@ async function pullSchemaByName(
     schemaName,
     false,
   );
-  const { formatVersionPath } =
-    await materialize.materializeSchemaFormatVersion(
+  const { formatVersionPath } = await materialize
+    .materializeSchemaFormatVersion(
       project,
       schemaName,
       formatVersionBody,
@@ -440,6 +602,46 @@ async function pullSchemaByName(
     data.overlays.qualificationIds,
     true,
   );
+
+  // If we have shared function references for this schema, update the metadata
+  if (sharedFunctionRefs && sharedFunctionRefs.size > 0) {
+    const currentMetadata = metadata;
+    const updatedMetadata: SchemaMetadata = {
+      ...currentMetadata,
+      sharedFunctions: {},
+    };
+
+    // Build the sharedFunctions object from the map
+    for (const [funcKind, refs] of sharedFunctionRefs.entries()) {
+      if (Object.keys(refs).length === 0) continue;
+
+      switch (funcKind) {
+        case FunctionKind.Action:
+          updatedMetadata.sharedFunctions!.actions = refs;
+          break;
+        case FunctionKind.Auth:
+          updatedMetadata.sharedFunctions!.authentication = refs;
+          break;
+        case FunctionKind.Codegen:
+          updatedMetadata.sharedFunctions!.codeGenerators = refs;
+          break;
+        case FunctionKind.Management:
+          updatedMetadata.sharedFunctions!.management = refs;
+          break;
+        case FunctionKind.Qualification:
+          updatedMetadata.sharedFunctions!.qualifications = refs;
+          break;
+      }
+    }
+
+    // Rewrite the metadata file with shared function references
+    const updatedMetadataBody = JSON.stringify(updatedMetadata, null, 2);
+    await metadataPath.writeTextFile(updatedMetadataBody);
+
+    logger.info(
+      `Updated ${schemaName} metadata with ${sharedFunctionRefs.size} shared function reference(s)`,
+    );
+  }
 
   // TODO(victor) Tidy this up, too many fields
   return {
@@ -676,6 +878,29 @@ async function pullFunctionsByKind(
       funcId,
       ...changeSetCoord,
     });
+
+    // For non-overlay functions, check if this matches a shared function
+    // If it does, we'll skip materializing it and just use the shared reference
+    if (!isOverlay) {
+      const sharedRef = await detectSharedFunction(
+        project,
+        functionKind,
+        codeBody,
+        metadata,
+      );
+
+      if (sharedRef) {
+        // This function matches a shared function - skip materialization
+        logger.debug(
+          `Detected shared function for ${metadata.name}: ${sharedRef}`,
+        );
+        // Note: In a future enhancement, we could track these references
+        // and add them to the schema metadata
+        continue;
+      }
+    }
+
+    // Either it's an overlay, or it doesn't match a shared function - materialize it
     const metadataBody = JSON.stringify(metadata, null, 2);
 
     const result = await materialize.materializeEntity(
@@ -713,6 +938,81 @@ async function pullFunctionsByKind(
   }
 
   return { paths, deletedPaths };
+}
+
+/**
+ * Checks if a function matches a shared function by comparing code and metadata.
+ * Returns the shared function reference if it matches, null otherwise.
+ */
+async function detectSharedFunction(
+  project: Project,
+  funcKind: FunctionKind,
+  funcCode: string,
+  funcMetadata: FunctionMetadata,
+): Promise<string | null> {
+  // List all functions in the shared functions directory for this kind
+  const sharedBasePath = project.sharedFunctions.sharedFuncBasePath(funcKind);
+
+  if (!(await sharedBasePath.exists())) {
+    return null;
+  }
+
+  try {
+    const entries = [];
+    for await (const dirEntry of Deno.readDir(sharedBasePath.path)) {
+      if (dirEntry.isFile && dirEntry.name.endsWith(".ts")) {
+        const baseName = dirEntry.name.slice(0, -3);
+        entries.push(baseName);
+      }
+    }
+
+    // Check each shared function to see if it matches
+    for (const sharedFuncName of entries) {
+      const sharedCodePath = project.sharedFunctions.sharedFuncCodePath(
+        sharedFuncName,
+        funcKind,
+      );
+      const sharedMetadataPath = project.sharedFunctions.sharedFuncMetadataPath(
+        sharedFuncName,
+        funcKind,
+      );
+
+      if (!(await sharedCodePath.exists())) {
+        continue;
+      }
+
+      const sharedCode = await sharedCodePath.readTextFile();
+
+      // Compare code - must match exactly
+      if (sharedCode.trim() !== funcCode.trim()) {
+        continue;
+      }
+
+      // If metadata file exists, compare it too
+      if (await sharedMetadataPath.exists()) {
+        const sharedMetadataContent = await sharedMetadataPath.readTextFile();
+        const sharedMetadata = JSON.parse(sharedMetadataContent);
+
+        // Compare metadata (name, displayName, description)
+        if (
+          sharedMetadata.name !== funcMetadata.name ||
+          sharedMetadata.displayName !== funcMetadata.displayName ||
+          sharedMetadata.description !== funcMetadata.description
+        ) {
+          continue;
+        }
+      }
+
+      // Found a match! Return the shared function reference
+      const kindDir = functionKindToDirectory(funcKind);
+      return `@shared/${kindDir}/${sharedFuncName}`;
+    }
+  } catch (err) {
+    // If we can't read the directory, just continue without detection
+    logger.trace("Error detecting shared functions: {error}", { error: err });
+  }
+
+  return null;
 }
 
 function schemaMetadata(data: SchemaAndVariantData): SchemaMetadata {

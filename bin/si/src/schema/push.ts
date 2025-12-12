@@ -20,6 +20,191 @@ import {
 import type { Logger } from "@logtape/logtape";
 import { wrapInChangeSet } from "./change_set.ts";
 import { getWorkspaceDetails } from "../cli/helpers.ts";
+import type { SchemaMetadata, SharedFunctionReference } from "./generators.ts";
+
+/**
+ * Gets the shared function references for a specific function kind from metadata
+ */
+function getSharedRefsForKind(
+  sharedFunctionRefs: SchemaMetadata["sharedFunctions"] | undefined,
+  funcKind: FunctionKind,
+): SharedFunctionReference | undefined {
+  if (!sharedFunctionRefs) {
+    return undefined;
+  }
+
+  switch (funcKind) {
+    case FunctionKind.Action:
+      return sharedFunctionRefs.actions;
+    case FunctionKind.Auth:
+      return sharedFunctionRefs.authentication;
+    case FunctionKind.Codegen:
+      return sharedFunctionRefs.codeGenerators;
+    case FunctionKind.Management:
+      return sharedFunctionRefs.management;
+    case FunctionKind.Qualification:
+      return sharedFunctionRefs.qualifications;
+  }
+}
+
+/**
+ * Parses action functions with shared function support.
+ */
+async function parseActionsWithSharedSupport(
+  ctx: Context,
+  project: Project,
+  schemaName: string,
+  sharedFunctionRefs?: SchemaMetadata["sharedFunctions"],
+): Promise<ActionArray> {
+  return await parseFuncsWithSharedSupport(
+    ctx,
+    project,
+    schemaName,
+    FunctionKind.Action,
+    sharedFunctionRefs,
+  ) as ActionArray;
+}
+
+/**
+ * Parses non-action functions with shared function support.
+ */
+async function parseSimpleFuncsWithSharedSupport(
+  ctx: Context,
+  project: Project,
+  schemaName: string,
+  funcKind: FunctionKind,
+  sharedFunctionRefs?: SchemaMetadata["sharedFunctions"],
+): Promise<SimpleFuncArray> {
+  return await parseFuncsWithSharedSupport(
+    ctx,
+    project,
+    schemaName,
+    funcKind,
+    sharedFunctionRefs,
+  ) as SimpleFuncArray;
+}
+
+/**
+ * Parses functions with shared function support.
+ * Checks both schema directory and shared-functions directory (if referenced).
+ */
+async function parseFuncsWithSharedSupport(
+  ctx: Context,
+  project: Project,
+  schemaName: string,
+  funcKind: FunctionKind,
+  sharedFunctionRefs?: SchemaMetadata["sharedFunctions"],
+): Promise<ActionArray | SimpleFuncArray> {
+  // First, get local functions
+  let localFuncs: ActionArray | SimpleFuncArray;
+  if (funcKind === FunctionKind.Action) {
+    localFuncs = await parseActions(
+      ctx,
+      schemaName,
+      project.schemas.funcBasePath(schemaName, FunctionKind.Action),
+    );
+  } else {
+    localFuncs = await parseSimpleFuncDirectory(
+      ctx,
+      schemaName,
+      project.schemas.funcBasePath(schemaName, funcKind),
+    );
+  }
+
+  // Get the shared function references for this kind
+  const sharedRefs = getSharedRefsForKind(sharedFunctionRefs, funcKind);
+
+  // If no shared refs for this kind, just return local functions
+  if (!sharedRefs) {
+    return localFuncs;
+  }
+
+  // For each shared reference, load the function from shared-functions directory
+  const sharedFuncs: (Action | SimpleFunc)[] = [];
+  for (const [funcName, sharedRef] of Object.entries(sharedRefs)) {
+    // Check if there's a local override (local functions take precedence)
+    if (localFuncs.some((f) => f.name === funcName)) {
+      continue;
+    }
+
+    // Parse the reference: @shared/actions/aws-create -> aws-create
+    const match = sharedRef.match(/^@shared\/[^/]+\/(.+)$/);
+    if (!match) {
+      ctx.logger.warn(
+        `Invalid shared function reference for ${funcName}: ${sharedRef}`,
+      );
+      continue;
+    }
+
+    const sharedFuncName = match[1];
+
+    // Load from shared-functions directory
+    const sharedCodePath = project.sharedFunctions.sharedFuncCodePath(
+      sharedFuncName,
+      funcKind,
+    );
+    const sharedMetadataPath = project.sharedFunctions.sharedFuncMetadataPath(
+      sharedFuncName,
+      funcKind,
+    );
+
+    if (!(await sharedCodePath.exists())) {
+      ctx.logger.error(
+        `Shared function referenced but not found: ${sharedRef} at ${sharedCodePath.path}`,
+      );
+      continue;
+    }
+
+    try {
+      const code = await sharedCodePath.readTextFile();
+      let metadata = {
+        name: funcName, // Use the schema's function name, not the shared function's name
+        displayName: null as string | null | undefined,
+        description: null as string | null | undefined,
+      };
+
+      if (await sharedMetadataPath.exists()) {
+        const metadataContent = await sharedMetadataPath.readTextFile();
+        const parsedMetadata = JSON.parse(metadataContent);
+        metadata = {
+          name: funcName, // Override with schema's function name
+          displayName: parsedMetadata.displayName,
+          description: parsedMetadata.description,
+        };
+      }
+
+      // For actions, we need to determine the kind
+      if (funcKind === FunctionKind.Action) {
+        const validActionKinds = ["create", "destroy", "refresh", "update"];
+        const kind = validActionKinds.includes(funcName)
+          ? funcName.charAt(0).toUpperCase() + funcName.slice(1)
+          : "Manual";
+
+        sharedFuncs.push({
+          ...metadata,
+          kind,
+          code,
+        } as Action);
+      } else {
+        sharedFuncs.push({
+          ...metadata,
+          code,
+        } as SimpleFunc);
+      }
+    } catch (error) {
+      ctx.logger.error(
+        `Error loading shared function ${sharedRef}: ${unknownValueToErrorMessage(error)}`,
+      );
+    }
+  }
+
+  // Combine local and shared functions
+  if (funcKind === FunctionKind.Action) {
+    return [...(localFuncs as ActionArray), ...(sharedFuncs as ActionArray)];
+  } else {
+    return [...(localFuncs as SimpleFuncArray), ...(sharedFuncs as SimpleFuncArray)];
+  }
+}
 
 async function parseActions(
   ctx: Context,
@@ -346,6 +531,7 @@ export async function callRemoteSchemaPush(
         let description: string;
         let link: string;
         let color: string;
+        let sharedFunctionRefs: SchemaMetadata["sharedFunctions"] | undefined;
 
         const schemaMetadataPath =
           project.schemas.schemaMetadataPath(schemaDirName);
@@ -374,6 +560,9 @@ export async function callRemoteSchemaPush(
           description = metadata.description || "";
           link = metadata.documentation ?? null;
           color = metadata.color ?? "#000000";
+
+          // Store shared function references for resolution, but don't send to API
+          sharedFunctionRefs = metadata.sharedFunctions;
         } catch (error) {
           const msg =
             error instanceof Deno.errors.NotFound
@@ -402,55 +591,61 @@ export async function callRemoteSchemaPush(
           }
         }
 
-        const qualifications = await parseSimpleFuncDirectory(
+        const qualifications = await parseSimpleFuncsWithSharedSupport(
           ctx,
+          project,
           schemaName,
-          project.schemas.funcBasePath(
-            schemaDirName,
-            FunctionKind.Qualification,
-          ),
+          FunctionKind.Qualification,
+          sharedFunctionRefs,
         );
 
         logger.debug(
           `loaded ${qualifications.length} qualifications for ${schemaName}`,
         );
 
-        const actions = await parseActions(
+        const actions = await parseActionsWithSharedSupport(
           ctx,
+          project,
           schemaName,
-          project.schemas.funcBasePath(schemaDirName, FunctionKind.Action),
+          sharedFunctionRefs,
         );
 
         logger.debug(`loaded ${actions.length} actions for ${schemaName}`);
 
-        const codeGenerators = await parseSimpleFuncDirectory(
+        const codeGenerators = await parseSimpleFuncsWithSharedSupport(
           ctx,
+          project,
           schemaName,
-          project.schemas.funcBasePath(schemaDirName, FunctionKind.Codegen),
+          FunctionKind.Codegen,
+          sharedFunctionRefs,
         );
 
         logger.debug(
           `loaded ${codeGenerators.length} code generators for ${schemaName}`,
         );
 
-        const managementFuncs = await parseSimpleFuncDirectory(
+        const managementFuncs = await parseSimpleFuncsWithSharedSupport(
           ctx,
+          project,
           schemaName,
-          project.schemas.funcBasePath(schemaDirName, FunctionKind.Management),
+          FunctionKind.Management,
+          sharedFunctionRefs,
         );
 
         logger.debug(
           `loaded ${managementFuncs.length} management funcs for ${schemaName}`,
         );
 
-        const authFuncs = await parseSimpleFuncDirectory(
+        const authFuncs = await parseSimpleFuncsWithSharedSupport(
           ctx,
+          project,
           schemaName,
-          project.schemas.funcBasePath(schemaDirName, FunctionKind.Auth),
+          FunctionKind.Auth,
+          sharedFunctionRefs,
         );
 
         logger.debug(
-          `authFuncs ${codeGenerators.length} auth funcs for ${schemaName}`,
+          `loaded ${authFuncs.length} auth funcs for ${schemaName}`,
         );
 
         const schema = {

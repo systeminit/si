@@ -99,6 +99,9 @@ const SCHEMA_DIR = "schemas" as const;
 
 const OVERLAY_DIR = "overlays" as const;
 
+/** Directory name for shared functions within a project. */
+const SHARED_FUNCTIONS_DIR = "shared-functions" as const;
+
 /** Directory name for actions within a schema. */
 const ACTIONS_DIR = "actions" as const;
 
@@ -113,6 +116,24 @@ const AUTH_DIR = "authentication" as const;
 
 /** Directory name for qualifications within a schema. */
 const QUALIFICATIONS_DIR = "qualifications" as const;
+
+/**
+ * Maps function kinds to their directory names
+ */
+export function functionKindToDirectory(funcKind: FunctionKind): string {
+  switch (funcKind) {
+    case FunctionKind.Action:
+      return ACTIONS_DIR;
+    case FunctionKind.Auth:
+      return AUTH_DIR;
+    case FunctionKind.Codegen:
+      return CODEGENS_DIR;
+    case FunctionKind.Management:
+      return MANAGEMENTS_DIR;
+    case FunctionKind.Qualification:
+      return QUALIFICATIONS_DIR;
+  }
+}
 
 /** Default action function names available for schemas. */
 const DEFAULT_ACTION_FUNCTION_NAMES = [
@@ -191,31 +212,8 @@ export class ProjectModuleWithFunctions {
 
   // Function Methods
   funcBaseRelativePath(schemaName: string, funcKind: FunctionKind) {
-    let dir: string;
-    switch (funcKind) {
-      case FunctionKind.Action:
-        dir = ACTIONS_DIR;
-        break;
-      case FunctionKind.Auth:
-        dir = AUTH_DIR;
-        break;
-      case FunctionKind.Codegen:
-        dir = CODEGENS_DIR;
-        break;
-      case FunctionKind.Management:
-        dir = MANAGEMENTS_DIR;
-        break;
-      case FunctionKind.Qualification:
-        dir = QUALIFICATIONS_DIR;
-        break;
-      default:
-        throw new Error(
-          `Invalid function kind: ${funcKind} on ${this.moduleRootPath}`,
-        );
-    }
-
     return new RelativeDirectoryPath(
-      join(this.schemaBaseRelativePath(schemaName), dir),
+      join(this.schemaBaseRelativePath(schemaName), functionKindToDirectory(funcKind)),
     );
   }
 
@@ -276,6 +274,79 @@ export class ProjectModuleWithFunctions {
         this.moduleRootPath,
         this.funcMetadataRelativePath(schemaName, funcName, funcKind),
       ),
+    );
+  }
+}
+
+class SharedFunctionsProjectModule extends ProjectModuleWithFunctions {
+  constructor(public override readonly moduleRootPath: string) {
+    super(moduleRootPath);
+  }
+
+  override moduleBaseRelativePath(): string {
+    return join();
+  }
+
+  // Shared functions don't have schemas, so we don't need schema name
+  // We organize directly by function kind at the root
+  sharedFuncBasePath(funcKind: FunctionKind): AbsoluteDirectoryPath {
+    return new AbsoluteDirectoryPath(
+      join(this.moduleRootPath, this.sharedFuncBaseRelativePath(funcKind)),
+    );
+  }
+
+  sharedFuncBaseRelativePath(funcKind: FunctionKind): RelativeDirectoryPath {
+    return new RelativeDirectoryPath(functionKindToDirectory(funcKind));
+  }
+
+  sharedFuncCodePath(funcName: string, funcKind: FunctionKind): AbsoluteFilePath {
+    return new AbsoluteFilePath(
+      join(
+        this.moduleRootPath,
+        this.sharedFuncCodeRelativePath(funcName, funcKind),
+      ),
+    );
+  }
+
+  sharedFuncCodeRelativePath(
+    funcName: string,
+    funcKind: FunctionKind,
+  ): RelativeFilePath {
+    return new RelativeFilePath(
+      join(
+        this.sharedFuncBaseRelativePath(funcKind),
+        `${normalizeFsName(funcName)}.ts`,
+      ),
+    );
+  }
+
+  sharedFuncMetadataPath(
+    funcName: string,
+    funcKind: FunctionKind,
+  ): AbsoluteFilePath {
+    return new AbsoluteFilePath(
+      join(
+        this.moduleRootPath,
+        this.sharedFuncMetadataRelativePath(funcName, funcKind),
+      ),
+    );
+  }
+
+  sharedFuncMetadataRelativePath(
+    funcName: string,
+    funcKind: FunctionKind,
+  ): RelativeFilePath {
+    return new RelativeFilePath(
+      join(
+        this.sharedFuncBaseRelativePath(funcKind),
+        `${normalizeFsName(funcName)}.metadata.json`,
+      ),
+    );
+  }
+
+  formatVersionPath(): AbsoluteFilePath {
+    return new AbsoluteFilePath(
+      join(this.moduleRootPath, ".format-version"),
     );
   }
 }
@@ -393,6 +464,7 @@ export class Project {
 
   schemas: SchemasProjectModule;
   overlays: ProjectModuleWithFunctions;
+  sharedFunctions: SharedFunctionsProjectModule;
 
   /**
    * Creates a new Project instance.
@@ -405,6 +477,9 @@ export class Project {
     );
     this.overlays = new ProjectModuleWithFunctions(
       join(rootPath, OVERLAY_DIR),
+    );
+    this.sharedFunctions = new SharedFunctionsProjectModule(
+      join(rootPath, SHARED_FUNCTIONS_DIR),
     );
   }
 
