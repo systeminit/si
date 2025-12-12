@@ -190,6 +190,7 @@ function buildGcpResourceSpec(
     requiredProperties,
     handlers,
     service: doc.name,
+    title: doc.title || doc.name,
     version: doc.version,
     resourcePath,
     baseUrl: doc.baseUrl,
