@@ -220,9 +220,12 @@ Applies the selected change set to HEAD, updating the attributes of components a
 <DocTabs tabs="CLI,AI Agent,Web Application,Public API">
 <TabPanel value="CLI">
 
-:::warning
-WIP
-:::
+```shellscript [apply change set]
+$ si change-set apply deploy-application
+✨ info    si          Gathering change set data...
+✨ info    si          Applying change set...
+✨ info    si          Change set applied successfully: { id: "01KBZTVMFXWAVWFPKZ889YP43X", name: "deploy-application", status: "Applied" }
+```
 
 </TabPanel>
 <TabPanel value="AI Agent">
