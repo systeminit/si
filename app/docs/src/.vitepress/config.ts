@@ -170,8 +170,39 @@ export default withMermaid(defineConfig({
             link: "/reference/components",
           },
           {
-            text: "Actions",
-            link: "/reference/actions",
+            text: "Schemas",
+            link: "/reference/schema",
+          },
+          {
+            text: "Functions",
+            link: "/reference/function",
+            collapsed: true,
+            items: [
+              {
+                text: "Action",
+                link: "/reference/actions",
+              },
+              {
+                text: "Attribute",
+                link: "/reference/attribute",
+              },
+              {
+                text: "Authentication",
+                link: "/reference/authentication",
+              },
+              {
+                text: "Code Generation",
+                link: "/reference/code-generation",
+              },
+              {
+                text: "Management",
+                link: "/reference/management",
+              },
+              {
+                text: "Qualification",
+                link: "/reference/qualification",
+              },
+            ],
           },
           {
             text: "Search",
