@@ -78,15 +78,14 @@ const props = defineProps({
   },
 });
 
-// Check if an action has a parent with the state "Queued"
+// Check if an action has a parent with the state "Queued" or "OnHold"
 const hasDisplayedParent = (child: ActionProposedView) => {
   for (const parentId of child.dependentOn) {
     const parent = actionsById.value.get(parentId);
     if (
       parent &&
       (parent.state === ActionState.Queued ||
-        parent.state === ActionState.OnHold) &&
-      parent.state === child.state
+        parent.state === ActionState.OnHold)
     ) {
       return true;
     }
