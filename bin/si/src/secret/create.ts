@@ -31,8 +31,8 @@ import {
 async function tryInstallSecretSchema(
   ctx: Context,
   schemasApi: SchemasApi,
-  changeSetsApi: ChangeSetsApi,
   workspaceId: string,
+  changeSetId: string,
   secretType: string,
 ): Promise<boolean> {
   try {
@@ -40,36 +40,21 @@ async function tryInstallSecretSchema(
       `Secret type "${secretType}" not found. Attempting to install...`,
     );
 
-    // Create a temporary changeset for schema installation
-    const installChangeSetName = `Install ${secretType} schema - ${Date.now()}`;
-    const { data: createResponse } = await changeSetsApi.createChangeSet({
-      workspaceId,
-      createChangeSetV1Request: {
-        changeSetName: installChangeSetName,
-      },
-    });
-
-    const installChangeSetId = createResponse.changeSet.id;
-
-    ctx.logger.debug(`Created install changeset: ${installChangeSetId}`);
-
-    // Try to find the schema
+    // Try to find the schema in the current changeset
     try {
       const { data: schema } = await schemasApi.findSchema({
         workspaceId,
-        changeSetId: installChangeSetId,
+        changeSetId,
         schema: secretType,
       });
 
       if (schema && schema.schemaId) {
         ctx.logger.info(`Found schema "${secretType}", installing...`);
 
-        // Install the schema - this makes it available immediately
-        // No need to apply the changeset since schema installation is idempotent
-        // and the schema becomes available for use right away
+        // Install the schema in the current changeset
         await schemasApi.installSchema({
           workspaceId,
-          changeSetId: installChangeSetId,
+          changeSetId,
           schemaId: schema.schemaId,
         });
 
@@ -127,10 +112,6 @@ export async function callSecretCreate(
       changeSetId,
     );
 
-    if (definitions.length === 0) {
-      throw new Error("No secret definitions available in this workspace");
-    }
-
     // Match the secret type
     let definition = matchSecretType(options.secretType, definitions, ctx);
 
@@ -139,8 +120,8 @@ export async function callSecretCreate(
       const installed = await tryInstallSecretSchema(
         ctx,
         schemasApi,
-        changeSetsApi,
         workspaceId,
+        changeSetId,
         options.secretType,
       );
 
@@ -162,20 +143,26 @@ export async function callSecretCreate(
         ctx.logger.error(`Unknown secret type: "${options.secretType}"`);
         ctx.logger.info("");
 
-        const suggestions = suggestSimilarSecretTypes(
-          options.secretType,
-          definitions,
-        );
+        if (definitions.length > 0) {
+          const suggestions = suggestSimilarSecretTypes(
+            options.secretType,
+            definitions,
+          );
 
-        if (suggestions.length > 0) {
-          ctx.logger.info("Did you mean one of these?");
-          for (const suggestion of suggestions) {
-            ctx.logger.info(`  - ${suggestion}`);
+          if (suggestions.length > 0) {
+            ctx.logger.info("Did you mean one of these?");
+            for (const suggestion of suggestions) {
+              ctx.logger.info(`  - ${suggestion}`);
+            }
+            ctx.logger.info("");
           }
-          ctx.logger.info("");
-        }
 
-        ctx.logger.info(listAvailableSecretTypes(definitions));
+          ctx.logger.info(listAvailableSecretTypes(definitions));
+        } else {
+          ctx.logger.info(
+            "No secret definitions available. The schema could not be found or installed.",
+          );
+        }
         Deno.exit(1);
       }
     }
