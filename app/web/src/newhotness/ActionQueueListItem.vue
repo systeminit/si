@@ -222,7 +222,19 @@ const hydrateActions = (
 
 // Child actions are only used for actions which are Queued or OnHold
 const childActions = computed(() => {
-  return hydrateActions(props.action.myDependencies);
+  const allDependencies = hydrateActions(props.action.myDependencies);
+
+  // Filter to only include DIRECT children (actions that list THIS action as a parent)
+  // myDependencies contains ALL transitive descendants, but we only want to render
+  // direct children to avoid duplicates in the recursive rendering
+  // For a chain like: Comp4 → Comp3 → Comp2 → Comp1
+  // The backend sends:
+  // - Comp4.myDependencies: [Comp3, Comp2, Comp1] (all descendants)
+  // - Comp3.myDependencies: [Comp2, Comp1] (all descendants)
+  // - Comp2.myDependencies: [Comp1] (direct child)
+  return allDependencies.filter((child) =>
+    child.dependentOn.includes(props.action.id),
+  );
 });
 const displayChildActions = computed(() =>
   childActions.value.filter((action) => {
