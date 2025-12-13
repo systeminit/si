@@ -166,6 +166,10 @@ export default withMermaid(defineConfig({
             link: "/reference/change-sets",
           },
           {
+            text: "Audit Logs",
+            link: "/reference/audit-log",
+          },
+          {
             text: "Components",
             link: "/reference/components",
           },
