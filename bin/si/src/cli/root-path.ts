@@ -56,7 +56,7 @@ export class RootPathNotFoundError extends ValidationError {
   constructor(public readonly path: string) {
     super(
       `No '${ROOT_MARKER}' file found in ${path}.\n\n  ` +
-        "Use the 'project init' subcommand to initialize a project.",
+        "Use the 'schema init' subcommand to initialize a project.",
     );
     this.name = "RootPathNotFoundError";
   }
