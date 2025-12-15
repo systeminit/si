@@ -59,6 +59,9 @@ export async function callChangeSetAbandon(
         name: getResponse.data.changeSet.name,
       });
     }
+    
+    ctx.analytics.trackEvent("change set abandon", {});
+    
   } catch (error) {
     ctx.logger.error(`Failed to abandon change set: ${error}`);
     Deno.exit(1);

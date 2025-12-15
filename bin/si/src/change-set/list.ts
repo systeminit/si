@@ -93,6 +93,11 @@ export async function callChangeSetList(
         }
       }
     }
+    
+    ctx.analytics.trackEvent("change set list", {
+      changeSets: changeSets.length,
+    });
+    
   } catch (error) {
     ctx.logger.error(`Failed to list change sets: ${error}`);
     Deno.exit(1);

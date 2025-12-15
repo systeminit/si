@@ -114,6 +114,8 @@ export async function callSecretCreate(
 
     // Match the secret type
     let definition = matchSecretType(options.secretType, definitions, ctx);
+    
+    let installedSecretType = false;
 
     if (!definition) {
       // Try to install the schema if it's not found
@@ -126,6 +128,8 @@ export async function callSecretCreate(
       );
 
       if (installed) {
+        installedSecretType = true;
+
         // Re-query definitions after installation
         ctx.logger.info("Re-querying secret definitions...");
         definitions = await getSecretDefinitions(
@@ -204,6 +208,7 @@ export async function callSecretCreate(
         definition,
         fieldValues,
       );
+
       return;
     }
 
@@ -269,6 +274,16 @@ export async function callSecretCreate(
         "Other components can now use this credential",
       ],
     });
+    
+    ctx.analytics.trackEvent("secret create", {
+      secretType: definition.secretDefinition,
+      secretName,
+      useLocalProfile: options.useLocalProfile,
+      interactive: options.interactive,
+      installedSecretType,
+      dryRun: options.dryRun ?? false,
+    });
+    
   } catch (error) {
     ctx.logger.error(`Failed to create secret: ${error}`);
 

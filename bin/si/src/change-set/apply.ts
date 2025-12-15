@@ -172,6 +172,11 @@ export async function callChangeSetApply(
       status: updatedResponse.data.changeSet.status,
     });
 
+    ctx.analytics.trackEvent("change set apply", {
+      detach: options.detach ?? false,
+      actionCount: actions.length,
+    });
+
     if (actions.length === 0) {
       ctx.logger.info("No enqueued actions found.")
       return;
@@ -198,6 +203,7 @@ export async function callChangeSetApply(
       }
 
       ctx.logger.info("Actions are running in the background. Use the System Initiative web application to monitor progress.");
+
       return;
     }
 

@@ -217,8 +217,7 @@ export async function callComponentUpdate(
   }
 
   // Check if there are any changes
-  const hasChanges =
-    diff.set.size > 0 ||
+  const hasChanges = diff.set.size > 0 ||
     diff.unset.length > 0 ||
     diff.subscriptions.size > 0 ||
     nameChange !== undefined;
@@ -282,4 +281,12 @@ export async function callComponentUpdate(
       changeSet: options.changeSet,
     },
   );
+
+  // Track component update
+  ctx.analytics.trackEvent("component update", {
+    schemaName: schemaResponse.data.name,
+    dryRun: options.dryRun ?? false,
+    hasChanges,
+    nameChange: nameChange ?? false,
+  });
 }

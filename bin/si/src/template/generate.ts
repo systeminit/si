@@ -59,9 +59,8 @@ export async function callGenerateTemplate(
     path: templatePath,
   });
 
-  ctx.analytics.trackEvent("template_generate", {
+  ctx.analytics.trackEvent("template generate", {
     templateName,
-    outputPath: templatePath,
   });
 
   console.log(`\nTemplate generated: ${templatePath}`);

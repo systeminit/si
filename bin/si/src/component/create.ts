@@ -76,7 +76,7 @@ export async function callComponentCreate(
   const data = {id: resp.data.component.id};
   if (options.raw) {
     console.log(resp.data.component.id);
-  } else 
+  } else
   switch (outputFormat) {
     case "info":
       console.log(`Component ID: ${resp.data.component.id}`);
@@ -88,4 +88,8 @@ export async function callComponentCreate(
       console.log(stringifyYaml(data));
       break;
   }
+
+  ctx.analytics.trackEvent("component create", {
+    schemaName,
+  });
 }

@@ -482,4 +482,10 @@ export async function callComponentGet(
   if (options.cache) {
     await cacheComponentData(cacheData, options.cache, ctx.logger);
   }
+
+  ctx.analytics.trackEvent("component get", {
+    schemaName,
+    outputFormat,
+    setToCache: options.cache ?? false,
+  });
 }

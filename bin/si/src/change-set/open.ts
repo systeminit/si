@@ -47,6 +47,8 @@ export async function callChangeSetOpen(
     await open(`${url}/h`);
 
     ctx.logger.info("Change set opened successfully");
+
+    ctx.analytics.trackEvent("change set open", {});
   } catch (error) {
     ctx.logger.error(`Failed to open change set: ${error}`);
     Deno.exit(1);
