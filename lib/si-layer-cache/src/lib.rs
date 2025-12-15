@@ -80,6 +80,7 @@ pub mod pg;
 pub mod rate_limiter;
 pub mod retry_queue;
 pub mod s3;
+pub mod s3_disk_store;
 pub mod s3_queue_processor;
 pub mod s3_write_queue;
 
