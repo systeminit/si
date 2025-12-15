@@ -370,6 +370,45 @@ automationApiRouter.delete("/workspace/:workspaceId/members", async (ctx) => {
   ctx.body = members;
 });
 
+automationApiRouter.delete("/workspace/:workspaceId/leave", async (ctx) => {
+  const { authUser, workspace } = await authorizeWorkspaceRoute(ctx);
+
+  const workspaceMembers = await getWorkspaceMembers(workspace.id);
+
+  const userToRemove = workspaceMembers.find(
+    (wm) => wm.userId === authUser.id,
+  );
+
+  if (!userToRemove || !userToRemove.user) {
+    ctx.status = 404;
+    ctx.body = { error: "User not found in workspace" };
+    return;
+  }
+
+  await removeUser(authUser.id, workspace.id);
+
+  const members: Member[] = workspaceMembers
+    .filter((wm) => wm.userId !== authUser.id)
+    .map((wm) => ({
+      userId: wm.userId,
+      email: wm.user.email,
+      nickname: wm.user.nickname || "",
+      role: wm.roleType,
+      signupAt: wm.user.signupAt,
+    }));
+
+  tracker.trackEvent(authUser, "workspace_user_left", {
+    workspaceId: workspace.id,
+    workspaceName: escapeDomainLikeString(workspace.displayName),
+    initiatedBy: authUser.email,
+    memberUserName: authUser.email,
+    memberChangedAt: new Date(),
+    newPermissionLevel: "No Access",
+  });
+
+  ctx.body = members;
+});
+
 router.patch("/workspaces/:workspaceId/setDefault", async (ctx) => {
   const { authUser, workspace } = await authorizeWorkspaceRoute(ctx);
 

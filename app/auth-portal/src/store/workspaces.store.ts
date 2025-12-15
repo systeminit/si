@@ -302,6 +302,19 @@ export const useWorkspacesStore = defineStore("workspaces", {
         },
       });
     },
+
+    async LEAVE_WORKSPACE(workspaceId: WorkspaceId) {
+      return new ApiRequest<WorkspaceMember[]>({
+        method: "delete",
+        url: `/workspace/${workspaceId}/leave`,
+        onSuccess: (response) => {
+          // Remove the workspace from the local store since we're no longer a member
+          delete this.workspacesById[workspaceId];
+          // Clear the members list
+          this.selectedWorkspaceMembersById = {};
+        },
+      });
+    },
     async GET_RUM_REPORT(month?: string) {
       return new ApiRequest<RumReportEntry[]>({
         method: "get",
