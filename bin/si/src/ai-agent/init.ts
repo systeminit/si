@@ -160,6 +160,10 @@ export async function callAiAgentInit(
       );
   }
 
+  ctx.analytics.trackEvent("ai-agent init", {
+    tool,
+  });
+
   // Success message
   logger.info("🎉 AI Agent initialization complete!");
   logger.info(`\nTool: ${tool}`);

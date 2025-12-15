@@ -242,8 +242,7 @@ function isQualified(
   qualifications: Array<{ status: string }>,
 ): boolean {
   // Check if there's a qualification attribute
-  const qualAttr =
-    component.attributes["/si/qualification"] ||
+  const qualAttr = component.attributes["/si/qualification"] ||
     component.attributes["/domain/qualified"];
 
   if (qualAttr !== undefined) {
@@ -500,4 +499,10 @@ export async function callComponentSearch(
       }
     }
   }
+
+  ctx.analytics.trackEvent("component search", {
+    resultCount: count,
+    outputFormat,
+    showFullComponent: options.fullComponent ?? false,
+  });
 }

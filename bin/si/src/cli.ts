@@ -590,6 +590,10 @@ function buildWorkspaceSwitchCommand() {
         const workspaceName = selectedWorkspace.displayName ||
           selectedWorkspaceId;
         ctx.logger.info(`Switched to workspace: ${workspaceName}`);
+
+        ctx.analytics.trackEvent("workspace switch", {
+          workspaceName,
+        });
       } catch (error) {
         ctx.logger.error(`Failed to switch workspace: ${error}`);
         throw error;

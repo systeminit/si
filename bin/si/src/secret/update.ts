@@ -123,6 +123,14 @@ export async function callSecretUpdate(
         "Components using this secret will use the updated values",
       ],
     });
+    
+    ctx.analytics.trackEvent("secret update", {
+      secretType: definition.secretDefinition,
+      secretName:existingSecret.name,
+      useLocalProfile: options.useLocalProfile,
+      interactive: options.interactive,
+      dryRun: options.dryRun ?? false,
+    });
   } catch (error) {
     ctx.logger.error(`Failed to update secret: ${error}`);
 

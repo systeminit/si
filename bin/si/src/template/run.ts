@@ -283,6 +283,15 @@ export async function callRunTemplate(
     // Apply transformation function to working set if defined
     await applyTransform(tctx);
 
+    ctx.analytics.trackEvent("template run", {
+      isRemote: isRemoteUrl(template),
+      hasInput: !!options.input,
+      hasBaseline: !!options.baseline,
+      cacheBaseline: !!options.cacheBaseline,
+      cacheBaselineOnly: options.cacheBaselineOnly ?? false,
+      dryRun: options.dryRun ?? false,
+    });
+
     // Converge the template to the change set
     await convergeTemplate(tctx, options.dryRun || false);
   } finally {

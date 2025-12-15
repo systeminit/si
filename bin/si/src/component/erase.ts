@@ -9,7 +9,7 @@
  * @module
  */
 
-import { ComponentsApi } from "@systeminit/api-client";
+import { ComponentsApi, SchemasApi } from "@systeminit/api-client";
 import { Context } from "../context.ts";
 import { resolveChangeSet } from "./change_set.ts";
 
@@ -125,4 +125,17 @@ export async function callComponentErase(
       id: component.id,
     },
   );
+
+  // Track component erase - fetch schema name first
+  const schemasApi = new SchemasApi(apiConfig);
+  const schemaResponse = await schemasApi.getSchema({
+    workspaceId,
+    changeSetId,
+    schemaId: component.schemaId,
+  });
+
+  ctx.analytics.trackEvent("component erase", {
+    schemaName: schemaResponse.data.name,
+    dryRun: options.dryRun ?? false,
+  });
 }

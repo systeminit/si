@@ -59,6 +59,8 @@ export async function callChangeSetCreate(
         ctx.logger.info("Change set opened successfully");
       }
     }
+    
+    ctx.analytics.trackEvent("change set create", {});
   } catch (error) {
     ctx.logger.error(`Failed to create change set: ${error}`);
     Deno.exit(1);

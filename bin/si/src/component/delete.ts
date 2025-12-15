@@ -9,7 +9,7 @@
  * @module
  */
 
-import { ComponentsApi } from "@systeminit/api-client";
+import { ComponentsApi, SchemasApi } from "@systeminit/api-client";
 import { Context } from "../context.ts";
 import { resolveChangeSet } from "./change_set.ts";
 
@@ -135,5 +135,18 @@ export async function callComponentDelete(
   ctx.logger.info(`Successfully deleted component: {name} ({id})`, {
     name: component.name,
     id: component.id,
+  });
+
+  // Track component delete - fetch schema name first
+  const schemasApi = new SchemasApi(apiConfig);
+  const schemaResponse = await schemasApi.getSchema({
+    workspaceId,
+    changeSetId,
+    schemaId: component.schemaId,
+  });
+
+  ctx.analytics.trackEvent("component delete", {
+    schemaName: schemaResponse.data.name,
+    dryRun: options.dryRun ?? false,
   });
 }

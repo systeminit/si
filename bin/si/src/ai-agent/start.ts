@@ -50,6 +50,10 @@ export async function callAiAgentStart(
     throw new Error(`${getToolDisplayName(tool)} not found`);
   }
 
+  ctx.analytics.trackEvent("ai-agent start", {
+    tool,
+  });
+
   // Launch the tool - it will manage the MCP server via config file
   logger.info(`🚀 Launching ${getToolDisplayName(tool)}...`);
 

@@ -135,7 +135,7 @@ export class Analytics {
     eventName: string,
     properties: Record<string, unknown> = {},
   ): void {
-    const event = `${this.eventPrefix}-${eventName}`;
+    const event = `${this.eventPrefix}-cli-command`;
 
     const [workspaceId, userId] = [this.workspaceId, this.userId];
 
@@ -149,6 +149,10 @@ export class Analytics {
     } else {
       variablePayload["workspace_id"] = workspaceId;
     }
+
+    // Capture the actual name as a specific piece of metadata
+    // We can then filter all si cli commands as a specific set of data
+    variablePayload["commandName"] = eventName;
 
     const payload = {
       event,

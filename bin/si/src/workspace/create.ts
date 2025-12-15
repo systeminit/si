@@ -93,6 +93,10 @@ export async function callWorkspaceCreate(
     setCurrentWorkspace(workspace.id);
 
     ctx.logger.info(`Switched to new workspace: ${workspace.displayName}`);
+    
+    ctx.analytics.trackEvent("workspace create", {
+      workspaceName: workspace.displayName
+    });
   } catch (error) {
     ctx.logger.error(`Failed to create workspace: ${error}`);
     Deno.exit(1);

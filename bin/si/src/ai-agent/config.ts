@@ -116,4 +116,12 @@ export async function callAiAgentConfig(
     logger.info("  si ai-agent stop");
     logger.info("  si ai-agent start");
   }
+
+  // Track AI agent config command
+  ctx.analytics.trackEvent("ai-agent config", {
+    show: options.show ?? false,
+    updateToken: options.updateToken ?? false,
+    updateTool: !!options.tool,
+    tool: config.tool,
+  });
 }
