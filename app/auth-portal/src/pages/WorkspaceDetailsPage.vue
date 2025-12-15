@@ -214,18 +214,31 @@
         </Stack>
       </div>
       <div v-if="!createMode" class="flex justify-between items-center pt-md">
-        <VButton
-          v-if="isWorkspaceOwner"
-          :disabled="!isWorkspaceOwner"
-          :requestStatus="deleteWorkspaceReqStatus"
-          iconRight="chevron--right"
-          loadingText="Deleting..."
-          tone="action"
-          variant="solid"
-          @click="() => deleteWorkspace()"
-        >
-          Delete Workspace
-        </VButton>
+        <div class="flex flex-row gap-xs">
+          <VButton
+            v-if="isWorkspaceOwner"
+            :disabled="!isWorkspaceOwner"
+            :requestStatus="deleteWorkspaceReqStatus"
+            iconRight="chevron--right"
+            loadingText="Deleting..."
+            tone="action"
+            variant="solid"
+            @click="() => deleteWorkspace()"
+          >
+            Delete Workspace
+          </VButton>
+          <VButton
+            v-else
+            :requestStatus="leaveWorkspaceReqStatus"
+            iconRight="chevron--right"
+            loadingText="Leaving..."
+            tone="destructive"
+            variant="solid"
+            @click="() => leaveWorkspace()"
+          >
+            Leave Workspace
+          </VButton>
+        </div>
         <VButton
           label="Go to workspace"
           tone="action"
@@ -313,6 +326,8 @@ const loadWorkspaceMembersReqStatus = workspacesStore.getRequestStatus(
 const inviteUserReqStatus = workspacesStore.getRequestStatus("INVITE_USER");
 const deleteWorkspaceReqStatus =
   workspacesStore.getRequestStatus("DELETE_WORKSPACE");
+const leaveWorkspaceReqStatus =
+  workspacesStore.getRequestStatus("LEAVE_WORKSPACE");
 
 const createMode = computed(() => props.workspaceId === "new");
 const isWorkspaceOwner = computed(
@@ -464,6 +479,17 @@ const approvalStatus = computed(() => {
 
 const deleteWorkspace = async () => {
   const res = await workspacesStore.DELETE_WORKSPACE(props.workspaceId);
+  if (res.result.success) {
+    // eslint-disable-next-line @typescript-eslint/no-floating-promises
+    await router.push({
+      name: "workspaces",
+      params: {},
+    });
+  }
+};
+
+const leaveWorkspace = async () => {
+  const res = await workspacesStore.LEAVE_WORKSPACE(props.workspaceId);
   if (res.result.success) {
     // eslint-disable-next-line @typescript-eslint/no-floating-promises
     await router.push({
