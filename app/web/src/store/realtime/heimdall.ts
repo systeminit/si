@@ -43,7 +43,7 @@ import { DefaultMap } from "@/utils/defaultmap";
 import * as rainbow from "@/newhotness/logic_composables/rainbow_counter";
 import { sdfApiInstance as sdf } from "@/store/apis.web";
 import { WorkspaceMetadata, WorkspacePk } from "@/api/sdf/dal/workspace";
-import { memoizeDebounce } from "@/newhotness/util";
+import { memoizeDebounce } from "@/workers/utils";
 import {
   cachedAppEmitter,
   SHOW_CACHED_APP_NOTIFICATION_EVENT,
@@ -196,20 +196,24 @@ export const init = async (
 
   // If both tabs are refreshed at the same time, this can falsely indicate that
   // a tab has the lock, but that tab has actually been refreshed just *after*
-  // this call, so *we* now have the lock.  adding 2.5 second timeout here
+  // this call, so *we* now have the lock.  adding 0.2 second timeout here
   // ensures that there is enough time for the lock to be resolved in a multitab
   // scenario before we begin cold start. (This only matters if 2+ tabs are
   // refreshed at more or less the same time, in the normal scenario we will
   // indicate lock acquisition via the broadcast channel)
   //
-  setTimeout(async () => {
-    if (!lockAcquired.value) {
-      await detectLockAcquiredByOtherTab();
-    }
-  }, 2000);
+  const p = new Promise<void>((resolve) => {
+    setTimeout(async () => {
+      if (!lockAcquired.value) {
+        await detectLockAcquiredByOtherTab();
+      }
+      resolve();
+    }, 200);
+  });
+  await p;
 
   setTimeout(async () => {
-    // If after 5 seconds total, we have not detected lock acquisition, try
+    // If after 2 seconds total, we have not detected lock acquisition, try
     // and force a leader election
     if (!lockAcquired.value) {
       await detectLockAcquiredByOtherTab();
@@ -217,7 +221,7 @@ export const init = async (
         forceLeaderElectionBroadcastChannel.postMessage(FORCE_LEADER_ELECTION);
       }
     }
-  }, 5000);
+  }, 2000);
 };
 
 export const initCompleted = computed(
@@ -323,19 +327,36 @@ const updateCache = (
 export const wsConnections = ref<Record<string, boolean>>({});
 export const _wsConnections = ref<Record<string, boolean>>({});
 
-const updateConnectionStatus: ConnStatusFn = (
+// set the connections from the shared web worker
+// when i am the only tab, this is a no-op
+// and the WS starting up will fill me in below
+// when i am a second tab without a db lock, i wont get any new WS
+// so i need to learn what i am connected to
+db.getConnections().then((conns) => {
+  Object.entries(conns).forEach(([k, v]) => {
+    _wsConnections.value[k] = v;
+    wsConnections.value[k] = v;
+  });
+});
+
+const updateConnectionStatus: ConnStatusFn = async (
   workspaceId: WorkspacePk,
   connected: boolean,
   noBroadcast?: boolean,
 ) => {
   _wsConnections.value[workspaceId] = connected;
 
-  // prevent blips in the UI
+  // always update to connected
+  if (connected) wsConnections.value[workspaceId] = connected;
+
+  await db.setConnections({ ..._wsConnections.value });
+
+  // prevent blips in the UI from quick disconnect -> connect flips
   setTimeout(() => {
     Object.entries(_wsConnections.value).forEach(([k, v]) => {
       wsConnections.value[k] = v;
     });
-  }, 7 * 1000);
+  }, 3 * 1000);
 
   if (!noBroadcast) {
     db.broadcastMessage({
@@ -400,12 +421,16 @@ const atomUpdated: UpdateFn = (
 };
 
 export const indexFailures = reactive(new Set<string>());
+export const indexTouches = reactive(new Map<string, number>());
 
 const lobbyExit: LobbyExitFn = async (
   workspaceId: WorkspacePk,
   changeSetId: ChangeSetId,
   noBroadcast?: boolean,
 ) => {
+  // keep track of each change set's index touch
+  indexTouches.set(changeSetId, Date.now());
+
   // Only navigate away from lobby if user is currently in the lobby
   // for this change set
   if (muspelheimStatuses.value[changeSetId] === true) {
@@ -827,7 +852,7 @@ export const muspelheim = async (workspaceId: WorkspacePk, force?: boolean) => {
     muspelheimStatuses.value[changeSet.id] = false;
   }
 
-  await niflheim(workspaceId, baseChangeSetId, force);
+  await niflheim(workspaceId, baseChangeSetId, force, true);
 
   niflheimQueue.add(async () => {
     await vanaheim(workspaceId);
@@ -838,7 +863,7 @@ export const muspelheim = async (workspaceId: WorkspacePk, force?: boolean) => {
     }
 
     const run = async () => {
-      await niflheim(workspaceId, changeSet.id, force);
+      await niflheim(workspaceId, changeSet.id, force, true);
     };
     niflheimQueue.add(run);
   }
@@ -857,12 +882,24 @@ export const registerBearerToken = async (
   await db.setBearer(workspaceId, bearerToken);
 };
 
+export const syncAtoms = async (
+  workspaceId: WorkspacePk,
+  changeSetId: ChangeSetId,
+): Promise<void> => {
+  await waitForInitCompletion();
+  // eslint-disable-next-line no-console
+  await db.syncAtoms(workspaceId, changeSetId);
+};
+
 // cold start
+const FIVE_MIN = 1000 * 60 * 5;
+const buildingRetryIntervals = {} as Record<string, NodeJS.Timeout>;
 export const niflheim = async (
   workspaceId: WorkspacePk,
   changeSetId: ChangeSetId,
   force = false,
   lobbyOnFailure = true,
+  retryOnBuilding = false,
 ): Promise<-1 | 0 | 1> => {
   await waitForInitCompletion();
   const start = performance.now();
@@ -880,6 +917,27 @@ export const niflheim = async (
     // Index is being rebuilt and is not ready yet.
     if (success === 0 && lobbyOnFailure) {
       muspelheimStatuses.value[changeSetId] = false;
+      // there is an outside chance that the system will fail to send a wsevent
+      // (incident, poor timing of a deploy, etc etc)
+      // to the web worker that tells it the index has been built successfully
+      // so we have a backup cold start interval here
+      // to prevent a user from being stuck in the lobby perpetually
+      if (retryOnBuilding) {
+        const interval = setInterval(async () => {
+          const success = await niflheim(
+            workspaceId,
+            changeSetId,
+            force,
+            lobbyOnFailure,
+            false,
+          );
+          if (success === 1) {
+            const interval = buildingRetryIntervals[changeSetId];
+            clearInterval(interval);
+          }
+        }, FIVE_MIN);
+        buildingRetryIntervals[changeSetId] = interval;
+      }
     } else if (success === 1 || success === -1) {
       // add a failure state for this change set
       if (success === -1) indexFailures.add(changeSetId);
@@ -887,9 +945,13 @@ export const niflheim = async (
       // so we shouldn't block them in the lobby b/c this is never going to load.
       muspelheimStatuses.value[changeSetId] = true;
     }
+    const interval = buildingRetryIntervals[changeSetId];
+    if (success === 1 && interval) clearInterval(interval);
     return success;
   }
 
+  const interval = buildingRetryIntervals[changeSetId];
+  if (interval) clearInterval(interval);
   return 1;
 };
 
