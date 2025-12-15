@@ -132,7 +132,8 @@ is similar but the endpoint is different.
 ::: code-group
 
 ```typescript [TypeScript]
-const response = await schemasApi.createVariantAction({
+const api = new SchemasApi(apiConfig);
+const response = await api.createVariantAction({
   workspaceId,
   changeSetId,
   schemaId,
@@ -147,14 +148,15 @@ const response = await schemasApi.createVariantAction({
 ```
 
 ```python [Python]
-request = {
-  "name": "function name here",
-  "description": "function description here",
-  "code": "function code here",
-  "kind": "create", # the action kind, only necessary for actions
-}
+request = CreateVariantActionFuncV1Request(
+  name="function name here",
+  description="function description here",
+  code="function code here",
+  kind="create", # the action kind, only necessary for actions
+)
 
-response = schemas_api.create_variant_action(
+api = SchemasApi(client)
+response = api.create_variant_action(
     workspace_id=workspace_id,
     change_set_id=change_set_id,
     schema_id=schema_id,
