@@ -78,6 +78,67 @@ pub mod search_components;
 pub mod update_component;
 pub mod upgrade_component;
 
+// Shared utility for real-time qualification tracking
+pub async fn get_qualification_stats_with_realtime_running(
+    ctx: &dal::DalContext,
+    component_id: ComponentId,
+) -> ComponentsResult<list_components::QualificationStatusV1> {
+    use dal::qualification::QualificationSummary;
+    use si_events::FuncRunState;
+
+    // Get base stats using existing logic
+    let base_stats = QualificationSummary::individual_stats(ctx, component_id).await?;
+
+    // Count qualifications that are actively executing
+    let qualification_avs = dal::Component::list_qualification_avs(ctx, component_id).await?;
+    let mut active_running_count = 0;
+
+    for qualification_av in qualification_avs {
+        if let Some(func_run) = ctx
+            .layer_db()
+            .func_run()
+            .get_last_qualification_for_attribute_value_id(
+                ctx.events_tenancy().workspace_pk,
+                qualification_av.id(),
+            )
+            .await?
+        {
+            // Check if function is currently executing
+            match func_run.state() {
+                FuncRunState::Created
+                | FuncRunState::Dispatched
+                | FuncRunState::Running
+                | FuncRunState::PostProcessing => {
+                    active_running_count += 1;
+                }
+                FuncRunState::Success | FuncRunState::Failure | FuncRunState::Killed => {
+                    // Completed - don't count as running
+                }
+            }
+        }
+    }
+
+    // If we have actively running qualifications, adjust the counts
+    let mut result_stats = list_components::QualificationStatusV1::from(base_stats);
+
+    if active_running_count > 0 {
+        // Override the running count with actual execution state
+        result_stats.running = active_running_count;
+
+        // Optionally adjust other counts to maintain total consistency
+        let accounted_for = result_stats.succeeded
+            + result_stats.warned
+            + result_stats.failed
+            + result_stats.running;
+        if accounted_for > result_stats.total {
+            // Some qualifications are re-running, adjust previous counts
+            result_stats.running = active_running_count.min(result_stats.total);
+        }
+    }
+
+    Ok(result_stats)
+}
+
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub enum ComponentsError {
@@ -125,6 +186,8 @@ pub enum ComponentsError {
     InputSocket(#[from] dal::socket::input::InputSocketError),
     #[error("invalid secret value: {0}")]
     InvalidSecretValue(String),
+    #[error("layer db error: {0}")]
+    LayerDb(#[from] si_layer_cache::LayerDbError),
     #[error("management func error: {0}")]
     ManagementFuncExecution(#[from] si_db::ManagementFuncExecutionError),
     #[error("management function already running for this component")]
@@ -147,6 +210,8 @@ pub enum ComponentsError {
     OutputSocket(#[from] dal::socket::output::OutputSocketError),
     #[error("prop error: {0}")]
     Prop(#[from] dal::prop::PropError),
+    #[error("qualification summary error: {0}")]
+    QualificationSummary(#[from] dal::qualification::QualificationSummaryError),
     #[error("schema error: {0}")]
     Schema(#[from] dal::SchemaError),
     #[error("schema not found by name error: {0}")]

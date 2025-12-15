@@ -136,4 +136,8 @@ pub struct PaginationParams {
     pub cursor: Option<String>,
     #[schema(value_type = Option<bool>)]
     pub include_codegen: Option<bool>,
+    #[schema(value_type = Option<bool>, example = "true")]
+    pub include_qualifications: Option<bool>,
+    #[schema(value_type = Option<bool>, example = "true")]
+    pub include_upgrade_status: Option<bool>,
 }
