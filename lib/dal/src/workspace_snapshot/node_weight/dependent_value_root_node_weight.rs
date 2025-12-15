@@ -38,6 +38,10 @@ impl DependentValueRootNodeWeight {
         self.value_id
     }
 
+    pub fn set_value_id(&mut self, value_id: Ulid) {
+        self.value_id = value_id;
+    }
+
     pub fn lineage_id(&self) -> Ulid {
         self.lineage_id
     }

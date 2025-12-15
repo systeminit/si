@@ -1,0 +1,44 @@
+---
+source: bin/anansi/src/app/ui/tests.rs
+expression: redacted
+---
+anansi k(n)ows about nodes in system initiative                                                     
+┌Filter────────────────────────────────────────────────────────────────────────────────────────────┐
+│Press / to filter by node weight kind, ID, or name                                                │
+└──────────────────────────────────────────────────────────────────────────────────────────────────┘
+┌Nodes (14/15)─────────────────────────┐┌Node Details──────────────────────────────────────────────┐
+│    ID     Node W Name                ││Node Weight Kind: Prop                                    │
+│[ ] [ULID] Catego Action              ││ID: [ULID]                            │
+│[ ] [ULID] Catego Component           ││UTC Timestamp in ULID: [TIMESTAMP]                │
+│[ ] [ULID] Catego DeprecatedActionBatc││Lineage ID: [ULID]                    │
+│[ ] [ULID] Catego Func                ││Merkle Tree Hash: a4259cd2a519c046110050284cd930be        │
+│[ ] [ULID] Catego Module              ││                                                          │
+│[ ] [ULID] Catego Schema              │└──────────────────────────────────────────────────────────┘
+│[ ] [ULID] Catego Secret              │┌Edges (out: 1, in: 0) [1/1]───────────────────────────────┐
+│[ ] [ULID] Catego DependentValueRoots ││Outgoing:                                                 │
+│[ ] [ULID] Catego View                ││[•]  - Contain(None) → Prop ([ULID])  │
+│[ ] [ULID] Catego DiagramObject       ││                                                          │
+│[•] [ULID] Prop   parent              ││Incoming:                                                 │
+│                                      ││  (none)                                                  │
+└──────────────────────────────────────┘└──────────────────────────────────────────────────────────┘
+┌Edit History──────────────────────────────────────────────────────────────────────────────────────┐
+│No edits yet. Press 'e' to edit the selected node.                                                │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+└──────────────────────────────────────────────────────────────────────────────────────────────────┘
+Tab: Panels | ↑/↓: Select | a: Add Edge | d: Delete | u: Undo | q: Quit

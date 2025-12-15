@@ -92,6 +92,10 @@ impl ActionNodeWeight {
         self.originating_change_set_id
     }
 
+    pub fn set_originating_change_set_id(&mut self, id: ChangeSetId) {
+        self.originating_change_set_id = id;
+    }
+
     pub fn lineage_id(&self) -> Ulid {
         self.lineage_id
     }

@@ -1,0 +1,44 @@
+---
+source: bin/anansi/src/app/ui/tests.rs
+expression: redacted
+---
+anansi k(n)ows about nodes in system initiative                                                     
+┌Filter────────────────────────────────────────────────────────────────────────────────────────────┐
+│Filter: prop_                                                                                     │
+└──────────────────────────────────────────────────────────────────────────────────────────────────┘
+┌Nodes (1/14 | 14/14 total)────────────┐┌Node Details──────────────────────────────────────────────┐
+│    ID     Node W Name                ││Node Weight Kind: Category                                │
+│[•] [ULID] Catego Overlays            ││ID: [ULID]                            │
+│[ ] [ULID] Catego DefaultSubscriptionS││UTC Timestamp in ULID: [TIMESTAMP]                │
+│[ ] [ULID] Conten Root                ││Lineage ID: [ULID]                    │
+│[ ] [ULID] Catego Action              ││Merkle Tree Hash: 988897fa4cd85c4a11196911a8fe66d3        │
+│[ ] [ULID] Catego Component           ││                                                          │
+│[ ] [ULID] Catego DeprecatedActionBatc│└──────────────────────────────────────────────────────────┘
+│[ ] [ULID] Catego Func                │┌Edges (out: 0, in: 1) [1/1]───────────────────────────────┐
+│[ ] [ULID] Catego Module              ││Outgoing:                                                 │
+│[ ] [ULID] Catego Schema              ││  (none)                                                  │
+│[ ] [ULID] Catego Secret              ││                                                          │
+│[ ] [ULID] Catego DependentValueRoots ││Incoming:                                                 │
+│                                      ││[ ]  ← Use { is_default: false } - Content ([ULID]│
+└──────────────────────────────────────┘└──────────────────────────────────────────────────────────┘
+┌Edit History──────────────────────────────────────────────────────────────────────────────────────┐
+│No edits yet. Press 'e' to edit the selected node.                                                │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+└──────────────────────────────────────────────────────────────────────────────────────────────────┘
+Enter: Apply filter | Esc: Cancel | Type to filter
