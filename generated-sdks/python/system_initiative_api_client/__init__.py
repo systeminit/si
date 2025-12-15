@@ -109,8 +109,6 @@ __all__ = [
     "FuncRunLogViewV1",
     "FuncRunV1RequestPath",
     "FuncRunViewV1",
-    "GenerateTemplateV1Request",
-    "GenerateTemplateV1Response",
     "GetActionsV1Response",
     "GetChangeSetV1Response",
     "GetComponentResourceDataV1Response",
@@ -284,8 +282,6 @@ from system_initiative_api_client.models.force_apply_change_set_v1_response impo
 from system_initiative_api_client.models.func_run_log_view_v1 import FuncRunLogViewV1 as FuncRunLogViewV1
 from system_initiative_api_client.models.func_run_v1_request_path import FuncRunV1RequestPath as FuncRunV1RequestPath
 from system_initiative_api_client.models.func_run_view_v1 import FuncRunViewV1 as FuncRunViewV1
-from system_initiative_api_client.models.generate_template_v1_request import GenerateTemplateV1Request as GenerateTemplateV1Request
-from system_initiative_api_client.models.generate_template_v1_response import GenerateTemplateV1Response as GenerateTemplateV1Response
 from system_initiative_api_client.models.get_actions_v1_response import GetActionsV1Response as GetActionsV1Response
 from system_initiative_api_client.models.get_change_set_v1_response import GetChangeSetV1Response as GetChangeSetV1Response
 from system_initiative_api_client.models.get_component_resource_data_v1_response import GetComponentResourceDataV1Response as GetComponentResourceDataV1Response

@@ -25,12 +25,12 @@ from typing_extensions import Self
 
 class BuildingResponseV1(BaseModel):
     """
-    BuildingResponseV1
+    The response payload when materialized views or data is being built referenced by present or expected data.
     """ # noqa: E501
-    estimated_completion_seconds: Annotated[int, Field(strict=True, ge=0)] = Field(alias="estimatedCompletionSeconds")
-    message: StrictStr
-    retry_after_seconds: Annotated[int, Field(strict=True, ge=0)] = Field(alias="retryAfterSeconds")
-    status: StrictStr
+    estimated_completion_seconds: Annotated[int, Field(strict=True, ge=0)] = Field(description="The estimated time for the data being built to be completed.", alias="estimatedCompletionSeconds")
+    message: StrictStr = Field(description="The message reflecting the reason or state of the data being built.")
+    retry_after_seconds: Annotated[int, Field(strict=True, ge=0)] = Field(description="The number of seconds recommended between retries for the desired data.", alias="retryAfterSeconds")
+    status: StrictStr = Field(description="The status of the data being built.")
     __properties: ClassVar[List[str]] = ["estimatedCompletionSeconds", "message", "retryAfterSeconds", "status"]
 
     model_config = ConfigDict(
