@@ -802,6 +802,8 @@ const bulkEditing = ref(false);
 const toast = useToast();
 const bulkChangeSet = useApi();
 const startBulkEdit = async () => {
+  componentContextMenuRef.value?.close();
+
   if (ctx.onHead.value) {
     const call = bulkChangeSet.endpoint<ChangeSet>(routes.CreateChangeSet);
     const { req } = await call.post({
@@ -2351,7 +2353,17 @@ const shortcuts: { [Key in string]: (e: KeyDetails[Key]) => void } = {
       });
     }
   },
-  // b: undefined,
+  b: (e) => {
+    if (e.metaKey || e.ctrlKey) return;
+    e.preventDefault();
+    if (
+      showGrid.value &&
+      selectionComponentsForAction.value &&
+      selectionComponentsForAction.value.length > 1
+    ) {
+      startBulkEdit();
+    }
+  },
   c: (e) => {
     if (e.metaKey || e.ctrlKey) return;
     e.preventDefault();
