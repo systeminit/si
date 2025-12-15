@@ -5,8 +5,6 @@ use std::{
     sync::Arc,
 };
 
-use aws_config::Region;
-use aws_credential_types::Credentials;
 use aws_sdk_s3::Client;
 use serde::{
     Deserialize,
@@ -15,10 +13,7 @@ use serde::{
 use si_std::SensitiveString;
 use strum::AsRefStr;
 use telemetry::prelude::*;
-use tokio::{
-    sync::Notify,
-    task::JoinHandle,
-};
+use tokio::task::JoinHandle;
 
 use crate::{
     error::{
@@ -30,10 +25,6 @@ use crate::{
         LayeredEventPayload,
     },
     rate_limiter::RateLimitConfig,
-    s3_queue_processor::{
-        ProcessorQueueSetup,
-        S3QueueProcessor,
-    },
     s3_write_queue::S3WriteQueue,
 };
 
@@ -354,118 +345,17 @@ impl S3Layer {
         read_retry_config: S3ReadRetryConfig,
         queue_base_path: impl AsRef<Path>,
     ) -> LayerDbResult<Self> {
-        info!(
-            layer_db.s3.auth_mode = config.auth.as_ref(),
-            layer_db.s3.bucket_name = config.bucket_name,
-            "Creating S3 layer",
-        );
-        let sdk_config = match &config.auth {
-            S3AuthConfig::StaticCredentials {
-                access_key,
-                secret_key,
-            } => {
-                // Static credential flow for dev/MinIO
-                let credentials = Credentials::new(
-                    access_key.as_str(),
-                    secret_key.as_str(),
-                    None,     // session token
-                    None,     // expiration
-                    "static", // provider name
-                );
-                info!(endpoint = config.endpoint, "Using S3 endpoint",);
-
-                aws_config::SdkConfig::builder()
-                    .endpoint_url(&config.endpoint)
-                    .region(Region::new(config.region.clone()))
-                    .credentials_provider(
-                        aws_credential_types::provider::SharedCredentialsProvider::new(credentials),
-                    )
-                    .behavior_version(aws_config::BehaviorVersion::latest())
-                    .build()
-            }
-            S3AuthConfig::IamRole => {
-                // Use si-aws-config which properly loads credentials, adds retry config, and validates via STS
-                si_aws_config::AwsConfig::from_env()
-                    .await
-                    .map_err(LayerDbError::AwsConfig)?
-            }
-        };
-
-        // VersityGW with POSIX backend requires path-style bucket access
-        let s3_config_builder =
-            aws_sdk_s3::config::Builder::from(&sdk_config).force_path_style(true);
-
-        // Apply read retry configuration
-        let retry_config = aws_sdk_s3::config::retry::RetryConfig::standard()
-            .with_max_attempts(read_retry_config.max_attempts)
-            .with_initial_backoff(std::time::Duration::from_millis(
-                read_retry_config.initial_backoff_ms,
-            ))
-            .with_max_backoff(std::time::Duration::from_millis(
-                read_retry_config.max_backoff_ms,
-            ));
-
-        let s3_config = s3_config_builder.retry_config(retry_config).build();
-
-        let client = Client::from_conf(s3_config);
-
-        // Create separate S3 client for processor with retry disabled
-        // Processor uses application-level retry via queue, so SDK retry must be disabled
-        let processor_s3_config = aws_sdk_s3::config::Builder::from(&sdk_config)
-            .force_path_style(true)
-            .retry_config(aws_sdk_s3::config::retry::RetryConfig::disabled())
-            .build();
-
-        let processor_client = Client::from_conf(processor_s3_config);
-        let cache_name_str = cache_name.into();
-        let bucket_name = config.bucket_name;
-        let key_prefix = config.key_prefix;
-
-        // Initialize notify for queue communication
-        let notify = Arc::new(Notify::new());
-
-        // Initialize write queue - returns queue and receiver
-        let (write_queue, rx) =
-            S3WriteQueue::new(&queue_base_path, &cache_name_str, notify.clone())
-                .map_err(|e| LayerDbError::S3WriteQueue(e.to_string()))?;
-
-        // Scan disk for initial ULIDs (startup only)
-        let initial_ulids = write_queue
-            .scan_ulids()
-            .map_err(|e| LayerDbError::S3WriteQueue(e.to_string()))?;
-
-        let write_queue = Arc::new(write_queue);
-
-        // Start queue processor with in-memory index
-        let processor = S3QueueProcessor::new(
-            Arc::clone(&write_queue),
-            rate_limit_config,
-            processor_client,
-            bucket_name.clone(),
-            cache_name_str.clone(),
-            ProcessorQueueSetup {
-                rx,
-                notify,
-                initial_ulids,
-            },
-        );
-
-        let shutdown = processor.shutdown_handle();
-        let handle = tokio::spawn(processor.process_queue());
-
-        let processor_handle = Arc::new(handle);
-        let processor_shutdown = shutdown;
-
-        Ok(S3Layer {
-            client,
-            bucket_name,
-            cache_name: cache_name_str,
+        // TODO: Task 6 - Integrate S3QueueProcessor with new API
+        // This stub allows tests to compile while Task 6 integration is pending
+        let _ = (
+            config,
+            cache_name,
             strategy,
-            key_prefix,
-            write_queue,
-            processor_handle,
-            processor_shutdown,
-        })
+            rate_limit_config,
+            read_retry_config,
+            queue_base_path,
+        );
+        todo!("S3Layer::new() integration pending Task 6")
     }
 
     /// Get the key transform strategy used by this S3Layer

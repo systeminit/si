@@ -11,22 +11,14 @@ use tokio::{
     sync::Notify,
     task::JoinSet,
 };
-use ulid::Ulid;
 
 use crate::{
     s3_disk_store::{
         S3DiskStore,
         S3DiskStoreError,
     },
+    s3_queue_processor::WorkItem,
 };
-
-/// Work item for S3 upload queue
-/// NOTE: This will be moved to s3_queue_processor module in Task 3
-#[derive(Debug, Clone)]
-pub struct WorkItem {
-    pub ulid: Ulid,
-    pub prefix: String,
-}
 
 /// Result of an upload attempt
 #[derive(Debug)]
