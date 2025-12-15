@@ -6,10 +6,13 @@ those changes, and then apply them to the real world when you are ready. As
 change sets are applied to your [workspace](./workspaces.md), your open change
 sets are automatically updated to reflect those changes.
 
-:::tip A change set is like an auto-rebasing git branch that can never have
-conflicts. Unlike tracking state in Git, they are tailor made for the dynamic,
-fluid nature of how infrastructure changes, regardless of how those changes were
-made. :::
+:::tip
+
+A change set is like an auto-rebasing git branch that can never have conflicts.
+Unlike tracking state in Git, they are tailor made for the dynamic, fluid nature
+of how infrastructure changes, regardless of how those changes were made.
+
+:::
 
 ## The HEAD Change Set
 
@@ -17,9 +20,13 @@ The HEAD Change Set represents the current state of your resources in the real
 world. The all your components and resources, along with any actions that are
 currently enqueued, are tracked on the HEAD Change Set.
 
-:::info Think of the HEAD Change Set as your view of everything that is
-currently happening with your workspace. If you want to know "what is happening
-right now?", looking at HEAD is the way to get that answer. :::
+:::info
+
+Think of the HEAD Change Set as your view of everything that is currently
+happening with your workspace. If you want to know "what is happening right
+now?", looking at HEAD is the way to get that answer.
+
+:::
 
 ## Tracking & Auditing Changes
 
@@ -32,12 +39,16 @@ side-effects that happened as a result (for example, changing an attribute on
 one component might cause attributes on other components to change based on
 subscriptions - these are also tracked.)
 
-:::tip The ability to track the _downstream effects_ of a particular update is a
+:::tip
+
+The ability to track the _downstream effects_ of a particular update is a
 critical difference between Change Sets and Git. By having the underyling data
 model understand not only the specific change you made, but the downstream
 effects, System Initiative provides a comprehensive view of a change sets
 impact. It also provides an audit log that can attest to the provenance of every
-granular change. :::
+granular change.
+
+:::
 
 ## How changes are applied to HEAD
 
@@ -319,8 +330,12 @@ configuring the SDK to communicate with System Initiative.
 
 ## Abandoning Change Sets
 
-:::warning Abandoning a Change Set means it can no longer be used or retrieved.
-It cannot be reversed. :::
+:::warning
+
+Abandoning a Change Set means it can no longer be used or retrieved. It cannot
+be reversed.
+
+:::
 
 <DocTabs tabs="CLI,AI Agent,Web Application,Public API">
 <TabPanel value="CLI">
