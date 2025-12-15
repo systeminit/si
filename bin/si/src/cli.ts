@@ -1397,6 +1397,7 @@ function buildChangeSetCommand() {
       createSubCommand(true)
         .description("Create a new change set")
         .arguments("<name:string>")
+        .option("--open", "Open the change set in the browser after creation")
         .action(async (options, name) => {
           await callChangeSetCreate({
             ...options,

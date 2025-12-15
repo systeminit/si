@@ -2,6 +2,7 @@ import type { GlobalOptions } from "../cli.ts";
 
 export interface ChangeSetCreateOptions extends GlobalOptions {
   name: string;
+  open?: boolean;
 }
 
 export interface ChangeSetListOptions extends GlobalOptions {
