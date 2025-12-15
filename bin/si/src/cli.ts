@@ -94,6 +94,10 @@ import {
   callComponentErase,
   type ComponentEraseOptions,
 } from "./component/erase.ts";
+import {
+  callWorkspaceCreate,
+  type WorkspaceCreateOptions,
+} from "./workspace/create.ts";
 
 /**
  * Global options available to all commands
@@ -481,7 +485,8 @@ function buildWorkspaceCommand() {
         }
       }
     })
-    .command("switch", buildWorkspaceSwitchCommand());
+    .command("switch", buildWorkspaceSwitchCommand())
+    .command("create", buildWorkspaceCreateCommand());
 }
 
 /**
@@ -589,6 +594,29 @@ function buildWorkspaceSwitchCommand() {
         ctx.logger.error(`Failed to switch workspace: ${error}`);
         throw error;
       }
+    });
+}
+
+/**
+ * Builds the create-workspace command for creating a new workspace.
+ *
+ * @returns A SubCommand configured for workspace creation
+ * @internal
+ */
+function buildWorkspaceCreateCommand() {
+  return createSubCommand(true)
+    .description("Create a new workspace")
+    .arguments("<name:string>")
+    .option("--description <description:string>", "Workspace description")
+    .option(
+      "--instance-url <url:string>",
+      "Instance URL (defaults to https://app.systeminit.com)",
+    )
+    .action(async (options, name) => {
+      await callWorkspaceCreate({
+        ...options,
+        name: name as string,
+      } as WorkspaceCreateOptions);
     });
 }
 
