@@ -41,4 +41,16 @@ div[class*='language-'] code {
   white-space: pre-wrap !important;
   word-break: break-word;
 }
+
+* {
+  scrollbar-width: thin;
+}
+
+html:not(.dark), html:not(.dark) * {
+  scrollbar-color: #E5E5E5 #FFFFFF;
+}
+
+html.dark, html.dark * {
+  scrollbar-color: #333333 #000000;
+}
 </style>
