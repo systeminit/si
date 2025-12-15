@@ -54,6 +54,13 @@ class TestWorkspaceManagementApi(unittest.TestCase):
         """
         pass
 
+    def test_leave_workspace(self) -> None:
+        """Test case for leave_workspace
+
+        Leave a workspace (remove yourself)
+        """
+        pass
+
     def test_list_members(self) -> None:
         """Test case for list_members
 

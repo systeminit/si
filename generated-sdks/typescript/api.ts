@@ -251,31 +251,31 @@ export interface AttributeArgumentBindingRequest {
     'staticValue'?: any;
 }
 /**
- * 
+ * The response payload when materialized views or data is being built referenced by present or expected data.
  * @export
  * @interface BuildingResponseV1
  */
 export interface BuildingResponseV1 {
     /**
-     * 
+     * The estimated time for the data being built to be completed.
      * @type {number}
      * @memberof BuildingResponseV1
      */
     'estimatedCompletionSeconds': number;
     /**
-     * 
+     * The message reflecting the reason or state of the data being built.
      * @type {string}
      * @memberof BuildingResponseV1
      */
     'message': string;
     /**
-     * 
+     * The number of seconds recommended between retries for the desired data.
      * @type {number}
      * @memberof BuildingResponseV1
      */
     'retryAfterSeconds': number;
     /**
-     * 
+     * The status of the data being built.
      * @type {string}
      * @memberof BuildingResponseV1
      */
@@ -1722,62 +1722,6 @@ export interface FuncRunViewV1 {
      * @memberof FuncRunViewV1
      */
     'updatedAt': string;
-}
-/**
- * 
- * @export
- * @interface GenerateTemplateV1Request
- */
-export interface GenerateTemplateV1Request {
-    /**
-     * 
-     * @type {string}
-     * @memberof GenerateTemplateV1Request
-     */
-    'assetName': string;
-    /**
-     * 
-     * @type {string}
-     * @memberof GenerateTemplateV1Request
-     */
-    'category'?: string | null;
-    /**
-     * 
-     * @type {Array<string>}
-     * @memberof GenerateTemplateV1Request
-     */
-    'componentIds': Array<string>;
-    /**
-     * 
-     * @type {string}
-     * @memberof GenerateTemplateV1Request
-     */
-    'funcName': string;
-}
-/**
- * 
- * @export
- * @interface GenerateTemplateV1Response
- */
-export interface GenerateTemplateV1Response {
-    /**
-     * 
-     * @type {string}
-     * @memberof GenerateTemplateV1Response
-     */
-    'funcId': string;
-    /**
-     * 
-     * @type {string}
-     * @memberof GenerateTemplateV1Response
-     */
-    'schemaId': string;
-    /**
-     * 
-     * @type {string}
-     * @memberof GenerateTemplateV1Response
-     */
-    'schemaVariantId': string;
 }
 /**
  * 
@@ -5182,50 +5126,6 @@ export const ComponentsApiAxiosParamCreator = function (configuration?: Configur
         },
         /**
          * 
-         * @summary Generate a template
-         * @param {string} workspaceId Workspace identifier
-         * @param {string} changeSetId Change Set identifier
-         * @param {GenerateTemplateV1Request} generateTemplateV1Request 
-         * @param {*} [options] Override http request option.
-         * @throws {RequiredError}
-         */
-        generateTemplate: async (workspaceId: string, changeSetId: string, generateTemplateV1Request: GenerateTemplateV1Request, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
-            // verify required parameter 'workspaceId' is not null or undefined
-            assertParamExists('generateTemplate', 'workspaceId', workspaceId)
-            // verify required parameter 'changeSetId' is not null or undefined
-            assertParamExists('generateTemplate', 'changeSetId', changeSetId)
-            // verify required parameter 'generateTemplateV1Request' is not null or undefined
-            assertParamExists('generateTemplate', 'generateTemplateV1Request', generateTemplateV1Request)
-            const localVarPath = `/v1/w/{workspace_id}/change-sets/{change_set_id}/components/generate_template`
-                .replace(`{${"workspace_id"}}`, encodeURIComponent(String(workspaceId)))
-                .replace(`{${"change_set_id"}}`, encodeURIComponent(String(changeSetId)));
-            // use dummy base URL string because the URL constructor only accepts absolute URLs.
-            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
-            let baseOptions;
-            if (configuration) {
-                baseOptions = configuration.baseOptions;
-            }
-
-            const localVarRequestOptions = { method: 'POST', ...baseOptions, ...options};
-            const localVarHeaderParameter = {} as any;
-            const localVarQueryParameter = {} as any;
-
-
-    
-            localVarHeaderParameter['Content-Type'] = 'application/json';
-
-            setSearchParams(localVarUrlObj, localVarQueryParameter);
-            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
-            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
-            localVarRequestOptions.data = serializeDataIfNeeded(generateTemplateV1Request, localVarRequestOptions, configuration)
-
-            return {
-                url: toPathString(localVarUrlObj),
-                options: localVarRequestOptions,
-            };
-        },
-        /**
-         * 
          * @summary Get a component by component Id
          * @param {string} workspaceId Workspace identifier
          * @param {string} changeSetId Change Set identifier
@@ -5720,21 +5620,6 @@ export const ComponentsApiFp = function(configuration?: Configuration) {
         },
         /**
          * 
-         * @summary Generate a template
-         * @param {string} workspaceId Workspace identifier
-         * @param {string} changeSetId Change Set identifier
-         * @param {GenerateTemplateV1Request} generateTemplateV1Request 
-         * @param {*} [options] Override http request option.
-         * @throws {RequiredError}
-         */
-        async generateTemplate(workspaceId: string, changeSetId: string, generateTemplateV1Request: GenerateTemplateV1Request, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<GenerateTemplateV1Response>> {
-            const localVarAxiosArgs = await localVarAxiosParamCreator.generateTemplate(workspaceId, changeSetId, generateTemplateV1Request, options);
-            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
-            const localVarOperationServerBasePath = operationServerMap['ComponentsApi.generateTemplate']?.[localVarOperationServerIndex]?.url;
-            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
-        },
-        /**
-         * 
          * @summary Get a component by component Id
          * @param {string} workspaceId Workspace identifier
          * @param {string} changeSetId Change Set identifier
@@ -5949,16 +5834,6 @@ export const ComponentsApiFactory = function (configuration?: Configuration, bas
         },
         /**
          * 
-         * @summary Generate a template
-         * @param {ComponentsApiGenerateTemplateRequest} requestParameters Request parameters.
-         * @param {*} [options] Override http request option.
-         * @throws {RequiredError}
-         */
-        generateTemplate(requestParameters: ComponentsApiGenerateTemplateRequest, options?: RawAxiosRequestConfig): AxiosPromise<GenerateTemplateV1Response> {
-            return localVarFp.generateTemplate(requestParameters.workspaceId, requestParameters.changeSetId, requestParameters.generateTemplateV1Request, options).then((request) => request(axios, basePath));
-        },
-        /**
-         * 
          * @summary Get a component by component Id
          * @param {ComponentsApiGetComponentRequest} requestParameters Request parameters.
          * @param {*} [options] Override http request option.
@@ -6125,16 +6000,6 @@ export interface ComponentsApiInterface {
      * @memberof ComponentsApiInterface
      */
     findComponent(requestParameters: ComponentsApiFindComponentRequest, options?: RawAxiosRequestConfig): AxiosPromise<GetComponentV1Response>;
-
-    /**
-     * 
-     * @summary Generate a template
-     * @param {ComponentsApiGenerateTemplateRequest} requestParameters Request parameters.
-     * @param {*} [options] Override http request option.
-     * @throws {RequiredError}
-     * @memberof ComponentsApiInterface
-     */
-    generateTemplate(requestParameters: ComponentsApiGenerateTemplateRequest, options?: RawAxiosRequestConfig): AxiosPromise<GenerateTemplateV1Response>;
 
     /**
      * 
@@ -6461,34 +6326,6 @@ export interface ComponentsApiFindComponentRequest {
      * @memberof ComponentsApiFindComponent
      */
     readonly componentId?: string | null
-}
-
-/**
- * Request parameters for generateTemplate operation in ComponentsApi.
- * @export
- * @interface ComponentsApiGenerateTemplateRequest
- */
-export interface ComponentsApiGenerateTemplateRequest {
-    /**
-     * Workspace identifier
-     * @type {string}
-     * @memberof ComponentsApiGenerateTemplate
-     */
-    readonly workspaceId: string
-
-    /**
-     * Change Set identifier
-     * @type {string}
-     * @memberof ComponentsApiGenerateTemplate
-     */
-    readonly changeSetId: string
-
-    /**
-     * 
-     * @type {GenerateTemplateV1Request}
-     * @memberof ComponentsApiGenerateTemplate
-     */
-    readonly generateTemplateV1Request: GenerateTemplateV1Request
 }
 
 /**
@@ -6844,18 +6681,6 @@ export class ComponentsApi extends BaseAPI implements ComponentsApiInterface {
      */
     public findComponent(requestParameters: ComponentsApiFindComponentRequest, options?: RawAxiosRequestConfig) {
         return ComponentsApiFp(this.configuration).findComponent(requestParameters.workspaceId, requestParameters.changeSetId, requestParameters.component, requestParameters.componentId, options).then((request) => request(this.axios, this.basePath));
-    }
-
-    /**
-     * 
-     * @summary Generate a template
-     * @param {ComponentsApiGenerateTemplateRequest} requestParameters Request parameters.
-     * @param {*} [options] Override http request option.
-     * @throws {RequiredError}
-     * @memberof ComponentsApi
-     */
-    public generateTemplate(requestParameters: ComponentsApiGenerateTemplateRequest, options?: RawAxiosRequestConfig) {
-        return ComponentsApiFp(this.configuration).generateTemplate(requestParameters.workspaceId, requestParameters.changeSetId, requestParameters.generateTemplateV1Request, options).then((request) => request(this.axios, this.basePath));
     }
 
     /**
@@ -12238,6 +12063,40 @@ export const WorkspaceManagementApiAxiosParamCreator = function (configuration?:
         },
         /**
          * 
+         * @summary Leave a workspace (remove yourself)
+         * @param {string} workspaceId Workspace identifier
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        leaveWorkspace: async (workspaceId: string, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'workspaceId' is not null or undefined
+            assertParamExists('leaveWorkspace', 'workspaceId', workspaceId)
+            const localVarPath = `/management/workspaces/{workspace_id}/leave`
+                .replace(`{${"workspace_id"}}`, encodeURIComponent(String(workspaceId)));
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'DELETE', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+
+    
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         * 
          * @summary List all members of a workspace
          * @param {string} workspaceId Workspace identifier
          * @param {*} [options] Override http request option.
@@ -12485,6 +12344,19 @@ export const WorkspaceManagementApiFp = function(configuration?: Configuration) 
         },
         /**
          * 
+         * @summary Leave a workspace (remove yourself)
+         * @param {string} workspaceId Workspace identifier
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async leaveWorkspace(workspaceId: string, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<Array<Member>>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.leaveWorkspace(workspaceId, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['WorkspaceManagementApi.leaveWorkspace']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         * 
          * @summary List all members of a workspace
          * @param {string} workspaceId Workspace identifier
          * @param {*} [options] Override http request option.
@@ -12602,6 +12474,16 @@ export const WorkspaceManagementApiFactory = function (configuration?: Configura
         },
         /**
          * 
+         * @summary Leave a workspace (remove yourself)
+         * @param {WorkspaceManagementApiLeaveWorkspaceRequest} requestParameters Request parameters.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        leaveWorkspace(requestParameters: WorkspaceManagementApiLeaveWorkspaceRequest, options?: RawAxiosRequestConfig): AxiosPromise<Array<Member>> {
+            return localVarFp.leaveWorkspace(requestParameters.workspaceId, options).then((request) => request(axios, basePath));
+        },
+        /**
+         * 
          * @summary List all members of a workspace
          * @param {WorkspaceManagementApiListMembersRequest} requestParameters Request parameters.
          * @param {*} [options] Override http request option.
@@ -12697,6 +12579,16 @@ export interface WorkspaceManagementApiInterface {
      * @memberof WorkspaceManagementApiInterface
      */
     inviteMember(requestParameters: WorkspaceManagementApiInviteMemberRequest, options?: RawAxiosRequestConfig): AxiosPromise<Array<Member>>;
+
+    /**
+     * 
+     * @summary Leave a workspace (remove yourself)
+     * @param {WorkspaceManagementApiLeaveWorkspaceRequest} requestParameters Request parameters.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof WorkspaceManagementApiInterface
+     */
+    leaveWorkspace(requestParameters: WorkspaceManagementApiLeaveWorkspaceRequest, options?: RawAxiosRequestConfig): AxiosPromise<Array<Member>>;
 
     /**
      * 
@@ -12810,6 +12702,20 @@ export interface WorkspaceManagementApiInviteMemberRequest {
      * @memberof WorkspaceManagementApiInviteMember
      */
     readonly inviteMemberRequest: InviteMemberRequest
+}
+
+/**
+ * Request parameters for leaveWorkspace operation in WorkspaceManagementApi.
+ * @export
+ * @interface WorkspaceManagementApiLeaveWorkspaceRequest
+ */
+export interface WorkspaceManagementApiLeaveWorkspaceRequest {
+    /**
+     * Workspace identifier
+     * @type {string}
+     * @memberof WorkspaceManagementApiLeaveWorkspace
+     */
+    readonly workspaceId: string
 }
 
 /**
@@ -12942,6 +12848,18 @@ export class WorkspaceManagementApi extends BaseAPI implements WorkspaceManageme
      */
     public inviteMember(requestParameters: WorkspaceManagementApiInviteMemberRequest, options?: RawAxiosRequestConfig) {
         return WorkspaceManagementApiFp(this.configuration).inviteMember(requestParameters.workspaceId, requestParameters.inviteMemberRequest, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * 
+     * @summary Leave a workspace (remove yourself)
+     * @param {WorkspaceManagementApiLeaveWorkspaceRequest} requestParameters Request parameters.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof WorkspaceManagementApi
+     */
+    public leaveWorkspace(requestParameters: WorkspaceManagementApiLeaveWorkspaceRequest, options?: RawAxiosRequestConfig) {
+        return WorkspaceManagementApiFp(this.configuration).leaveWorkspace(requestParameters.workspaceId, options).then((request) => request(this.axios, this.basePath));
     }
 
     /**

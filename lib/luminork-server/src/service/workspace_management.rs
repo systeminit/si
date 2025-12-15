@@ -40,6 +40,7 @@ mod create_workspace;
 mod delete_workspace;
 mod get_workspace;
 mod invite_member;
+mod leave_workspace;
 mod list_members;
 mod list_workspaces;
 mod remove_member;
@@ -205,6 +206,7 @@ pub fn routes(state: AppState) -> Router<AppState> {
                         .route("/members", get(list_members::list_members))
                         .route("/members", post(invite_member::invite_member))
                         .route("/members", delete(remove_member::remove_member))
+                        .route("/leave", delete(leave_workspace::leave_workspace))
                         .route(
                             "/update_member_access",
                             post(update_member_role::update_member_role),
@@ -238,6 +240,7 @@ pub fn routes(state: AppState) -> Router<AppState> {
         update_member_role::update_member_role,
         invite_member::invite_member,
         remove_member::remove_member,
+        leave_workspace::leave_workspace,
     ),
     components(schemas(
         Workspace,
