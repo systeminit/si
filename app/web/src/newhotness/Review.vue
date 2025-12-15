@@ -1199,23 +1199,19 @@ const actionsRef = ref<InstanceType<typeof CollapsingFlexItem>>();
 const actionsPanelRef = ref<InstanceType<typeof ActionsPanel>>();
 const fixActionsPanelState = () => {
   if (selectedComponentId.value) {
-    if (
-      noAVDiffs.value &&
-      actionsRef.value &&
-      !actionsRef.value.openState.open.value
-    ) {
+    if (noAVDiffs.value && actionsRef.value) {
       // Opens the actions panel if there are noAVDiffs
-      actionsRef.value.openState.toggle();
+      actionsRef.value.openState.open.value = true;
     } else {
       nextTick(() => {
         if (
           actionsRef.value &&
+          !noAVDiffs.value &&
           actionsPanelRef.value?.actionPrototypeViews &&
-          actionsPanelRef.value?.actionPrototypeViews.length === 0 &&
-          actionsRef.value.openState.open.value
+          actionsPanelRef.value?.actionPrototypeViews.length === 0
         ) {
           // Closes the actions panel if there are AVDiffs and no actions
-          actionsRef.value.openState.toggle();
+          actionsRef.value.openState.open.value = false;
         }
       });
     }
