@@ -124,7 +124,7 @@ function buildGcpResourceSpec(
   resourceSpec: ResourceSpec,
   doc: GcpDiscoveryDocument,
 ): ExpandedPkgSpec | null {
-  const { resourcePath, get, insert, update, patch, handlers } = resourceSpec;
+  const { resourcePath, get, insert, update, patch, delete: deleteMethod, handlers } = resourceSpec;
 
   // We need at least a get method to build a spec
   if (!get) {
@@ -207,6 +207,13 @@ function buildGcpResourceSpec(
     resourcePath,
     baseUrl: doc.baseUrl,
     documentationLink: doc.documentationLink,
+    methods: {
+      get,
+      insert,
+      update,
+      patch,
+      delete: deleteMethod,
+    },
   };
 
   const onlyProperties: OnlyProperties = {

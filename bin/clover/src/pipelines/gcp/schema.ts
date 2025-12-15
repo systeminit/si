@@ -99,6 +99,14 @@ export interface GcpSchema extends SuperSchema {
   resourcePath: string[];
   baseUrl: string;
   documentationLink?: string;
+  // API methods for CRUD operations
+  methods: {
+    get?: GcpMethod;
+    insert?: GcpMethod;
+    update?: GcpMethod;
+    patch?: GcpMethod;
+    delete?: GcpMethod;
+  };
 }
 
 // Raw (un-dereferenced) types from GCP Discovery documents

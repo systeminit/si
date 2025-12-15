@@ -1,11 +1,211 @@
 async function main(component: Input): Promise<Output> {
-  const serviceAccountJson = requestStorage.getEnv("GOOGLE_APPLICATION_CREDENTIALS_JSON");
+  // Get the generated code from code gen function
+  const codeString = component.properties.code?.["Google Cloud Update Code Gen"]?.code;
+  if (!codeString) {
+    return {
+      status: "error",
+      message: "Could not find Google Cloud Update Code Gen code for resource",
+    };
+  }
 
+  // Parse the generated payload
+  const fullPayload = JSON.parse(codeString);
+
+  // Get current resource state to compare
+  const currentResource = component.properties?.resource?.payload;
+
+  // Filter to only changed fields (GCP PATCH requires this for some resources)
+  let updatePayload = fullPayload;
+  if (currentResource) {
+    const changedFields: Record<string, any> = {};
+
+    for (const [key, value] of Object.entries(fullPayload)) {
+      // Only include field if it's different from current resource
+      if (!_.isEqual(value, currentResource[key])) {
+        changedFields[key] = value;
+      }
+    }
+
+    updatePayload = changedFields;
+  }
+
+  // Try to get update API path first, fall back to patch
+  let updateApiPathJson = _.get(
+    component.properties,
+    ["domain", "extra", "updateApiPath"],
+    "",
+  );
+
+  if (!updateApiPathJson) {
+    updateApiPathJson = _.get(
+      component.properties,
+      ["domain", "extra", "patchApiPath"],
+      "",
+    );
+  }
+
+  if (!updateApiPathJson) {
+    return {
+      status: "error",
+      message: "No update or patch API path metadata found - this resource may not support updates",
+    };
+  }
+
+  const updateApiPath = JSON.parse(updateApiPathJson);
+  const baseUrl = _.get(component.properties, ["domain", "extra", "baseUrl"], "");
+
+  // Get resourceId
+  const resourceId = component.properties?.si?.resourceId;
+  if (!resourceId) {
+    return {
+      status: "error",
+      message: "No resource ID found for update",
+    };
+  }
+
+  // Get authentication token
+  const serviceAccountJson = requestStorage.getEnv("GOOGLE_APPLICATION_CREDENTIALS_JSON");
   if (!serviceAccountJson) {
     throw new Error("Google Cloud Credential not found. Please ensure a Google Cloud Credential is attached to this component.");
   }
 
-  // Activate service account using stdin (most secure - no file on disk)
+  const { token, projectId } = await getAccessToken(serviceAccountJson);
+
+  // Build the URL by replacing path parameters
+  let url = `${baseUrl}${updateApiPath.path}`;
+
+  // Replace path parameters with values from resource_value or domain
+  if (updateApiPath.parameterOrder) {
+    for (const paramName of updateApiPath.parameterOrder) {
+      let paramValue;
+
+      // For the resource identifier, use resourceId
+      if (paramName === updateApiPath.parameterOrder[updateApiPath.parameterOrder.length - 1]) {
+        paramValue = resourceId;
+      } else if (paramName === "project") {
+        // Use extracted project_id for project parameter
+        paramValue = projectId;
+      } else {
+        paramValue = _.get(component.properties, ["resource", "payload", paramName]) ||
+                     _.get(component.properties, ["domain", paramName]);
+      }
+
+      if (paramValue) {
+        url = url.replace(`{${paramName}}`, encodeURIComponent(paramValue));
+      }
+    }
+  }
+
+  // Make the API request with only changed fields
+  const response = await fetch(url, {
+    method: updateApiPath.httpMethod,
+    headers: {
+      "Authorization": `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(updatePayload),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    return {
+      status: "error",
+      message: `Unable to update resource; API returned ${response.status} ${response.statusText}: ${errorText}`,
+    };
+  }
+
+  const responseJson = await response.json();
+
+  // Handle Google Cloud Long-Running Operations (LRO)
+  if (responseJson.kind && responseJson.kind.includes("operation")) {
+    console.log(`[UPDATE] LRO detected, polling for completion...`);
+
+    // Poll the operation until it completes
+    const finalResource = await pollOperation(responseJson, baseUrl, token);
+
+    console.log(`[UPDATE] Operation complete`);
+    return {
+      payload: finalResource,
+      status: "ok",
+    };
+  }
+
+  // Handle synchronous response
+  return {
+    payload: responseJson,
+    status: "ok",
+  };
+}
+
+async function pollOperation(
+  operation: any,
+  baseUrl: string,
+  token: string,
+): Promise<any> {
+  const delay = (ms: number) => new Promise(res => setTimeout(res, ms));
+
+  // Use selfLink or construct URL from operation name
+  const pollingUrl = operation.selfLink || `${baseUrl}${operation.name}`;
+
+  console.log(`[LRO] Polling URL: ${pollingUrl}`);
+
+  // Poll until operation status is DONE
+  let currentOp = operation;
+  while (currentOp.status !== "DONE") {
+    await delay(2000); // Simple 2-second polling interval
+
+    console.log(`[LRO] Polling operation status...`);
+    const response = await fetch(pollingUrl, {
+      method: "GET",
+      headers: { "Authorization": `Bearer ${token}` },
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`[LRO] Polling failed: ${response.status} ${response.statusText}`);
+      console.error(`[LRO] Error body: ${errorText}`);
+      throw new Error(`Operation polling failed: ${response.status} ${response.statusText} - ${errorText}`);
+    }
+
+    currentOp = await response.json();
+    console.log(`[LRO] Operation status: ${currentOp.status}`);
+  }
+
+  console.log(`[LRO] Operation completed with status: ${currentOp.status}`);
+
+  // Check for operation error
+  if (currentOp.error) {
+    throw new Error(`Operation failed: ${JSON.stringify(currentOp.error)}`);
+  }
+
+  // Fetch the final resource from targetLink
+  if (!currentOp.targetLink) {
+    throw new Error("Operation completed but no targetLink found");
+  }
+
+  const resourceResponse = await fetch(currentOp.targetLink, {
+    method: "GET",
+    headers: { "Authorization": `Bearer ${token}` },
+  });
+
+  if (!resourceResponse.ok) {
+    throw new Error(`Failed to fetch resource: ${resourceResponse.status}`);
+  }
+
+  return await resourceResponse.json();
+}
+
+async function getAccessToken(serviceAccountJson: string): Promise<{ token: string; projectId: string | undefined }> {
+  // Parse service account JSON to extract project_id (optional)
+  let projectId: string | undefined;
+  try {
+    const serviceAccount = JSON.parse(serviceAccountJson);
+    projectId = serviceAccount.project_id;
+  } catch {
+    // If parsing fails or project_id is missing, continue without it
+    projectId = undefined;
+  }
+
   const activateResult = await siExec.waitUntilEnd("gcloud", [
     "auth",
     "activate-service-account",
@@ -19,7 +219,6 @@ async function main(component: Input): Promise<Output> {
     throw new Error(`Failed to activate service account: ${activateResult.stderr}`);
   }
 
-  // Get the access token
   const tokenResult = await siExec.waitUntilEnd("gcloud", [
     "auth",
     "print-access-token"
@@ -29,8 +228,8 @@ async function main(component: Input): Promise<Output> {
     throw new Error(`Failed to get access token: ${tokenResult.stderr}`);
   }
 
-  const token = tokenResult.stdout.trim();
-
-  // TODO: Implement actual update logic using the token
-  throw new Error("Not implemented");
+  return {
+    token: tokenResult.stdout.trim(),
+    projectId,
+  };
 }
