@@ -13,6 +13,8 @@ fn test_cache_config(key_prefix: Option<String>) -> S3CacheConfig {
         key_prefix,
         rate_limit: RateLimitConfig::default(),
         read_retry: S3ReadRetryConfig::default(),
+        num_workers: default_num_workers(),
+        max_parallel_per_worker: default_max_parallel_per_worker(),
     };
     base_config.for_cache("test-cache")
 }
@@ -130,6 +132,8 @@ fn test_bucket_suffix_in_final_bucket_name() {
         key_prefix: None,
         rate_limit: RateLimitConfig::default(),
         read_retry: S3ReadRetryConfig::default(),
+        num_workers: default_num_workers(),
+        max_parallel_per_worker: default_max_parallel_per_worker(),
     };
 
     let cache_config = base_config.for_cache("cas_objects");
@@ -165,6 +169,8 @@ async fn test_iam_auth_config_construction() {
         key_prefix: None,
         rate_limit: RateLimitConfig::default(),
         read_retry: S3ReadRetryConfig::default(),
+        num_workers: default_num_workers(),
+        max_parallel_per_worker: default_max_parallel_per_worker(),
     };
 
     let cache_config = config.for_cache("test-cache");

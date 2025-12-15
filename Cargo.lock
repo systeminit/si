@@ -8226,6 +8226,7 @@ dependencies = [
  "buck2-resources",
  "bytes",
  "chrono",
+ "crossbeam-queue",
  "foyer",
  "fs4",
  "futures",

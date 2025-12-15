@@ -25,6 +25,7 @@ rust_library(
         "//third-party/rust:blake3",
         "//third-party/rust:bytes",
         "//third-party/rust:chrono",
+        "//third-party/rust:crossbeam-queue",
         "//third-party/rust:foyer",
         "//third-party/rust:fs4",
         "//third-party/rust:futures",

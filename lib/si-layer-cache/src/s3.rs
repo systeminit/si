@@ -167,6 +167,12 @@ pub struct ObjectStorageConfig {
     /// Retry configuration for S3 read operations
     #[serde(default)]
     pub read_retry: S3ReadRetryConfig,
+    /// Number of workers per cache for parallel S3 writes (default: 10)
+    #[serde(default = "default_num_workers")]
+    pub num_workers: usize,
+    /// Maximum parallel uploads per worker (default: 10)
+    #[serde(default = "default_max_parallel_per_worker")]
+    pub max_parallel_per_worker: usize,
 }
 
 impl Default for ObjectStorageConfig {
@@ -183,8 +189,18 @@ impl Default for ObjectStorageConfig {
             key_prefix: None,
             rate_limit: RateLimitConfig::default(),
             read_retry: S3ReadRetryConfig::default(),
+            num_workers: default_num_workers(),
+            max_parallel_per_worker: default_max_parallel_per_worker(),
         }
     }
+}
+
+fn default_num_workers() -> usize {
+    10
+}
+
+fn default_max_parallel_per_worker() -> usize {
+    10
 }
 
 impl ObjectStorageConfig {
