@@ -310,10 +310,12 @@ pub enum LayerDbError {
     RetryQueueSend(String),
     #[error("S3 error: {0}")]
     S3(Box<S3Error>),
+    #[error("S3 disk store error: {0}")]
+    S3DiskStore(String),
     #[error("S3 not configured")]
     S3NotConfigured,
-    #[error("S3 write queue error: {0}")]
-    S3WriteQueue(String),
+    #[error("S3 queue processor error: {0}")]
+    S3QueueProcessor(String),
     #[error("serde json error: {0}")]
     SerdeJson(#[from] serde_json::Error),
     #[error("tokio oneshot recv error: {0}")]

@@ -43,6 +43,7 @@ pub enum S3DiskStoreError {
 }
 
 /// Minimal disk I/O abstraction for S3 event persistence
+#[derive(Debug)]
 pub struct S3DiskStore {
     /// Base path for queue storage
     base_path: PathBuf,

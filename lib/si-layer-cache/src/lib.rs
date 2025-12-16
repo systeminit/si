@@ -30,17 +30,15 @@
 //! - **Ordering:** ULID-based chronological order
 //! - **Dead letter queue:** `dead_letter/` subdirectory for corrupted data
 //!
-//! See [`s3_write_queue`] and [`s3_queue_processor`] modules for details.
+//! See [`s3_disk_store`] and [`s3_queue_processor`] modules for details.
 //!
-//! ## Adaptive Rate Limiting
+//! ## S3 Throttling and Retries
 //!
-//! S3 writes are rate-limited to avoid constant throttling:
+//! S3 throttling is handled by the AWS SDK's built-in retry mechanism:
 //!
-//! - **Exponential backoff** on throttling (503, SlowDown, etc.)
-//! - **Gradual reduction** after consecutive successes
-//! - **Configurable parameters** via [`RateLimitConfig`]
-//!
-//! See [`rate_limiter`] module for state machine details.
+//! - **SDK Standard Retry Mode** with exponential backoff for throttling errors
+//! - **Multi-worker architecture** distributes load across concurrent workers
+//! - **Worker count** configurable via `S3QueueProcessorConfig::worker_count`
 //!
 //! ## Read Path
 //!
@@ -77,13 +75,11 @@ pub mod layer_cache;
 mod nats;
 pub mod persister;
 pub mod pg;
-pub mod rate_limiter;
 pub mod retry_queue;
 pub mod s3;
 pub mod s3_disk_store;
 pub mod s3_queue_processor;
 pub mod s3_worker;
-pub mod s3_write_queue;
 
 #[derive(AsRefStr, Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[strum(serialize_all = "snake_case")]
@@ -99,11 +95,6 @@ pub use pg::{
     APPLICATION_NAME,
     DBNAME,
     default_pg_pool_config,
-};
-pub use rate_limiter::{
-    RateLimitConfig,
-    RateLimitConfigError,
-    RateLimiter,
 };
 pub use s3::{
     KeyTransformStrategy,
