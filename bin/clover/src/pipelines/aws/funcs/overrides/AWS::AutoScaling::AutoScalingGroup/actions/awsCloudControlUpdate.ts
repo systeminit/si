@@ -89,8 +89,36 @@ async function main(component: Input): Promise<Output> {
 
   addSecretsToPayload(desiredProps, propUsageMap);
 
+  // Keep patch operations using strings to match AWS CloudControl expectations
+  // Convert integer properties in desiredProps to strings if AWS returns strings
+  const integerProps = ["MaxSize", "MinSize", "Cooldown", "DesiredCapacity"];
+  integerProps.forEach(propName => {
+    if (desiredProps[propName] !== undefined) {
+      // If AWS returns string and desired is number, convert desired to string for patch
+      if (typeof currentState[propName] === "string" && typeof desiredProps[propName] === "number") {
+        desiredProps[propName] = String(desiredProps[propName]);
+        console.log(`[ASG-UPDATE] Converted desiredProps.${propName} to string "${desiredProps[propName]}" to match AWS format`);
+      }
+      // If AWS returns string and desired is string, keep as string
+      // If both are numbers, keep as numbers
+    }
+  });
+
   const desiredState = _.cloneDeep(currentState);
   _.merge(desiredState, desiredProps);
+  
+  console.log(`[ASG-UPDATE] Debug - patch will use currentState types:`, {
+    MaxSize: currentState.MaxSize, 
+    MinSize: currentState.MinSize, 
+    Cooldown: currentState.Cooldown, 
+    DesiredCapacity: currentState.DesiredCapacity
+  });
+  console.log(`[ASG-UPDATE] Debug - patch will use desiredState types:`, {
+    MaxSize: desiredState.MaxSize, 
+    MinSize: desiredState.MinSize, 
+    Cooldown: desiredState.Cooldown, 
+    DesiredCapacity: desiredState.DesiredCapacity
+  });
   let patch;
   try {
     patch = jsonpatch.compare(currentState, desiredState, true);
@@ -352,6 +380,19 @@ async function main(component: Input): Promise<Output> {
     const payload = JSON.parse(
       finalResourceResponse["ResourceDescription"]["Properties"],
     );
+    
+    // Convert string properties that should be integers to numbers for final payload
+    const integerProps = ["MaxSize", "MinSize", "Cooldown", "DesiredCapacity"];
+    integerProps.forEach(propName => {
+      if (payload[propName] && typeof payload[propName] === "string") {
+        const numValue = parseInt(payload[propName], 10);
+        if (!isNaN(numValue)) {
+          payload[propName] = numValue;
+          console.log(`[ASG-UPDATE] Converted final payload.${propName} from "${payload[propName]}" to ${numValue}`);
+        }
+      }
+    });
+    
     console.log(`[ASG-UPDATE] Returning success with updated AutoScaling Group payload`);
     return {
       payload,
