@@ -24,7 +24,7 @@ export const AZURE_SCHEMA_OVERRIDES = new Map<string, SchemaOverrideFn>([
 
       const nameProp = propForOverride(extendedLocationProp, "name");
       nameProp.joiValidation = undefined;
-      nameProp.data.validationFormat = "{}";
+      nameProp.data.validationFormat = null;
       nameProp.metadata.required = false;
     },
   ],
@@ -58,8 +58,8 @@ export const AZURE_SCHEMA_OVERRIDES = new Map<string, SchemaOverrideFn>([
       if (!nameProp) {
         throw new Error("Can't find name prop");
       }
-      nameProp.joiValidation = undefined;
-      nameProp.data.validationFormat = "{}";
+      nameProp.joiValidation = undefined; 
+      nameProp.data.validationFormat = null;
       nameProp.metadata.required = false;
     },
   ],
