@@ -23,6 +23,8 @@ use dal::{
     SchemaId,
     SchemaVariant,
     SchemaVariantId,
+    Secret,
+    SecretId,
     action::{
         ActionError,
         prototype::{
@@ -91,6 +93,10 @@ pub enum ComponentsError {
     ActionPrototype(#[from] ActionPrototypeError),
     #[error("attribute error: {0}")]
     Attribute(#[from] dal::attribute::attributes::AttributesError),
+    #[error("attribute prototype argument error: {0}")]
+    AttributePrototypeArgument(
+        #[from] dal::attribute::prototype::argument::AttributePrototypeArgumentError,
+    ),
     #[error("attribute value error: {0}")]
     AttributeValue(#[from] dal::attribute::value::AttributeValueError),
     #[error("attribute value {0} not from component {1}")]
@@ -450,6 +456,9 @@ pub struct ComponentViewV1 {
     pub connections: Vec<ConnectionViewV1>,
     // what views this component is in
     pub views: Vec<ViewV1>,
+    // The secretId that the component is connected to
+    #[schema(value_type = String)]
+    pub secret_id: Option<SecretId>,
 
     #[schema(
         value_type = std::collections::BTreeMap<String, serde_json::Value>,
@@ -520,6 +529,59 @@ pub struct ManagedByConnectionViewV1 {
 }
 
 impl ComponentViewV1 {
+    /// Extract the secret_id for a secret-defining component
+    async fn get_secret_id_for_component(
+        ctx: &DalContext,
+        component_id: ComponentId,
+        schema_variant_id: SchemaVariantId,
+    ) -> ComponentsResult<Option<SecretId>> {
+        // Only proceed if this is a secret-defining component
+        if !SchemaVariant::is_secret_defining(ctx, schema_variant_id).await? {
+            return Ok(None);
+        }
+
+        // Get the output socket which contains the secret definition name
+        let output_socket =
+            match SchemaVariant::find_output_socket_for_secret_defining_id(ctx, schema_variant_id)
+                .await
+            {
+                Ok(socket) => socket,
+                Err(_) => return Ok(None),
+            };
+
+        // Find the attribute value at /root/secrets/<output_socket_name>
+        let secret_prop_path = ["root", "secrets", output_socket.name()];
+        let secret_av_id =
+            match Component::attribute_value_for_prop(ctx, component_id, &secret_prop_path).await {
+                Ok(av_id) => av_id,
+                Err(_) => return Ok(None),
+            };
+
+        // The attribute value contains the encrypted secret key as its value
+        let av = AttributeValue::get_by_id(ctx, secret_av_id).await?;
+        let value = match av.value(ctx).await? {
+            Some(v) => v,
+            None => return Ok(None),
+        };
+
+        // The value is the encrypted secret key - convert to string and look up the secret
+        let secret_key_str = match value.as_str() {
+            Some(s) => s,
+            None => return Ok(None),
+        };
+
+        let secret_key = match secret_key_str.parse() {
+            Ok(key) => key,
+            Err(_) => return Ok(None),
+        };
+
+        // Look up the secret by its encrypted key
+        match Secret::get_id_by_key_or_error(ctx, secret_key).await {
+            Ok(secret_id) => Ok(Some(secret_id)),
+            Err(_) => Ok(None),
+        }
+    }
+
     pub async fn assemble(ctx: &DalContext, component_id: ComponentId) -> ComponentsResult<Self> {
         let component = Component::get_by_id(ctx, component_id).await?;
         let schema_variant = component.schema_variant(ctx).await?;
@@ -612,6 +674,10 @@ impl ComponentViewV1 {
 
         let attributes: AttributeSources = Component::sources(ctx, component_id).await?.into();
 
+        // Get the secret_id for secret-defining components
+        let secret_id =
+            Self::get_secret_id_for_component(ctx, component_id, schema_variant.id()).await?;
+
         let result = ComponentViewV1 {
             id: component_id,
             schema_id: SchemaVariant::schema_id(ctx, schema_variant.id()).await?,
@@ -625,6 +691,7 @@ impl ComponentViewV1 {
             connections,
             views,
             attributes,
+            secret_id,
         };
         Ok(result)
     }
