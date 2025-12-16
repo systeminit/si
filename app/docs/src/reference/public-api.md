@@ -753,57 +753,6 @@ Adds multiple components to a view by name. If the view doesn't exist, it will b
 |404|[Not Found](https://tools.ietf.org/html/rfc7231#section-6.5.4)|Component not found|None|
 |500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
 
-## Generate a template
-
-<a id="opIdgenerate_template"></a>
-
-> Request format
-
-`POST /v1/w/{workspace_id}/change-sets/{change_set_id}/components/generate_template`
-
-> Body parameter
-
-```json
-{
-  "assetName": "My Cool Template",
-  "category": "Templates",
-  "componentIds": [
-    "01H9ZQD35JPMBGHH69BT0Q79AA",
-    "01H9ZQD35JPMBGHH69BT0Q79BB",
-    "01H9ZQD35JPMBGHH69BT0Q79CC"
-  ],
-  "funcName": "Generate My Template"
-}
-```
-
-<h3 id="generate-a-template-parameters">Parameters</h3>
-
-|Name|In|Type|Required|Description|
-|---|---|---|---|---|
-|workspace_id|path|string|true|Workspace identifier|
-|change_set_id|path|string|true|Change Set identifier|
-|body|body|[GenerateTemplateV1Request](#schemageneratetemplatev1request)|true|none|
-
-> Example responses
-
-> 200 Response
-
-```json
-{
-  "funcId": "01H9ZQD35JPMBGHH69BT0Q79CC",
-  "schemaId": "01H9ZQD35JPMBGHH69BT0Q79AA",
-  "schemaVariantId": "01H9ZQD35JPMBGHH69BT0Q79BB"
-}
-```
-
-<h3 id="generate-a-template-responses">Responses</h3>
-
-|Status|Meaning|Description|Schema|
-|---|---|---|---|
-|200|[OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)|Template generated successfully|[GenerateTemplateV1Response](#schemageneratetemplatev1response)|
-|401|[Unauthorized](https://tools.ietf.org/html/rfc7235#section-3.1)|Unauthorized - Invalid or missing token|None|
-|500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
-
 ## Complex search for components
 
 <a id="opIdsearch_components"></a>
@@ -852,6 +801,7 @@ Adds multiple components to a view by name. If the view doesn't exist, it will b
 |200|[OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)|Components retrieved successfully|[SearchComponentsV1Response](#schemasearchcomponentsv1response)|
 |401|[Unauthorized](https://tools.ietf.org/html/rfc7235#section-3.1)|Unauthorized - Invalid or missing token|None|
 |404|[Not Found](https://tools.ietf.org/html/rfc7231#section-6.5.4)|Component not found|None|
+|424|[Failed Dependency](https://tools.ietf.org/html/rfc2518#section-10.5)|Failed Dependency - missing or invalid change set index|None|
 |500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
 
 ## Get a component by component Id
@@ -1711,6 +1661,44 @@ Schemas management endpoints
 |---|---|---|---|
 |200|[OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)|Schema retrieved successfully|[GetSchemaV1Response](#schemagetschemav1response)|
 |202|[Accepted](https://tools.ietf.org/html/rfc7231#section-6.3.3)|Schema data is being generated from cached modules|[BuildingResponseV1](#schemabuildingresponsev1)|
+|401|[Unauthorized](https://tools.ietf.org/html/rfc7235#section-3.1)|Unauthorized - Invalid or missing token|None|
+|404|[Not Found](https://tools.ietf.org/html/rfc7231#section-6.5.4)|Schema not found|None|
+|500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
+
+## Contribute the default variant of a schema to the module index
+
+<a id="opIdcontribute"></a>
+
+> Request format
+
+`POST /v1/w/{workspace_id}/change-sets/{change_set_id}/schemas/{schema_id}/contribute`
+
+<h3 id="contribute-the-default-variant-of-a-schema-to-the-module-index-parameters">Parameters</h3>
+
+|Name|In|Type|Required|Description|
+|---|---|---|---|---|
+|workspace_id|path|string|true|Workspace identifier|
+|change_set_id|path|string|true|Change Set identifier|
+|schema_id|path|string|true|Schema identifier|
+
+> Example responses
+
+> 500 Response
+
+```json
+{
+  "message": "Invalid request data",
+  "statusCode": 422,
+  "code": 4001
+}
+```
+
+<h3 id="contribute-the-default-variant-of-a-schema-to-the-module-index-responses">Responses</h3>
+
+|Status|Meaning|Description|Schema|
+|---|---|---|---|
+|200|[OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)|Schema default variant contributed successfully|None|
+|400|[Bad Request](https://tools.ietf.org/html/rfc7231#section-6.5.1)|Bad request - Cannot contribute on head change set or default variant not locked or schema installed from upstream|None|
 |401|[Unauthorized](https://tools.ietf.org/html/rfc7235#section-3.1)|Unauthorized - Invalid or missing token|None|
 |404|[Not Found](https://tools.ietf.org/html/rfc7231#section-6.5.4)|Schema not found|None|
 |500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
@@ -3712,6 +3700,59 @@ Status Code **200**
 |404|[Not Found](https://tools.ietf.org/html/rfc7231#section-6.5.4)|Workspace not found|None|
 |500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
 
+## Leave a workspace (remove yourself)
+
+<a id="opIdleave_workspace"></a>
+
+> Request format
+
+`DELETE /management/workspaces/{workspace_id}/leave`
+
+<h3 id="leave-a-workspace-(remove-yourself)-parameters">Parameters</h3>
+
+|Name|In|Type|Required|Description|
+|---|---|---|---|---|
+|workspace_id|path|string|true|Workspace identifier|
+
+> Example responses
+
+> 200 Response
+
+```json
+[
+  {
+    "email": "user@example.com",
+    "nickname": "John Doe",
+    "role": "OWNER",
+    "signupAt": "string",
+    "userId": "01GW0KXH4YJBWC7BTBAZ6ZR7EA"
+  }
+]
+```
+
+<h3 id="leave-a-workspace-(remove-yourself)-responses">Responses</h3>
+
+|Status|Meaning|Description|Schema|
+|---|---|---|---|
+|200|[OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)|Successfully left workspace|Inline|
+|401|[Unauthorized](https://tools.ietf.org/html/rfc7235#section-3.1)|Unauthorized - Invalid or missing token|None|
+|403|[Forbidden](https://tools.ietf.org/html/rfc7231#section-6.5.3)|Forbidden - Cannot leave workspace (e.g., you are the owner)|None|
+|404|[Not Found](https://tools.ietf.org/html/rfc7231#section-6.5.4)|Workspace not found, has been deleted, or user not found in workspace|None|
+|500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
+
+<h3 id="leave-a-workspace-(remove-yourself)-responseschema">Response Schema</h3>
+
+Status Code **200**
+
+|Name|Type|Required|Restrictions|Description|
+|---|---|---|---|---|
+|*anonymous*|[[Member](#schemamember)]|false|none|none|
+|» email|string|true|none|none|
+|» nickname|string|true|none|none|
+|» role|string|true|none|none|
+|» signupAt|string,null|false|none|none|
+|» userId|string|true|none|none|
+
 ## List all members of a workspace
 
 <a id="opIdlist_members"></a>
@@ -3994,6 +4035,7 @@ Status Code **200**
 |---|---|---|---|
 |200|[OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)|Components retrieved successfully|[SearchV1Response](#schemasearchv1response)|
 |401|[Unauthorized](https://tools.ietf.org/html/rfc7235#section-3.1)|Unauthorized - Invalid or missing token|None|
+|424|[Failed Dependency](https://tools.ietf.org/html/rfc2518#section-10.5)|Failed Dependency - missing or invalid change set index|None|
 |500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
 
 # [Schemas](#schemas)
@@ -4247,14 +4289,17 @@ Standard success response format for v1 API
 
 ```
 
+The response payload when materialized views or data is being built referenced by present or
+expected data.
+
 ### [Properties](#buildingresponsev1-properties)
 
 |Name|Type|Required|Restrictions|Description|
 |---|---|---|---|---|
-|estimatedCompletionSeconds|integer(int64)|true|none|none|
-|message|string|true|none|none|
-|retryAfterSeconds|integer(int64)|true|none|none|
-|status|string|true|none|none|
+|estimatedCompletionSeconds|integer(int64)|true|none|The estimated time for the data being built to be completed.|
+|message|string|true|none|The message reflecting the reason or state of the data being built.|
+|retryAfterSeconds|integer(int64)|true|none|The number of seconds recommended between retries for the desired data.|
+|status|string|true|none|The status of the data being built.|
 
 ## [CancelActionV1Response](#tocS_CancelActionV1Response)
 
@@ -5801,60 +5846,6 @@ continued
 |schemaName|string,null|false|none|none|
 |state|string|true|none|none|
 |updatedAt|string|true|none|none|
-
-## [GenerateTemplateV1Request](#tocS_GenerateTemplateV1Request)
-
-<a id="schemageneratetemplatev1request"></a>
-<a id="schema_GenerateTemplateV1Request"></a>
-<a id="tocSgeneratetemplatev1request"></a>
-<a id="tocsgeneratetemplatev1request"></a>
-
-```json
-{
-  "assetName": "My Cool Template",
-  "category": "Templates",
-  "componentIds": [
-    "01H9ZQD35JPMBGHH69BT0Q79AA",
-    "01H9ZQD35JPMBGHH69BT0Q79BB",
-    "01H9ZQD35JPMBGHH69BT0Q79CC"
-  ],
-  "funcName": "Generate My Template"
-}
-
-```
-
-### [Properties](#generatetemplatev1request-properties)
-
-|Name|Type|Required|Restrictions|Description|
-|---|---|---|---|---|
-|assetName|string|true|none|none|
-|category|string,null|false|none|none|
-|componentIds|[string]|true|none|none|
-|funcName|string|true|none|none|
-
-## [GenerateTemplateV1Response](#tocS_GenerateTemplateV1Response)
-
-<a id="schemageneratetemplatev1response"></a>
-<a id="schema_GenerateTemplateV1Response"></a>
-<a id="tocSgeneratetemplatev1response"></a>
-<a id="tocsgeneratetemplatev1response"></a>
-
-```json
-{
-  "funcId": "01H9ZQD35JPMBGHH69BT0Q79CC",
-  "schemaId": "01H9ZQD35JPMBGHH69BT0Q79AA",
-  "schemaVariantId": "01H9ZQD35JPMBGHH69BT0Q79BB"
-}
-
-```
-
-### [Properties](#generatetemplatev1response-properties)
-
-|Name|Type|Required|Restrictions|Description|
-|---|---|---|---|---|
-|funcId|string|true|none|none|
-|schemaId|string|true|none|none|
-|schemaVariantId|string|true|none|none|
 
 ## [GetActionsV1Response](#tocS_GetActionsV1Response)
 
