@@ -75,20 +75,29 @@ si
 │   └── search                        - Search for components
 ├── schema                            - Manage schemas and project
 │   ├── init                          - Initialize a new SI project
-│   ├── generate                      - Generate schema functions
-│   │   ├── action                    - Generate action functions
-│   │   ├── authentication            - Generate authentication functions
-│   │   ├── codegen                   - Generate code generator functions
-│   │   ├── management                - Generate management functions
-│   │   ├── qualification             - Generate qualification functions
-│   │   └── scaffold                  - Scaffold a complete schema
+│   ├── action                        - Action function operations
+│   │   └── generate                  - Generate action functions
+│   ├── authentication                - Authentication function operations
+│   │   └── generate                  - Generate authentication functions
+│   ├── codegen                       - Code generator function operations
+│   │   └── generate                  - Generate code generator functions
+│   ├── management                    - Management function operations
+│   │   └── generate                  - Generate management functions
+│   ├── qualification                 - Qualification function operations
+│   │   └── generate                  - Generate qualification functions
+│   ├── scaffold                      - Schema scaffold operations
+│   │   └── generate                  - Generate a complete schema scaffold
 │   ├── overlay                       - Manage schema overlays
-│   │   ├── generate                  - Generate overlay functions
-│   │   │   ├── action                - Generate action overlay functions
-│   │   │   ├── authentication        - Generate authentication overlay functions
-│   │   │   ├── codegen               - Generate codegen overlay functions
-│   │   │   ├── management            - Generate management overlay functions
-│   │   │   └── qualification         - Generate qualification overlay functions
+│   │   ├── action                    - Action overlay function operations
+│   │   │   └── generate              - Generate action overlay functions
+│   │   ├── authentication            - Authentication overlay function operations
+│   │   │   └── generate              - Generate authentication overlay functions
+│   │   ├── codegen                   - Codegen overlay function operations
+│   │   │   └── generate              - Generate codegen overlay functions
+│   │   ├── management                - Management overlay function operations
+│   │   │   └── generate              - Generate management overlay functions
+│   │   ├── qualification             - Qualification overlay function operations
+│   │   │   └── generate              - Generate qualification overlay functions
 │   │   └── push                      - Push overlays to workspace
 │   ├── pull                          - Pull schemas from workspace
 │   └── push                          - Push schemas to workspace
@@ -315,7 +324,7 @@ This creates a `.siroot` marker file in the project root directory.
 Generate a complete schema scaffold:
 
 ```bash
-si schema generate scaffold MySchema
+si schema scaffold generate MySchema
 ```
 
 This creates the schema directory structure with template files for the schema
@@ -327,19 +336,19 @@ Generate specific function types for a schema:
 
 ```bash
 # Generate an action function
-si schema generate action MySchema create
+si schema action generate MySchema create
 
 # Generate a code generator
-si schema generate codegen MySchema terraform
+si schema codegen generate MySchema terraform
 
 # Generate a management function
-si schema generate management MySchema reconcile
+si schema management generate MySchema reconcile
 
 # Generate a qualification
-si schema generate qualification MySchema validate
+si schema qualification generate MySchema validate
 
 # Generate an authentication function
-si schema generate authentication MySchema validate-api-key
+si schema authentication generate MySchema validate-api-key
 ```
 
 #### Pull from Remote
@@ -573,7 +582,7 @@ Without arguments, this displays the help text listing all available commands.
 deno task dev --help
 
 # Generate a schema scaffold
-deno task dev schema generate scaffold MySchema
+deno task dev schema scaffold generate MySchema
 
 # Run a template
 SI_API_TOKEN=<token> deno task dev template run ./templates/test.ts --key test-001
