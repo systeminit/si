@@ -63,7 +63,7 @@ A [workspace](../reference/workspaces.md) is where the information about your in
 
 To have a working workspace, you need to provide information such as credentials to an underlying cloud provider to securely discover, manage, and automate your infrastructure. No changes are made to the underlying infrastructure without your explicit approval.
 
-<DocTabs tabs="AWS">
+<DocTabs tabs="AWS, Azure, Hetzner, DigitalOcean">
 <TabPanel value="AWS">
 
 ![Credentials and Region AWS](./setup/credentials-aws.png)
@@ -86,6 +86,36 @@ If you authenticate to AWS using SSO Federation, you can get a short-lived sessi
 
 Select a region to get started by default.
 
+</TabPanel>
+<TabPanel value="Azure">
+
+![Credentials Azure](./setup/credentials-azure.png)
+
+#### Credentials
+
+We ask for an Azure Client ID, Client Secret, Tenant ID and Subscription ID. Follow the instructions to [get started with a service principal](https://learn.microsoft.com/en-us/entra/identity-platform/howto-create-service-principal-portal) and set it up so you can access your account.
+
+#### Location
+
+Select a location to get started by default.
+
+</TabPanel>
+<TabPanel value="Hetzner">
+
+![Credentials Hetzner](./setup/credentials-hetzner.png)
+
+#### Credentials
+
+We ask for an API Token for authentication. Follow the instructions to [generate a token](https://docs.hetzner.cloud/reference/cloud#authentication) and set it up so you can access your account.
+
+</TabPanel>
+<TabPanel value="DigitalOcean">
+
+![Credentials DigitalOcean](./setup/credentials-digitalocean.png)
+
+#### Credentials
+
+We ask for a Personal Access Token for authentication. Follow the instructions to [generate a personal access token](https://docs.digitalocean.com/reference/api/create-personal-access-token/) and set it up so you can access your account.
 
 </TabPanel>
 </DocTabs>
@@ -102,15 +132,9 @@ Our [AI Agent](../reference/ai-agent.md) is built on a customized version of [Cl
 
 Ensure you have [NodeJS 18+ installed](https://nodejs.org/en/download).
 
-#### Install Docker
-
-You must have [Docker installed](https://www.docker.com/) to run the SI Agent.
-
 #### Open a terminal window
 
 The AI Agent runs in a terminal window, not within your web browser.
-
-![Termina](./setup/terminal.png)
 
 #### Install Claude Code
 
@@ -122,28 +146,23 @@ npm install -g @anthropic-ai/claude-code
 Claude Code will require you to have an [account with Antrhopic](https://www.anthropic.com/). System Initiative does not mark up your token usage, and is not responsible for your consumption.
 :::
 
+<!--TODO PAUL to add the link to the si CLI reference guide -->
 #### Set up the AI Agent
 
-You will run Claude Code from a [repository](https://github.com/systeminit/si-ai-agent) that pre-configures it to work well with System Initiative.
+You will run the AI Agent via the SI CLI that sets up Claude Code to work well with System Initiative.
 
-```bash [clone the si-ai-agent repo]
-git clone https://github.com/systeminit/si-ai-agent.git
+```bash [Initiatize Claude setup]
+si ai-agent init --tool claude
 ```
 
-Then run the setup script:
-
-```bash [setup]
-./setup.sh
-```
-
-This script will ensure all the previous setup steps were successful, and then prompt you for an *API token*. Copy and paste this from your workspace setup screen into the setup script.
+This command will ensure that the API token generated during login to a workspace is available to the AI Agent.
 
 #### Run the AI Agent
 
 In your terminal, type:
 
-```bash [claude]
-claude
+```bash [Start the AI Agent]
+si ai-agent start --tool claude
 ```
 
 ![Claude](./setup/claude.png)
