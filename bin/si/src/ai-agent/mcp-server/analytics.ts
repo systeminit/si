@@ -1,6 +1,6 @@
 import { PostHog } from "posthog-node";
 import { Context } from "../../context.ts";
-import { getUserAgent } from "../../git_metadata.ts";
+import { getUserAgent } from "../../user_agent.ts";
 
 export class Analytics {
   private posthog: PostHog | null = null;
