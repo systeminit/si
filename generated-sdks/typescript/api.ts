@@ -544,6 +544,12 @@ export interface ComponentViewV1 {
     'schemaVariantId': string;
     /**
      * 
+     * @type {string}
+     * @memberof ComponentViewV1
+     */
+    'secretId': string;
+    /**
+     * 
      * @type {boolean}
      * @memberof ComponentViewV1
      */
