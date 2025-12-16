@@ -5,8 +5,9 @@ outline: [2, 3]
 # Components
 
 Components are the 1:1 mapping to your cloud infrastructure. System Initiative
-components are instances of Schemas. You can name components within System
-Initiative and those names will not affect your cloud infrastructure.
+components are instances of [Schemas](./schema.md). You can name components
+within System Initiative and those names will not affect your cloud
+infrastructure.
 
 Components have attribute data and resource data. Attribute data represents all
 the configurations your cloud infrastructure supports. Resource data represents

@@ -322,6 +322,24 @@ const tagSpecificationsProp = new PropBuilder()
 asset.addProp(tagSpecificationsProp);
 ```
 
+### Validation
+
+A property can be configured with a validation function that gets checked when
+values are set to that property. We use the `Joi` library and support all the
+`Joi.object` functions
+[here in their reference docs](https://joi.dev/api/?v=17.13.3). Here is an
+example of how to use `setValidationFormat` in the builder pattern to validate
+for integers:
+
+```typescript
+const throughputProp = new PropBuilder()
+  .setName("Throughput")
+  .setKind("integer")
+  .setValidationFormat(Joi.number().integer())
+  .build();
+asset.addProp(throughputProp);
+```
+
 ### Widgets
 
 Widgets define how properties are displayed. Each kind of property has a default
