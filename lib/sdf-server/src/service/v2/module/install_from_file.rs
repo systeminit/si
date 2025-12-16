@@ -1,12 +1,18 @@
 use axum::extract::Multipart;
 use dal::{
     ChangeSet,
+    DalContext,
     Func,
+    Schema,
     SchemaVariant,
+    SchemaVariantId,
     WsEvent,
+    cached_module::CachedModule,
     pkg::{
         ImportOptions,
+        import_only_new_funcs,
         import_pkg_from_pkg,
+        import_schema_variant,
     },
 };
 use si_frontend_types::SchemaVariant as FrontendVariant;
@@ -52,22 +58,51 @@ pub async fn install_module_from_file(
     let mut variants = Vec::new();
 
     // After validating that we can install the modules, get on with it.
-    if pkg.schemas()?.len() != 1 {
+    let schemas = pkg.schemas()?;
+    if schemas.len() != 1 {
         return Err(ModulesAPIError::PkgFileError(
             "Pkg has more than one schema",
         ));
     }
 
-    let (_, variant_ids, _) = import_pkg_from_pkg(
-        ctx,
-        &pkg,
-        Some(ImportOptions {
-            schema_id: None,
-            past_module_hashes: None,
-            ..Default::default()
-        }),
-    )
-    .await?;
+    // Extract schema name and check if it already exists
+    let schema_spec = schemas
+        .first()
+        .ok_or(ModulesAPIError::PkgFileError("Pkg has no schemas"))?;
+    let schema_name = schema_spec.name();
+
+    // Check if schema exists in change set or module cache
+    let schema_exists_in_cache = CachedModule::find_latest_for_schema_name(ctx, schema_name)
+        .await?
+        .is_some();
+
+    let variant_ids = match Schema::get_by_name_opt(ctx, schema_name)
+        .await
+        .map_err(|e| ModulesAPIError::Pkg(e.into()))?
+    {
+        Some(existing_schema) => {
+            upgrade_schema_from_uploaded_file(ctx, &pkg, existing_schema).await?
+        }
+        None if schema_exists_in_cache => {
+            let installed_schema = Schema::get_or_install_by_name(ctx, schema_name)
+                .await
+                .map_err(|e| ModulesAPIError::Pkg(e.into()))?;
+            upgrade_schema_from_uploaded_file(ctx, &pkg, installed_schema).await?
+        }
+        None => {
+            let (_, variant_ids, _) = import_pkg_from_pkg(
+                ctx,
+                &pkg,
+                Some(ImportOptions {
+                    schema_id: None,
+                    past_module_hashes: None,
+                    ..Default::default()
+                }),
+            )
+            .await?;
+            variant_ids
+        }
+    };
 
     if let Some(schema_variant_id) = variant_ids.first() {
         let variant = SchemaVariant::get_by_id(ctx, *schema_variant_id).await?;
@@ -93,4 +128,46 @@ pub async fn install_module_from_file(
     ctx.commit().await?;
 
     Ok(ForceChangeSetResponse::new(force_change_set_id, variants))
+}
+
+async fn upgrade_schema_from_uploaded_file(
+    ctx: &DalContext,
+    pkg: &SiPkg,
+    schema: Schema,
+) -> Result<Vec<SchemaVariantId>, ModulesAPIError> {
+    // Import funcs from uploaded pkg
+    let mut thing_map = import_only_new_funcs(ctx, pkg.funcs()?)
+        .await
+        .map_err(ModulesAPIError::Pkg)?;
+
+    // Get specs from uploaded pkg
+    let pkg_schemas = pkg.schemas()?;
+    let schema_spec = pkg_schemas
+        .first()
+        .ok_or(ModulesAPIError::PkgFileError("Pkg has no schemas"))?;
+    let variants = schema_spec.variants()?;
+    let variant_spec = variants
+        .first()
+        .ok_or(ModulesAPIError::PkgFileError("Schema has no variants"))?;
+
+    // Create new variant from uploaded pkg
+    let new_variant = import_schema_variant(
+        ctx,
+        &schema,
+        schema_spec.clone(),
+        variant_spec,
+        None,
+        &mut thing_map,
+        None,
+    )
+    .await
+    .map_err(ModulesAPIError::Pkg)?;
+
+    // Set as new default
+    schema
+        .set_default_variant_id(ctx, new_variant.id())
+        .await
+        .map_err(|e| ModulesAPIError::Pkg(e.into()))?;
+
+    Ok(vec![new_variant.id()])
 }
