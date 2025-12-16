@@ -1,16 +1,5 @@
 # System Initiative Documentation
 
-Full support for
-
-<div style="display: flex; align-items: center; gap: 36px; margin-bottom: 36px">
-  <img src="./public/aws-black.svg" style="height:36px;" />
-  <img src="./public/Microsoft-Azure.svg" style="height:36px;" />
-  <img src="./public/digitalocean.svg" style="height:36px;" />
-</div>
-<div style="display: flex; align-items: center; gap: 36px;">
-  <img src="./public/Hetzner.svg" style="height:36px;" />
-</div>
-
 ## New to System Initiative?
 
 System Initiative is an AI Native Infrastructure Automation Platform that
