@@ -36,7 +36,7 @@
     "jsr:@std/text@~1.0.7": "1.0.16",
     "jsr:@std/ulid@1": "1.0.0",
     "jsr:@std/yaml@^1.0.5": "1.0.10",
-    "jsr:@systeminit/api-client@^1.10.0": "1.10.0",
+    "jsr:@systeminit/api-client@^1.12.0": "1.12.0",
     "npm:@modelcontextprotocol/sdk@^1.16.0": "1.18.1_express@5.1.0_zod@3.25.76",
     "npm:@types/node@*": "22.12.0",
     "npm:@types/node@24.0.7": "24.0.7",
@@ -202,8 +202,8 @@
     "@std/yaml@1.0.10": {
       "integrity": "245706ea3511cc50c8c6d00339c23ea2ffa27bd2c7ea5445338f8feff31fa58e"
     },
-    "@systeminit/api-client@1.10.0": {
-      "integrity": "6c55ac938fa5a8109e456cae963f561f7ae14f47839efa5306acbc3f5711703d",
+    "@systeminit/api-client@1.12.0": {
+      "integrity": "131a85458fa0a2705eafe644ff0ad2ee4e0ccbe872d099f8f08563a634aeda9f",
       "dependencies": [
         "npm:axios@^1.6.1"
       ]
@@ -1007,7 +1007,7 @@
       "jsr:@std/path@^1.1.2",
       "jsr:@std/ulid@1",
       "jsr:@std/yaml@^1.0.5",
-      "jsr:@systeminit/api-client@^1.10.0",
+      "jsr:@systeminit/api-client@^1.12.0",
       "npm:@modelcontextprotocol/sdk@^1.16.0",
       "npm:@types/node@^24.10.1",
       "npm:axios@^1.13.1",

@@ -1,5 +1,6 @@
 import {
   ChangeSetsApi,
+  ComponentsApi,
   SecretsApi,
 } from "@systeminit/api-client";
 import { Context } from "../context.ts";
@@ -13,8 +14,7 @@ import {
 } from "./shared.ts";
 
 export interface SecretUpdateOptions extends SecretCommandOptions {
-  secretId?: string;
-  secretName?: string;
+  componentNameOrId: string;
   name?: string;
   description?: string;
 }
@@ -30,18 +30,12 @@ export async function callSecretUpdate(
   const apiConfig = Context.apiConfig();
   const workspaceId = Context.workspaceId();
 
-  // Validate that either secretId or secretName is provided
-  if (!options.secretId && !options.secretName) {
-    throw new Error(
-      "Either --secret-id or --secret-name is required to identify the secret to update.",
-    );
-  }
-
-  const secretIdOrName = options.secretId || options.secretName!;
+  const componentNameOrId = options.componentNameOrId;
 
   // Create API clients
   const changeSetsApi = new ChangeSetsApi(apiConfig);
   const secretsApi = new SecretsApi(apiConfig);
+  const componentsApi = new ComponentsApi(apiConfig);
 
   // Get or create change set
   const { changeSetId, wasCreated } = await getOrCreateChangeSet(
@@ -53,14 +47,52 @@ export async function callSecretUpdate(
   );
 
   try {
-    // Find the secret
-    ctx.logger.info(`Looking for secret: ${secretIdOrName}`);
-    const { id: secretId, secret: existingSecret, definition } = await findSecret(
+    // Find the component by name or ID
+    ctx.logger.info(`Looking for component: ${componentNameOrId}`);
+
+    // Detect if it's a ULID (26 alphanumeric characters)
+    const isUlid = /^[0-9A-HJKMNP-TV-Z]{26}$/i.test(componentNameOrId);
+
+    // First, find the component to get its ID
+    const findResponse = await componentsApi.findComponent({
+      workspaceId,
+      changeSetId,
+      // Use componentId parameter for ULIDs, component parameter for names
+      ...(isUlid
+        ? { componentId: componentNameOrId }
+        : { component: componentNameOrId }),
+    });
+
+    const componentId = findResponse.data.component.id;
+    ctx.logger.info(`Found component: ${findResponse.data.component.name} (${componentId})`);
+
+    // Get the full component details which includes secretId
+    const componentResponse = await componentsApi.getComponent({
+      workspaceId,
+      changeSetId,
+      componentId,
+    });
+
+    const component = componentResponse.data.component;
+
+    // Check if the component has a secretId
+    // The secretId is available in the getComponent response
+    const secretId = (component as { secretId?: string }).secretId;
+    if (!secretId) {
+      throw new Error(
+        `Component "${componentNameOrId}" does not have an associated secret. Only components with secrets can be updated.`,
+      );
+    }
+
+    ctx.logger.info(`Found secretId in component: ${secretId}`);
+
+    // Find the secret using the secretId
+    const { secret: existingSecret, definition } = await findSecret(
       ctx,
       secretsApi,
       workspaceId,
       changeSetId,
-      secretIdOrName,
+      secretId,
     );
 
     ctx.logger.info(`Found secret: ${existingSecret.name} (${secretId})`);

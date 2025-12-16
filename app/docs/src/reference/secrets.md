@@ -215,9 +215,11 @@ component_response = components_api.create_component(
 To update a Secret with the CLI:
 
 ```shellscript [Create a Secret]
-$ si secret update --secret-name "aws-credential-dev" --use-local-profile
+$ si secret update "aws-credential-dev" --use-local-profile
 ✨ info    si          Creating change set: Update secret - 1765498777287
-✨ info    si          Looking for secret: aws-credential-dev
+✨ info    si          Looking for component: aws-credential-dev
+✨ info    si          Found component: aws-credential-dev (01KC7YRCH5XDZ66J848MFY4PKA)
+✨ info    si          Found secretId in component: 01KC7YRD7W8GAMXTC6SZPNTK1B
 ✨ info    si          Found secret: aws-credential-dev (01KC7YRD7W8GAMXTC6SZPNTK1B)
 ✨ info    si          Discovering credentials from local environment...
 ✨ info    si          ✓ Found 3 credential(s) in local environment

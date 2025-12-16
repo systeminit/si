@@ -312,7 +312,7 @@ function buildSchemaCommand() {
         .option("-s, --skip-confirmation", "Skip confirmation prompt")
         .option(
           "-b, --update-builtins",
-          "Change builtin schema, without creating overlays. SI Admin Only",
+          "Change builtin schema, without creating overlays.",
           {
             hidden: false,
           },
@@ -848,7 +848,9 @@ function buildSchemaAuthenticationCommand(options?: { isOverlay?: boolean }) {
     .command(
       "generate",
       createSubCommand()
-        .description(`Generate authentication${overlayMsg} functions for schemas`)
+        .description(
+          `Generate authentication${overlayMsg} functions for schemas`,
+        )
         .arguments("[SCHEMA_NAME:string] [AUTH_NAME:string]")
         .action(async ({ root }, schemaName, authName) => {
           const project = createProject(root);
@@ -888,7 +890,9 @@ function buildSchemaCodegenCommand(options?: { isOverlay?: boolean }) {
     .command(
       "generate",
       createSubCommand()
-        .description(`Generate code generator${overlayMsg} functions for schemas`)
+        .description(
+          `Generate code generator${overlayMsg} functions for schemas`,
+        )
         .arguments("[SCHEMA_NAME:string] [CODEGEN_NAME:string]")
         .action(async ({ root }, schemaName, codegenName) => {
           const project = createProject(root);
@@ -974,7 +978,9 @@ function buildSchemaQualificationCommand(options?: { isOverlay?: boolean }) {
     .command(
       "generate",
       createSubCommand()
-        .description(`Generate qualification${overlayMsg} functions for schemas`)
+        .description(
+          `Generate qualification${overlayMsg} functions for schemas`,
+        )
         .arguments("[SCHEMA_NAME:string] [QUALIFICATION_NAME:string]")
         .action(async ({ root }, schemaName, qualificationName) => {
           const project = createProject(root);
@@ -1014,7 +1020,9 @@ function buildSchemaScaffoldCommand() {
     .command(
       "generate",
       createSubCommand()
-        .description("Generate a complete schema scaffold with all default functions")
+        .description(
+          "Generate a complete schema scaffold with all default functions",
+        )
         .arguments("[SCHEMA_NAME:string]")
         .action(async ({ root }, schemaName) => {
           const project = createProject(root);
@@ -1311,15 +1319,8 @@ function buildSecretCommand() {
     .command(
       "update",
       createSubCommand(true)
-        .description("Update an existing secret")
-        .option(
-          "--secret-id <id:string>",
-          "Secret ID to update (use this or --secret-name)",
-        )
-        .option(
-          "--secret-name <name:string>",
-          "Secret name to update (use this or --secret-id)",
-        )
+        .description("Update an existing secret by component name or ID")
+        .arguments("<component-name-or-id:string>")
         .option("--name <name:string>", "New name for the secret")
         .option("--description <desc:string>", "New description for the secret")
         .option(
@@ -1335,7 +1336,7 @@ function buildSecretCommand() {
           "--dry-run",
           "Show what would be updated without making changes",
         )
-        .action(async (options) => {
+        .action(async (options, componentNameOrId) => {
           // Parse --field-* options from remaining args
           const fields: Record<string, string> = {};
 
@@ -1344,6 +1345,7 @@ function buildSecretCommand() {
 
           await callSecretUpdate({
             ...options,
+            componentNameOrId: componentNameOrId as string,
             fields,
           } as SecretUpdateOptions);
         }),
