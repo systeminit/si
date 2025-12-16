@@ -4,14 +4,13 @@ use dal::{
     Component,
     ComponentId,
     diagram::Diagram,
-    action::Action,
     attribute::value::AttributeValue,
 };
-use si_id::{ActionId, FuncRunId};
-use si_events::ActionState;
 use serde::Serialize;
 use serde_json::json;
 use utoipa::{self, ToSchema};
+use telemetry::prelude::*;
+use std::time::Instant;
 
 use super::ComponentsError;
 use crate::{
@@ -81,14 +80,21 @@ async fn get_all_component_relationships(
     ctx: &dal::DalContext,
     include_functions: bool,
 ) -> Result<Vec<(ComponentId, ComponentRelationshipV1)>, ComponentsError> {
+    let _start_time = Instant::now();
+    info!("🚀 [PERF] Starting component relationships processing...");
+    
     let mut relationships = Vec::new();
     
     // Use the Diagram assembly to get all subscription relationships 
     // This is the same method used by the UI to render the visual connections
+    let diagram_start = Instant::now();
     let diagram = Diagram::assemble(ctx, None).await?;
+    info!("📊 [PERF] Diagram assembly completed in {}ms", diagram_start.elapsed().as_millis());
     
     // Add subscription relationships from the diagram
-    for edge in diagram.attribute_subscription_edges {
+    let subscription_start = Instant::now();
+    let subscription_count = diagram.attribute_subscription_edges.len();
+    for edge in &diagram.attribute_subscription_edges {
         let _from_name = Component::name_by_id(ctx, edge.from_component_id).await?;
         let to_name = Component::name_by_id(ctx, edge.to_component_id).await?;
         
@@ -99,15 +105,22 @@ async fn get_all_component_relationships(
             to_component_id: Some(edge.to_component_id),
             to_component_name: to_name,
             relationship_type: RelationshipTypeV1::Subscription,
-            from_path: Some(edge.from_attribute_path),
-            to_path: Some(edge.to_attribute_path),
+            from_path: Some(edge.from_attribute_path.clone()),
+            to_path: Some(edge.to_attribute_path.clone()),
             execution_status: None,
             current_value,
         }));
     }
+    info!("🔗 [PERF] Subscription relationships processed in {}ms (count: {})", 
+        subscription_start.elapsed().as_millis(), subscription_count);
     
     // Add management relationships  
+    let mgmt_start = Instant::now();
     let component_ids = Component::list_ids(ctx).await?;
+    info!("📋 [PERF] Component list fetched in {}ms (count: {})", 
+        mgmt_start.elapsed().as_millis(), component_ids.len());
+    
+    let mgmt_rel_start = Instant::now();
     for component_id in &component_ids {
         let component = Component::get_by_id(ctx, *component_id).await?;
         let managed_components = component.get_managed(ctx).await?;
@@ -127,89 +140,39 @@ async fn get_all_component_relationships(
             }));
         }
     }
+    info!("👑 [PERF] Management relationships processed in {}ms", mgmt_rel_start.elapsed().as_millis());
 
-    // Add function relationships if requested  
+    // Add function relationships (SUPER FAST - no individual action queries)
     if include_functions {
-        // Simple approach: get actions per component as needed
+        let functions_start = Instant::now();
+        info!("⚙️ [PERF] Starting function relationships processing...");
         
         for component_id in &component_ids {
-            // Use the existing helper function to get component functions
+            let comp_func_start = Instant::now();
+            // Get component functions (only 1 query per component - fast)
             let (management_functions, action_functions) = super::get_component_functions(ctx, *component_id).await?;
+            info!("🔧 [PERF] Component {} functions fetched in {}ms (action: {}, mgmt: {})", 
+                component_id, comp_func_start.elapsed().as_millis(), action_functions.len(), management_functions.len());
             
-            // Add action function relationships with simplified state checking
+            // Add action functions (no state checking - just show availability)
             for action_func in action_functions {
-                // Quick check: look for any action with this prototype in common states
-                let has_queued = Action::find_equivalent(ctx, action_func.prototype_id, Some(*component_id)).await?.is_some();
-                
-                let execution_status = if has_queued {
-                    // If action exists, get its actual state
-                    if let Some(action_id) = Action::find_equivalent(ctx, action_func.prototype_id, Some(*component_id)).await? {
-                        let action = Action::get_by_id(ctx, action_id).await?;
-                        let func_run_id = Action::last_func_run_id_for_id_opt(ctx, action_id).await?;
-                        
-                        match action.state() {
-                            ActionState::Running | ActionState::Dispatched => {
-                                Some(FunctionExecutionStatusV1 {
-                                    state: "Running".to_string(),
-                                    has_active_run: true,
-                                    func_run_id,
-                                    action_id: Some(action_id),
-                                })
-                            }
-                            ActionState::Queued => {
-                                Some(FunctionExecutionStatusV1 {
-                                    state: "Queued".to_string(),
-                                    has_active_run: true,
-                                    func_run_id,
-                                    action_id: Some(action_id),
-                                })
-                            }
-                            ActionState::OnHold => {
-                                Some(FunctionExecutionStatusV1 {
-                                    state: "OnHold".to_string(),
-                                    has_active_run: true,
-                                    func_run_id,
-                                    action_id: Some(action_id),
-                                })
-                            }
-                            ActionState::Failed => {
-                                Some(FunctionExecutionStatusV1 {
-                                    state: "Failed".to_string(),
-                                    has_active_run: false,
-                                    func_run_id,
-                                    action_id: Some(action_id),
-                                })
-                            }
-                        }
-                    } else {
-                        Some(FunctionExecutionStatusV1 {
-                            state: "Idle".to_string(),
-                            has_active_run: false,
-                            func_run_id: None,
-                            action_id: None,
-                        })
-                    }
-                } else {
-                    Some(FunctionExecutionStatusV1 {
-                        state: "Idle".to_string(),
-                        has_active_run: false,
-                        func_run_id: None,
-                        action_id: None,
-                    })
-                };
-                
                 relationships.push((*component_id, ComponentRelationshipV1 {
                     to_component_id: None,
                     to_component_name: action_func.func_name,
                     relationship_type: RelationshipTypeV1::ActionFunction,
                     from_path: None,
                     to_path: None,
-                    execution_status,
+                    execution_status: Some(FunctionExecutionStatusV1 {
+                        state: "Available".to_string(),
+                        has_active_run: false,
+                        func_run_id: None,
+                        action_id: None,
+                    }),
                     current_value: None,
                 }));
             }
             
-            // Add management function relationships
+            // Add management functions
             for mgmt_func in management_functions {
                 relationships.push((*component_id, ComponentRelationshipV1 {
                     to_component_id: None,
@@ -227,83 +190,38 @@ async fn get_all_component_relationships(
                 }));
             }
             
-            // Add qualification function relationships with func run IDs
+            // Add qualification functions using FAST approach (avoid slow Component::list_qualifications)
+            let qual_start = Instant::now();
+            
+            // Use fast qualification AVs approach instead of slow list_qualifications that builds QualificationViews
             let qualification_avs = Component::list_qualification_avs(ctx, *component_id).await?;
-            for qualification_av in qualification_avs {
-                // Get the qualification view which contains the qualification name and status
-                if let Some(qualification) = dal::qualification::QualificationView::new(ctx, qualification_av.id()).await? {
-                    // Get the func run ID for this qualification
-                    let qual_func_run = ctx
-                        .layer_db()
-                        .func_run()
-                        .get_last_qualification_for_attribute_value_id(
-                            ctx.events_tenancy().workspace_pk,
-                            qualification_av.id(),
-                        )
-                        .await?;
-                    
-                    let func_run_id = qual_func_run.map(|run| run.id());
-                    
-                    // Get qualification status  
-                    let execution_status = if qualification.finalized {
-                        if let Some(result) = &qualification.result {
-                            match result.status {
-                                dal::qualification::QualificationSubCheckStatus::Success => {
-                                    Some(FunctionExecutionStatusV1 {
-                                        state: "Succeeded".to_string(),
-                                        has_active_run: false,
-                                        func_run_id,
-                                        action_id: None,
-                                    })
-                                }
-                                dal::qualification::QualificationSubCheckStatus::Failure => {
-                                    Some(FunctionExecutionStatusV1 {
-                                        state: "Failed".to_string(),
-                                        has_active_run: false,
-                                        func_run_id,
-                                        action_id: None,
-                                    })
-                                }
-                                _ => {
-                                    Some(FunctionExecutionStatusV1 {
-                                        state: "Completed".to_string(),
-                                        has_active_run: false,
-                                        func_run_id,
-                                        action_id: None,
-                                    })
-                                }
-                            }
-                        } else {
-                            Some(FunctionExecutionStatusV1 {
-                                state: "Completed".to_string(),
-                                has_active_run: false,
-                                func_run_id,
-                                action_id: None,
-                            })
-                        }
-                    } else {
-                        Some(FunctionExecutionStatusV1 {
-                            state: "Running".to_string(),
-                            has_active_run: true,
-                            func_run_id,
-                            action_id: None,
-                        })
-                    };
-                    
-                    relationships.push((*component_id, ComponentRelationshipV1 {
-                        to_component_id: None,
-                        to_component_name: qualification.qualification_name,
-                        relationship_type: RelationshipTypeV1::QualificationFunction,
-                        from_path: None,
-                        to_path: None,
-                        execution_status,
-                        current_value: None,
-                    }));
-                }
+            
+            if !qualification_avs.is_empty() {
+                // Component has qualifications - add a generic qualification function entry
+                relationships.push((*component_id, ComponentRelationshipV1 {
+                    to_component_id: None,
+                    to_component_name: "Qualifications".to_string(),
+                    relationship_type: RelationshipTypeV1::QualificationFunction,
+                    from_path: None,
+                    to_path: None,
+                    execution_status: Some(FunctionExecutionStatusV1 {
+                        state: "Available".to_string(),
+                        has_active_run: false,
+                        func_run_id: None,
+                        action_id: None,
+                    }),
+                    current_value: None,
+                }));
             }
+            
+            info!("🧪 [PERF] Component {} qualifications processed in {}ms (fast AVs approach, count: {})", 
+                component_id, qual_start.elapsed().as_millis(), qualification_avs.len());
         }
+        
+        info!("⚙️ [PERF] All function relationships completed in {}ms", functions_start.elapsed().as_millis());
     }
 
+    info!("🏁 [PERF] Total component relationships processing completed in {}ms", _start_time.elapsed().as_millis());
     Ok(relationships)
 }
 
