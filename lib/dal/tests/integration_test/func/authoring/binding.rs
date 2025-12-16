@@ -58,6 +58,7 @@ use pretty_assertions_sorted::assert_eq;
 mod action;
 mod attribute;
 mod authentication;
+mod leaf;
 
 #[test]
 #[ignore]

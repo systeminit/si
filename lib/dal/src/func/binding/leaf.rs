@@ -27,6 +27,7 @@ use crate::{
     attribute::prototype::argument::AttributePrototypeArgument,
     func::{
         argument::FuncArgument,
+        intrinsics::IntrinsicFunc,
         leaf::{
             LeafInput,
             LeafInputLocation,
@@ -35,6 +36,7 @@ use crate::{
     },
     prop::PropPath,
     schema::leaf::LeafPrototype,
+    workspace_snapshot::edge_weight::EdgeWeightKind,
 };
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq, Hash)]
@@ -325,6 +327,9 @@ impl LeafBinding {
             AttributeBinding::find_eventual_parent(ctx, attribute_prototype_id).await?;
         eventual_parent.error_if_locked(ctx).await?;
 
+        // Cache the prop ID before we delete the prototype.
+        let prop_id = AttributePrototype::prop_id(ctx, attribute_prototype_id).await?;
+
         // Delete all attribute prototype arguments for the given prototype.
         for attribute_prototype_argument_id in
             AttributePrototypeArgument::list_ids_for_prototype(ctx, attribute_prototype_id).await?
@@ -340,6 +345,30 @@ impl LeafBinding {
             AttributeValue::remove(ctx, attribute_value_id).await?;
         }
         AttributePrototype::remove(ctx, attribute_prototype_id).await?;
+
+        // Every prop must have at least one prototype, so if we deleted the last one, we must add
+        // back the default.
+        if let Some(prop_id) = prop_id {
+            let remaining_prototypes = Prop::prototypes_by_key(ctx, prop_id).await?;
+
+            if remaining_prototypes.is_empty() {
+                let func_id = Func::find_intrinsic(ctx, IntrinsicFunc::Unset)
+                    .await
+                    .map_err(Box::new)?;
+                let attribute_prototype = AttributePrototype::new(ctx, func_id)
+                    .await
+                    .map_err(Box::new)?;
+                Prop::add_edge_to_attribute_prototype(
+                    ctx,
+                    prop_id,
+                    attribute_prototype.id(),
+                    EdgeWeightKind::Prototype(None),
+                )
+                .await?;
+            }
+        } else {
+            warn!(si.error.message = "no prop found for attribute prototype when deleting leaf func binding", %attribute_prototype_id);
+        }
 
         Ok(eventual_parent)
     }
