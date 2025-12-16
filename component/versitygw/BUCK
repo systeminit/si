@@ -1,12 +1,13 @@
 load(
     "@prelude-si//:macros.bzl",
-    "docker_image",
+    "container_image",
 )
 
-docker_image(
+container_image(
     name = "versitygw",
     image_name = "versitygw",
     srcs = {
         "init-buckets.sh": ".",
     },
+    default_target = True,
 )

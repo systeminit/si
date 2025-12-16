@@ -1,9 +1,9 @@
 load(
     "@prelude-si//:macros.bzl",
-    "docker_image",
+    "container_image",
 )
 
-docker_image(
+container_image(
     name = "pgbouncer",
     build_args = {
         "BASE_VERSION": "1.22.1-p0",
@@ -12,4 +12,5 @@ docker_image(
         "--publish",
         "5432:5432",
     ],
+    default_target = True,
 )

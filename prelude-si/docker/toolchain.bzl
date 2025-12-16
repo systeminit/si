@@ -2,8 +2,6 @@ DockerToolchainInfo = provider(fields = {
     "capture_stdout": typing.Any,
     "docker_container_run": typing.Any,
     "docker_image_build": typing.Any,
-    "docker_image_push": typing.Any,
-    "docker_image_promote": typing.Any,
 })
 
 def docker_toolchain_impl(ctx) -> list[[DefaultInfo, DockerToolchainInfo]]:
@@ -16,8 +14,6 @@ def docker_toolchain_impl(ctx) -> list[[DefaultInfo, DockerToolchainInfo]]:
             capture_stdout = ctx.attrs._capture_stdout,
             docker_container_run = ctx.attrs._docker_container_run,
             docker_image_build = ctx.attrs._docker_image_build,
-            docker_image_push = ctx.attrs._docker_image_push,
-            docker_image_promote = ctx.attrs._docker_image_promote,
         ),
     ]
 
@@ -32,12 +28,6 @@ docker_toolchain = rule(
         ),
         "_docker_image_build": attrs.dep(
             default = "prelude-si//docker:docker_image_build.py",
-        ),
-        "_docker_image_push": attrs.dep(
-            default = "prelude-si//docker:docker_image_push.py",
-        ),
-        "_docker_image_promote": attrs.dep(
-            default = "prelude-si//docker:docker_image_promote.py",
         ),
     },
     is_toolchain_rule = True,

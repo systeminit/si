@@ -1,9 +1,9 @@
 load("@prelude//python:toolchain.bzl", "PythonToolchainInfo")
+load("@prelude-si//:artifact.bzl", "ArtifactInfo")
 load("//build_context:toolchain.bzl", "BuildContextToolchainInfo")
 load("//build_context.bzl", "BuildContext", _build_context = "build_context")
 load("//docker:toolchain.bzl", "DockerToolchainInfo")
-load("//git:toolchain.bzl", "GitToolchainInfo")
-load("//git.bzl", "GitInfo", _git_info = "git_info")
+load("//git.bzl", "GitInfo")
 
 DockerImageInfo = provider(fields = {
     "artifact": provider_field(typing.Any, default = None),  # [Artifact]
@@ -12,17 +12,22 @@ DockerImageInfo = provider(fields = {
     "tag_metadata": provider_field(typing.Any, default = None),  # [Artifact]
 })
 
-def docker_image_impl(ctx: AnalysisContext) -> list[[
+def container_image_impl(ctx: AnalysisContext) -> list[[
     DefaultInfo,
     RunInfo,
     DockerImageInfo,
     GitInfo,
 ]]:
+    # ArtifactInfo,
     srcs = {ctx.attrs.dockerfile: "."}
     if ctx.attrs.srcs:
         srcs.update(ctx.attrs.srcs)
     build_context = _build_context(ctx, ctx.attrs.build_deps, srcs)
-    git_info = _git_info(ctx)
+
+    # Extract Git metadata from dependency and wrap in GitInfo provider
+    git_metadata_file = ctx.attrs.git_metadata[DefaultInfo].default_outputs[0]
+    git_info = GitInfo(file = git_metadata_file)
+
     image_info = build_docker_image(ctx, build_context, git_info)
     run_args = docker_run_args(ctx, image_info)
 
@@ -32,11 +37,17 @@ def docker_image_impl(ctx: AnalysisContext) -> list[[
         ),
         RunInfo(args = run_args),
         image_info,
+        # ArtifactInfo(
+        #     artifact = image_info.artifact,
+        #     metadata = build_metadata,
+        #     family = ctx.attrs.image_name or ctx.attrs.name,
+        #     variant = "container",
+        # ),
         git_info,
     ]
 
-docker_image = rule(
-    impl = docker_image_impl,
+container_image = rule(
+    impl = container_image_impl,
     attrs = {
         "organization": attrs.option(
             attrs.string(),
@@ -98,6 +109,16 @@ docker_image = rule(
         "license": attrs.string(
             doc = """Image license string to be used in image metadata.""",
         ),
+        "platform_targets": attrs.list(
+            attrs.string(),
+            default = [],
+            doc = """List of target platforms this artifact supports.
+            Used by CI to determine which platforms to build.""",
+        ),
+        "git_metadata": attrs.dep(
+            default = "prelude-si//build_metadata:git",
+            doc = """Git metadata target providing repository information.""",
+        ),
         "_python_toolchain": attrs.toolchain_dep(
             default = "toolchains//:python",
             providers = [PythonToolchainInfo],
@@ -105,106 +126,6 @@ docker_image = rule(
         "_build_context_toolchain": attrs.toolchain_dep(
             default = "toolchains//:build_context",
             providers = [BuildContextToolchainInfo],
-        ),
-        "_docker_toolchain": attrs.toolchain_dep(
-            default = "toolchains//:docker",
-            providers = [DockerToolchainInfo],
-        ),
-        "_git_toolchain": attrs.toolchain_dep(
-            default = "toolchains//:git",
-            providers = [GitToolchainInfo],
-        ),
-    },
-)
-
-def docker_image_release_impl(ctx: AnalysisContext) -> list[[DefaultInfo, RunInfo]]:
-    cli_args = ctx.actions.declare_output("args.txt")
-
-    docker_toolchain = ctx.attrs._docker_toolchain[DockerToolchainInfo]
-
-    cmd = cmd_args(
-        ctx.attrs._python_toolchain[PythonToolchainInfo].interpreter,
-        docker_toolchain.docker_image_push[DefaultInfo].default_outputs,
-        "--artifact-file",
-        ctx.attrs.docker_image[DockerImageInfo].artifact,
-        "--tag-metadata-file",
-        ctx.attrs.docker_image[DockerImageInfo].tag_metadata,
-        "--label-metadata-file",
-        ctx.attrs.docker_image[DockerImageInfo].label_metadata,
-    )
-
-    ctx.actions.write(cli_args.as_output(), cmd)
-
-    return [
-        DefaultInfo(default_output = cli_args),
-        RunInfo(args = cmd),
-    ]
-
-docker_image_release = rule(
-    impl = docker_image_release_impl,
-    attrs = {
-        "docker_image": attrs.dep(
-            providers = [DockerImageInfo],
-            doc = """The `docker_image` artifact to release.""",
-        ),
-        "_python_toolchain": attrs.toolchain_dep(
-            default = "toolchains//:python",
-            providers = [PythonToolchainInfo],
-        ),
-        "_docker_toolchain": attrs.toolchain_dep(
-            default = "toolchains//:docker",
-            providers = [DockerToolchainInfo],
-        ),
-    },
-)
-
-def docker_image_promote_impl(ctx: AnalysisContext) -> list[[DefaultInfo, RunInfo]]:
-    cli_args = ctx.actions.declare_output("args.txt")
-
-    docker_toolchain = ctx.attrs._docker_toolchain[DockerToolchainInfo]
-
-    cmd = cmd_args(
-        ctx.attrs._python_toolchain[PythonToolchainInfo].interpreter,
-        docker_toolchain.docker_image_promote[DefaultInfo].default_outputs,
-    )
-    if ctx.attrs.stable_tag:
-        cmd.add("--stable-tag")
-        cmd.add(ctx.attrs.stable_tag)
-    if ctx.attrs.multi_arches:
-        for multi_arch in ctx.attrs.multi_arches:
-            cmd.add("--multi-arch")
-            cmd.add(multi_arch)
-
-    cmd.add(ctx.attrs.image_name)
-
-    ctx.actions.write(cli_args.as_output(), cmd)
-
-    return [
-        DefaultInfo(default_output = cli_args),
-        RunInfo(args = cmd),
-    ]
-
-docker_image_promote = rule(
-    impl = docker_image_promote_impl,
-    attrs = {
-        "image_name": attrs.string(
-            doc = """Docker image name minus tag (ex: `acme/myapp`).""",
-        ),
-        "stable_tag": attrs.option(
-            attrs.string(),
-            default = None,
-            doc = """Override default stable tag name.""",
-        ),
-        "multi_arches": attrs.option(
-            attrs.list(
-                attrs.string(),
-            ),
-            default = None,
-            doc = """Override default multi-arch platforms when promoting.""",
-        ),
-        "_python_toolchain": attrs.toolchain_dep(
-            default = "toolchains//:python",
-            providers = [PythonToolchainInfo],
         ),
         "_docker_toolchain": attrs.toolchain_dep(
             default = "toolchains//:docker",

@@ -84,8 +84,7 @@ deno_test(
 )
 
 nix_omnibus_pkg(
-    name = "omnibus",
-    pkg_name = "lang-js",
+    name = "lang-js",
     build_dep = "//bin/lang-js:lang-js",
     srcs = {
         "//:flake.nix": ".",

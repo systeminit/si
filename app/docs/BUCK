@@ -1,8 +1,7 @@
 load(
     "@prelude-si//:macros.bzl",
-    "docker_image",
-    "eslint",
     "e2e_test",
+    "eslint",
     "export_file",
     "package_node_modules",
     "shellcheck",
@@ -13,8 +12,8 @@ load(
 )
 load(
     "@prelude-si//:pnpm.bzl",
-    "pnpm_task_library",
     "pnpm_task_binary",
+    "pnpm_task_library",
     "pnpm_task_test",
 )
 

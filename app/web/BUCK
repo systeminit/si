@@ -1,6 +1,6 @@
 load(
     "@prelude-si//:macros.bzl",
-    "docker_image",
+    "container_image",
     "eslint",
     "e2e_test",
     "export_file",
@@ -102,9 +102,8 @@ typescript_check(
     dev_deps_srcs = dev_deps_srcs,
 )
 
-docker_image(
-    name = "image",
-    image_name = "web",
+container_image(
+    name = "web",
     flake_lock = "//:flake.lock",
     build_deps = [
         "//app/web:web",

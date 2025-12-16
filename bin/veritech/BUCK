@@ -1,7 +1,7 @@
 load(
     "@prelude-si//:macros.bzl",
     "rust_binary",
-    "rust_binary_pkg",
+    "rust_binary_artifact",
     "test_suite",
 )
 
@@ -40,7 +40,7 @@ rust_binary(
     visibility = ["PUBLIC"],
 )
 
-rust_binary_pkg(
+rust_binary_artifact(
     name = "veritech",
     binary = ":veritech"
 )

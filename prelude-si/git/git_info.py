@@ -3,7 +3,7 @@
 Generates Git metdata.
 """
 import argparse
-from datetime import datetime, timezone
+from datetime import UTC, datetime, timezone
 import json
 import subprocess
 import sys
@@ -105,16 +105,16 @@ def finalize(data: Dict[str, Any]):
     is_dirty = data.get(IS_DIRTY)
 
     if dt_str:
-        if is_dirty == True:
+        if is_dirty:
             # Set commit date to now since the repo is dirty
-            dt_utc = datetime.utcnow()
+            dt_utc = datetime.now(UTC)
         else:
             # Convert into UTC
             dt_utc = datetime.fromisoformat(dt_str).astimezone(timezone.utc)
 
         cal_ver = dt_utc.strftime("%Y%m%d.%H%M%S.0")
         canonical_version = f"{cal_ver}-sha.{abbreviated_commit_hash}"
-        if is_dirty == True:
+        if is_dirty:
             canonical_version += "_dirty"
             data.update({
                 COMMIT_HASH: "{}_dirty".format(data.get(COMMIT_HASH)),

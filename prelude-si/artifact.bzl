@@ -57,7 +57,7 @@ VALID_PLATFORM_TARGETS = [
 # TODO(fnichol): remove when cross-compilation is supported, then use list above
 #
 # Please keep list sorted
-VALID_RUST_PLATFORM_TARGETS = [
+VALID_LINUX_PLATFORM_TARGETS = [
     "linux-aarch64",
     "linux-x86_64",
 ]
@@ -72,14 +72,14 @@ def validate_platform_targets(platform_targets: list[str], err_prefix: str) -> N
     _validate_platform_targets_from_list(platform_targets, VALID_PLATFORM_TARGETS, err_prefix)
 
 # TODO(fnichol): remove when cross-compilation is supported, then use list above
-def validate_rust_platform_targets(platform_targets: list[str], err_prefix: str) -> None:
+def validate_linux_platform_targets(platform_targets: list[str], err_prefix: str) -> None:
     """Validate platform_targets list contains only valid Rust platform strings.
 
     Args:
         platform_targets: List of platform strings to validate
         err_prefix: Description of where this validation is happening (for error messages)
     """
-    _validate_platform_targets_from_list(platform_targets, VALID_RUST_PLATFORM_TARGETS, err_prefix)
+    _validate_platform_targets_from_list(platform_targets, VALID_LINUX_PLATFORM_TARGETS, err_prefix)
 
 def _validate_platform_targets_from_list(
         platform_targets: list[str],

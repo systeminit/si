@@ -100,6 +100,7 @@ def deno_binary_artifact(
         platform_targets = _VALID_PLATFORM_TARGETS,
         skip_all_publish = False,
         skip_all_promote = False,
+        default_target = False,
         visibility = ["PUBLIC"]):
     """Create Deno binary artifact with publish/promote targets for all platforms.
 
@@ -130,8 +131,9 @@ def deno_binary_artifact(
     _validate_platform_targets(platform_targets, "deno_binary_artifact({})".format(name))
 
     # Base artifact target
+    deno_binary_artifact_name = "{}-binary-artifact".format(name)
     _deno_binary_artifact(
-        name = "{}-binary-artifact".format(name),
+        name = deno_binary_artifact_name,
         binary = binary,
         binary_name = name,
         family = name,
@@ -146,7 +148,7 @@ def deno_binary_artifact(
     # Base publish target
     _artifact_publish(
         name = "publish-{}-binary-artifact".format(name),
-        artifact = ":{}-binary-artifact".format(name),
+        artifact = ":{}".format(deno_binary_artifact_name),
         destination = artifact_destination,
         cname = artifact_cname,
         platform_targets = platform_targets,
@@ -180,5 +182,12 @@ def deno_binary_artifact(
             name = "publish-{}-binary-artifact-{}".format(name, platform),
             actual = ":publish-{}-binary-artifact".format(name),
             default_target_platform = "prelude-si//platforms:{}".format(platform),
+            visibility = visibility,
+        )
+
+    if default_target:
+        _alias(
+            name = name,
+            actual = ":{}".format(deno_binary_artifact_name),
             visibility = visibility,
         )

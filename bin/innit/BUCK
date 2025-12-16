@@ -1,6 +1,6 @@
 load(
     "@prelude-si//:macros.bzl",
-    "docker_image",
+    "container_image",
     "rust_binary",
 )
 
@@ -20,14 +20,13 @@ rust_binary(
     git_metadata = False,
 )
 
-docker_image(
-    name = "image",
-    image_name = "innit",
+container_image(
+    name = "innit",
     build_args = {
         "BASE_VERSION": "bookworm",
         "BIN": "innit",
         "SI_RBE_TOKEN": "",
     },
     build_deps = ["//bin/innit:innit"],
-    promote_multi_arches = ["amd64"],
+    platform_targets = ["linux-aarch64"]
 )

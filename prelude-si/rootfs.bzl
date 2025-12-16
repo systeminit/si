@@ -18,7 +18,7 @@ RootfsInfo = provider(fields = {
     "tar_archive": provider_field(typing.Any, default = None),  # [Artifact]
 })
 
-def rootfs_impl(ctx: AnalysisContext) -> list[[DefaultInfo, RunInfo, RootfsInfo, ArtifactInfo, GitInfo]]:
+def rootfs_tarball_impl(ctx: AnalysisContext) -> list[[DefaultInfo, RunInfo, RootfsInfo, ArtifactInfo, GitInfo]]:
 
     if ctx.attrs.rootfs_name:
         tar_archive = ctx.actions.declare_output("{}.ext4".format(ctx.attrs.rootfs_name))
@@ -43,7 +43,7 @@ def rootfs_impl(ctx: AnalysisContext) -> list[[DefaultInfo, RunInfo, RootfsInfo,
     for dep in ctx.attrs.build_deps or []:
         cmd.add(dep)
 
-    ctx.actions.run(cmd, category = "rootfs_build")
+    ctx.actions.run(cmd, category = "rootfs_tarball_build")
 
     return [
         DefaultInfo(
@@ -61,8 +61,8 @@ def rootfs_impl(ctx: AnalysisContext) -> list[[DefaultInfo, RunInfo, RootfsInfo,
         git_info
     ]
 
-rootfs = rule(
-    impl = rootfs_impl,
+rootfs_tarball = rule(
+    impl = rootfs_tarball_impl,
     attrs = {
         "rootfs_name": attrs.option(
             attrs.string(),

@@ -1,9 +1,9 @@
 load(
     "@prelude-si//:macros.bzl",
-    "docker_image",
+    "container_image",
     "export_file",
     "nix_omnibus_pkg",
-    "rootfs",
+    "rootfs_tarball",
     "rust_binary",
     "shellcheck",
     "shfmt_check",
@@ -60,9 +60,8 @@ shellcheck(
     srcs = [":docker-entrypoint.sh"],
 )
 
-docker_image(
-    name = "image",
-    image_name = "cyclone",
+container_image(
+    name = "cyclone",
     flake_lock = "//:flake.lock",
     build_deps = [
         "//bin/cyclone:docker-entrypoint.sh",
@@ -71,10 +70,8 @@ docker_image(
     ],
 )
 
-rootfs(
-    name = "rootfs",
-    pkg_name = "cyclone",
-    rootfs_name = "cyclone-rootfs",
+rootfs_tarball(
+    name = "cyclone",
     build_deps = [
         ":cyclone",
         "//bin/lang-js:lang-js",

@@ -1,19 +1,20 @@
 load(
     "@prelude-si//:macros.bzl",
-    "docker_image",
+    "container_image",
     "filegroup",
     "shellcheck",
     "shfmt_check",
     "test_suite",
 )
 
-docker_image(
+container_image(
     name = "spicedb",
     srcs = {
         "entrypoint.sh": ".",
         "schema.zed": ".",
         "validation.yaml": ".",
-    }
+    },
+    default_target = True,
 )
 
 filegroup(

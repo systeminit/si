@@ -1,7 +1,7 @@
 load(
     "@prelude-si//:macros.bzl",
     "rust_binary",
-    "rust_binary_pkg",
+    "rust_binary_artifact",
 )
 
 rust_binary(
@@ -21,7 +21,7 @@ rust_binary(
     },
 )
 
-rust_binary_pkg(
+rust_binary_artifact(
     name = "pinga",
     binary = ":pinga"
 )

@@ -4,7 +4,7 @@ load(
     "export_file",
     "package_node_modules",
     "typescript_check",
-    "docker_image",
+    "container_image",
     "npm_bin",
     "typescript_dist",
     "typescript_runnable_dist",
@@ -150,15 +150,12 @@ pnpm_task_binary(
     visibility = ["PUBLIC"],
 )
 
-docker_image(
-    name = "image",
-    image_name = "auth-api",
+container_image(
+    name = "auth-api",
     flake_lock = "//:flake.lock",
     build_deps = [
         "//bin/auth-api:auth-api",
     ],
     # TODO(fnichol): revisit post 2025-02-01
-    promote_multi_arches = [
-        "amd64",
-    ],
+    platform_targets = ["linux-aarch64"]
 )

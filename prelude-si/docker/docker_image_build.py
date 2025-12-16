@@ -220,11 +220,6 @@ def compute_label_metadata(
         revision,
     )
 
-    if git_info.get("is_dirty") and isinstance(revision, str) and isinstance(
-            canonical_version, str):
-        revision += "-dirty"
-        canonical_version += "-dirty"
-
     image_url = ("https://hub.docker.com/r/{}/" +
                  "tags?page=1&ordering=last_updated&name={}-{}").format(
                      image_name,

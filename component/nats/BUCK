@@ -1,9 +1,9 @@
 load(
     "@prelude-si//:macros.bzl",
-    "docker_image",
+    "container_image",
 )
 
-docker_image(
+container_image(
     name = "nats",
     srcs = {
         "nats-server.conf": "component/nats",
@@ -21,4 +21,5 @@ docker_image(
         "--config",
         "nats-server.conf",
     ],
+    default_target = True,
 )

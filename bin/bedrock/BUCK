@@ -1,7 +1,7 @@
 load(
     "@prelude-si//:macros.bzl",
     "rust_binary",
-    "rust_binary_pkg",
+    "rust_binary_artifact",
 )
 
 rust_binary(
@@ -15,7 +15,7 @@ rust_binary(
     env = {"CARGO_BIN_NAME": "bedrock"},
 )
 
-rust_binary_pkg(
+rust_binary_artifact(
     name = "bedrock",
     binary = ":bedrock"
 )

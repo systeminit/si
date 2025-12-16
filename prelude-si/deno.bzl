@@ -575,7 +575,7 @@ def _deno_binary_artifact_impl(ctx):
         ctx.attrs.license,
     )
 
-    ctx.actions.run(metadata_cmd, category = "binary_metadata")
+    ctx.actions.run(metadata_cmd, category = "build_artifact_metadata")
 
     # Create archive (tar.gz for unix, zip for Windows)
     archive_ext = ".zip" if target_os == "windows" else ".tar.gz"

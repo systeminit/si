@@ -22,15 +22,15 @@ deno_binary_artifact = _deno_binary_artifact
 
 load(
     "@prelude-si//macros:docker.bzl",
-    _docker_image = "docker_image",
+    _container_image = "container_image",
 )
-docker_image = _docker_image
+container_image = _container_image
 
 load(
     "@prelude-si//macros:rootfs.bzl",
-    _rootfs = "rootfs",
+    _rootfs_tarball = "rootfs_tarball",
 )
-rootfs = _rootfs
+rootfs_tarball = _rootfs_tarball
 
 load(
     "@prelude-si//macros:nix.bzl",
@@ -90,14 +90,14 @@ yapf_check = _yapf_check
 load(
     "@prelude-si//macros:rust.bzl",
     _rust_binary = "rust_binary",
+    _rust_binary_artifact = "rust_binary_artifact",
     _rust_library = "rust_library",
     _rust_test = "rust_test",
-    _rust_binary_pkg = "rust_binary_pkg",
 )
 rust_binary = _rust_binary
+rust_binary_artifact = _rust_binary_artifact
 rust_library = _rust_library
 rust_test = _rust_test
-rust_binary_pkg = _rust_binary_pkg
 
 load(
     "@prelude-si//macros:shell.bzl",
