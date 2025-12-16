@@ -227,64 +227,79 @@ async fn get_all_component_relationships(
                 }));
             }
             
-            // Add qualification function relationships
-            let qualifications = Component::list_qualifications(ctx, *component_id).await?;
-            for qualification in qualifications {
-                // Simple qualification status
-                let execution_status = if qualification.finalized {
-                    if let Some(result) = &qualification.result {
-                        match result.status {
-                            dal::qualification::QualificationSubCheckStatus::Success => {
-                                Some(FunctionExecutionStatusV1 {
-                                    state: "Succeeded".to_string(),
-                                    has_active_run: false,
-                                    func_run_id: None, // TODO: Get qualification func run ID
-                                    action_id: None,
-                                })
+            // Add qualification function relationships with func run IDs
+            let qualification_avs = Component::list_qualification_avs(ctx, *component_id).await?;
+            for qualification_av in qualification_avs {
+                // Get the qualification view which contains the qualification name and status
+                if let Some(qualification) = dal::qualification::QualificationView::new(ctx, qualification_av.id()).await? {
+                    // Get the func run ID for this qualification
+                    let qual_func_run = ctx
+                        .layer_db()
+                        .func_run()
+                        .get_last_qualification_for_attribute_value_id(
+                            ctx.events_tenancy().workspace_pk,
+                            qualification_av.id(),
+                        )
+                        .await?;
+                    
+                    let func_run_id = qual_func_run.map(|run| run.id());
+                    
+                    // Get qualification status  
+                    let execution_status = if qualification.finalized {
+                        if let Some(result) = &qualification.result {
+                            match result.status {
+                                dal::qualification::QualificationSubCheckStatus::Success => {
+                                    Some(FunctionExecutionStatusV1 {
+                                        state: "Succeeded".to_string(),
+                                        has_active_run: false,
+                                        func_run_id,
+                                        action_id: None,
+                                    })
+                                }
+                                dal::qualification::QualificationSubCheckStatus::Failure => {
+                                    Some(FunctionExecutionStatusV1 {
+                                        state: "Failed".to_string(),
+                                        has_active_run: false,
+                                        func_run_id,
+                                        action_id: None,
+                                    })
+                                }
+                                _ => {
+                                    Some(FunctionExecutionStatusV1 {
+                                        state: "Completed".to_string(),
+                                        has_active_run: false,
+                                        func_run_id,
+                                        action_id: None,
+                                    })
+                                }
                             }
-                            dal::qualification::QualificationSubCheckStatus::Failure => {
-                                Some(FunctionExecutionStatusV1 {
-                                    state: "Failed".to_string(),
-                                    has_active_run: false,
-                                    func_run_id: None, // TODO: Get qualification func run ID
-                                    action_id: None,
-                                })
-                            }
-                            _ => {
-                                Some(FunctionExecutionStatusV1 {
-                                    state: "Completed".to_string(),
-                                    has_active_run: false,
-                                    func_run_id: None, // TODO: Get qualification func run ID
-                                    action_id: None,
-                                })
-                            }
+                        } else {
+                            Some(FunctionExecutionStatusV1 {
+                                state: "Completed".to_string(),
+                                has_active_run: false,
+                                func_run_id,
+                                action_id: None,
+                            })
                         }
                     } else {
                         Some(FunctionExecutionStatusV1 {
-                            state: "Completed".to_string(),
-                            has_active_run: false,
-                            func_run_id: None, // TODO: Get qualification func run ID
+                            state: "Running".to_string(),
+                            has_active_run: true,
+                            func_run_id,
                             action_id: None,
                         })
-                    }
-                } else {
-                    Some(FunctionExecutionStatusV1 {
-                        state: "Running".to_string(),
-                        has_active_run: true,
-                        func_run_id: None, // TODO: Get qualification func run ID
-                        action_id: None,
-                    })
-                };
-                
-                relationships.push((*component_id, ComponentRelationshipV1 {
-                    to_component_id: None,
-                    to_component_name: qualification.qualification_name,
-                    relationship_type: RelationshipTypeV1::QualificationFunction,
-                    from_path: None,
-                    to_path: None,
-                    execution_status,
-                    current_value: None,
-                }));
+                    };
+                    
+                    relationships.push((*component_id, ComponentRelationshipV1 {
+                        to_component_id: None,
+                        to_component_name: qualification.qualification_name,
+                        relationship_type: RelationshipTypeV1::QualificationFunction,
+                        from_path: None,
+                        to_path: None,
+                        execution_status,
+                        current_value: None,
+                    }));
+                }
             }
         }
     }
