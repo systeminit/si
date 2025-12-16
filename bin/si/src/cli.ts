@@ -266,7 +266,12 @@ function buildSchemaCommand() {
       this.showHelp();
     })
     .command("init", buildInitCommand())
-    .command("generate", buildSchemaGenerateCommand())
+    .command("action", buildSchemaActionCommand())
+    .command("authentication", buildSchemaAuthenticationCommand())
+    .command("codegen", buildSchemaCodegenCommand())
+    .command("management", buildSchemaManagementCommand())
+    .command("qualification", buildSchemaQualificationCommand())
+    .command("scaffold", buildSchemaScaffoldCommand())
     .command("overlay", buildOverlayCommand())
     .command(
       "pull",
@@ -331,49 +336,10 @@ function buildSchemaCommand() {
     );
 }
 
-function buildSchemaGenerateCommand() {
-  return createSubCommand()
-    .description(
-      "Generate schema function definitions for actions, authentication, code generation, and more",
-    )
-    .action(function () {
-      this.showHelp();
-    })
-    .command("action", buildSchemaActionCommand())
-    .command("authentication", buildSchemaAuthenticationCommand())
-    .command("codegen", buildSchemaCodegenCommand())
-    .command("management", buildSchemaManagementCommand())
-    .command("qualification", buildSchemaQualificationCommand())
-    .command("scaffold", buildSchemaScaffoldCommand());
-}
-
 function buildOverlayCommand() {
   return createSubCommand()
     .description(
       "Manage schema overlays: generate overlay functions and push them to remote workspaces",
-    )
-    .action(function () {
-      this.showHelp();
-    })
-    .command("generate", buildOverlayGenerateCommand())
-    .command(
-      "push",
-      createSubCommand(true)
-        .description(
-          "Pushes overlay funcs to your remote System Initiative workspace",
-        )
-        .option("-s, --skip-confirmation", "Skip confirmation prompt")
-        .action(async ({ root, skipConfirmation }) => {
-          const project = createProject(root);
-          await callRemoteSchemaOverlaysPush(project, skipConfirmation);
-        }),
-    );
-}
-
-function buildOverlayGenerateCommand() {
-  return createSubCommand()
-    .description(
-      "Generate overlay function definitions that customize or extend existing schemas",
     )
     .action(function () {
       this.showHelp();
@@ -388,6 +354,18 @@ function buildOverlayGenerateCommand() {
     .command(
       "qualification",
       buildSchemaQualificationCommand({ isOverlay: true }),
+    )
+    .command(
+      "push",
+      createSubCommand(true)
+        .description(
+          "Pushes overlay funcs to your remote System Initiative workspace",
+        )
+        .option("-s, --skip-confirmation", "Skip confirmation prompt")
+        .action(async ({ root, skipConfirmation }) => {
+          const project = createProject(root);
+          await callRemoteSchemaOverlaysPush(project, skipConfirmation);
+        }),
     );
 }
 
@@ -823,16 +801,14 @@ function buildSchemaActionCommand(options?: { isOverlay?: boolean }) {
   const overlayMsg = isOverlay ? " overlay" : "";
 
   return createSubCommand()
-    .description(`Generates action${overlayMsg} functions for schemas`)
+    .description(`Action${overlayMsg} function operations`)
     .action(function () {
       this.showHelp();
     })
     .command(
       "generate",
       createSubCommand()
-        .description(
-          "Generates action functions (create, destroy, refresh, update)",
-        )
+        .description(`Generate action${overlayMsg} functions for schemas`)
         .arguments("[SCHEMA_NAME:string] [ACTION_NAME:string]")
         .action(async ({ root }, schemaName, actionName) => {
           const project = createProject(root);
@@ -865,16 +841,14 @@ function buildSchemaAuthenticationCommand(options?: { isOverlay?: boolean }) {
   const overlayMsg = isOverlay ? " overlay" : "";
 
   return createSubCommand()
-    .description(`Generates authentication${overlayMsg} functions for schemas`)
+    .description(`Authentication${overlayMsg} function operations`)
     .action(function () {
       this.showHelp();
     })
     .command(
       "generate",
       createSubCommand()
-        .description(
-          "Generates authentication functions for credential validation",
-        )
+        .description(`Generate authentication${overlayMsg} functions for schemas`)
         .arguments("[SCHEMA_NAME:string] [AUTH_NAME:string]")
         .action(async ({ root }, schemaName, authName) => {
           const project = createProject(root);
@@ -907,16 +881,14 @@ function buildSchemaCodegenCommand(options?: { isOverlay?: boolean }) {
   const overlayMsg = isOverlay ? " overlay" : "";
 
   return createSubCommand()
-    .description(`Generates code generator${overlayMsg} functions for schemas`)
+    .description(`Code generator${overlayMsg} function operations`)
     .action(function () {
       this.showHelp();
     })
     .command(
       "generate",
       createSubCommand()
-        .description(
-          "Generates code generator functions to produce configuration files",
-        )
+        .description(`Generate code generator${overlayMsg} functions for schemas`)
         .arguments("[SCHEMA_NAME:string] [CODEGEN_NAME:string]")
         .action(async ({ root }, schemaName, codegenName) => {
           const project = createProject(root);
@@ -952,16 +924,14 @@ function buildSchemaManagementCommand(options?: { isOverlay?: boolean }) {
   const overlayMsg = isOverlay ? " overlay" : "";
 
   return createSubCommand()
-    .description(`Generates management${overlayMsg} functions for schemas`)
+    .description(`Management${overlayMsg} function operations`)
     .action(function () {
       this.showHelp();
     })
     .command(
       "generate",
       createSubCommand()
-        .description(
-          "Generates management functions for reconciliation and lifecycle operations",
-        )
+        .description(`Generate management${overlayMsg} functions for schemas`)
         .arguments("[SCHEMA_NAME:string] [MANAGEMENT_NAME:string]")
         .action(async ({ root }, schemaName, managementName) => {
           const project = createProject(root);
@@ -997,16 +967,14 @@ function buildSchemaQualificationCommand(options?: { isOverlay?: boolean }) {
   const overlayMsg = isOverlay ? " overlay" : "";
 
   return createSubCommand()
-    .description(`Generates qualification${overlayMsg} functions for schemas`)
+    .description(`Qualification${overlayMsg} function operations`)
     .action(function () {
       this.showHelp();
     })
     .command(
       "generate",
       createSubCommand()
-        .description(
-          "Generates qualification functions to validate component state",
-        )
+        .description(`Generate qualification${overlayMsg} functions for schemas`)
         .arguments("[SCHEMA_NAME:string] [QUALIFICATION_NAME:string]")
         .action(async ({ root }, schemaName, qualificationName) => {
           const project = createProject(root);
@@ -1032,23 +1000,21 @@ function buildSchemaQualificationCommand(options?: { isOverlay?: boolean }) {
 }
 
 /**
- * Builds the schema scaffold subcommands.
+ * Builds the schema scaffold command.
  *
  * @returns A SubCommand configured for scaffold operations
  * @internal
  */
 function buildSchemaScaffoldCommand() {
   return createSubCommand()
-    .description("Scaffolds a complete schema structure")
+    .description("Schema scaffold operations")
     .action(function () {
       this.showHelp();
     })
     .command(
       "generate",
       createSubCommand()
-        .description(
-          "Scaffolds a complete schema with all default functions and metadata",
-        )
+        .description("Generate a complete schema scaffold with all default functions")
         .arguments("[SCHEMA_NAME:string]")
         .action(async ({ root }, schemaName) => {
           const project = createProject(root);
