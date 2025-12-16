@@ -1,6 +1,6 @@
 import { getApiUrlForInstance } from "./config.ts";
 import { tryGetUserDataFromToken } from "./jwt.ts";
-import { getUserAgent } from "../git_metadata.ts";
+import { getUserAgent } from "../user_agent.ts";
 
 export interface WorkspaceDetails {
   instanceUrl: string;

@@ -43,7 +43,7 @@ import {
 import type { GlobalOptions } from "./cli.ts";
 import { type Config, extractConfig } from "./cli/config.ts";
 import * as jwt from "./cli/jwt.ts";
-import { getUserAgent } from "./git_metadata.ts";
+import { getUserAgent } from "./user_agent.ts";
 
 /** Event prefix for all analytics events tracked by this application. */
 const ANALYTICS_EVENT_PREFIX = "si";

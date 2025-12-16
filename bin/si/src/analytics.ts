@@ -29,7 +29,7 @@
 
 import { PostHog } from "posthog-node";
 import type { UserData } from "./cli/jwt.ts";
-import { getUserAgent } from "./git_metadata.ts";
+import { getUserAgent } from "./user_agent.ts";
 
 /**
  * PostHog production API key.
