@@ -364,8 +364,8 @@ pub async fn component_relationships(
     tracker: PosthogEventTracker,
 ) -> Result<Json<ComponentRelationshipsV1Response>, ComponentsError> {
     // Set default limit and enforce a max limit  
-    let _limit = params.limit.unwrap_or(50).min(300) as usize;
-    let _cursor = params.cursor;
+    let limit = params.limit.unwrap_or(50).min(300) as usize;
+    let cursor = params.cursor;
 
     // Check if functions should be included
     let include_functions = params.include_functions.unwrap_or(false);
@@ -405,14 +405,43 @@ pub async fn component_relationships(
         sorted_relationships.insert(component_id, relationships);
     }
 
-    // For now, skip complex pagination with grouped data and return all
-    // TODO: Implement component-level pagination if needed
-    let next_cursor = None;
+    // Handle pagination at the component level
+    let component_ids: Vec<String> = sorted_relationships.keys().cloned().collect();
+    
+    // Find pagination start index
+    let start_index = if let Some(ref cursor_str) = cursor {
+        component_ids
+            .iter()
+            .position(|comp_id| comp_id == cursor_str)
+            .map(|idx| idx + 1) // Start after the cursor
+            .unwrap_or(0)
+    } else {
+        0
+    };
+    
+    // Calculate end index and paginate components
+    let end_index = (start_index + limit).min(component_ids.len());
+    let paginated_component_ids = &component_ids[start_index..end_index];
+    
+    // Build paginated response with only the selected components
+    let mut paginated_relationships: BTreeMap<String, Vec<ComponentRelationshipV1>> = BTreeMap::new();
+    for component_id in paginated_component_ids {
+        if let Some(relationships) = sorted_relationships.remove(component_id) {
+            paginated_relationships.insert(component_id.clone(), relationships);
+        }
+    }
+    
+    // Generate next cursor (last component ID in current page)
+    let next_cursor = if end_index < component_ids.len() && !paginated_component_ids.is_empty() {
+        paginated_component_ids.last().cloned()
+    } else {
+        None
+    };
 
     tracker.track(ctx, "api_component_relationships", json!({}));
 
     Ok(Json(ComponentRelationshipsV1Response {
-        relationships_by_component: sorted_relationships,
+        relationships_by_component: paginated_relationships,
         next_cursor,
     }))
 }
