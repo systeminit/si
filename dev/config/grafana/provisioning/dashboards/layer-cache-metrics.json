@@ -1352,7 +1352,7 @@
         "h": 8
       },
       "type": "timeseries",
-      "title": "${operation} - Persistence Latency (p50, p95, p99)",
+      "title": "PostgreSQL - ${operation} End-to-End Latency (p50, p95, p99)",
       "repeat": "operation",
       "datasource": {
         "type": "prometheus",
