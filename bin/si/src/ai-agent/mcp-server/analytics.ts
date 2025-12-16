@@ -1,5 +1,6 @@
 import { PostHog } from "posthog-node";
 import { Context } from "../../context.ts";
+import { getUserAgent } from "../../git_metadata.ts";
 
 export class Analytics {
   private posthog: PostHog | null = null;
@@ -50,6 +51,7 @@ export class Analytics {
         properties: {
           $session_id: this.sessionId, // PostHog standard session property
           workspace_id: this.getWorkspaceId(),
+          userAgent: getUserAgent(),
           ...properties,
         },
       });

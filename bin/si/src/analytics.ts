@@ -29,6 +29,7 @@
 
 import { PostHog } from "posthog-node";
 import type { UserData } from "./cli/jwt.ts";
+import { getUserAgent } from "./git_metadata.ts";
 
 /**
  * PostHog production API key.
@@ -159,6 +160,7 @@ export class Analytics {
       distinctId,
       properties: {
         [POSTHOG_SESSION_ID_PROPERTY]: this.sessionId,
+        userAgent: getUserAgent(),
         ...variablePayload,
         ...properties,
       },

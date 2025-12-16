@@ -1,5 +1,6 @@
 import { getApiUrlForInstance } from "./config.ts";
 import { tryGetUserDataFromToken } from "./jwt.ts";
+import { getUserAgent } from "../git_metadata.ts";
 
 export interface WorkspaceDetails {
   instanceUrl: string;
@@ -44,14 +45,18 @@ export class AuthApiClient {
     const url = params ? `${baseUrl}?${params}` : baseUrl;
     const requestBody = body ? JSON.stringify(body) : undefined;
     let headers: { [key: string]: string } | undefined = noAuth
-      ? undefined
-      : { Authorization: `Bearer: ${this.apiToken}` };
+      ? { "User-Agent": getUserAgent() }
+      : {
+          Authorization: `Bearer: ${this.apiToken}`,
+          "User-Agent": getUserAgent(),
+        };
     if (requestBody) {
       if (headers) {
         headers["Content-Type"] = "application/json";
       } else {
         headers = {
           "Content-Type": "application/json",
+          "User-Agent": getUserAgent(),
         };
       }
     }
