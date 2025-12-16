@@ -1,11 +1,102 @@
 async function main(component: Input): Promise<Output> {
-  const serviceAccountJson = requestStorage.getEnv("GOOGLE_APPLICATION_CREDENTIALS_JSON");
+  // Get API path metadata from domain.extra
+  const deleteApiPathJson = _.get(
+    component.properties,
+    ["domain", "extra", "deleteApiPath"],
+    "",
+  );
 
+  if (!deleteApiPathJson) {
+    return {
+      status: "error",
+      message: "No delete API path metadata found - this resource may not support deletion",
+    };
+  }
+
+  const deleteApiPath = JSON.parse(deleteApiPathJson);
+  const baseUrl = _.get(component.properties, ["domain", "extra", "baseUrl"], "");
+
+  // Get resourceId
+  const resourceId = component.properties?.si?.resourceId;
+  if (!resourceId) {
+    return {
+      status: "error",
+      message: "No resource ID found for deletion",
+    };
+  }
+
+  // Get authentication token
+  const serviceAccountJson = requestStorage.getEnv("GOOGLE_APPLICATION_CREDENTIALS_JSON");
   if (!serviceAccountJson) {
     throw new Error("Google Cloud Credential not found. Please ensure a Google Cloud Credential is attached to this component.");
   }
 
-  // Activate service account using stdin (most secure - no file on disk)
+  const { token, projectId } = await getAccessToken(serviceAccountJson);
+
+  // Build the URL by replacing path parameters
+  let url = `${baseUrl}${deleteApiPath.path}`;
+
+  // Replace path parameters with values from resource_value or domain
+  if (deleteApiPath.parameterOrder) {
+    for (const paramName of deleteApiPath.parameterOrder) {
+      let paramValue;
+
+      // For the resource identifier, use resourceId
+      if (paramName === deleteApiPath.parameterOrder[deleteApiPath.parameterOrder.length - 1]) {
+        paramValue = resourceId;
+      } else if (paramName === "project") {
+        // Use extracted project_id for project parameter
+        paramValue = projectId;
+      } else {
+        paramValue = _.get(component.properties, ["resource", "payload", paramName]) ||
+                     _.get(component.properties, ["domain", paramName]);
+      }
+
+      if (paramValue) {
+        url = url.replace(`{${paramName}}`, encodeURIComponent(paramValue));
+      }
+    }
+  }
+
+  // Make the API request
+  const response = await fetch(url, {
+    method: "DELETE", // delete is always DELETE
+    headers: {
+      "Authorization": `Bearer ${token}`,
+    },
+  });
+
+  if (!response.ok) {
+    // If already deleted (404), consider it success
+    if (response.status === 404) {
+      return {
+        status: "ok",
+      };
+    }
+
+    const errorText = await response.text();
+    return {
+      status: "error",
+      message: `Unable to delete resource; API returned ${response.status} ${response.statusText}: ${errorText}`,
+    };
+  }
+
+  return {
+    status: "ok",
+  };
+}
+
+async function getAccessToken(serviceAccountJson: string): Promise<{ token: string; projectId: string | undefined }> {
+  // Parse service account JSON to extract project_id (optional)
+  let projectId: string | undefined;
+  try {
+    const serviceAccount = JSON.parse(serviceAccountJson);
+    projectId = serviceAccount.project_id;
+  } catch {
+    // If parsing fails or project_id is missing, continue without it
+    projectId = undefined;
+  }
+
   const activateResult = await siExec.waitUntilEnd("gcloud", [
     "auth",
     "activate-service-account",
@@ -19,7 +110,6 @@ async function main(component: Input): Promise<Output> {
     throw new Error(`Failed to activate service account: ${activateResult.stderr}`);
   }
 
-  // Get the access token
   const tokenResult = await siExec.waitUntilEnd("gcloud", [
     "auth",
     "print-access-token"
@@ -29,8 +119,8 @@ async function main(component: Input): Promise<Output> {
     throw new Error(`Failed to get access token: ${tokenResult.stderr}`);
   }
 
-  const token = tokenResult.stdout.trim();
-
-  // TODO: Implement actual delete logic using the token
-  throw new Error("Not implemented");
+  return {
+    token: tokenResult.stdout.trim(),
+    projectId,
+  };
 }

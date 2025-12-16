@@ -1,8 +1,6 @@
 # Clover
 
-Clover generates full AWS schema coverage for all resource types in the
-[Cloudformation schema](https://docs.aws.amazon.com/cloudformation-cli/latest/userguide/resource-type-schema.html).
-It may be used to generate schemas for other providers in the future.
+Clover generates multi-cloud provider coverage for all resource types. The current supported providers are AWS, Azure, Hetzner and DigitalOcean.
 
 ## Quickstart
 
