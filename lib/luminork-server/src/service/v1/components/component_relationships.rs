@@ -7,6 +7,7 @@ use dal::{
     action::Action,
     attribute::value::AttributeValue,
 };
+use si_id::{ActionId, FuncRunId};
 use si_events::ActionState;
 use serde::Serialize;
 use serde_json::json;
@@ -58,6 +59,12 @@ pub struct ComponentRelationshipV1 {
 pub struct FunctionExecutionStatusV1 {
     pub state: String,
     pub has_active_run: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[schema(value_type = Option<String>)]
+    pub func_run_id: Option<si_id::FuncRunId>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[schema(value_type = Option<String>)]  
+    pub action_id: Option<si_id::ActionId>,
 }
 
 #[derive(Serialize, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, ToSchema)]
@@ -138,29 +145,39 @@ async fn get_all_component_relationships(
                     // If action exists, get its actual state
                     if let Some(action_id) = Action::find_equivalent(ctx, action_func.prototype_id, Some(*component_id)).await? {
                         let action = Action::get_by_id(ctx, action_id).await?;
+                        let func_run_id = Action::last_func_run_id_for_id_opt(ctx, action_id).await?;
+                        
                         match action.state() {
                             ActionState::Running | ActionState::Dispatched => {
                                 Some(FunctionExecutionStatusV1 {
                                     state: "Running".to_string(),
                                     has_active_run: true,
+                                    func_run_id,
+                                    action_id: Some(action_id),
                                 })
                             }
                             ActionState::Queued => {
                                 Some(FunctionExecutionStatusV1 {
                                     state: "Queued".to_string(),
                                     has_active_run: true,
+                                    func_run_id,
+                                    action_id: Some(action_id),
                                 })
                             }
                             ActionState::OnHold => {
                                 Some(FunctionExecutionStatusV1 {
                                     state: "OnHold".to_string(),
                                     has_active_run: true,
+                                    func_run_id,
+                                    action_id: Some(action_id),
                                 })
                             }
                             ActionState::Failed => {
                                 Some(FunctionExecutionStatusV1 {
                                     state: "Failed".to_string(),
                                     has_active_run: false,
+                                    func_run_id,
+                                    action_id: Some(action_id),
                                 })
                             }
                         }
@@ -168,12 +185,16 @@ async fn get_all_component_relationships(
                         Some(FunctionExecutionStatusV1 {
                             state: "Idle".to_string(),
                             has_active_run: false,
+                            func_run_id: None,
+                            action_id: None,
                         })
                     }
                 } else {
                     Some(FunctionExecutionStatusV1 {
                         state: "Idle".to_string(),
                         has_active_run: false,
+                        func_run_id: None,
+                        action_id: None,
                     })
                 };
                 
@@ -199,6 +220,8 @@ async fn get_all_component_relationships(
                     execution_status: Some(FunctionExecutionStatusV1 {
                         state: "Available".to_string(),
                         has_active_run: false,
+                        func_run_id: None,
+                        action_id: None,
                     }),
                     current_value: None,
                 }));
@@ -215,18 +238,24 @@ async fn get_all_component_relationships(
                                 Some(FunctionExecutionStatusV1 {
                                     state: "Succeeded".to_string(),
                                     has_active_run: false,
+                                    func_run_id: None, // TODO: Get qualification func run ID
+                                    action_id: None,
                                 })
                             }
                             dal::qualification::QualificationSubCheckStatus::Failure => {
                                 Some(FunctionExecutionStatusV1 {
                                     state: "Failed".to_string(),
                                     has_active_run: false,
+                                    func_run_id: None, // TODO: Get qualification func run ID
+                                    action_id: None,
                                 })
                             }
                             _ => {
                                 Some(FunctionExecutionStatusV1 {
                                     state: "Completed".to_string(),
                                     has_active_run: false,
+                                    func_run_id: None, // TODO: Get qualification func run ID
+                                    action_id: None,
                                 })
                             }
                         }
@@ -234,12 +263,16 @@ async fn get_all_component_relationships(
                         Some(FunctionExecutionStatusV1 {
                             state: "Completed".to_string(),
                             has_active_run: false,
+                            func_run_id: None, // TODO: Get qualification func run ID
+                            action_id: None,
                         })
                     }
                 } else {
                     Some(FunctionExecutionStatusV1 {
                         state: "Running".to_string(),
                         has_active_run: true,
+                        func_run_id: None, // TODO: Get qualification func run ID
+                        action_id: None,
                     })
                 };
                 
