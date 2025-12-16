@@ -476,7 +476,8 @@ function buildWorkspaceCommand() {
 function buildWorkspaceSwitchCommand() {
   return createSubCommand()
     .description("Switch to a different workspace")
-    .action(async ({ authApiUrl }) => {
+    .arguments("[workspace:string]")
+    .action(async ({ authApiUrl }, workspaceArg) => {
       const ctx = Context.instance();
 
       // Check if user is logged in
@@ -523,8 +524,11 @@ function buildWorkspaceSwitchCommand() {
           }
         }
 
-        // Prompt for new workspace selection
-        const selectedWorkspaceId = await prompt.workspace(workspaces);
+        // Prompt for new workspace selection (or use provided argument)
+        const selectedWorkspaceId = await prompt.workspace(
+          workspaces,
+          workspaceArg,
+        );
 
         // Check if it's the same workspace
         if (selectedWorkspaceId === currentWorkspaceId) {

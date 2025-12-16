@@ -336,46 +336,107 @@ export async function authName(
 /**
  * Prompts the user for a workspace selection if not provided.
  *
- * This function implements a flexible input strategy: if a workspace ID is
- * provided, it returns immediately. Otherwise, it presents an interactive
- * prompt with workspace display names as suggestions.
+ * This function implements a flexible input strategy: if a workspace identifier is
+ * provided, it attempts to find a matching workspace by ID or display name.
+ * Otherwise, it presents an interactive prompt with workspace display names as suggestions.
  *
- * @param workspaceId - Optional workspace ID from command arguments.
- *   If provided, this value is returned as-is without prompting the user
+ * @param workspaceIdentifier - Optional workspace ID or display name from command arguments.
+ *   If provided and found, returns the workspace ID without prompting
  * @param existingWorkspaces - Array of available workspaces with their details
- * @returns A promise resolving to the workspace ID (either the provided value
+ * @returns A promise resolving to the workspace ID (either from the matched identifier
  *   or the ID corresponding to the user's selected workspace)
  *
  * @example
  * ```ts
- * // With argument - no prompt shown
+ * // With workspace ID argument - no prompt shown
  * const id1 = await workspace("ws-123", workspaces);
  * // Returns: "ws-123"
  *
+ * // With workspace name argument - finds matching workspace
+ * const id2 = await workspace("Production", workspaces);
+ * // Returns the ID of workspace with displayName "Production"
+ *
  * // Without argument - interactive prompt with workspace names
- * const id2 = await workspace(undefined, workspaces);
+ * const id3 = await workspace(undefined, workspaces);
  * // User sees: "Workspace Name: _" with display names as suggestions
  * // Returns the ID of the selected workspace
  * ```
  */
 export async function workspace(
   existingWorkspaces: WorkspaceDetails[],
+  workspaceIdentifier?: string,
 ): Promise<string> {
+  // If workspace identifier is provided, try to find it
+  if (workspaceIdentifier !== undefined) {
+    const workspace = findWorkspaceByIdentifier(
+      existingWorkspaces,
+      workspaceIdentifier,
+    );
+
+    if (!workspace) {
+      const availableWorkspaces = existingWorkspaces
+        .map((w) => w.displayName || w.id)
+        .join(", ");
+
+      throw new ValidationError(
+        `Workspace not found: "${workspaceIdentifier}". Available workspaces: ${availableWorkspaces}`,
+      );
+    }
+
+    return workspace.id;
+  }
+
   if (!isInteractive()) {
     throw new ValidationError("Interactive terminal required");
   }
 
-  const options: { name: string; value: string }[] = [];
-  for (const workspace of existingWorkspaces) {
+  const options = existingWorkspaces.map((workspace) => {
     const displayName = workspace.displayName || workspace.id;
     const selectionName = `${displayName} - ${workspace.id} - (${workspace.baseUrl})`;
-    options.push({ name: selectionName, value: workspace.id });
-  }
+    return { name: selectionName, value: workspace.id };
+  });
 
-  // Prompt with display names
   return await Select.prompt({
     message: "Set current workspace",
     search: true,
     options,
   });
+}
+
+/**
+ * Finds a workspace by ID or display name.
+ *
+ * @param workspaces - Array of available workspaces
+ * @param identifier - Workspace ID or display name (case-insensitive for names)
+ * @returns The matching workspace, undefined if not found, or throws if multiple matches by name
+ *
+ * @throws ValidationError if multiple workspaces have the same display name
+ * @internal
+ */
+function findWorkspaceByIdentifier(
+  workspaces: WorkspaceDetails[],
+  identifier: string,
+): WorkspaceDetails | undefined {
+  // Try to find by ID first (exact match) - IDs are unique
+  const byId = workspaces.find((w) => w.id === identifier);
+  if (byId) {
+    return byId;
+  }
+
+  // Try to find by display name (case-insensitive)
+  const matchingByName = workspaces.filter(
+    (w) => w.displayName?.toLowerCase() === identifier.toLowerCase(),
+  );
+
+  if (matchingByName.length > 1) {
+    const workspaceList = matchingByName
+      .map((w) => `  - ${w.displayName} (ID: ${w.id})`)
+      .join("\n");
+
+    throw new ValidationError(
+      `Multiple workspaces found with name "${identifier}":\n${workspaceList}\n\nPlease use the workspace ID instead.`,
+    );
+  }
+
+  return matchingByName[0];
 }
