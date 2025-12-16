@@ -336,6 +336,9 @@ si_buck2_resource(
             port = 5173,
         ),
     ),
+    links = [
+        link("http://127.0.0.1:5173", "docs"),
+    ]
 )
 
 # Locally build and run `bedrock`
