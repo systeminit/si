@@ -141,8 +141,14 @@ export async function findSecret(
     for (const match of matches) {
       ctx.logger.error(`  - ID: ${match.id}, Definition: ${match.secret.definition}`);
     }
+    ctx.logger.error("");
+    ctx.logger.error(`Please specify the secret by ID instead:`);
+    ctx.logger.error(`  si secret update <SECRET_ID>`);
+    ctx.logger.error("");
+    ctx.logger.error(`For example:`);
+    ctx.logger.error(`  si secret update ${matches[0].id}`);
     throw new Error(
-      `Found ${matches.length} secrets with name "${secretIdOrName}". Please use --secret-id with the exact ID instead.`,
+      `Found ${matches.length} secrets with name "${secretIdOrName}". Use the exact secret ID to update a specific secret.`,
     );
   }
 

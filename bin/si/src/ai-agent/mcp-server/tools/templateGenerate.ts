@@ -1,12 +1,9 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod-v3";
-import { ComponentsApi, SchemasApi, SearchApi } from "@systeminit/api-client";
-import { Context } from "../../../context.ts";
 import {
   errorResponse,
   generateDescription,
-  successResponse,
   withAnalytics,
 } from "./commonBehavior.ts";
 
@@ -15,10 +12,9 @@ const title =
   "Generate a template from user provided or searched for componentIds";
 const description = `
   <important>
-  Do not use the component-list tool, *always* prefer this tools search functionality.
+  This tool has been deprecated in favour of using the SI CLI.
   </important>
-  <description>Generate a template for a user provided list of componentIds or componentIds returned via this tools search functionality. Only include provided componentIds or results from the search in this tool. The name can either be explicitly given or generated based on the names of the components themselves. The name must be relevant to the components chosen. Returns the 'success' on successful creation of a template. On failure, returns error details.</description>
-  <usage>Use this tool to generate a template from provided componentIds or componentIds returned from search results in a change set. If using search, reference the syntax here for how to perform searches for one or multiple components -> 'https://docs.systeminit.com/explanation/search-syntax'. For the template name, generate it based on the component names, schema names, and their conceptual relevancy to one another. To see all of its information after the template has been generated, use the schema-find tool.
+  <description>DO NOT USE this tool for any operations!
   </usage>
   `;
 
@@ -160,10 +156,6 @@ const TemplateGenerateOutputSchemaRaw = {
 
 const TemplateGenerateOutputSchema = z.object(TemplateGenerateOutputSchemaRaw);
 
-type TemplateGenerateResult = z.infer<
-  typeof TemplateGenerateOutputSchema
->["data"];
-
 export function templateGenerateTool(server: McpServer) {
   server.registerTool(
     name,
@@ -177,78 +169,11 @@ export function templateGenerateTool(server: McpServer) {
       inputSchema: TemplateGenerateInputSchemaRaw,
       outputSchema: TemplateGenerateOutputSchemaRaw,
     },
-    async ({
-      changeSetId,
-      componentIds,
-      templateName,
-      searchQuery,
-    }): Promise<CallToolResult> => {
-      return await withAnalytics(name, async () => {
-        const apiConfig = Context.apiConfig();
-        const workspaceId = Context.workspaceId();
-        const siComponentsApi = new ComponentsApi(apiConfig);
-        const siSchemasApi = new SchemasApi(apiConfig);
-        const siSearchApi = new SearchApi(apiConfig);
-
-        try {
-          let templateComponentIds: string[];
-          const hasListOfIds = componentIds && componentIds.length > 0;
-
-          if (hasListOfIds && !searchQuery) {
-            templateComponentIds = componentIds;
-          } else if (!hasListOfIds && searchQuery) {
-            const searchResponse = await siSearchApi.search({
-              workspaceId: workspaceId,
-              changeSetId: changeSetId,
-              q: searchQuery,
-            });
-
-            templateComponentIds = searchResponse.data.components.map(
-              (component) => component.id,
-            );
-
-            if (templateComponentIds.length < 1) {
-              return errorResponse(
-                "No components found for the provided search query.",
-              );
-            }
-          } else if (hasListOfIds && searchQuery) {
-            return errorResponse(
-              "You cannot use both a list of componentIds and a search query.",
-            );
-          } else {
-            return errorResponse(
-              "You must provide either a list of componentIds or a search query.",
-            );
-          }
-
-          const response = await siComponentsApi.generateTemplate({
-            workspaceId: workspaceId,
-            changeSetId: changeSetId,
-            generateTemplateV1Request: {
-              componentIds: templateComponentIds,
-              assetName: templateName,
-              funcName: `Generate ${templateName}`,
-            },
-          });
-
-          const schemaResponse = await siSchemasApi.findSchema({
-            workspaceId: workspaceId,
-            changeSetId: changeSetId,
-            schemaId: response.data.schemaId,
-          });
-
-          const result: TemplateGenerateResult = {
-            schemaId: response.data.schemaId,
-            schemaVariantId: response.data.schemaVariantId,
-            funcId: response.data.funcId,
-            schema: schemaResponse.data,
-          };
-
-          return successResponse(result);
-        } catch (error) {
-          return errorResponse(error);
-        }
+    async (): Promise<CallToolResult> => {
+      return await withAnalytics(name, () => {
+        return Promise.resolve(errorResponse(
+          "template-generate has been removed in favour of using the cli directly - si template generate",
+        ));
       });
     },
   );
