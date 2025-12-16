@@ -61,6 +61,7 @@ class TestGetComponentV1Response(unittest.TestCase):
                         ], 
                     schema_id = '', 
                     schema_variant_id = '', 
+                    secret_id = '', 
                     to_delete = True, 
                     views = [
                         system_initiative_api_client.models.view_v1.ViewV1(
@@ -98,6 +99,7 @@ class TestGetComponentV1Response(unittest.TestCase):
                         ], 
                     schema_id = '', 
                     schema_variant_id = '', 
+                    secret_id = '', 
                     to_delete = True, 
                     views = [
                         system_initiative_api_client.models.view_v1.ViewV1(

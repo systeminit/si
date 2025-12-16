@@ -39,9 +39,10 @@ class ComponentViewV1(BaseModel):
     resource_props: List[ComponentPropViewV1] = Field(alias="resourceProps")
     schema_id: StrictStr = Field(alias="schemaId")
     schema_variant_id: StrictStr = Field(alias="schemaVariantId")
+    secret_id: StrictStr = Field(alias="secretId")
     to_delete: StrictBool = Field(alias="toDelete")
     views: List[ViewV1]
-    __properties: ClassVar[List[str]] = ["attributes", "canBeUpgraded", "connections", "domainProps", "id", "name", "resourceId", "resourceProps", "schemaId", "schemaVariantId", "toDelete", "views"]
+    __properties: ClassVar[List[str]] = ["attributes", "canBeUpgraded", "connections", "domainProps", "id", "name", "resourceId", "resourceProps", "schemaId", "schemaVariantId", "secretId", "toDelete", "views"]
 
     model_config = ConfigDict(
         populate_by_name=True,
@@ -132,6 +133,7 @@ class ComponentViewV1(BaseModel):
             "resourceProps": [ComponentPropViewV1.from_dict(_item) for _item in obj["resourceProps"]] if obj.get("resourceProps") is not None else None,
             "schemaId": obj.get("schemaId"),
             "schemaVariantId": obj.get("schemaVariantId"),
+            "secretId": obj.get("secretId"),
             "toDelete": obj.get("toDelete"),
             "views": [ViewV1.from_dict(_item) for _item in obj["views"]] if obj.get("views") is not None else None
         })

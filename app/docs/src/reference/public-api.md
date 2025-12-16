@@ -531,6 +531,7 @@ Components management endpoints
     ],
     "schemaId": "string",
     "schemaVariantId": "string",
+    "secretId": "string",
     "toDelete": true,
     "views": [
       {
@@ -726,6 +727,7 @@ Adds multiple components to a view by name. If the view doesn't exist, it will b
     ],
     "schemaId": "string",
     "schemaVariantId": "string",
+    "secretId": "string",
     "toDelete": true,
     "views": [
       {
@@ -872,6 +874,7 @@ Adds multiple components to a view by name. If the view doesn't exist, it will b
     ],
     "schemaId": "string",
     "schemaVariantId": "string",
+    "secretId": "string",
     "toDelete": true,
     "views": [
       {
@@ -991,6 +994,7 @@ Adds multiple components to a view by name. If the view doesn't exist, it will b
     ],
     "schemaId": "string",
     "schemaVariantId": "string",
+    "secretId": "string",
     "toDelete": true,
     "views": [
       {
@@ -1256,6 +1260,7 @@ Adds multiple components to a view by name. If the view doesn't exist, it will b
     ],
     "schemaId": "string",
     "schemaVariantId": "string",
+    "secretId": "string",
     "toDelete": true,
     "views": [
       {
@@ -1412,6 +1417,7 @@ Adds multiple components to a view by name. If the view doesn't exist, it will b
     ],
     "schemaId": "string",
     "schemaVariantId": "string",
+    "secretId": "string",
     "toDelete": true,
     "views": [
       {
@@ -4573,6 +4579,7 @@ The schema for a component in search results.
   ],
   "schemaId": "string",
   "schemaVariantId": "string",
+  "secretId": "string",
   "toDelete": true,
   "views": [
     {
@@ -4600,6 +4607,7 @@ The schema for a component in search results.
 |resourceProps|[[ComponentPropViewV1](#schemacomponentpropviewv1)]|true|none|none|
 |schemaId|string|true|none|none|
 |schemaVariantId|string|true|none|none|
+|secretId|string|true|none|none|
 |toDelete|boolean|true|none|none|
 |views|[[ViewV1](#schemaviewv1)]|true|none|none|
 
@@ -4781,6 +4789,7 @@ xor
     ],
     "schemaId": "string",
     "schemaVariantId": "string",
+    "secretId": "string",
     "toDelete": true,
     "views": [
       {
@@ -5983,6 +5992,7 @@ continued
     ],
     "schemaId": "string",
     "schemaVariantId": "string",
+    "secretId": "string",
     "toDelete": true,
     "views": [
       {
@@ -6557,6 +6567,7 @@ continued
     ],
     "schemaId": "string",
     "schemaVariantId": "string",
+    "secretId": "string",
     "toDelete": true,
     "views": [
       {
@@ -7650,6 +7661,7 @@ xor
     ],
     "schemaId": "string",
     "schemaVariantId": "string",
+    "secretId": "string",
     "toDelete": true,
     "views": [
       {
@@ -7895,6 +7907,7 @@ xor
     ],
     "schemaId": "string",
     "schemaVariantId": "string",
+    "secretId": "string",
     "toDelete": true,
     "views": [
       {
