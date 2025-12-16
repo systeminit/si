@@ -673,13 +673,13 @@ impl PersisterTask {
                                 .to_std()
                                 .unwrap_or_default();
 
-                            // Only record for PostgreSQL - S3 records its own metrics in S3QueueProcessor
-                            if backend == BackendType::Postgres {
+                            // Emit for PostgreSQL whenever PG writes occur (all modes except S3Only)
+                            if mode != PersisterMode::S3Only {
                                 metric!(
                                     histogram.layer_cache_persistence_latency_seconds =
                                         latency.as_secs_f64(),
                                     cache_name = &cache_name,
-                                    backend = backend.as_ref(),
+                                    backend = "postgres",
                                     operation = "write",
                                     event_kind = event.event_kind.as_ref()
                                 );
