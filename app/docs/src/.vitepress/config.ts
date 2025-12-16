@@ -84,6 +84,10 @@ export default withMermaid(defineConfig({
             link: "/tutorials/setup",
           },
           {
+            text: "Install the CLI",
+            link: "/tutorials/install-the-cli",
+          },
+          {
             text: "Getting Started",
             link: "/tutorials/getting-started",
           },
