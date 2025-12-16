@@ -9,6 +9,7 @@ pub mod common;
 mod components;
 mod debug_funcs;
 mod funcs;
+mod graph;
 mod management_funcs;
 mod schemas;
 mod search;
@@ -261,6 +262,7 @@ pub use crate::api_types::func_run::v1::{
         secrets::delete_secret::delete_secret,
         secrets::update_secret::update_secret,
         secrets::get_secrets::get_secrets,
+        graph::summary::graph_summary,
         search::search,
     ),
     components(
