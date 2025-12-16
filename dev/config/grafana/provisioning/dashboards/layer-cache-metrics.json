@@ -744,15 +744,15 @@
       }
     },
     {
-      "id": 37,
+      "id": 3801,
+      "type": "gauge",
+      "title": "S3 Write Attempts - Success Rate Percentage",
       "gridPos": {
         "x": 12,
         "y": 139,
         "w": 12,
         "h": 8
       },
-      "type": "timeseries",
-      "title": "S3 Write Backoff State",
       "datasource": {
         "type": "prometheus",
         "uid": "${datasource}"
@@ -763,55 +763,34 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "sum by (exported_job, cache_name) (s3_write_backoff_ms{exported_job=~\"${service}\", cache_name=~\"${cache}\", backend=\"s3\"})",
-          "legendFormat": "{{exported_job}}/{{cache_name}}",
+          "expr": "sum(rate(s3_write_attempts_total{exported_job=~\"${service}\", cache_name=~\"${cache}\", backend=\"s3\", result=\"success\"}[5m])) / sum(rate(s3_write_attempts_total{exported_job=~\"${service}\", cache_name=~\"${cache}\", backend=\"s3\"}[5m]))",
           "refId": "A"
         }
       ],
       "fieldConfig": {
         "defaults": {
-          "unit": "ms",
+          "unit": "percentunit",
+          "min": 0,
+          "max": 1,
+          "decimals": 2,
           "color": {
-            "mode": "thresholds"
-          },
-          "custom": {
-            "lineWidth": 2,
-            "fillOpacity": 10,
-            "showPoints": "never"
+            "mode": "palette-classic"
           },
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {
                 "value": null,
-                "color": "green"
-              },
-              {
-                "value": 1000,
-                "color": "yellow"
-              },
-              {
-                "value": 3000,
-                "color": "red"
+                "color": "blue"
               }
             ]
           }
         }
       },
       "options": {
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc"
-        },
-        "legend": {
-          "displayMode": "table",
-          "placement": "right",
-          "calcs": [
-            "lastNotNull",
-            "max",
-            "mean"
-          ]
-        }
+        "showThresholdLabels": false,
+        "showThresholdMarkers": false,
+        "text": {}
       }
     },
     {
@@ -843,8 +822,8 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "sum(rate(s3_write_attempts_total{exported_job=~\"${service}\", cache_name=~\"${cache}\", backend=\"s3\", result=\"throttle\"}[5m])) by (exported_job, cache_name)",
-          "legendFormat": "{{exported_job}}/{{cache_name}} - Throttle",
+          "expr": "sum(rate(s3_write_attempts_total{exported_job=~\"${service}\", cache_name=~\"${cache}\", backend=\"s3\", result=\"retry\"}[5m])) by (exported_job, cache_name)",
+          "legendFormat": "{{exported_job}}/{{cache_name}} - Retry",
           "refId": "B"
         },
         {
@@ -852,9 +831,63 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "sum(rate(s3_write_attempts_total{exported_job=~\"${service}\", cache_name=~\"${cache}\", backend=\"s3\", result=~\"error_.*\"}[5m])) by (exported_job, cache_name)",
-          "legendFormat": "{{exported_job}}/{{cache_name}} - Error",
+          "expr": "sum(rate(s3_write_attempts_total{exported_job=~\"${service}\", cache_name=~\"${cache}\", backend=\"s3\", result=\"dead_letter_queue\"}[5m])) by (exported_job, cache_name)",
+          "legendFormat": "{{exported_job}}/{{cache_name}} - DLQ",
           "refId": "C"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "never"
+          }
+        }
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        },
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "calcs": [
+            "lastNotNull",
+            "max",
+            "mean"
+          ]
+        }
+      }
+    },
+    {
+      "id": 3802,
+      "type": "timeseries",
+      "title": "S3 Upload Retry Rate",
+      "gridPos": {
+        "x": 12,
+        "y": 147,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "sum(rate(s3_write_attempts_total{exported_job=~\"${service}\", cache_name=~\"${cache}\", backend=\"s3\", result=\"retry\"}[5m])) by (exported_job, cache_name)",
+          "legendFormat": "{{exported_job}}/{{cache_name}} - Retries",
+          "refId": "A"
         }
       ],
       "fieldConfig": {
@@ -893,7 +926,7 @@
       "section": "s3",
       "gridPos": {
         "x": 0,
-        "y": 163,
+        "y": 171,
         "w": 24,
         "h": 8
       },
@@ -926,14 +959,68 @@
       }
     },
     {
+      "id": 3803,
+      "type": "timeseries",
+      "title": "S3 Dead Letter Queue Rate",
+      "gridPos": {
+        "x": 0,
+        "y": 179,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "sum(rate(s3_write_attempts_total{exported_job=~\"${service}\", cache_name=~\"${cache}\", backend=\"s3\", result=\"dead_letter_queue\"}[5m])) by (exported_job, cache_name)",
+          "legendFormat": "{{exported_job}}/{{cache_name}} - DLQ entries/sec",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "never"
+          }
+        }
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        },
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "calcs": [
+            "lastNotNull",
+            "max",
+            "mean"
+          ]
+        }
+      }
+    },
+    {
       "id": 305,
       "type": "timeseries",
       "title": "S3 Dead Letter Queue Depth",
       "section": "s3",
       "gridPos": {
-        "x": 0,
-        "y": 171,
-        "w": 24,
+        "x": 12,
+        "y": 179,
+        "w": 12,
         "h": 8
       },
       "targets": [
@@ -980,7 +1067,7 @@
       "title": "PostgreSQL Persistence",
       "gridPos": {
         "x": 0,
-        "y": 250,
+        "y": 258,
         "w": 24,
         "h": 1
       },
@@ -990,7 +1077,7 @@
       "id": 11,
       "gridPos": {
         "x": 0,
-        "y": 275,
+        "y": 283,
         "w": 12,
         "h": 8
       },
@@ -1062,7 +1149,7 @@
       "id": 14,
       "gridPos": {
         "x": 0,
-        "y": 283,
+        "y": 291,
         "w": 12,
         "h": 8
       },
@@ -1134,7 +1221,7 @@
       "id": 15,
       "gridPos": {
         "x": 12,
-        "y": 283,
+        "y": 291,
         "w": 12,
         "h": 8
       },
@@ -1206,7 +1293,7 @@
       "id": 16,
       "gridPos": {
         "x": 0,
-        "y": 291,
+        "y": 299,
         "w": 24,
         "h": 8
       },
@@ -1260,7 +1347,7 @@
       "id": 26,
       "gridPos": {
         "x": 0,
-        "y": 299,
+        "y": 307,
         "w": 24,
         "h": 8
       },
@@ -1334,7 +1421,7 @@
       "id": 2,
       "gridPos": {
         "x": 0,
-        "y": 307,
+        "y": 315,
         "w": 12,
         "h": 8
       },
@@ -1388,7 +1475,7 @@
       "id": 3,
       "gridPos": {
         "x": 12,
-        "y": 307,
+        "y": 315,
         "w": 12,
         "h": 8
       },
@@ -1442,7 +1529,7 @@
       "id": 4,
       "gridPos": {
         "x": 0,
-        "y": 315,
+        "y": 323,
         "w": 12,
         "h": 8
       },
@@ -1496,7 +1583,7 @@
       "id": 5,
       "gridPos": {
         "x": 12,
-        "y": 315,
+        "y": 323,
         "w": 12,
         "h": 8
       },
@@ -1550,7 +1637,7 @@
       "id": 6,
       "gridPos": {
         "x": 0,
-        "y": 323,
+        "y": 331,
         "w": 12,
         "h": 8
       },
@@ -1604,7 +1691,7 @@
       "id": 9,
       "gridPos": {
         "x": 12,
-        "y": 323,
+        "y": 331,
         "w": 12,
         "h": 8
       },
@@ -1919,7 +2006,7 @@
       "id": 2703,
       "gridPos": {
         "x": 0,
-        "y": 251,
+        "y": 259,
         "w": 24,
         "h": 8
       },
@@ -2065,7 +2152,7 @@
       "id": 3102,
       "gridPos": {
         "x": 0,
-        "y": 155,
+        "y": 163,
         "w": 24,
         "h": 8
       },
@@ -2137,7 +2224,7 @@
       "id": 3103,
       "gridPos": {
         "x": 0,
-        "y": 259,
+        "y": 267,
         "w": 24,
         "h": 8
       },
@@ -2209,7 +2296,7 @@
       "id": 1002,
       "gridPos": {
         "x": 0,
-        "y": 179,
+        "y": 187,
         "w": 12,
         "h": 8
       },
@@ -2273,7 +2360,7 @@
       "id": 1003,
       "gridPos": {
         "x": 0,
-        "y": 267,
+        "y": 275,
         "w": 12,
         "h": 8
       },
@@ -2337,7 +2424,7 @@
       "id": 2102,
       "gridPos": {
         "x": 12,
-        "y": 179,
+        "y": 187,
         "w": 12,
         "h": 8
       },
@@ -2408,10 +2495,84 @@
       }
     },
     {
+      "id": 3804,
+      "gridPos": {
+        "x": 0,
+        "y": 155,
+        "w": 24,
+        "h": 8
+      },
+      "type": "timeseries",
+      "title": "S3 - Disk Write Duration (p50, p95, p99)",
+      "section": "s3",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "histogram_quantile(0.50, sum(rate(s3_disk_write_duration_ms_bucket{exported_job=~\"${service}\", cache_name=~\"${cache}\", backend=\"s3\"}[1m])) by (le))",
+          "legendFormat": "p50 - Disk Write",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "histogram_quantile(0.95, sum(rate(s3_disk_write_duration_ms_bucket{exported_job=~\"${service}\", cache_name=~\"${cache}\", backend=\"s3\"}[1m])) by (le))",
+          "legendFormat": "p95 - Disk Write",
+          "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "histogram_quantile(0.99, sum(rate(s3_disk_write_duration_ms_bucket{exported_job=~\"${service}\", cache_name=~\"${cache}\", backend=\"s3\"}[1m])) by (le))",
+          "legendFormat": "p99 - Disk Write",
+          "refId": "C"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "never"
+          }
+        }
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        },
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "calcs": [
+            "lastNotNull",
+            "max",
+            "mean",
+            "min"
+          ]
+        }
+      }
+    },
+    {
       "id": 2103,
       "gridPos": {
         "x": 12,
-        "y": 267,
+        "y": 275,
         "w": 12,
         "h": 8
       },
@@ -2485,7 +2646,7 @@
       "id": 2602,
       "gridPos": {
         "x": 0,
-        "y": 187,
+        "y": 195,
         "w": 24,
         "h": 8
       },
@@ -2618,7 +2779,7 @@
       "section": "postgres",
       "gridPos": {
         "x": 0,
-        "y": 331,
+        "y": 339,
         "w": 12,
         "h": 8
       },
@@ -2728,7 +2889,7 @@
       "section": "postgres",
       "gridPos": {
         "x": 12,
-        "y": 331,
+        "y": 339,
         "w": 12,
         "h": 8
       },
@@ -2838,7 +2999,7 @@
       "section": "postgres",
       "gridPos": {
         "x": 0,
-        "y": 339,
+        "y": 347,
         "w": 24,
         "h": 8
       },
