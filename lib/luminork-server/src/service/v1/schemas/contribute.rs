@@ -9,14 +9,12 @@ use dal::{
 };
 use module_index_client::ModuleIndexClient;
 use sdf_extract::{
-    FriggStore,
     PosthogEventTracker,
     change_set::ChangeSetDalContext,
     request::RawAccessToken,
 };
 use serde_json::json;
 use si_events::audit_log::AuditLogKind;
-use si_frontend_mv_types::reference::ReferenceKind;
 use utoipa::{
     self,
 };
@@ -47,7 +45,6 @@ use super::{
 pub async fn contribute(
     ChangeSetDalContext(ref ctx): ChangeSetDalContext,
     RawAccessToken(raw_access_token): RawAccessToken,
-    frigg: FriggStore,
     tracker: PosthogEventTracker,
     Path(super::SchemaV1RequestPath { schema_id }): Path<super::SchemaV1RequestPath>,
 ) -> SchemaResult<Json<serde_json::Value>> {
@@ -66,29 +63,18 @@ pub async fn contribute(
         return Err(SchemaError::ContributeUnlockedVariant(schema_variant_id));
     }
 
-    // Check if this is a builtin/upstream schema that hasn't been modified
-    // We allow contribution if:
-    // 1. There's no cached schema (user-created), OR
-    // 2. The current default variant is different from the cached default variant (user modified it)
-    if let Some(obj) = frigg
-        .get_current_deployment_object(
-            ReferenceKind::CachedDefaultVariant.into(),
-            &schema_id.to_string(),
-        )
-        .await?
-    {
-        // This is a builtin schema - check if the user has modified the default variant
-        if let Ok(cached_variant) = serde_json::from_value::<
-            si_frontend_mv_types::cached_default_variant::CachedDefaultVariant,
-        >(obj.data)
-        {
-            // If the current default variant is the same as the cached default variant,
-            // don't allow contribution (still using upstream default)
-            if cached_variant.variant_id == schema_variant_id {
-                return Err(SchemaError::ContributeUpstreamSchema(schema_id));
-            }
-        }
-    }
+    // We have 3 scenarios in which we accept contributions:
+    // 1. A user downloads a builtin and immediately contributes it back
+    //   - This is not a usual scenario and something we will not accept anyway
+    // 2. A user creates a modification of a builtin and contributes it back
+    //   - This is a more realistic scenario but all of our builtins are managed via clover
+    //   - So this isn't something we will support and we will document that for it not being
+    //   - the right way to change a builtin
+    // 3. A user generates a NEW asset and wants to contribute it back to us
+    //
+    // It is on US as System Initiative to be able to effectively understand what differences
+    // there are in the contribution. Stopping someone from contribute stops them from using
+    // our tool and we should encourage their usage!
 
     let module_index_url = ctx
         .module_index_url()
