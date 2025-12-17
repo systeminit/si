@@ -1,4 +1,10 @@
-use std::sync::Arc;
+use std::sync::{
+    Arc,
+    atomic::{
+        AtomicUsize,
+        Ordering,
+    },
+};
 
 use aws_sdk_s3::Client;
 use crossbeam_queue::SegQueue;
@@ -60,6 +66,8 @@ pub struct Worker {
     joinset: JoinSet<UploadResult>,
     /// Maximum concurrent uploads
     max_parallel: usize,
+    /// Current number of active uploads (shared with coordinator)
+    active_uploads: Arc<AtomicUsize>,
     /// Disk store for reading/removing events
     disk_store: Arc<S3DiskStore>,
     /// S3 client (cloned from coordinator)
@@ -85,6 +93,7 @@ impl Worker {
         bucket_name: String,
         cache_name: String,
         shutdown: Arc<Notify>,
+        active_uploads: Arc<AtomicUsize>,
     ) -> Self {
         Self {
             id,
@@ -92,6 +101,7 @@ impl Worker {
             work_available,
             joinset: JoinSet::new(),
             max_parallel,
+            active_uploads,
             disk_store,
             s3_client,
             bucket_name,
@@ -114,6 +124,9 @@ impl Worker {
 
                 // Handle completed upload
                 Some(result) = self.joinset.join_next() => {
+                    // Update active uploads count after task completes
+                    self.active_uploads.store(self.joinset.len(), Ordering::Relaxed);
+
                     match result {
                         Ok(upload_result) => {
                             if matches!(upload_result.outcome, UploadOutcome::Retry) {
@@ -175,6 +188,10 @@ impl Worker {
         self.joinset.spawn(async move {
             Self::upload_task(work_item, disk_store, s3_client, bucket_name, cache_name).await
         });
+
+        // Update active uploads count after spawning
+        self.active_uploads
+            .store(self.joinset.len(), Ordering::Relaxed);
     }
 
     /// Upload task: read from disk, upload to S3, return result

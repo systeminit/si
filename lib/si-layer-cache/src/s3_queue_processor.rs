@@ -4,7 +4,13 @@ use std::{
         Hash,
         Hasher,
     },
-    sync::Arc,
+    sync::{
+        Arc,
+        atomic::{
+            AtomicUsize,
+            Ordering,
+        },
+    },
 };
 
 use aws_sdk_s3::Client;
@@ -50,6 +56,7 @@ struct WorkerInfo {
     handle: JoinHandle<()>,
     queue: Arc<SegQueue<WorkItem>>,
     notify: Arc<Notify>,
+    active_uploads: Arc<AtomicUsize>,
 }
 
 pub struct S3QueueProcessor {
@@ -89,17 +96,19 @@ impl S3QueueProcessor {
         for worker_id in 0..num_workers {
             let work_queue = Arc::new(SegQueue::new());
             let work_available = Arc::new(Notify::new());
+            let active_uploads = Arc::new(AtomicUsize::new(0));
 
             let worker = Worker::new(
                 worker_id,
-                Arc::clone(&work_queue),
-                Arc::clone(&work_available),
+                work_queue.clone(),
+                work_available.clone(),
                 max_parallel_per_worker,
-                Arc::clone(&disk_store),
+                disk_store.clone(),
                 s3_client.clone(),
                 bucket_name.clone(),
                 cache_name.clone(),
-                Arc::clone(&shutdown),
+                shutdown.clone(),
+                active_uploads.clone(),
             );
 
             let handle = tokio::spawn(worker.run());
@@ -110,6 +119,7 @@ impl S3QueueProcessor {
                     handle,
                     queue: work_queue,
                     notify: work_available,
+                    active_uploads,
                 },
             );
         }
@@ -173,16 +183,18 @@ impl S3QueueProcessor {
     pub async fn process_queue(mut self) {
         info!(cache_name = %self.cache_name, num_workers = self.num_workers, "S3QueueProcessor starting");
 
-        // Process incoming work with periodic metrics reporting
+        // Create 5-second interval to wake up the loop for metrics reporting
+        let mut metrics_interval = tokio::time::interval(std::time::Duration::from_secs(5));
+        metrics_interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
+
         loop {
             tokio::select! {
-                // Timeout ensures we report metrics at least every minute during idle periods.
-                work_result = tokio::time::timeout(
-                    std::time::Duration::from_secs(60),
-                    self.rx.recv()
-                ) => {
+                biased;
+
+                // Process incoming work (checked first to prioritize draining channel)
+                work_result = self.rx.recv() => {
                     match work_result {
-                        Ok(Some(work_item)) => {
+                        Some(work_item) => {
                             // Route work to appropriate worker
                             match self.worker_for_prefix(&work_item.prefix) {
                                 Ok(worker_info) => {
@@ -198,33 +210,26 @@ impl S3QueueProcessor {
                                 }
                             }
                         }
-                        Ok(None) => {
+                        None => {
                             // Channel closed
                             info!(cache_name = %self.cache_name, "Work channel closed, shutting down");
                             break;
                         }
-                        Err(_timeout) => {
-                            // Timeout elapsed - continue to metrics reporting
-                        }
                     }
                 }
+
+                // Interval tick - just wake up (no handler needed)
+                _ = metrics_interval.tick() => {}
+
+                // Shutdown signal
                 _ = self.shutdown.notified() => {
                     info!(cache_name = %self.cache_name, "S3QueueProcessor shutting down");
                     break;
                 }
             }
 
-            let total_depth: usize = self
-                .workers
-                .values()
-                .map(|worker_info| worker_info.queue.len())
-                .sum();
-
-            gauge!(
-                s3_write_queue_depth = total_depth,
-                cache_name = &self.cache_name,
-                backend = "s3"
-            );
+            // Always report metrics after every loop iteration
+            self.report_metrics();
         }
 
         // Wait for workers to finish
@@ -240,6 +245,40 @@ impl S3QueueProcessor {
         }
 
         info!(cache_name = %self.cache_name, "S3QueueProcessor stopped");
+    }
+
+    /// Report per-worker and aggregate metrics
+    fn report_metrics(&self) {
+        let mut total_depth = 0;
+
+        // Single loop: report per-worker metrics and accumulate total
+        for (worker_id, worker_info) in &self.workers {
+            let queue_depth = worker_info.queue.len();
+            let active_uploads = worker_info.active_uploads.load(Ordering::Relaxed);
+
+            total_depth += queue_depth;
+
+            gauge!(
+                s3_worker_queue_depth = queue_depth,
+                cache_name = &self.cache_name,
+                backend = "s3",
+                worker_id = worker_id.to_string()
+            );
+
+            gauge!(
+                s3_worker_active_uploads = active_uploads,
+                cache_name = &self.cache_name,
+                backend = "s3",
+                worker_id = worker_id.to_string()
+            );
+        }
+
+        // Report total queue depth (for backward compatibility)
+        gauge!(
+            s3_write_queue_depth = total_depth,
+            cache_name = &self.cache_name,
+            backend = "s3"
+        );
     }
 }
 
@@ -267,6 +306,7 @@ mod tests {
                     handle: tokio::spawn(async {}),
                     queue: Arc::new(SegQueue::new()),
                     notify: Arc::new(Notify::new()),
+                    active_uploads: Arc::new(AtomicUsize::new(0)),
                 },
             );
         }
