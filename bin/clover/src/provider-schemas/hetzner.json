@@ -30920,7 +30920,8 @@
                             "example": false
                           },
                           "datacenter": {
-                            "description": "[Data Center](#data-centers) the [Primary IP](#primary-ips) is located at.",
+                            "deprecated": true,
+                            "description": "**Deprecated**: This property is deprecated and will be removed after the 1 July 2026.\nUse the `location` property instead.\n\n[Data Center](#data-centers) of the [Primary IP](#primary-ips).\n",
                             "type": "object",
                             "properties": {
                               "id": {
@@ -31062,6 +31063,68 @@
                               "server_types"
                             ]
                           },
+                          "location": {
+                            "description": "[Location](#locations) of the [Primary IP](#primary-ips).\n",
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "description": "ID of the [Location](#locations).",
+                                "type": "integer",
+                                "format": "int64",
+                                "maximum": 9007199254740991,
+                                "example": 42
+                              },
+                              "name": {
+                                "description": "Unique identifier of the [Location](#locations).",
+                                "type": "string",
+                                "pattern": "^[a-z0-9]+(-?[a-z0-9]*)*$",
+                                "example": "fsn1"
+                              },
+                              "description": {
+                                "description": "Human readable description of the [Location](#locations).",
+                                "type": "string",
+                                "example": "Falkenstein DC Park 1"
+                              },
+                              "country": {
+                                "description": "Country the [Location](#locations) resides in.\n\nISO 3166-1 alpha-2 code of the country.\n",
+                                "type": "string",
+                                "example": "DE"
+                              },
+                              "city": {
+                                "description": "Name of the closest city to the [Location](#locations).\n\nCity name or city name and state in short form. E.g. `Falkenstein` or `Ashburn, VA`.\n",
+                                "type": "string",
+                                "example": "Falkenstein"
+                              },
+                              "latitude": {
+                                "description": "Latitude of the city closest to the [Location](#locations).",
+                                "type": "number",
+                                "format": "double",
+                                "example": 50.47612
+                              },
+                              "longitude": {
+                                "description": "Longitude of the city closest to the [Location](#locations).",
+                                "type": "number",
+                                "format": "double",
+                                "example": 12.370071
+                              },
+                              "network_zone": {
+                                "description": "Name of the Network Zone this [Location](#locations) resides in.",
+                                "type": "string",
+                                "pattern": "^[a-z0-9]+(-?[a-z0-9]*)*$",
+                                "example": "eu-central"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "name",
+                              "description",
+                              "country",
+                              "city",
+                              "latitude",
+                              "longitude",
+                              "network_zone"
+                            ]
+                          },
                           "ip": {
                             "description": "IP address.",
                             "type": "string",
@@ -31141,6 +31204,7 @@
                           "labels",
                           "created",
                           "blocked",
+                          "location",
                           "datacenter",
                           "ip",
                           "dns_ptr",
@@ -31290,12 +31354,12 @@
       "post": {
         "operationId": "create_primary_ip",
         "summary": "Create a Primary IP",
-        "description": "Create a new [Primary IP](#primary-ips).\n\nCan optionally be assigned to a resource by providing an `assignee_id` and `assignee_type`.\n\nIf not assigned to a resource the `datacenter` key needs to be provided. This can be either the ID or the name of the [Data Center](#data-centers) this [Primary IP](#primary-ips) shall be created in.\n\nA [Primary IP](#primary-ips) can only be assigned to resource in the same [Data Center](#data-centers) later on.\n\n#### Call specific error codes\n\n| Code                          | Description                                                              |\n|------------------------------ |------------------------------------------------------------------------- |\n| `server_not_stopped`          | The specified [Server](#servers) is running, but needs to be powered off |\n| `server_has_ipv4`             | The [Server](#servers) already has an ipv4 address                       |\n| `server_has_ipv6`             | The [Server](#servers) already has an ipv6 address                       |\n",
+        "description": "Create a new [Primary IP](#primary-ips).\n\nCan optionally be assigned to a resource by providing an `assignee_id` and `assignee_type`.\n\nIf not assigned to a resource the `location` key needs to be provided. This can be either the ID or the name of the [Location](#locations) this [Primary IP](#primary-ips) shall be created in.\n\nA [Primary IP](#primary-ips) can only be assigned to resource in the same [Location](#locations) later on.\n\nThe `datacenter` key is deprecated in favor of `location` and will be removed after 01 July 2026.\n\n#### Call specific error codes\n\n| Code                          | Description                                                              |\n|------------------------------ |------------------------------------------------------------------------- |\n| `server_not_stopped`          | The specified [Server](#servers) is running, but needs to be powered off |\n| `server_has_ipv4`             | The [Server](#servers) already has an ipv4 address                       |\n| `server_has_ipv6`             | The [Server](#servers) already has an ipv6 address                       |\n",
         "tags": [
           "Primary IPs"
         ],
         "requestBody": {
-          "description": "Request Body for creating a new [Primary IP](#primary-ips).\n\nThe `datacenter` and `assignee_id`/`assignee_type` attributes are mutually exclusive.\n",
+          "description": "Request Body for creating a new [Primary IP](#primary-ips).\n\nThe `location`, `datacenter` and `assignee_id`/`assignee_type` attributes are mutually exclusive.\n",
           "required": true,
           "content": {
             "application/json": {
@@ -31330,9 +31394,15 @@
                     "example": "ipv6"
                   },
                   "datacenter": {
-                    "description": "[Data Center](#data-centers) ID or name.\n\nThe  [Primary IP](#primary-ips) will be bound to this [Data Center](#data-centers). Omit if `assignee_id`/`assignee_type` is provided.\n",
+                    "deprecated": true,
+                    "description": "**Deprecated**: This property is deprecated and will be removed after 1 July 2026.\nUse the `location` key instead.\n\n[Data Center](#data-centers) ID or name.\n\nThe [Primary IP](#primary-ips) will be bound to this [Data Center](#data-centers).\nOmit if `assignee_id`/`assignee_type` or `location` are provided.\n",
                     "type": "string",
                     "example": "fsn1-dc8"
+                  },
+                  "location": {
+                    "description": "[Location](#locations) ID or name the [Primary IP](#primary-ips) will be bound to.\n\nOmit if `assignee_id`/`assignee_type` or `datacenter` are provided.\n",
+                    "type": "string",
+                    "example": "fsn1"
                   },
                   "assignee_type": {
                     "description": "Type of resource the [Primary IP](#primary-ips) can get assigned to.\n\nCurrently [Primary IPs](#primary-ips) can only be assigned to [Servers](#servers),\ntherefore this field must be set to `server`.\n",
@@ -31414,7 +31484,8 @@
                           "example": false
                         },
                         "datacenter": {
-                          "description": "[Data Center](#data-centers) the [Primary IP](#primary-ips) is located at.",
+                          "deprecated": true,
+                          "description": "**Deprecated**: This property is deprecated and will be removed after the 1 July 2026.\nUse the `location` property instead.\n\n[Data Center](#data-centers) of the [Primary IP](#primary-ips).\n",
                           "type": "object",
                           "properties": {
                             "id": {
@@ -31556,6 +31627,68 @@
                             "server_types"
                           ]
                         },
+                        "location": {
+                          "description": "[Location](#locations) of the [Primary IP](#primary-ips).\n",
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "description": "ID of the [Location](#locations).",
+                              "type": "integer",
+                              "format": "int64",
+                              "maximum": 9007199254740991,
+                              "example": 42
+                            },
+                            "name": {
+                              "description": "Unique identifier of the [Location](#locations).",
+                              "type": "string",
+                              "pattern": "^[a-z0-9]+(-?[a-z0-9]*)*$",
+                              "example": "fsn1"
+                            },
+                            "description": {
+                              "description": "Human readable description of the [Location](#locations).",
+                              "type": "string",
+                              "example": "Falkenstein DC Park 1"
+                            },
+                            "country": {
+                              "description": "Country the [Location](#locations) resides in.\n\nISO 3166-1 alpha-2 code of the country.\n",
+                              "type": "string",
+                              "example": "DE"
+                            },
+                            "city": {
+                              "description": "Name of the closest city to the [Location](#locations).\n\nCity name or city name and state in short form. E.g. `Falkenstein` or `Ashburn, VA`.\n",
+                              "type": "string",
+                              "example": "Falkenstein"
+                            },
+                            "latitude": {
+                              "description": "Latitude of the city closest to the [Location](#locations).",
+                              "type": "number",
+                              "format": "double",
+                              "example": 50.47612
+                            },
+                            "longitude": {
+                              "description": "Longitude of the city closest to the [Location](#locations).",
+                              "type": "number",
+                              "format": "double",
+                              "example": 12.370071
+                            },
+                            "network_zone": {
+                              "description": "Name of the Network Zone this [Location](#locations) resides in.",
+                              "type": "string",
+                              "pattern": "^[a-z0-9]+(-?[a-z0-9]*)*$",
+                              "example": "eu-central"
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "name",
+                            "description",
+                            "country",
+                            "city",
+                            "latitude",
+                            "longitude",
+                            "network_zone"
+                          ]
+                        },
                         "ip": {
                           "description": "IP address.",
                           "type": "string",
@@ -31635,6 +31768,7 @@
                         "labels",
                         "created",
                         "blocked",
+                        "location",
                         "datacenter",
                         "ip",
                         "dns_ptr",
@@ -31761,6 +31895,16 @@
                     },
                     "created": "2016-01-30T23:50:00Z",
                     "blocked": false,
+                    "location": {
+                      "id": 1,
+                      "name": "fsn1",
+                      "description": "Falkenstein DC Park 1",
+                      "country": "DE",
+                      "city": "Falkenstein",
+                      "latitude": 50.47612,
+                      "longitude": 12.370071,
+                      "network_zone": "eu-central"
+                    },
                     "datacenter": {
                       "id": 42,
                       "name": "fsn1-dc8",
@@ -32437,6 +32581,535 @@
         ]
       }
     },
+    "/primary_ips/{id}/actions": {
+      "get": {
+        "operationId": "list_primary_ip_actions",
+        "summary": "List Actions for a Primary IP",
+        "description": "Returns all [Actions](#actions) for a [Primary IP](#primary_ips).\n\nUse the provided URI parameters to modify the result.\n",
+        "tags": [
+          "Primary IP Actions"
+        ],
+        "parameters": [
+          {
+            "description": "ID of the Primary IP.",
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "description": "ID of the [Primary IP](#primary-ips).",
+              "type": "integer",
+              "format": "int64",
+              "maximum": 9007199254740991,
+              "example": 42
+            }
+          },
+          {
+            "description": "Sort actions by field and direction. Can be used multiple times. For more\ninformation, see \"[Sorting](#sorting)\".\n",
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "id",
+                  "id:asc",
+                  "id:desc",
+                  "command",
+                  "command:asc",
+                  "command:desc",
+                  "status",
+                  "status:asc",
+                  "status:desc",
+                  "started",
+                  "started:asc",
+                  "started:desc",
+                  "finished",
+                  "finished:asc",
+                  "finished:desc"
+                ]
+              }
+            }
+          },
+          {
+            "description": "Filter the actions by status. Can be used multiple times. The response will only\ncontain actions matching the specified statuses.\n",
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "array",
+              "items": {
+                "description": "Status of the Action.",
+                "type": "string",
+                "enum": [
+                  "running",
+                  "success",
+                  "error"
+                ]
+              }
+            }
+          },
+          {
+            "description": "Page number to return. For more information, see \"[Pagination](#pagination)\".",
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "default": 1,
+              "example": 2
+            }
+          },
+          {
+            "description": "Maximum number of entries returned per page. For more information, see \"[Pagination](#pagination)\".",
+            "name": "per_page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "default": 25,
+              "example": 25
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Request succeeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "ActionListResponseWithMeta",
+                  "type": "object",
+                  "properties": {
+                    "actions": {
+                      "type": "array",
+                      "items": {
+                        "title": "Action",
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "description": "ID of the [Action](#actions).",
+                            "type": "integer",
+                            "format": "int64",
+                            "maximum": 9007199254740991,
+                            "example": 42
+                          },
+                          "command": {
+                            "description": "Command executed in the Action.",
+                            "type": "string",
+                            "example": "start_resource"
+                          },
+                          "status": {
+                            "description": "Status of the Action.",
+                            "type": "string",
+                            "enum": [
+                              "running",
+                              "success",
+                              "error"
+                            ]
+                          },
+                          "started": {
+                            "description": "Point in time when the Action was started (in [RFC3339](https://datatracker.ietf.org/doc/html/rfc3339#section-5.6) format).",
+                            "type": "string",
+                            "format": "date-time",
+                            "example": "2016-01-30T23:55:00Z"
+                          },
+                          "finished": {
+                            "description": "Point in time when the Action was finished (in [RFC3339](https://datatracker.ietf.org/doc/html/rfc3339#section-5.6) format). Only set if the Action is finished otherwise null.",
+                            "type": "string",
+                            "format": "date-time",
+                            "example": "2016-01-30T23:55:00Z",
+                            "nullable": true
+                          },
+                          "progress": {
+                            "description": "Progress of the Action in percent.",
+                            "type": "integer",
+                            "format": "int32",
+                            "example": 100
+                          },
+                          "resources": {
+                            "description": "Resources the Action relates to.",
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "description": "ID of the Resource.",
+                                  "type": "integer",
+                                  "format": "int64",
+                                  "maximum": 9007199254740991,
+                                  "example": 42
+                                },
+                                "type": {
+                                  "description": "Type of the Resource.",
+                                  "type": "string",
+                                  "example": "server"
+                                }
+                              },
+                              "required": [
+                                "id",
+                                "type"
+                              ]
+                            }
+                          },
+                          "error": {
+                            "description": "Error message for the Action if an error occurred, otherwise null.",
+                            "type": "object",
+                            "nullable": true,
+                            "properties": {
+                              "code": {
+                                "description": "Fixed error code for machines.",
+                                "type": "string",
+                                "example": "action_failed"
+                              },
+                              "message": {
+                                "description": "Error message for humans.",
+                                "type": "string",
+                                "example": "Action failed"
+                              }
+                            },
+                            "required": [
+                              "code",
+                              "message"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "command",
+                          "status",
+                          "progress",
+                          "started",
+                          "finished",
+                          "resources",
+                          "error"
+                        ]
+                      }
+                    },
+                    "meta": {
+                      "title": "ListMeta",
+                      "type": "object",
+                      "properties": {
+                        "pagination": {
+                          "description": "See \"[Pagination](#pagination)\" for more information.",
+                          "type": "object",
+                          "properties": {
+                            "page": {
+                              "description": "Current page number.",
+                              "type": "integer",
+                              "format": "int64",
+                              "example": 3
+                            },
+                            "per_page": {
+                              "description": "Maximum number of entries returned per page.",
+                              "type": "integer",
+                              "format": "int64",
+                              "example": 25
+                            },
+                            "previous_page": {
+                              "description": "Page number of the previous page. Can be null if the current page is the first one.",
+                              "type": "integer",
+                              "format": "int64",
+                              "nullable": true,
+                              "example": 2
+                            },
+                            "next_page": {
+                              "description": "Page number of the next page. Can be null if the current page is the last one.",
+                              "type": "integer",
+                              "format": "int64",
+                              "nullable": true,
+                              "example": 4
+                            },
+                            "last_page": {
+                              "description": "Page number of the last page available. Can be null if the current page is the last one.",
+                              "type": "integer",
+                              "format": "int64",
+                              "nullable": true,
+                              "example": 4
+                            },
+                            "total_entries": {
+                              "description": "Total number of entries that exist for this query. Can be null if unknown.",
+                              "type": "integer",
+                              "format": "int64",
+                              "nullable": true,
+                              "example": 100
+                            }
+                          },
+                          "required": [
+                            "page",
+                            "per_page",
+                            "previous_page",
+                            "next_page",
+                            "last_page",
+                            "total_entries"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "pagination"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "actions",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "description": "Error code for machines.",
+                          "type": "string",
+                          "example": "unauthorized"
+                        },
+                        "message": {
+                          "description": "Error message for humans.",
+                          "type": "string",
+                          "example": "unable to authenticate"
+                        },
+                        "details": {
+                          "description": "Details about the error.",
+                          "type": "object",
+                          "nullable": true
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "APIToken": []
+          }
+        ]
+      }
+    },
+    "/primary_ips/{id}/actions/{action_id}": {
+      "get": {
+        "operationId": "get_primary_ip_action",
+        "summary": "Get an Action for a Primary IP",
+        "description": "Returns a specific [Action](#actions) for a [Primary IP](#primary_ips).\n",
+        "tags": [
+          "Primary IP Actions"
+        ],
+        "parameters": [
+          {
+            "description": "ID of the Primary IP.",
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "description": "ID of the [Primary IP](#primary-ips).",
+              "type": "integer",
+              "format": "int64",
+              "maximum": 9007199254740991,
+              "example": 42
+            }
+          },
+          {
+            "description": "ID of the Action.",
+            "name": "action_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "description": "ID of the [Action](#actions).",
+              "type": "integer",
+              "format": "int64",
+              "maximum": 9007199254740991,
+              "example": 42
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Request succeeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "ActionResponse",
+                  "type": "object",
+                  "properties": {
+                    "action": {
+                      "title": "Action",
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "description": "ID of the [Action](#actions).",
+                          "type": "integer",
+                          "format": "int64",
+                          "maximum": 9007199254740991,
+                          "example": 42
+                        },
+                        "command": {
+                          "description": "Command executed in the Action.",
+                          "type": "string",
+                          "example": "start_resource"
+                        },
+                        "status": {
+                          "description": "Status of the Action.",
+                          "type": "string",
+                          "enum": [
+                            "running",
+                            "success",
+                            "error"
+                          ]
+                        },
+                        "started": {
+                          "description": "Point in time when the Action was started (in [RFC3339](https://datatracker.ietf.org/doc/html/rfc3339#section-5.6) format).",
+                          "type": "string",
+                          "format": "date-time",
+                          "example": "2016-01-30T23:55:00Z"
+                        },
+                        "finished": {
+                          "description": "Point in time when the Action was finished (in [RFC3339](https://datatracker.ietf.org/doc/html/rfc3339#section-5.6) format). Only set if the Action is finished otherwise null.",
+                          "type": "string",
+                          "format": "date-time",
+                          "example": "2016-01-30T23:55:00Z",
+                          "nullable": true
+                        },
+                        "progress": {
+                          "description": "Progress of the Action in percent.",
+                          "type": "integer",
+                          "format": "int32",
+                          "example": 100
+                        },
+                        "resources": {
+                          "description": "Resources the Action relates to.",
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "description": "ID of the Resource.",
+                                "type": "integer",
+                                "format": "int64",
+                                "maximum": 9007199254740991,
+                                "example": 42
+                              },
+                              "type": {
+                                "description": "Type of the Resource.",
+                                "type": "string",
+                                "example": "server"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "type"
+                            ]
+                          }
+                        },
+                        "error": {
+                          "description": "Error message for the Action if an error occurred, otherwise null.",
+                          "type": "object",
+                          "nullable": true,
+                          "properties": {
+                            "code": {
+                              "description": "Fixed error code for machines.",
+                              "type": "string",
+                              "example": "action_failed"
+                            },
+                            "message": {
+                              "description": "Error message for humans.",
+                              "type": "string",
+                              "example": "Action failed"
+                            }
+                          },
+                          "required": [
+                            "code",
+                            "message"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "command",
+                        "status",
+                        "progress",
+                        "started",
+                        "finished",
+                        "resources",
+                        "error"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "action"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "description": "Error code for machines.",
+                          "type": "string",
+                          "example": "unauthorized"
+                        },
+                        "message": {
+                          "description": "Error message for humans.",
+                          "type": "string",
+                          "example": "unable to authenticate"
+                        },
+                        "details": {
+                          "description": "Details about the error.",
+                          "type": "object",
+                          "nullable": true
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "APIToken": []
+          }
+        ]
+      }
+    },
     "/primary_ips/{id}": {
       "get": {
         "operationId": "get_primary_ip",
@@ -32509,7 +33182,8 @@
                           "example": false
                         },
                         "datacenter": {
-                          "description": "[Data Center](#data-centers) the [Primary IP](#primary-ips) is located at.",
+                          "deprecated": true,
+                          "description": "**Deprecated**: This property is deprecated and will be removed after the 1 July 2026.\nUse the `location` property instead.\n\n[Data Center](#data-centers) of the [Primary IP](#primary-ips).\n",
                           "type": "object",
                           "properties": {
                             "id": {
@@ -32651,6 +33325,68 @@
                             "server_types"
                           ]
                         },
+                        "location": {
+                          "description": "[Location](#locations) of the [Primary IP](#primary-ips).\n",
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "description": "ID of the [Location](#locations).",
+                              "type": "integer",
+                              "format": "int64",
+                              "maximum": 9007199254740991,
+                              "example": 42
+                            },
+                            "name": {
+                              "description": "Unique identifier of the [Location](#locations).",
+                              "type": "string",
+                              "pattern": "^[a-z0-9]+(-?[a-z0-9]*)*$",
+                              "example": "fsn1"
+                            },
+                            "description": {
+                              "description": "Human readable description of the [Location](#locations).",
+                              "type": "string",
+                              "example": "Falkenstein DC Park 1"
+                            },
+                            "country": {
+                              "description": "Country the [Location](#locations) resides in.\n\nISO 3166-1 alpha-2 code of the country.\n",
+                              "type": "string",
+                              "example": "DE"
+                            },
+                            "city": {
+                              "description": "Name of the closest city to the [Location](#locations).\n\nCity name or city name and state in short form. E.g. `Falkenstein` or `Ashburn, VA`.\n",
+                              "type": "string",
+                              "example": "Falkenstein"
+                            },
+                            "latitude": {
+                              "description": "Latitude of the city closest to the [Location](#locations).",
+                              "type": "number",
+                              "format": "double",
+                              "example": 50.47612
+                            },
+                            "longitude": {
+                              "description": "Longitude of the city closest to the [Location](#locations).",
+                              "type": "number",
+                              "format": "double",
+                              "example": 12.370071
+                            },
+                            "network_zone": {
+                              "description": "Name of the Network Zone this [Location](#locations) resides in.",
+                              "type": "string",
+                              "pattern": "^[a-z0-9]+(-?[a-z0-9]*)*$",
+                              "example": "eu-central"
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "name",
+                            "description",
+                            "country",
+                            "city",
+                            "latitude",
+                            "longitude",
+                            "network_zone"
+                          ]
+                        },
                         "ip": {
                           "description": "IP address.",
                           "type": "string",
@@ -32730,6 +33466,7 @@
                         "labels",
                         "created",
                         "blocked",
+                        "location",
                         "datacenter",
                         "ip",
                         "dns_ptr",
@@ -32918,7 +33655,8 @@
                           "example": false
                         },
                         "datacenter": {
-                          "description": "[Data Center](#data-centers) the [Primary IP](#primary-ips) is located at.",
+                          "deprecated": true,
+                          "description": "**Deprecated**: This property is deprecated and will be removed after the 1 July 2026.\nUse the `location` property instead.\n\n[Data Center](#data-centers) of the [Primary IP](#primary-ips).\n",
                           "type": "object",
                           "properties": {
                             "id": {
@@ -33060,6 +33798,68 @@
                             "server_types"
                           ]
                         },
+                        "location": {
+                          "description": "[Location](#locations) of the [Primary IP](#primary-ips).\n",
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "description": "ID of the [Location](#locations).",
+                              "type": "integer",
+                              "format": "int64",
+                              "maximum": 9007199254740991,
+                              "example": 42
+                            },
+                            "name": {
+                              "description": "Unique identifier of the [Location](#locations).",
+                              "type": "string",
+                              "pattern": "^[a-z0-9]+(-?[a-z0-9]*)*$",
+                              "example": "fsn1"
+                            },
+                            "description": {
+                              "description": "Human readable description of the [Location](#locations).",
+                              "type": "string",
+                              "example": "Falkenstein DC Park 1"
+                            },
+                            "country": {
+                              "description": "Country the [Location](#locations) resides in.\n\nISO 3166-1 alpha-2 code of the country.\n",
+                              "type": "string",
+                              "example": "DE"
+                            },
+                            "city": {
+                              "description": "Name of the closest city to the [Location](#locations).\n\nCity name or city name and state in short form. E.g. `Falkenstein` or `Ashburn, VA`.\n",
+                              "type": "string",
+                              "example": "Falkenstein"
+                            },
+                            "latitude": {
+                              "description": "Latitude of the city closest to the [Location](#locations).",
+                              "type": "number",
+                              "format": "double",
+                              "example": 50.47612
+                            },
+                            "longitude": {
+                              "description": "Longitude of the city closest to the [Location](#locations).",
+                              "type": "number",
+                              "format": "double",
+                              "example": 12.370071
+                            },
+                            "network_zone": {
+                              "description": "Name of the Network Zone this [Location](#locations) resides in.",
+                              "type": "string",
+                              "pattern": "^[a-z0-9]+(-?[a-z0-9]*)*$",
+                              "example": "eu-central"
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "name",
+                            "description",
+                            "country",
+                            "city",
+                            "latitude",
+                            "longitude",
+                            "network_zone"
+                          ]
+                        },
                         "ip": {
                           "description": "IP address.",
                           "type": "string",
@@ -33139,6 +33939,7 @@
                         "labels",
                         "created",
                         "blocked",
+                        "location",
                         "datacenter",
                         "ip",
                         "dns_ptr",
@@ -35688,7 +36489,8 @@
                             ]
                           },
                           "datacenter": {
-                            "description": "Data Center this Resource is located at.",
+                            "deprecated": true,
+                            "description": "**Deprecated**: This property is deprecated and will be removed after the 1 July 2026.\nUse the `location` property instead.\n\nData Center this Resource is located at.\n",
                             "type": "object",
                             "properties": {
                               "id": {
@@ -35828,6 +36630,68 @@
                               "description",
                               "location",
                               "server_types"
+                            ]
+                          },
+                          "location": {
+                            "description": "Location this Resource is located at.\n",
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "description": "ID of the [Location](#locations).",
+                                "type": "integer",
+                                "format": "int64",
+                                "maximum": 9007199254740991,
+                                "example": 42
+                              },
+                              "name": {
+                                "description": "Unique identifier of the [Location](#locations).",
+                                "type": "string",
+                                "pattern": "^[a-z0-9]+(-?[a-z0-9]*)*$",
+                                "example": "fsn1"
+                              },
+                              "description": {
+                                "description": "Human readable description of the [Location](#locations).",
+                                "type": "string",
+                                "example": "Falkenstein DC Park 1"
+                              },
+                              "country": {
+                                "description": "Country the [Location](#locations) resides in.\n\nISO 3166-1 alpha-2 code of the country.\n",
+                                "type": "string",
+                                "example": "DE"
+                              },
+                              "city": {
+                                "description": "Name of the closest city to the [Location](#locations).\n\nCity name or city name and state in short form. E.g. `Falkenstein` or `Ashburn, VA`.\n",
+                                "type": "string",
+                                "example": "Falkenstein"
+                              },
+                              "latitude": {
+                                "description": "Latitude of the city closest to the [Location](#locations).",
+                                "type": "number",
+                                "format": "double",
+                                "example": 50.47612
+                              },
+                              "longitude": {
+                                "description": "Longitude of the city closest to the [Location](#locations).",
+                                "type": "number",
+                                "format": "double",
+                                "example": 12.370071
+                              },
+                              "network_zone": {
+                                "description": "Name of the Network Zone this [Location](#locations) resides in.",
+                                "type": "string",
+                                "pattern": "^[a-z0-9]+(-?[a-z0-9]*)*$",
+                                "example": "eu-central"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "name",
+                              "description",
+                              "country",
+                              "city",
+                              "latitude",
+                              "longitude",
+                              "network_zone"
                             ]
                           },
                           "image": {
@@ -36254,6 +37118,7 @@
                           "public_net",
                           "private_net",
                           "server_type",
+                          "location",
                           "datacenter",
                           "image",
                           "iso",
@@ -36412,7 +37277,7 @@
           "Servers"
         ],
         "requestBody": {
-          "description": "Please note that Server names must be unique per Project and valid hostnames as per RFC 1123 (i.e. may only contain letters, digits, periods, and dashes).\n\nFor `server_type` you can either use the ID as listed in `/server_types` or its name.\n\nFor `image` you can either use the ID as listed in `/images` or its name.\n\nIf you want to create the Server in a Location, you must set `location` to the ID or name as listed in `/locations`. This is the recommended way. You can be even more specific by setting `datacenter` to the ID or name as listed in `/datacenters`. However we only recommend this if you want to assign a specific Primary IP to the Server which is located in the specified Data Center.\n\nSome properties like `start_after_create` or `automount` will trigger Actions after the Server is created. Those Actions are listed in the `next_actions` field in the response.\n\nFor accessing your Server we strongly recommend to use SSH keys by passing the respective key IDs in `ssh_keys`. If you do not specify any `ssh_keys` we will generate a root password for you and return it in the response.\n\nPlease note that provided user-data is stored in our systems. While we take measures to protect it we highly recommend that you don’t use it to store passwords or other sensitive information.\n\n#### Call specific error codes\n\n| Code                             | Description                                                |\n|----------------------------------|------------------------------------------------------------|\n| `placement_error`                | An error during the placement occurred                     |\n| `primary_ip_assigned`            | The specified Primary IP is already assigned to a server   |\n| `primary_ip_datacenter_mismatch` | The specified Primary IP is in a different datacenter      |\n| `primary_ip_version_mismatch`    | The specified Primary IP has the wrong IP Version          |\n",
+          "description": "Please note that Server names must be unique per Project and valid hostnames as per RFC 1123 (i.e. may only contain letters, digits, periods, and dashes).\n\nFor `server_type` you can either use the ID as listed in `/server_types` or its name.\n\nFor `image` you can either use the ID as listed in `/images` or its name.\n\nIf you want to create the Server in a Location, you must set `location` to the ID or name as listed in `/locations`.\n\nSome properties like `start_after_create` or `automount` will trigger Actions after the Server is created. Those Actions are listed in the `next_actions` field in the response.\n\nFor accessing your Server we strongly recommend to use SSH keys by passing the respective key IDs in `ssh_keys`. If you do not specify any `ssh_keys` we will generate a root password for you and return it in the response.\n\nPlease note that provided user-data is stored in our systems. While we take measures to protect it we highly recommend that you don’t use it to store passwords or other sensitive information.\n\n#### Call specific error codes\n\n| Code                             | Description                                                |\n|----------------------------------|------------------------------------------------------------|\n| `placement_error`                | An error during the placement occurred                     |\n| `primary_ip_assigned`            | The specified Primary IP is already assigned to a server   |\n| `primary_ip_datacenter_mismatch` | The specified Primary IP is in a different datacenter      |\n| `primary_ip_version_mismatch`    | The specified Primary IP has the wrong IP Version          |\n",
           "required": true,
           "content": {
             "application/json": {
@@ -36426,12 +37291,13 @@
                     "example": "my-server"
                   },
                   "location": {
-                    "description": "ID or name of Location to create Server in (must not be used together with datacenter).",
+                    "description": "ID or name of the Location to create the Server in (must not be used together with `datacenter`).",
                     "type": "string",
                     "example": "nbg1"
                   },
                   "datacenter": {
-                    "description": "ID or name of Data Center to create Server in (must not be used together with location).",
+                    "deprecated": true,
+                    "description": "**Deprecated**: This property is deprecated and will be removed after the 1 July 2026.\nUse the `location` property instead.\n\nID or name of the Data Center to create Server in (must not be used together with `location`).\n",
                     "type": "string",
                     "example": "nbg1-dc3"
                   },
@@ -37041,7 +37907,8 @@
                           ]
                         },
                         "datacenter": {
-                          "description": "Data Center this Resource is located at.",
+                          "deprecated": true,
+                          "description": "**Deprecated**: This property is deprecated and will be removed after the 1 July 2026.\nUse the `location` property instead.\n\nData Center this Resource is located at.\n",
                           "type": "object",
                           "properties": {
                             "id": {
@@ -37181,6 +38048,68 @@
                             "description",
                             "location",
                             "server_types"
+                          ]
+                        },
+                        "location": {
+                          "description": "Location this Resource is located at.\n",
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "description": "ID of the [Location](#locations).",
+                              "type": "integer",
+                              "format": "int64",
+                              "maximum": 9007199254740991,
+                              "example": 42
+                            },
+                            "name": {
+                              "description": "Unique identifier of the [Location](#locations).",
+                              "type": "string",
+                              "pattern": "^[a-z0-9]+(-?[a-z0-9]*)*$",
+                              "example": "fsn1"
+                            },
+                            "description": {
+                              "description": "Human readable description of the [Location](#locations).",
+                              "type": "string",
+                              "example": "Falkenstein DC Park 1"
+                            },
+                            "country": {
+                              "description": "Country the [Location](#locations) resides in.\n\nISO 3166-1 alpha-2 code of the country.\n",
+                              "type": "string",
+                              "example": "DE"
+                            },
+                            "city": {
+                              "description": "Name of the closest city to the [Location](#locations).\n\nCity name or city name and state in short form. E.g. `Falkenstein` or `Ashburn, VA`.\n",
+                              "type": "string",
+                              "example": "Falkenstein"
+                            },
+                            "latitude": {
+                              "description": "Latitude of the city closest to the [Location](#locations).",
+                              "type": "number",
+                              "format": "double",
+                              "example": 50.47612
+                            },
+                            "longitude": {
+                              "description": "Longitude of the city closest to the [Location](#locations).",
+                              "type": "number",
+                              "format": "double",
+                              "example": 12.370071
+                            },
+                            "network_zone": {
+                              "description": "Name of the Network Zone this [Location](#locations) resides in.",
+                              "type": "string",
+                              "pattern": "^[a-z0-9]+(-?[a-z0-9]*)*$",
+                              "example": "eu-central"
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "name",
+                            "description",
+                            "country",
+                            "city",
+                            "latitude",
+                            "longitude",
+                            "network_zone"
                           ]
                         },
                         "image": {
@@ -37607,6 +38536,7 @@
                         "public_net",
                         "private_net",
                         "server_type",
+                        "location",
                         "datacenter",
                         "image",
                         "iso",
@@ -37926,6 +38856,16 @@
                           }
                         }
                       ]
+                    },
+                    "location": {
+                      "id": 1,
+                      "name": "fsn1",
+                      "description": "Falkenstein DC Park 1",
+                      "country": "DE",
+                      "city": "Falkenstein",
+                      "latitude": 50.47612,
+                      "longitude": 12.370071,
+                      "network_zone": "eu-central"
                     },
                     "datacenter": {
                       "id": 1,
@@ -39158,7 +40098,8 @@
                           ]
                         },
                         "datacenter": {
-                          "description": "Data Center this Resource is located at.",
+                          "deprecated": true,
+                          "description": "**Deprecated**: This property is deprecated and will be removed after the 1 July 2026.\nUse the `location` property instead.\n\nData Center this Resource is located at.\n",
                           "type": "object",
                           "properties": {
                             "id": {
@@ -39298,6 +40239,68 @@
                             "description",
                             "location",
                             "server_types"
+                          ]
+                        },
+                        "location": {
+                          "description": "Location this Resource is located at.\n",
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "description": "ID of the [Location](#locations).",
+                              "type": "integer",
+                              "format": "int64",
+                              "maximum": 9007199254740991,
+                              "example": 42
+                            },
+                            "name": {
+                              "description": "Unique identifier of the [Location](#locations).",
+                              "type": "string",
+                              "pattern": "^[a-z0-9]+(-?[a-z0-9]*)*$",
+                              "example": "fsn1"
+                            },
+                            "description": {
+                              "description": "Human readable description of the [Location](#locations).",
+                              "type": "string",
+                              "example": "Falkenstein DC Park 1"
+                            },
+                            "country": {
+                              "description": "Country the [Location](#locations) resides in.\n\nISO 3166-1 alpha-2 code of the country.\n",
+                              "type": "string",
+                              "example": "DE"
+                            },
+                            "city": {
+                              "description": "Name of the closest city to the [Location](#locations).\n\nCity name or city name and state in short form. E.g. `Falkenstein` or `Ashburn, VA`.\n",
+                              "type": "string",
+                              "example": "Falkenstein"
+                            },
+                            "latitude": {
+                              "description": "Latitude of the city closest to the [Location](#locations).",
+                              "type": "number",
+                              "format": "double",
+                              "example": 50.47612
+                            },
+                            "longitude": {
+                              "description": "Longitude of the city closest to the [Location](#locations).",
+                              "type": "number",
+                              "format": "double",
+                              "example": 12.370071
+                            },
+                            "network_zone": {
+                              "description": "Name of the Network Zone this [Location](#locations) resides in.",
+                              "type": "string",
+                              "pattern": "^[a-z0-9]+(-?[a-z0-9]*)*$",
+                              "example": "eu-central"
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "name",
+                            "description",
+                            "country",
+                            "city",
+                            "latitude",
+                            "longitude",
+                            "network_zone"
                           ]
                         },
                         "image": {
@@ -39724,6 +40727,7 @@
                         "public_net",
                         "private_net",
                         "server_type",
+                        "location",
                         "datacenter",
                         "image",
                         "iso",
@@ -40329,7 +41333,8 @@
                           ]
                         },
                         "datacenter": {
-                          "description": "Data Center this Resource is located at.",
+                          "deprecated": true,
+                          "description": "**Deprecated**: This property is deprecated and will be removed after the 1 July 2026.\nUse the `location` property instead.\n\nData Center this Resource is located at.\n",
                           "type": "object",
                           "properties": {
                             "id": {
@@ -40469,6 +41474,68 @@
                             "description",
                             "location",
                             "server_types"
+                          ]
+                        },
+                        "location": {
+                          "description": "Location this Resource is located at.\n",
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "description": "ID of the [Location](#locations).",
+                              "type": "integer",
+                              "format": "int64",
+                              "maximum": 9007199254740991,
+                              "example": 42
+                            },
+                            "name": {
+                              "description": "Unique identifier of the [Location](#locations).",
+                              "type": "string",
+                              "pattern": "^[a-z0-9]+(-?[a-z0-9]*)*$",
+                              "example": "fsn1"
+                            },
+                            "description": {
+                              "description": "Human readable description of the [Location](#locations).",
+                              "type": "string",
+                              "example": "Falkenstein DC Park 1"
+                            },
+                            "country": {
+                              "description": "Country the [Location](#locations) resides in.\n\nISO 3166-1 alpha-2 code of the country.\n",
+                              "type": "string",
+                              "example": "DE"
+                            },
+                            "city": {
+                              "description": "Name of the closest city to the [Location](#locations).\n\nCity name or city name and state in short form. E.g. `Falkenstein` or `Ashburn, VA`.\n",
+                              "type": "string",
+                              "example": "Falkenstein"
+                            },
+                            "latitude": {
+                              "description": "Latitude of the city closest to the [Location](#locations).",
+                              "type": "number",
+                              "format": "double",
+                              "example": 50.47612
+                            },
+                            "longitude": {
+                              "description": "Longitude of the city closest to the [Location](#locations).",
+                              "type": "number",
+                              "format": "double",
+                              "example": 12.370071
+                            },
+                            "network_zone": {
+                              "description": "Name of the Network Zone this [Location](#locations) resides in.",
+                              "type": "string",
+                              "pattern": "^[a-z0-9]+(-?[a-z0-9]*)*$",
+                              "example": "eu-central"
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "name",
+                            "description",
+                            "country",
+                            "city",
+                            "latitude",
+                            "longitude",
+                            "network_zone"
                           ]
                         },
                         "image": {
@@ -40895,6 +41962,7 @@
                         "public_net",
                         "private_net",
                         "server_type",
+                        "location",
                         "datacenter",
                         "image",
                         "iso",
