@@ -124,7 +124,16 @@ function buildGcpResourceSpec(
   resourceSpec: ResourceSpec,
   doc: GcpDiscoveryDocument,
 ): ExpandedPkgSpec | null {
-  const { resourcePath, get, insert, update, patch, delete: deleteMethod, handlers } = resourceSpec;
+  const {
+    resourcePath,
+    get,
+    insert,
+    update,
+    patch,
+    delete: deleteMethod,
+    list,
+    handlers,
+  } = resourceSpec;
 
   // We need at least a get method to build a spec
   if (!get) {
@@ -178,15 +187,15 @@ function buildGcpResourceSpec(
 
   // Clean up title: remove "API", version suffixes, etc.
   const cleanTitle = (doc.title || doc.name)
-    .replace(/\s+API\s*$/i, '')  // Remove trailing "API"
-    .replace(/\s+API\s+/gi, ' ') // Remove "API" in the middle
-    .replace(/\s+v\d+$/i, '')    // Remove version numbers like "v1", "v2"
-    .replace(/\s+I{1,3}$/i, '')  // Remove roman numerals I, II, III
+    .replace(/\s+API\s*$/i, "") // Remove trailing "API"
+    .replace(/\s+API\s+/gi, " ") // Remove "API" in the middle
+    .replace(/\s+v\d+$/i, "") // Remove version numbers like "v1", "v2"
+    .replace(/\s+I{1,3}$/i, "") // Remove roman numerals I, II, III
     .trim();
 
   let typeName = `Google Cloud ${cleanTitle} ${fullResourceName}`;
   // Remove duplicate "Cloud" words
-  typeName = typeName.replace(/\bCloud\s+Cloud\b/gi, 'Cloud');
+  typeName = typeName.replace(/\bCloud\s+Cloud\b/gi, "Cloud");
 
   const description = getResponseSchema.description ||
     get.description ||
@@ -213,6 +222,7 @@ function buildGcpResourceSpec(
       update,
       patch,
       delete: deleteMethod,
+      list,
     },
   };
 

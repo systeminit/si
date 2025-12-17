@@ -106,6 +106,7 @@ export interface GcpSchema extends SuperSchema {
     update?: GcpMethod;
     patch?: GcpMethod;
     delete?: GcpMethod;
+    list?: GcpMethod;
   };
 }
 
