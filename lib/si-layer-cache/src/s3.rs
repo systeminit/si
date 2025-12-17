@@ -16,7 +16,7 @@ use si_std::SensitiveString;
 use strum::AsRefStr;
 use telemetry::prelude::*;
 use tokio::{
-    sync::Notify,
+    sync::mpsc,
     task::JoinHandle,
 };
 
@@ -25,16 +25,12 @@ use crate::{
         LayerDbError,
         LayerDbResult,
     },
-    event::{
-        LayeredEvent,
-        LayeredEventPayload,
-    },
-    rate_limiter::RateLimitConfig,
+    event::LayeredEvent,
+    s3_disk_store::S3DiskStore,
     s3_queue_processor::{
-        ProcessorQueueSetup,
         S3QueueProcessor,
+        WorkItem,
     },
-    s3_write_queue::S3WriteQueue,
 };
 
 /// Strategy for transforming keys before storage in S3
@@ -161,12 +157,15 @@ pub struct ObjectStorageConfig {
     /// Optional key prefix for test isolation
     /// When set, all object keys are prefixed with this value after transformation
     pub key_prefix: Option<String>,
-    /// Rate limiting configuration for S3 writes
-    #[serde(default)]
-    pub rate_limit: RateLimitConfig,
     /// Retry configuration for S3 read operations
     #[serde(default)]
     pub read_retry: S3ReadRetryConfig,
+    /// Number of workers per cache for parallel S3 writes (default: 10)
+    #[serde(default = "default_num_workers")]
+    pub num_workers: usize,
+    /// Maximum parallel uploads per worker (default: 10)
+    #[serde(default = "default_max_parallel_per_worker")]
+    pub max_parallel_per_worker: usize,
 }
 
 impl Default for ObjectStorageConfig {
@@ -181,10 +180,19 @@ impl Default for ObjectStorageConfig {
                 secret_key: "bugbear".into(),
             },
             key_prefix: None,
-            rate_limit: RateLimitConfig::default(),
             read_retry: S3ReadRetryConfig::default(),
+            num_workers: default_num_workers(),
+            max_parallel_per_worker: default_max_parallel_per_worker(),
         }
     }
+}
+
+fn default_num_workers() -> usize {
+    10
+}
+
+fn default_max_parallel_per_worker() -> usize {
+    10
 }
 
 impl ObjectStorageConfig {
@@ -208,6 +216,21 @@ impl ObjectStorageConfig {
             auth: self.auth.clone(),
             key_prefix: self.key_prefix.clone(),
         }
+    }
+}
+
+/// Extract prefix from transformed key
+/// The prefix is everything before the last '/'
+/// Examples:
+///   "ab/cd/ef/key" → "ab/cd/ef"
+///   "test-uuid/ab/cd/ef/key" → "test-uuid/ab/cd/ef"
+///   "a/b/c/d/e/file" → "a/b/c/d/e"
+///   "no-slashes" → ""
+fn extract_prefix(transformed_key: &str) -> String {
+    if let Some(last_slash_idx) = transformed_key.rfind('/') {
+        transformed_key[..last_slash_idx].to_string()
+    } else {
+        String::new()
     }
 }
 
@@ -284,10 +307,10 @@ impl ObjectStorageConfig {
 ///
 /// # Metrics
 ///
-/// - `s3_write_queue_depth` - Current pending writes
-/// - `s3_write_backoff_ms` - Current backoff delay
-/// - `s3_write_attempts_total{result}` - Attempts by result (success/throttle/error)
-/// - `s3_write_duration_ms` - Time from enqueue to completion
+/// - `s3_write_queue_depth` - Current pending writes across all workers
+/// - `s3_write_attempts` - Number of S3 API attempts per write operation
+/// - `layer_cache_persister.write_duration_ms` - Duration of individual write operations
+/// - `layer_cache_persistence_latency_seconds` - Total time from enqueue to completion
 ///
 /// # Shutdown
 ///
@@ -311,7 +334,8 @@ pub struct S3Layer {
     cache_name: String,
     strategy: KeyTransformStrategy,
     key_prefix: Option<String>,
-    write_queue: Arc<S3WriteQueue>,
+    disk_store: Arc<S3DiskStore>,
+    work_tx: mpsc::UnboundedSender<WorkItem>,
     processor_handle: Arc<JoinHandle<()>>,
     processor_shutdown: Arc<tokio::sync::Notify>,
 }
@@ -327,14 +351,16 @@ impl S3Layer {
     /// * `config` - S3 cache configuration
     /// * `cache_name` - Name of this cache (used for queue directory)
     /// * `strategy` - Key transformation strategy
-    /// * `rate_limit_config` - Rate limiting configuration for adaptive backoff
+    /// * `num_workers` - Number of workers for parallel S3 writes
+    /// * `max_parallel_per_worker` - Maximum parallel uploads per worker
     /// * `read_retry_config` - Retry configuration for S3 read operations
     /// * `queue_base_path` - Base directory for queue persistence
     pub async fn new(
         config: S3CacheConfig,
         cache_name: impl Into<String>,
         strategy: KeyTransformStrategy,
-        rate_limit_config: RateLimitConfig,
+        num_workers: usize,
+        max_parallel_per_worker: usize,
         read_retry_config: S3ReadRetryConfig,
         queue_base_path: impl AsRef<Path>,
     ) -> LayerDbResult<Self> {
@@ -343,12 +369,13 @@ impl S3Layer {
             layer_db.s3.bucket_name = config.bucket_name,
             "Creating S3 layer",
         );
+
         let sdk_config = match &config.auth {
             S3AuthConfig::StaticCredentials {
                 access_key,
                 secret_key,
             } => {
-                // Static credential flow for dev/MinIO
+                // Static credential flow for local development
                 let credentials = Credentials::new(
                     access_key.as_str(),
                     secret_key.as_str(),
@@ -375,6 +402,10 @@ impl S3Layer {
             }
         };
 
+        let cache_name_str = cache_name.into();
+        let bucket_name = config.bucket_name.clone();
+        let base_path = queue_base_path.as_ref();
+
         // VersityGW with POSIX backend requires path-style bucket access
         let s3_config_builder =
             aws_sdk_s3::config::Builder::from(&sdk_config).force_path_style(true);
@@ -393,60 +424,72 @@ impl S3Layer {
 
         let client = Client::from_conf(s3_config);
 
-        // Create separate S3 client for processor with retry disabled
-        // Processor uses application-level retry via queue, so SDK retry must be disabled
+        // Create separate S3 client for processor with retry enabled
+        // Processor uses SDK retry in addition to application-level retry
         let processor_s3_config = aws_sdk_s3::config::Builder::from(&sdk_config)
             .force_path_style(true)
-            .retry_config(aws_sdk_s3::config::retry::RetryConfig::disabled())
+            .retry_config(aws_sdk_s3::config::retry::RetryConfig::standard())
             .build();
-
         let processor_client = Client::from_conf(processor_s3_config);
-        let cache_name_str = cache_name.into();
-        let bucket_name = config.bucket_name;
-        let key_prefix = config.key_prefix;
 
-        // Initialize notify for queue communication
-        let notify = Arc::new(Notify::new());
+        // Create S3DiskStore
+        let disk_store = Arc::new(
+            S3DiskStore::new(base_path, &cache_name_str)
+                .map_err(|e| LayerDbError::S3DiskStore(e.to_string()))?,
+        );
 
-        // Initialize write queue - returns queue and receiver
-        let (write_queue, rx) =
-            S3WriteQueue::new(&queue_base_path, &cache_name_str, notify.clone())
-                .map_err(|e| LayerDbError::S3WriteQueue(e.to_string()))?;
+        // Create channel for S3QueueProcessor
+        let (work_tx, work_rx) = mpsc::unbounded_channel();
 
-        // Scan disk for initial ULIDs (startup only)
-        let initial_ulids = write_queue
+        // Scan existing ULIDs and extract prefixes for initial routing
+        let initial_ulids = disk_store
             .scan_ulids()
-            .map_err(|e| LayerDbError::S3WriteQueue(e.to_string()))?;
+            .map_err(|e| LayerDbError::S3DiskStore(e.to_string()))?;
 
-        let write_queue = Arc::new(write_queue);
+        let initial_work_items: Vec<WorkItem> = initial_ulids
+            .into_iter()
+            .filter_map(|ulid| match disk_store.read_event(ulid) {
+                Ok(event) => {
+                    let prefix = extract_prefix(event.key.as_ref());
+                    Some(WorkItem::new(ulid.as_raw_id(), prefix))
+                }
+                Err(e) => {
+                    error!(
+                        error = ?e,
+                        ulid = %ulid,
+                        cache_name = %cache_name_str,
+                        "Failed to read event during startup, moving to dead letter queue"
+                    );
+                    let _ = disk_store.move_to_dead_letter_queue(ulid);
+                    None
+                }
+            })
+            .collect();
 
-        // Start queue processor with in-memory index
+        // Create S3QueueProcessor with global config values
         let processor = S3QueueProcessor::new(
-            Arc::clone(&write_queue),
-            rate_limit_config,
+            Arc::clone(&disk_store),
+            num_workers,
+            max_parallel_per_worker,
             processor_client,
             bucket_name.clone(),
             cache_name_str.clone(),
-            ProcessorQueueSetup {
-                rx,
-                notify,
-                initial_ulids,
-            },
-        );
+            work_rx,
+            initial_work_items,
+        )
+        .map_err(|e| LayerDbError::S3QueueProcessor(e.to_string()))?;
 
-        let shutdown = processor.shutdown_handle();
-        let handle = tokio::spawn(processor.process_queue());
+        let processor_shutdown = processor.shutdown_handle();
+        let processor_handle = Arc::new(tokio::spawn(processor.process_queue()));
 
-        let processor_handle = Arc::new(handle);
-        let processor_shutdown = shutdown;
-
-        Ok(S3Layer {
+        Ok(Self {
             client,
             bucket_name,
             cache_name: cache_name_str,
             strategy,
-            key_prefix,
-            write_queue,
+            key_prefix: config.key_prefix,
+            disk_store,
+            work_tx,
             processor_handle,
             processor_shutdown,
         })
@@ -600,49 +643,26 @@ impl S3Layer {
     /// The queued event contains the final S3 key ready to write.
     ///
     /// This is the single write interface - all S3 writes go through the queue for durability.
-    pub fn insert(&self, event: &LayeredEvent) -> LayerDbResult<()> {
-        use std::time::Instant;
-
-        use telemetry_utils::histogram;
-
-        // Transform key at API boundary
+    pub fn insert(&self, event: LayeredEvent) -> LayerDbResult<()> {
         let transformed_key = self.transform_and_prefix_key(&event.key);
-        let transformed_key_arc: Arc<str> = Arc::from(transformed_key);
+        let prefix = extract_prefix(&transformed_key);
 
-        // Create new event with transformed key
-        // Most fields are Arc, so clone is cheap
+        // Create transformed event
         let transformed_event = LayeredEvent {
-            event_id: event.event_id,
-            event_kind: event.event_kind,
-            key: transformed_key_arc.clone(),
-            metadata: event.metadata.clone(),
-            payload: LayeredEventPayload {
-                db_name: event.payload.db_name.clone(),
-                key: transformed_key_arc.clone(), // Reuse same Arc
-                sort_key: event.payload.sort_key.clone(),
-                value: event.payload.value.clone(),
-            },
-            web_events: event.web_events.clone(),
+            key: Arc::from(transformed_key.as_str()),
+            ..event
         };
 
-        // Queue the transformed event with timing
-        let start = Instant::now();
+        // Write to disk
         let ulid = self
-            .write_queue
-            .enqueue(&transformed_event)
-            .map_err(|e| LayerDbError::S3WriteQueue(e.to_string()))?;
+            .disk_store
+            .write_event(&transformed_event)
+            .map_err(|e| LayerDbError::S3DiskStore(e.to_string()))?;
 
-        histogram!(
-            s3_layer_disk_enqueue_duration_ms = start.elapsed().as_millis() as f64,
-            cache_name = event.payload.db_name.as_str(),
-            backend = "s3"
-        );
-
-        trace!(
-            cache = %self.cache_name,
-            ulid = %ulid,
-            "Queued S3 write"
-        );
+        // Send to S3QueueProcessor
+        self.work_tx
+            .send(WorkItem::new(ulid.as_raw_id(), prefix))
+            .map_err(|e| LayerDbError::S3QueueProcessor(e.to_string()))?;
 
         Ok(())
     }

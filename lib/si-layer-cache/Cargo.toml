@@ -16,6 +16,7 @@ aws-sdk-s3 = { workspace = true }
 blake3 = { workspace = true }
 bytes = { workspace = true }
 chrono = { workspace = true }
+crossbeam-queue = { workspace = true }
 foyer = { workspace = true }
 fs4 = { workspace = true }
 futures = { workspace = true }

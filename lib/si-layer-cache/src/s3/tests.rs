@@ -11,8 +11,9 @@ fn test_cache_config(key_prefix: Option<String>) -> S3CacheConfig {
             secret_key: "secret".into(),
         },
         key_prefix,
-        rate_limit: RateLimitConfig::default(),
         read_retry: S3ReadRetryConfig::default(),
+        num_workers: default_num_workers(),
+        max_parallel_per_worker: default_max_parallel_per_worker(),
     };
     base_config.for_cache("test-cache")
 }
@@ -28,7 +29,8 @@ async fn test_transform_and_prefix_key_with_test_prefix_passthrough() {
         config,
         "test-cache",
         KeyTransformStrategy::Passthrough,
-        RateLimitConfig::default(),
+        default_num_workers(),
+        default_max_parallel_per_worker(),
         S3ReadRetryConfig::default(),
         temp_dir.path(),
     )
@@ -59,7 +61,8 @@ async fn test_transform_and_prefix_key_without_test_prefix_passthrough() {
         config,
         "test-cache",
         KeyTransformStrategy::Passthrough,
-        RateLimitConfig::default(),
+        default_num_workers(),
+        default_max_parallel_per_worker(),
         S3ReadRetryConfig::default(),
         temp_dir.path(),
     )
@@ -81,7 +84,8 @@ async fn test_transform_and_prefix_key_with_test_prefix_reverse() {
         config,
         "test-cache",
         KeyTransformStrategy::ReverseKey,
-        RateLimitConfig::default(),
+        default_num_workers(),
+        default_max_parallel_per_worker(),
         S3ReadRetryConfig::default(),
         temp_dir.path(),
     )
@@ -104,7 +108,8 @@ async fn test_transform_and_prefix_key_without_test_prefix_reverse() {
         config,
         "test-cache",
         KeyTransformStrategy::ReverseKey,
-        RateLimitConfig::default(),
+        default_num_workers(),
+        default_max_parallel_per_worker(),
         S3ReadRetryConfig::default(),
         temp_dir.path(),
     )
@@ -128,8 +133,9 @@ fn test_bucket_suffix_in_final_bucket_name() {
             secret_key: "secret".into(),
         },
         key_prefix: None,
-        rate_limit: RateLimitConfig::default(),
         read_retry: S3ReadRetryConfig::default(),
+        num_workers: default_num_workers(),
+        max_parallel_per_worker: default_max_parallel_per_worker(),
     };
 
     let cache_config = base_config.for_cache("cas_objects");
@@ -163,8 +169,9 @@ async fn test_iam_auth_config_construction() {
         region: "us-west-2".to_string(),
         auth: S3AuthConfig::IamRole,
         key_prefix: None,
-        rate_limit: RateLimitConfig::default(),
         read_retry: S3ReadRetryConfig::default(),
+        num_workers: default_num_workers(),
+        max_parallel_per_worker: default_max_parallel_per_worker(),
     };
 
     let cache_config = config.for_cache("test-cache");
@@ -185,7 +192,8 @@ async fn test_iam_auth_config_construction() {
         cache_config,
         "test-cache",
         KeyTransformStrategy::Passthrough,
-        RateLimitConfig::default(),
+        default_num_workers(),
+        default_max_parallel_per_worker(),
         S3ReadRetryConfig::default(),
         temp_dir.path(),
     )
@@ -291,4 +299,31 @@ mod s3_error_classification_tests {
     //
     // Future work: Consider adding integration tests that trigger actual S3 errors
     // or exploring if AWS SDK test utilities become available.
+}
+
+#[test]
+fn test_extract_prefix() {
+    // Standard case with multiple slashes
+    assert_eq!(extract_prefix("ab/cd/ef/key"), "ab/cd/ef");
+
+    // With test prefix
+    assert_eq!(
+        extract_prefix("test-uuid/ab/cd/ef/key"),
+        "test-uuid/ab/cd/ef"
+    );
+
+    // Many levels
+    assert_eq!(extract_prefix("a/b/c/d/e/file"), "a/b/c/d/e");
+
+    // No slashes - returns empty string
+    assert_eq!(extract_prefix("no-slashes"), "");
+
+    // Single slash
+    assert_eq!(extract_prefix("prefix/key"), "prefix");
+
+    // Empty string
+    assert_eq!(extract_prefix(""), "");
+
+    // Trailing slash
+    assert_eq!(extract_prefix("prefix/"), "prefix");
 }
