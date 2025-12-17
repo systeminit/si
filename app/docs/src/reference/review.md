@@ -2,6 +2,12 @@
 
 Before applying a [change set](./change-sets.md) to your infrastructure, it is essential to review all changes to [components](./components.md) included and what [actions](./actions.md) which will run. System Initiative's review screen allows you to review all potential changes to ensure that you always feel confident applying them to the real world.
 
+:::tip
+
+If you are looking to audit changes instead, you may want to use the [Audit Logs](./audit-logs.md) feature.
+
+:::
+
 ## The Review Screen
 
 ![Review Screen](./review/review.png)
