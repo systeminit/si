@@ -225,6 +225,10 @@ export default withMermaid(defineConfig({
             link: "/reference/templates",
           },
           {
+            text: "Audit Logs",
+            link: "/reference/audit-logs",
+          },
+          {
             text: "TypeScript Function API",
             link: "/reference/typescript/README",
           },
