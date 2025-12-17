@@ -797,7 +797,7 @@
       "id": 38,
       "gridPos": {
         "x": 0,
-        "y": 147,
+        "y": 155,
         "w": 12,
         "h": 8
       },
@@ -871,7 +871,7 @@
       "title": "S3 Upload Retry Rate",
       "gridPos": {
         "x": 12,
-        "y": 147,
+        "y": 155,
         "w": 12,
         "h": 8
       },
@@ -920,13 +920,121 @@
       }
     },
     {
+      "id": 4001,
+      "type": "timeseries",
+      "title": "S3 Worker Queue Depth (Per Worker)",
+      "gridPos": {
+        "x": 0,
+        "y": 147,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "s3_worker_queue_depth{exported_job=~\"${service}\", cache_name=~\"${cache}\", backend=\"s3\"}",
+          "legendFormat": "{{exported_job}}/{{cache_name}}/worker-{{worker_id}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "never"
+          }
+        }
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        },
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "calcs": [
+            "lastNotNull",
+            "max",
+            "mean"
+          ]
+        }
+      }
+    },
+    {
+      "id": 4002,
+      "type": "timeseries",
+      "title": "S3 Worker Active Uploads (Per Worker)",
+      "gridPos": {
+        "x": 12,
+        "y": 147,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "s3_worker_active_uploads{exported_job=~\"${service}\", cache_name=~\"${cache}\", backend=\"s3\"}",
+          "legendFormat": "{{exported_job}}/{{cache_name}}/worker-{{worker_id}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "never"
+          }
+        }
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        },
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "calcs": [
+            "lastNotNull",
+            "max",
+            "mean"
+          ]
+        }
+      }
+    },
+    {
       "id": 304,
       "type": "timeseries",
       "title": "S3 Write Error Breakdown by Category",
       "section": "s3",
       "gridPos": {
         "x": 0,
-        "y": 171,
+        "y": 179,
         "w": 24,
         "h": 8
       },
@@ -964,7 +1072,7 @@
       "title": "S3 Dead Letter Queue Rate",
       "gridPos": {
         "x": 0,
-        "y": 179,
+        "y": 187,
         "w": 12,
         "h": 8
       },
@@ -1019,7 +1127,7 @@
       "section": "s3",
       "gridPos": {
         "x": 12,
-        "y": 179,
+        "y": 187,
         "w": 12,
         "h": 8
       },
@@ -1067,7 +1175,7 @@
       "title": "PostgreSQL Persistence",
       "gridPos": {
         "x": 0,
-        "y": 258,
+        "y": 266,
         "w": 24,
         "h": 1
       },
@@ -1077,7 +1185,7 @@
       "id": 11,
       "gridPos": {
         "x": 0,
-        "y": 283,
+        "y": 291,
         "w": 12,
         "h": 8
       },
@@ -1149,7 +1257,7 @@
       "id": 14,
       "gridPos": {
         "x": 0,
-        "y": 291,
+        "y": 299,
         "w": 12,
         "h": 8
       },
@@ -1221,7 +1329,7 @@
       "id": 15,
       "gridPos": {
         "x": 12,
-        "y": 291,
+        "y": 299,
         "w": 12,
         "h": 8
       },
@@ -1293,7 +1401,7 @@
       "id": 16,
       "gridPos": {
         "x": 0,
-        "y": 299,
+        "y": 307,
         "w": 24,
         "h": 8
       },
@@ -1347,7 +1455,7 @@
       "id": 26,
       "gridPos": {
         "x": 0,
-        "y": 307,
+        "y": 315,
         "w": 24,
         "h": 8
       },
@@ -1421,7 +1529,7 @@
       "id": 2,
       "gridPos": {
         "x": 0,
-        "y": 315,
+        "y": 323,
         "w": 12,
         "h": 8
       },
@@ -1475,7 +1583,7 @@
       "id": 3,
       "gridPos": {
         "x": 12,
-        "y": 315,
+        "y": 323,
         "w": 12,
         "h": 8
       },
@@ -1529,7 +1637,7 @@
       "id": 4,
       "gridPos": {
         "x": 0,
-        "y": 323,
+        "y": 331,
         "w": 12,
         "h": 8
       },
@@ -1583,7 +1691,7 @@
       "id": 5,
       "gridPos": {
         "x": 12,
-        "y": 323,
+        "y": 331,
         "w": 12,
         "h": 8
       },
@@ -1637,7 +1745,7 @@
       "id": 6,
       "gridPos": {
         "x": 0,
-        "y": 331,
+        "y": 339,
         "w": 12,
         "h": 8
       },
@@ -1691,7 +1799,7 @@
       "id": 9,
       "gridPos": {
         "x": 12,
-        "y": 331,
+        "y": 339,
         "w": 12,
         "h": 8
       },
@@ -2006,7 +2114,7 @@
       "id": 2703,
       "gridPos": {
         "x": 0,
-        "y": 259,
+        "y": 267,
         "w": 24,
         "h": 8
       },
@@ -2152,7 +2260,7 @@
       "id": 3102,
       "gridPos": {
         "x": 0,
-        "y": 163,
+        "y": 171,
         "w": 24,
         "h": 8
       },
@@ -2224,7 +2332,7 @@
       "id": 3103,
       "gridPos": {
         "x": 0,
-        "y": 267,
+        "y": 275,
         "w": 24,
         "h": 8
       },
@@ -2296,7 +2404,7 @@
       "id": 1002,
       "gridPos": {
         "x": 0,
-        "y": 187,
+        "y": 195,
         "w": 12,
         "h": 8
       },
@@ -2360,7 +2468,7 @@
       "id": 1003,
       "gridPos": {
         "x": 0,
-        "y": 275,
+        "y": 283,
         "w": 12,
         "h": 8
       },
@@ -2424,7 +2532,7 @@
       "id": 2102,
       "gridPos": {
         "x": 12,
-        "y": 187,
+        "y": 195,
         "w": 12,
         "h": 8
       },
@@ -2498,7 +2606,7 @@
       "id": 3804,
       "gridPos": {
         "x": 0,
-        "y": 155,
+        "y": 163,
         "w": 24,
         "h": 8
       },
@@ -2572,7 +2680,7 @@
       "id": 2103,
       "gridPos": {
         "x": 12,
-        "y": 275,
+        "y": 283,
         "w": 12,
         "h": 8
       },
@@ -2646,7 +2754,7 @@
       "id": 2602,
       "gridPos": {
         "x": 0,
-        "y": 195,
+        "y": 203,
         "w": 24,
         "h": 8
       },
@@ -2779,7 +2887,7 @@
       "section": "postgres",
       "gridPos": {
         "x": 0,
-        "y": 339,
+        "y": 347,
         "w": 12,
         "h": 8
       },
@@ -2889,7 +2997,7 @@
       "section": "postgres",
       "gridPos": {
         "x": 12,
-        "y": 339,
+        "y": 347,
         "w": 12,
         "h": 8
       },
@@ -2999,7 +3107,7 @@
       "section": "postgres",
       "gridPos": {
         "x": 0,
-        "y": 347,
+        "y": 355,
         "w": 24,
         "h": 8
       },
