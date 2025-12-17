@@ -151,6 +151,15 @@ function cleanPayload(domain) {
     }
   }
 
+  // Save userAssignedIdentities map before removeEmpty strips the empty objects
+  // Users provide: {"/subscriptions/.../identity1": {}}
+  // Azure expects: {"/subscriptions/.../identity1": {}}
+  const userAssignedIdentitiesMap = payload.identity?.userAssignedIdentities &&
+    typeof payload.identity.userAssignedIdentities === "object" &&
+    !Array.isArray(payload.identity.userAssignedIdentities)
+    ? Object.keys(payload.identity.userAssignedIdentities)
+    : null;
+
   // Only check top-level properties - once a property is included, keep all its descendants
   const propsToVisit = _.keys(payload).map((k: string) => [k]);
 
@@ -185,7 +194,26 @@ function cleanPayload(domain) {
     }
   }
 
-  return extLib.removeEmpty(payload);
+  const cleaned = extLib.removeEmpty(payload);
+
+  // Restore userAssignedIdentities AFTER removeEmpty
+  // Azure requires empty objects as values: {"/subscriptions/.../identity1": {}}
+  if (userAssignedIdentitiesMap && userAssignedIdentitiesMap.length > 0) {
+    const identities = {};
+    for (const identityId of userAssignedIdentitiesMap) {
+      if (identityId && typeof identityId === "string") {
+        identities[identityId] = {};
+      }
+    }
+    if (Object.keys(identities).length > 0) {
+      if (!cleaned.identity) {
+        cleaned.identity = {};
+      }
+      cleaned.identity.userAssignedIdentities = identities;
+    }
+  }
+
+  return cleaned;
 }
 
 async function getAzureToken(
