@@ -88,16 +88,12 @@ export default withMermaid(defineConfig({
             link: "/tutorials/install-the-cli",
           },
           {
-            text: "Getting Started",
-            link: "/tutorials/getting-started",
+            text: "Discover Infrastructure",
+            link: "/tutorials/discover",
           },
           {
-            text: "Actions and Resources",
-            link: "/tutorials/actions-and-resources",
-          },
-          {
-            text: "Creating Components",
-            link: "/tutorials/creating-components",
+            text: "Create Infrastructure",
+            link: "/tutorials/creating-infrastructure",
           },
         ],
       },

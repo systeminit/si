@@ -4,9 +4,9 @@ Tutorials are designed to help you understand how to use System Initiative by
 using System Initiative. They focus on helping you gain experience by doing,
 rather than explaining why things work the way they do.
 
-- [Getting Started](./getting-started.md) - learn the basics of building
-  infrastructure and applications with System Initiative.
-- [Actions and Resources](./actions-and-resources.md) - how to use actions and
-  manage your resources.
-- [Creating Components](./creating-components.md) - how to extend System
-  Initiative by creating your own new assets.
+- [Installing the CLI](./install-the-cli.md) - Get set up with the CLI and AI
+  Agent tooling
+- [Discover Your Infrastructure](./discover.md) - Examine what networking
+  infrastructure you already have running
+- [Creating New Infrastructure](./creating-infrastructure.md) - Deploy a brand
+  new docker container
