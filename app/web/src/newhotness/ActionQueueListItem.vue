@@ -79,11 +79,12 @@
       "
     >
       <ActionQueueListItem
-        v-for="subaction in displayChildActions"
+        v-for="subaction in childActions"
         :key="subaction.id"
         :action="subaction"
         :actionsById="actionsById"
         child
+        :actionChildren="props.actionChildren"
         :class="!child && 'pl-md'"
       />
     </template>
@@ -163,6 +164,7 @@ const props = defineProps<{
   action: ActionProposedView;
   actionsById?: Map<string, ActionProposedView>;
   child?: boolean;
+  actionChildren: Map<string, ActionProposedView[]>;
 }>();
 
 const emit = defineEmits<{
@@ -204,59 +206,11 @@ const actionFailed = computed(() => {
   return props.action.state === ActionState.Failed;
 });
 
-// Hydrate action IDs into full action objects
-const hydrateActions = (
-  actionIds: string[] | undefined,
-): ActionProposedView[] => {
-  if (!actionIds || !props.actionsById) return [];
-
-  const actions: ActionProposedView[] = [];
-  for (const id of actionIds) {
-    const action = props.actionsById.get(id);
-    if (action) {
-      actions.push(action);
-    }
-  }
-  return actions;
-};
-
 // Child actions are only used for actions which are Queued or OnHold
+// Only include DIRECT children (actions that list THIS action as a parent)
 const childActions = computed(() => {
-  const allDependencies = hydrateActions(props.action.myDependencies);
-
-  // Filter to only include DIRECT children (actions that list THIS action as a parent)
-  // myDependencies contains ALL transitive descendants, but we only want to render
-  // direct children to avoid duplicates in the recursive rendering
-  // For a chain like: Comp4 → Comp3 → Comp2 → Comp1
-  // The backend sends:
-  // - Comp4.myDependencies: [Comp3, Comp2, Comp1] (all descendants)
-  // - Comp3.myDependencies: [Comp2, Comp1] (all descendants)
-  // - Comp2.myDependencies: [Comp1] (direct child)
-  return allDependencies.filter((child) =>
-    child.dependentOn.includes(props.action.id),
-  );
+  return [...(props.actionChildren.get(props.action.id) || [])];
 });
-const displayChildActions = computed(() =>
-  childActions.value.filter((action) => {
-    if (props.action.state === ActionState.OnHold) {
-      // Always show child actions when the parent is on hold
-      return true;
-    } else if (action.state === ActionState.Queued) {
-      // Otherwise, only show a child if it is queued and does not have any parent on hold
-      // If it does have parent(s) on hold then it should only show there, not in queued
-      const show =
-        (action.holdStatusInfluencedBy?.length ?? 0) === 0 ||
-        !action.holdStatusInfluencedBy.find(
-          (parentId) =>
-            props.actionsById &&
-            props.actionsById.get(parentId) &&
-            props.actionsById.get(parentId)?.state === ActionState.OnHold,
-        );
-      return show;
-    }
-    return false;
-  }),
-);
 
 const actionRunning = computed(() => {
   return (

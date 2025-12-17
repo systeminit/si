@@ -24,7 +24,13 @@ vi.mock("./EmptyState.vue", () => ({
 vi.mock("./ActionQueueListItem.vue", () => ({
   default: {
     name: "ActionQueueListItem",
-    props: ["action", "actionsById", "child", "noInteraction"],
+    props: [
+      "action",
+      "actionsById",
+      "child",
+      "noInteraction",
+      "actionChildren",
+    ],
     template: '<div class="action-item">{{ action.name }}</div>',
   },
 }));
@@ -154,6 +160,8 @@ describe("ActionQueueList - hasDisplayedParent logic preventing duplicates", () 
     expect(actionItems[0]?.props("action").id).toBe("parent-2");
   });
 
+  // NOTE WE ARE DUPING SOME IN  ActionQueueListItem.test.ts
+  // IF WE CHANGE THESE, CHANGE THOSE TOO
   test("child action is hidden when parent is OnHold and child is Queued (different states)", () => {
     // Given: A parent action that is OnHold and a child action that is Queued
     const parentAction: ActionProposedView = {
