@@ -120,6 +120,34 @@ export function addDefaultProps(specs: ExpandedPkgSpec[]): ExpandedPkgSpec[] {
       extraProp.entries.push(deleteProp);
     }
 
+    if (gcpSchema.methods.list) {
+      const listProp = createScalarProp(
+        "listApiPath",
+        "string",
+        extraProp.metadata.propPath,
+        false,
+      );
+      listProp.data.hidden = true;
+      listProp.data.defaultValue = JSON.stringify({
+        path: gcpSchema.methods.list.path,
+        parameterOrder: gcpSchema.methods.list.parameterOrder,
+      });
+      extraProp.entries.push(listProp);
+    }
+
+    // Store the GCP resource type for management functions
+    {
+      const resourceTypeProp = createScalarProp(
+        "GcpResourceType",
+        "string",
+        extraProp.metadata.propPath,
+        false,
+      );
+      resourceTypeProp.data.hidden = true;
+      resourceTypeProp.data.defaultValue = gcpSchema.typeName;
+      extraProp.entries.push(resourceTypeProp);
+    }
+
     // Add Google Cloud Credential to secrets
     {
       const credProp = createScalarProp(
