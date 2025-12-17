@@ -97,7 +97,7 @@ To create a Change Set with the AI Agent:
 
 To create a Change Set:
 
-![Creating a Secret](./change-sets/create-a-change-set.png)
+![Creating a Change Set](./change-sets/create-a-change-set.png)
 
 1. Press the `C` hotkey or click the 'Create Change Set' button from the top
    bar.
