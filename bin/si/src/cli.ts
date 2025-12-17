@@ -19,6 +19,10 @@ import { callWhoami } from "./whoami.ts";
 import { callProjectInit } from "./schema/init.ts";
 import { callRemoteSchemaPull } from "./schema/pull.ts";
 import {
+  callSchemaContribute,
+  type SchemaContributeOptions,
+} from "./schema/contribute.ts";
+import {
   callSchemaFuncGenerate,
   callSchemaScaffoldGenerate,
 } from "./schema/generate.ts";
@@ -333,6 +337,19 @@ function buildSchemaCommand() {
             );
           },
         ),
+    )
+    .command(
+      "contribute",
+      createSubCommand(true)
+        .description(
+          "Contribute a schema to the module index (works on HEAD change set only).",
+        )
+        .arguments("<SCHEMA:string>")
+        .action(async (_, schema) => {
+          await callSchemaContribute({
+            schema: schema as string,
+          } as SchemaContributeOptions);
+        }),
     );
 }
 
