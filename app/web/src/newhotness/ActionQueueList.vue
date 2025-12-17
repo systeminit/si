@@ -50,6 +50,7 @@
           :ref="(el) => setActionQueueListItemRef(action.id, el)"
           :action="action"
           :actionsById="actionsById"
+          :actionChildren="actionChildren"
           :noInteraction="false"
         />
       </div>
@@ -62,6 +63,7 @@ import { PropType, ref, computed, watch, nextTick } from "vue";
 import { NewButton, themeClasses } from "@si/vue-lib/design-system";
 import clsx from "clsx";
 import { ActionState } from "@/api/sdf/dal/action";
+import { DefaultMap } from "@/utils/defaultmap";
 import { ActionProposedView } from "./types";
 import EmptyState from "./EmptyState.vue";
 import ActionQueueListItem from "./ActionQueueListItem.vue";
@@ -78,21 +80,6 @@ const props = defineProps({
   },
 });
 
-// Check if an action has a parent with the state "Queued" or "OnHold"
-const hasDisplayedParent = (child: ActionProposedView) => {
-  for (const parentId of child.dependentOn) {
-    const parent = actionsById.value.get(parentId);
-    if (
-      parent &&
-      (parent.state === ActionState.Queued ||
-        parent.state === ActionState.OnHold)
-    ) {
-      return true;
-    }
-  }
-  return false;
-};
-
 // Create a map of actions by ID for looking up dependencies
 const actionsById = computed(() => {
   const map = new Map<string, ActionProposedView>();
@@ -104,52 +91,108 @@ const actionsById = computed(() => {
 
 const queuedShouldShow = (action: ActionProposedView) => {
   const blockedByParent = (action.holdStatusInfluencedBy?.length ?? 0) > 0;
-  const hasQueuedOrOnHoldParent = !!action.holdStatusInfluencedBy.find(
-    (parentId) =>
-      actionsById.value.get(parentId) &&
-      (actionsById.value.get(parentId)?.state === ActionState.Queued ||
-        actionsById.value.get(parentId)?.state === ActionState.OnHold),
-  );
 
-  if (blockedByParent && hasQueuedOrOnHoldParent) {
+  if (blockedByParent) {
     return false;
   }
   return true;
 };
 
+// Walk through one time to get a structure of parent / child dependency
+const actionChildren = computed(() => {
+  const actions = [...props.actionViewList];
+  // sort independent actions first
+  actions.sort((a, b) => a.dependentOn.length - b.dependentOn.length);
+  let action = actions.shift();
+
+  const parentage = new DefaultMap<string, ActionProposedView[]>(
+    () => [] as ActionProposedView[],
+  );
+  while (action) {
+    if (action.dependentOn.length === 0) parentage.get(action.id);
+
+    for (const id of action.dependentOn) {
+      const deps = parentage.get(id);
+
+      // prevent circular refs
+      const myDeps = parentage.get(action.id);
+      if (myDeps.find((a) => a.id === id)) continue;
+
+      const parentA = actionsById.value.get(id);
+      if (parentA && parentA.state === ActionState.Running) continue;
+
+      deps.push(action);
+    }
+
+    action = actions.shift();
+  }
+  return parentage;
+});
+
+// display every top level parent that is not present as a child
+// from the above data that already removes circular deps
+const uniqueParents = computed(() => {
+  const walkedAlready: Set<string> = new Set();
+  const allIDS = new Set(actionChildren.value.keys());
+
+  [...actionChildren.value.entries()].forEach(([id, children]) => {
+    children.forEach((c) => {
+      // sometimes we see our own ID as a child of ourselves
+      // more defensiveness
+      if (!walkedAlready.has(c.id) && id !== c.id) allIDS.delete(c.id);
+    });
+    walkedAlready.add(id);
+  });
+
+  return props.actionViewList.filter((a) => allIDS.has(a.id));
+});
+
 // Create sorted lists of actions - Failed, Running, Queued
-const actionDisplayLists = computed(() => [
-  {
+const actionDisplayLists = computed(() => {
+  const failed = {
     title: "Failed",
-    actions: props.actionViewList.filter(
-      (action) => action.state === ActionState.Failed,
-    ) as ActionProposedView[],
-  },
-  {
+    actions: [] as ActionProposedView[],
+  };
+  const running = {
     title: "Running",
-    actions: props.actionViewList.filter(
-      (action) =>
-        action.state === ActionState.Running ||
-        action.state === ActionState.Dispatched,
-    ) as ActionProposedView[],
-  },
-  {
+    actions: [] as ActionProposedView[],
+  };
+  const queued = {
     title: "Queued",
-    actions: props.actionViewList.filter(
-      (action) =>
-        action.state === ActionState.Queued &&
-        !hasDisplayedParent(action) &&
-        queuedShouldShow(action),
-    ) as ActionProposedView[],
-  },
-  {
+    actions: [] as ActionProposedView[],
+  };
+  const hold = {
     title: "On Hold",
-    actions: props.actionViewList.filter(
-      (action) =>
-        action.state === ActionState.OnHold && !hasDisplayedParent(action),
-    ) as ActionProposedView[],
-  },
-]);
+    actions: [] as ActionProposedView[],
+  };
+  const actions = [...uniqueParents.value];
+  let action = actions.shift();
+  while (action) {
+    const deps = action.dependentOn;
+    switch (action.state) {
+      case ActionState.Failed:
+        failed.actions.push(action);
+        break;
+      case ActionState.Running:
+      case ActionState.Dispatched:
+        running.actions.push(action);
+        break;
+      case ActionState.Queued:
+        if (queuedShouldShow(action)) queued.actions.push(action);
+        break;
+      case ActionState.OnHold:
+        if (!hold.actions.find((a) => deps.includes(a.id)))
+          hold.actions.push(action);
+        break;
+      default:
+        break;
+    }
+
+    action = actions.shift();
+  }
+
+  return [failed, running, queued, hold];
+});
 
 const retryApi = useApi();
 const retryAll = () => {
