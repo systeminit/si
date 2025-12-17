@@ -839,6 +839,14 @@
       "CHATBOT"
     ]
   },
+  "The deployment strategy for the service. Choose from these valid values:\n  +  ``ROLLING`` - When you create a service which uses the rolling update (``ROLLING``) deployment strategy, the Amazon ECS service scheduler replaces the currently running tasks with new tasks. The number of tasks that Amazon ECS adds or removes from the service during a rolling update is controlled by the service deployment configuration.\n  +  ``BLUE_GREEN`` - A blue/green deployment strategy (``BLUE_GREEN``) is a release methodology that reduces downtime and risk by running two identical production environments called blue and green. With Amazon ECS blue/green deployments, you can validate new service revisions before directing production traffic to them. This approach provides a safer way to deploy changes with the ability to quickly roll back if needed.\n  +  ``LINEAR`` - A *linear* deployment strategy (``LINEAR``) gradually shifts traffic from the current production environment to a new environment in equal percentages over time. With Amazon ECS linear deployments, you can control the pace of traffic shifting and validate new service revisions with increasing amounts of production traffic.\n  +  ``CANARY`` - A *canary* deployment strategy (``CANARY``) shifts a small percentage of traffic to the new service revision first, then shifts the remaining traffic all at once after a specified time period. This allows you to test the new version with a subset of users before full deployment.": {
+    "enum": [
+      "ROLLING",
+      "BLUE_GREEN",
+      "LINEAR",
+      "CANARY"
+    ]
+  },
   "The authorization type for the route. For WebSocket APIs, valid values are ``NONE`` for open access, ``AWS_IAM`` for using AWS IAM permissions, and ``CUSTOM`` for using a Lambda authorizer. For HTTP APIs, valid values are ``NONE`` for open access, ``JWT`` for using JSON Web Tokens, ``AWS_IAM`` for using AWS IAM permissions, and ``CUSTOM`` for using a Lambda authorizer.": {
     "enum": [
       "NONE",
@@ -3826,6 +3834,9 @@
     "enum": null
   },
   "A description of the stack set. You can use the description to identify the stack set's purpose or other important information.": {
+    "enum": null
+  },
+  "A description of the task.": {
     "enum": null
   },
   "A description of the version. Use the description to help identify the version in lists.": {
@@ -9210,6 +9221,9 @@
   "The Amazon Resource Name (ARN) of the IAM role.": {
     "enum": null
   },
+  "The Amazon Resource Name (ARN) of the IAM service role for AWS Systems Manager to assume when running a maintenance window task.": {
+    "enum": null
+  },
   "The Amazon Resource Name (ARN) of the IAM service role that AWS Proton uses when provisioning directly defined components in the associated environment account. It determines the scope of infrastructure that a component can provision in the account.": {
     "enum": null
   },
@@ -10471,6 +10485,9 @@
     "enum": null
   },
   "The ID of the maintenance window to register the target with.": {
+    "enum": null
+  },
+  "The ID of the maintenance window where the task is registered.": {
     "enum": null
   },
   "The ID of the management account that accepts or rejects the environment account connection. You create an manage the AWS Proton environment in this account. If the management account accepts the environment account connection, AWS Proton can use the associated IAM role to provision environment infrastructure resources in the associated environment account.": {
@@ -12723,6 +12740,9 @@
   "The event integration description.": {
     "enum": null
   },
+  "The exact string that identifies the third-party partner that holds the external secret. For more information, see [Managed external secret partners](https://docs.aws.amazon.com/secretsmanager/latest/userguide/mes-partners.html).": {
+    "enum": null
+  },
   "The execution role ARN assumed by Hooks to invoke Lambda.": {
     "enum": null
   },
@@ -13647,6 +13667,9 @@
   "The maximum number of contacts that can be in the queue before it is considered full.": {
     "enum": null
   },
+  "The maximum number of errors allowed before this task stops being scheduled.": {
+    "enum": null
+  },
   "The maximum number of event pollers this event source can scale up to.": {
     "enum": null
   },
@@ -13708,6 +13731,9 @@
     "enum": null
   },
   "The maximum number of strongly consistent reads consumed per second before DynamoDB returns a ``ThrottlingException``. For more information, see [Specifying Read and Write Requirements](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/ProvisionedThroughput.html) in the *Amazon DynamoDB Developer Guide*.\n If read/write capacity mode is ``PAY_PER_REQUEST`` the value is set to 0.": {
+    "enum": null
+  },
+  "The maximum number of targets this task can be run for, in parallel.": {
     "enum": null
   },
   "The maximum number of things that will be notified of a pending job, per minute. This parameter allows you to create a staged rollout.": {
@@ -14266,6 +14292,9 @@
     "enum": null
   },
   "The name of the CloudWatch log group to send logs to.\n  The CloudWatch log group must already be created.": {
+    "enum": null
+  },
+  "The name of the CloudWatch log group where you want to send command output.": {
     "enum": null
   },
   "The name of the Composite Alarm": {
@@ -15750,6 +15779,9 @@
   "The network source's gateway network name.": {
     "enum": null
   },
+  "The network type of the Connector.": {
+    "enum": null
+  },
   "The network type of the DB proxy endpoint. The network type determines the IP version that the proxy endpoint supports.": {
     "enum": null
   },
@@ -16497,6 +16529,9 @@
   "The priority of the sampling rule.": {
     "enum": null
   },
+  "The priority of the task in the maintenance window. The lower the number, the higher the priority. Tasks that have the same priority are scheduled in parallel.": {
+    "enum": null
+  },
   "The private Autonomous System Number (ASN) for the Amazon side of a BGP session.": {
     "enum": null
   },
@@ -16786,6 +16821,9 @@
     "enum": null
   },
   "The resource policy document, which can be up to 5kb in size.": {
+    "enum": null
+  },
+  "The resource that the task uses during execution.": {
     "enum": null
   },
   "The resource that you associated the  profile with.": {
@@ -17130,6 +17168,9 @@
   "The specific repository where the product's artifact-to-be-synced resides, formatted as \"Account/Repo.\"": {
     "enum": null
   },
+  "The specification for whether tasks should continue to run after the cutoff time specified in the maintenance windows is reached.": {
+    "enum": null
+  },
   "The specified access age in days for which to generate findings for unused access. For example, if you specify 90 days, the analyzer will generate findings for IAM entities within the accounts of the selected organization for any access that hasn't been used in 90 or more days since the analyzer's last scan. You can choose a value between 1 and 365 days.": {
     "enum": null
   },
@@ -17461,6 +17502,9 @@
     "enum": null
   },
   "The targeted thumbnail-generation interval in seconds. This is configurable only if recordingMode is INTERVAL. Default: 60.": {
+    "enum": null
+  },
+  "The task name.": {
     "enum": null
   },
   "The team ID in Slack, which uniquely identifies a workspace.": {
@@ -17839,6 +17883,9 @@
     "enum": null
   },
   "The type of target that you must specify when registering targets with this target group. You can't specify targets for a target group using more than one target type.": {
+    "enum": null
+  },
+  "The type of task.": {
     "enum": null
   },
   "The type of the Integration.": {
