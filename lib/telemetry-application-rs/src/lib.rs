@@ -191,7 +191,49 @@ fn custom_histogram_configs() -> Vec<HistogramBucketConfig> {
                 104_857_600.0, // 100 MiB
             ],
         ),
-        // Add future custom histograms here
+        HistogramBucketConfig::new(
+            "layer_cache_request_latency_ms",
+            &[
+                1.0,     // 1ms
+                5.0,     // 5ms
+                10.0,    // 10ms
+                25.0,    // 25ms
+                50.0,    // 50ms
+                100.0,   // 100ms
+                150.0,   // 150ms
+                200.0,   // 200ms
+                300.0,   // 300ms
+                500.0,   // 500ms
+                750.0,   // 750ms
+                1000.0,  // 1s
+                2500.0,  // 2.5s
+                5000.0,  // 5s
+                10000.0, // 10s
+            ],
+        ),
+        HistogramBucketConfig::new(
+            "layer_cache_persistence_latency_seconds",
+            &[
+                0.01,  // 10ms
+                0.025, // 25ms
+                0.05,  // 50ms
+                0.1,   // 100ms
+                0.25,  // 250ms
+                0.5,   // 500ms
+                1.0,   // 1s
+                2.0,   // 2s
+                3.0,   // 3s
+                4.0,   // 4s
+                4.5,   // 4.5s
+                5.0,   // 5s
+                6.0,   // 6s
+                8.0,   // 8s
+                10.0,  // 10s
+                15.0,  // 15s
+                30.0,  // 30s
+                60.0,  // 60s
+            ],
+        ),
     ]
 }
 
