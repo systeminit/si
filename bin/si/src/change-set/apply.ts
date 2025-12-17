@@ -221,6 +221,7 @@ export async function callChangeSetApply(
     // Create a map to track action states and their task references
     const actionStates = new Map<string, string>();
     const actionTaskRefs = new Map<string, { title: string }>();
+    let pollingComplete = false; // Signal when polling has finished
 
     // Initialize action states
     for (const action of actions) {
@@ -230,8 +231,6 @@ export async function callChangeSetApply(
     // Background polling promise that updates action states periodically
     const pollingPromise = (async () => {
       while (true) {
-        await sleep(1000);
-
         try {
           // Fetch all action states in a single API call
           const actionsResponse = await actionsApi.getActions({
@@ -239,49 +238,65 @@ export async function callChangeSetApply(
             changeSetId: headChangeSetId,
           });
 
-
           let runningActionFound = false;
-          // Update states for all actions
-          for (const action of actions) {
-            const currentAction = actionsResponse.data.actions.find(
-              (a) => a.id === action.id
-            );
+          let hasFailedActions = false;
+          let hasQueuedActions = false;
 
-            if (!currentAction || currentAction.state === "Completed") {
-              // If ction not found on HEAD, we assume it's completed and was removed
-              actionStates.set(action.id, "Completed");
-              const taskRef = actionTaskRefs.get(action.id);
-              if (taskRef) {
-                taskRef.title = formatActionTitle(action, "Success ✓");
-              }
+          // Update states for all actions we're tracking
+          for (const action of actions) {
+            const currentAction = actionsResponse.data.actions.find((a) => a.id === action.id);
+            const taskRef = actionTaskRefs.get(action.id);
+
+            // Handle action not found on HEAD (completed or blocked)
+            if (!currentAction) {
+              const wasQueued = actionStates.get(action.id) === "Queued";
+              const newState = wasQueued ? "OnHold" : "Completed";
+              const displayMsg = wasQueued ? "Blocked (dependency failed)" : "Success ✓";
+
+              actionStates.set(action.id, newState);
+              if (taskRef) taskRef.title = formatActionTitle(action, displayMsg);
               continue;
             }
 
-            const currentState = currentAction.state;
+            // Handle completed action
+            if (currentAction.state === "Completed") {
+              actionStates.set(action.id, "Completed");
+              if (taskRef) taskRef.title = formatActionTitle(action, "Success ✓");
+              continue;
+            }
 
+            // Update current state and track flags
+            const currentState = currentAction.state;
             actionStates.set(action.id, currentState);
 
             let stateMsg = currentState;
             if (currentState === "Failed") {
               stateMsg = "Failed ❌";
+              hasFailedActions = true;
             } else if (currentState === "OnHold") {
               stateMsg = "On Hold ⏸️";
-            } else {
+            } else if (currentState === "Queued") {
+              hasQueuedActions = true;
+            } else if (currentState === "Running" || currentState === "Dispatched") {
               runningActionFound = true;
             }
 
-            const taskRef = actionTaskRefs.get(action.id);
-
-            if (taskRef) {
-              taskRef.title = formatActionTitle(action, stateMsg);
-            }
+            if (taskRef) taskRef.title = formatActionTitle(action, stateMsg);
           }
 
-          if (!runningActionFound) {
+          // Exit polling if:
+          // 1. No actions are actively running, AND
+          // 2. Either there are no queued actions OR there are failed actions (blocked dependencies)
+          if (!runningActionFound && (!hasQueuedActions || hasFailedActions)) {
+            pollingComplete = true; // Signal to Listr tasks that polling is done
             return;
           }
+
+          // Sleep at end of loop instead of beginning
+          await sleep(1000);
         } catch (error) {
           ctx.logger.warn(`Error polling action states: ${error}`);
+          await sleep(1000); // Also sleep on error before retrying
         }
       }
     })();
@@ -303,6 +318,18 @@ export async function callChangeSetApply(
                 let completed = false;
                 while (!completed) {
                   await sleep(500); // Check local state more frequently than we poll API
+
+                  // If polling has completed, exit task
+                  if (pollingComplete) {
+                    const finalState = actionStates.get(action.id);
+                    // If action is still queued when polling stops, it was blocked
+                    if (finalState === "Queued") {
+                      // Throw an error to mark this task as failed in Listr
+                      throw new Error(formatActionTitle(action, "Blocked (dependency failed)"));
+                    }
+                    completed = true;
+                    break;
+                  }
 
                   const currentState = actionStates.get(action.id);
 
