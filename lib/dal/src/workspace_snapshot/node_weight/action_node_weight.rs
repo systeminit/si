@@ -23,7 +23,10 @@ use crate::{
     EdgeWeightKindDiscriminants,
     NodeWeightDiscriminants,
     WorkspaceSnapshotGraphVCurrent,
-    action::ActionState,
+    action::{
+        ActionState,
+        prototype::ActionKind,
+    },
     workspace_snapshot::{
         NodeId,
         NodeInformation,
@@ -239,6 +242,11 @@ fn correct_transforms_not_yet_exists(
     let mut all_new_nodes = HashSet::new();
     let mut indices_for_new_node_updates_for_ourself = Vec::new();
 
+    let mut components = HashSet::new();
+    let mut action_prototype_id = None;
+    let mut action_prototype_node_weight = None;
+    let mut actions_that_will_be_removed: HashSet<Ulid> = HashSet::new();
+
     for (idx, update) in updates.iter().enumerate() {
         match update {
             Update::NewEdge {
@@ -253,6 +261,12 @@ fn correct_transforms_not_yet_exists(
                     | NodeWeightDiscriminants::Component => {
                         if graph.get_node_index_by_id_opt(destination.id).is_none() {
                             destinations_that_do_not_exist.insert(destination.id.into());
+                        } else if destination.node_weight_kind
+                            == NodeWeightDiscriminants::ActionPrototype
+                        {
+                            action_prototype_id = Some(destination.id.into());
+                        } else {
+                            components.insert(destination.id);
                         }
                     }
                     // If there's a use to some other thing, ignore it.
@@ -264,17 +278,33 @@ fn correct_transforms_not_yet_exists(
             Update::NewNode { node_weight } => {
                 all_new_nodes.insert(node_weight.id());
 
-                // This should happen one or zero times.
                 if node_weight.id() == id {
+                    // This should happen one or zero times.
                     indices_for_new_node_updates_for_ourself.push(idx);
+                } else if Some(node_weight.id()) == action_prototype_id {
+                    action_prototype_node_weight = Some(node_weight.clone());
+                }
+            }
+            Update::RemoveEdge {
+                source,
+                destination,
+                edge_kind,
+            } => {
+                if (source.node_weight_kind == NodeWeightDiscriminants::Action
+                    && destination.id == id.into()
+                    && edge_kind == &EdgeWeightKindDiscriminants::Use)
+                    || (source.node_weight_kind == NodeWeightDiscriminants::Category
+                        && destination.node_weight_kind == NodeWeightDiscriminants::Action)
+                {
+                    actions_that_will_be_removed.insert(destination.id.into());
                 }
             }
             _ => {}
         }
     }
 
-    // If the destinations that no longer exist will not be included, then we need to remove the
-    // update for ourself.
+    // If the destinations that no longer exist will not be included, then we
+    // need to remove the update for ourself.
     if !destinations_that_do_not_exist.is_subset(&all_new_nodes) {
         if indices_for_new_node_updates_for_ourself.len() > 1 {
             warn!(
@@ -284,10 +314,95 @@ fn correct_transforms_not_yet_exists(
             );
         }
 
+        let mut removed = false;
+
         // Reverse the indices vec to remove from the back first.
         indices_for_new_node_updates_for_ourself.reverse();
-        for idx in indices_for_new_node_updates_for_ourself {
-            updates.remove(idx);
+        for idx in &indices_for_new_node_updates_for_ourself {
+            updates.remove(*idx);
+            removed = true;
+        }
+
+        // We removed this update, so no further corrections are necessary
+        if removed {
+            return Ok(updates);
+        }
+    }
+
+    // If we got this far, we did not remove this action because it had a valid
+    // prototype or component. But we need to confirm that the action is not a
+    // duplicate of another of the "exclusive" action prototype kinds.
+
+    let Some(action_protoype_id) = action_prototype_id else {
+        return Ok(updates);
+    };
+    let Some(action_prototype_node_weight) = action_prototype_node_weight
+        .or_else(|| graph.get_node_weight_by_id_opt(action_protoype_id).cloned())
+    else {
+        return Ok(updates);
+    };
+
+    // Manual actions are not exclusive
+    if let NodeWeight::ActionPrototype(inner) = &action_prototype_node_weight {
+        if inner.kind() == ActionKind::Manual {
+            return Ok(updates);
+        }
+    }
+
+    for component_id in components {
+        let Some(component_node_index) = graph.get_node_index_by_id_opt(component_id) else {
+            // if the component is not on the graph yet, we have nothing to
+            // correct
+            continue;
+        };
+
+        // Find all incoming use edges from actions to this component id. Then
+        // find the action prototypes. If any of the action prototypes have the
+        // same kind as the kind in `action_prototype_node_weight`, then remove
+        // this action update
+        for edge_ref in graph.edges_directed(component_node_index, Incoming) {
+            // using edges_directed so we can keep this a iterator over refs
+            // instead of cloning
+            if EdgeWeightKindDiscriminants::Use != edge_ref.weight().kind().into() {
+                continue;
+            }
+
+            let Some(NodeWeight::Action(action)) = graph.get_node_weight_opt(edge_ref.source())
+            else {
+                continue;
+            };
+
+            // If this action is about to be removed in this update set, ignore
+            // it
+            if actions_that_will_be_removed.contains(&action.id()) {
+                continue;
+            }
+
+            for proto_edge_ref in graph.edges_directed(edge_ref.source(), Outgoing) {
+                if EdgeWeightKindDiscriminants::Use != proto_edge_ref.weight().kind().into() {
+                    continue;
+                }
+
+                let Some(NodeWeight::ActionPrototype(existing_prototype)) =
+                    graph.get_node_weight_opt(proto_edge_ref.target())
+                else {
+                    continue;
+                };
+
+                let NodeWeight::ActionPrototype(our_prototype) = &action_prototype_node_weight
+                else {
+                    continue;
+                };
+
+                if existing_prototype.kind() == our_prototype.kind() {
+                    indices_for_new_node_updates_for_ourself.reverse();
+                    for idx in indices_for_new_node_updates_for_ourself {
+                        updates.remove(idx);
+                    }
+
+                    return Ok(updates);
+                }
+            }
         }
     }
 

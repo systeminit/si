@@ -408,7 +408,7 @@ async fn upgrade_component_attaches_overlay_func(ctx: &mut DalContext) -> Result
     let swifty = component::create(ctx, "swifty", "swifty").await?;
     let actions = dal_materialized_views::action::action_view_list::assemble(ctx.clone()).await?;
     // ensure there's one create action
-    assert!(actions.actions.len() == 1);
+    assert_eq!(1, actions.actions.len());
     let initial_create_action = actions.actions.first().expect("has exactly one action");
 
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
@@ -472,7 +472,11 @@ async fn upgrade_component_attaches_overlay_func(ctx: &mut DalContext) -> Result
     // see the new create action is now enqueued
     let actions_post_upgrade =
         dal_materialized_views::action::action_view_list::assemble(ctx.clone()).await?;
-    assert!(actions_post_upgrade.actions.len() == 1);
+    assert_eq!(
+        1,
+        actions_post_upgrade.actions.len(),
+        "should have an action post upgrade"
+    );
     assert!(
         actions_post_upgrade
             .actions
