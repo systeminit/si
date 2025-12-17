@@ -44,25 +44,32 @@ dependent_targets = bxl_main(
             default = False,
             doc = """Filter targets to testable unit tests.""",
         ),
+        # TODO(fnichol): remove `release_docker` after shipping all related changes (the new name is
+        # `publish_container` but we need both supported until `si-ci` ships a change)
         "release_docker": cli_args.bool(
             default = False,
             doc = """Filter targets to releasable docker images.""",
         ),
+        # TODO(fnichol): remove when `release_docker` is removed
         "promote_docker": cli_args.bool(
             default = False,
             doc = """Filter targets to runnable docker promotions.""",
         ),
         "publish_binary": cli_args.bool(
             default = False,
-            doc = """Filter targets to binary publish targets.""",
+            doc = """Filter targets to 'binary' variant publish targets.""",
+        ),
+        "publish_container": cli_args.bool(
+            default = False,
+            doc = """Filter targets to 'container' variant publish targets.""",
         ),
         "publish_omnibus": cli_args.bool(
             default = False,
-            doc = """Filter targets to omnibus publish targets.""",
+            doc = """Filter targets to 'omnibus' variant publish targets.""",
         ),
         "publish_rootfs": cli_args.bool(
             default = False,
-            doc = """Filter targets to rootfs publish targets.""",
+            doc = """Filter targets to 'rootfs' variant publish targets.""",
         ),
         "global_file": cli_args.list(
             cli_args.string(),
@@ -173,18 +180,23 @@ def _filter_targets(ctx: bxl.Context, targets: bxl.UnconfiguredTargetSet) -> bxl
     if ctx.cli_args.test_unit:
         has_filtered = True
         filtered = filtered + ctx.uquery().attrregexfilter("name", "^test-unit(-.+)?$", targets)
-    if ctx.cli_args.release_docker:
+
+    # TODO(fnichol): remove `release_docker` after shipping all related changes (the new name is
+    # `publish_container` but we need both supported until `si-ci` ships a change)
+    if ctx.cli_args.publish_container or ctx.cli_args.release_docker:
         has_filtered = True
-        filtered = filtered + ctx.uquery().kind("docker_image_release", targets)
+        filtered = filtered + _filtered_publish_artifact_targets(ctx, "^container_image$", targets)
     if ctx.cli_args.publish_binary:
         has_filtered = True
-        filtered = filtered + ctx.uquery().attrregexfilter("name", "^publish-binary(-.+)?$", targets)
+        filtered = filtered + _filtered_publish_artifact_targets(ctx, "_binary_artifact$", targets)
     if ctx.cli_args.publish_omnibus:
         has_filtered = True
-        filtered = filtered + ctx.uquery().attrregexfilter("name", "^publish-omnibus(-.+)?$", targets)
+        filtered = filtered + _filtered_publish_artifact_targets(ctx, "^nix_omnibus_pkg$", targets)
     if ctx.cli_args.publish_rootfs:
         has_filtered = True
-        filtered = filtered + ctx.uquery().attrregexfilter("name", "^publish-rootfs(-.+)?$", targets)
+        filtered = filtered + _filtered_publish_artifact_targets(ctx, "^rootfs_tarball$", targets)
+
+    # TODO(fnichol): remove when `release_docker` is removed
     if ctx.cli_args.promote_docker:
         has_filtered = True
         filtered = filtered + _filtered_promote_docker_targets(ctx, targets)
@@ -195,6 +207,35 @@ def _filter_targets(ctx: bxl.Context, targets: bxl.UnconfiguredTargetSet) -> bxl
 
     return filtered
 
+# Returns a filtered list of `artifact_publish` targets for a related artifact kind
+#
+# # Notes
+#
+# There are 3 nested queries that provide the set of filtered targets we're after, each explained
+# inline. The goal is to filter down the targets from the full `targets` set to those that are
+# `artifact_publish` kinds that have an artifact input of a certain kind (or kinds). For example,
+# all artifact publish targets for `docker_container` artifacts.
+def _filtered_publish_artifact_targets(
+        ctx: bxl.Context,
+        artifact_kind_regex: str,
+        targets: bxl.UnconfiguredTargetSet) -> bxl.UnconfiguredTargetSet:
+    # 1. Finds all targets in the set produced by query (2) that are of the kind `artifact_publish`
+    return ctx.uquery().kind(
+        "^artifact_publish$",
+        # 2. Finds all targets in the `targets` set that directly depend on the targets of a kind in
+        # query (3)
+        ctx.uquery().rdeps(
+            targets,
+            # 3. Find all targets in the `targets` set which are of a kind (or kinds)--the first
+            # argument in kind is a regex so should be anchored if possible to the start or end of a
+            # kind string
+            ctx.uquery().kind(artifact_kind_regex, targets),
+            1,
+        ),
+    )
+
+# TODO(fnichol): remove when `release_docker` is removed
+#
 # Returns a filtered list of `promote-docker` targets
 #
 # Every relevant `:release` target should become a `:promote` target as the promotions are triggered
@@ -211,6 +252,8 @@ def _filtered_promote_docker_targets(ctx: bxl.Context, targets: bxl.Unconfigured
 
     return promote_targets
 
+# TODO(fnichol): remove when `release_docker` is removed
+#
 # Returns a filtered list of `omnibus` targets
 #
 # Every relevant `:release` target should become a `:promote` target as the promotions are triggered
