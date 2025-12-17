@@ -169,21 +169,6 @@ const rightClickMenuItems = computed(() => {
     });
   }
 
-  // If we are dealing with both ghosted and regular components (which should not be possible),
-  // then return helper text as a failsafe.
-  // TODO(Wendy) - fix how this displays to look nicer!
-  if (atLeastOneGhostedComponent.value && atLeastOneNormalComponent.value) {
-    items.push({
-      label: "No options available for both",
-      disabled: true,
-    });
-    items.push({
-      label: "ghosted and regular components",
-      disabled: true,
-    });
-    return items;
-  }
-
   const eraseMenuItem = {
     labelAsTooltip: false,
     label: "Erase",
@@ -194,8 +179,8 @@ const rightClickMenuItems = computed(() => {
     onSelect: () => componentsStartErase(components.value),
   };
 
-  // If everything is ghosted, only add the ability to restore/erase and return.
-  if (atLeastOneGhostedComponent.value) {
+  // If all components are ghosted, only add the ability to restore/erase and return.
+  if (atLeastOneGhostedComponent.value && !atLeastOneNormalComponent.value) {
     items.push({
       labelAsTooltip: false,
       label: "Restore",
@@ -203,6 +188,13 @@ const rightClickMenuItems = computed(() => {
       icon: "trash-restore",
       onSelect: () => componentsRestore(componentIds.value),
     });
+    items.push(eraseMenuItem);
+    return items;
+  }
+
+  // If we have a mix of ghosted and normal components, limit available actions
+  if (atLeastOneGhostedComponent.value && atLeastOneNormalComponent.value) {
+    // Only erase is available for mixed selections
     items.push(eraseMenuItem);
     return items;
   }
