@@ -51,6 +51,8 @@ pub enum ModulesAPIError {
     CachedModule(#[from] CachedModuleError),
     #[error("changeset error: {0:?}")]
     Changeset(#[from] ChangeSetError),
+    #[error("component error: {0}")]
+    Component(#[from] dal::ComponentError),
     #[error("module not contributed: {0:?}")]
     ContributionFailure(frontend_types::ModuleContributeRequest),
     #[error("func error: {0}")]
@@ -81,6 +83,8 @@ pub enum ModulesAPIError {
     Transactions(#[from] dal::TransactionsError),
     #[error("url parse error: {0}")]
     UrlParse(#[from] url::ParseError),
+    #[error("variant authoring error: {0}")]
+    VariantAuthoring(#[from] dal::schema::variant::authoring::VariantAuthoringError),
     #[error("WsEvent error: {0}")]
     WsEvent(#[from] WsEventError),
 }

@@ -1226,7 +1226,7 @@ pub async fn import_only_new_funcs(
         } else {
             // Find or create the func for the provided spec.
             let func = if let Some(func) =
-                Func::get_by_id_opt(ctx, FuncId::from_str(func_spec.unique_id())?).await?
+                Func::find_by_id_or_name(ctx, func_spec.unique_id(), func_spec.name()).await?
             {
                 func
             } else {
@@ -1251,7 +1251,7 @@ pub async fn import_only_new_funcs(
 }
 
 #[allow(clippy::too_many_arguments)]
-pub(crate) async fn import_schema_variant(
+pub async fn import_schema_variant(
     ctx: &DalContext,
     schema: &Schema,
     schema_spec: SiPkgSchema<'_>,

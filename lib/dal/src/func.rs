@@ -1,5 +1,6 @@
 use std::{
     collections::HashMap,
+    str::FromStr,
     string::FromUtf8Error,
     sync::Arc,
 };
@@ -533,6 +534,27 @@ impl Func {
             }
         }
         Ok(None)
+    }
+
+    /// Attempt to find a [`Func`] by ID first, then falling back to name lookup.
+    pub async fn find_by_id_or_name(
+        ctx: &DalContext,
+        unique_id: impl AsRef<str>,
+        name: impl AsRef<str>,
+    ) -> FuncResult<Option<Func>> {
+        let unique_id_str = unique_id.as_ref();
+
+        if let Ok(func_id) = FuncId::from_str(unique_id_str) {
+            if let Some(func) = Self::get_by_id_opt(ctx, func_id).await? {
+                return Ok(Some(func));
+            }
+        }
+
+        if let Some(func_id) = Self::find_id_by_name(ctx, name).await? {
+            Ok(Some(Self::get_by_id(ctx, func_id).await?))
+        } else {
+            Ok(None)
+        }
     }
 
     pub fn code_plaintext(&self) -> FuncResult<Option<String>> {

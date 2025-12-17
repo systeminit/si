@@ -6,8 +6,10 @@ use chrono::{
 };
 pub use import::{
     ImportOptions,
+    import_only_new_funcs,
     import_pkg,
     import_pkg_from_pkg,
+    import_schema_variant,
 };
 use serde::{
     Deserialize,
