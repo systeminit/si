@@ -6,6 +6,7 @@ import type { ChangeSetsApi, SecretsApi, SecretV1 } from "@systeminit/api-client
 import type { Context } from "../context.ts";
 import type { SecretDefinitionV1, SecretFieldValues } from "./types.ts";
 import type { GlobalOptions } from "../cli.ts";
+import { resolveChangeSet } from "../change-set/utils.ts";
 
 /**
  * JWT payload structure for System Initiative API tokens.
@@ -44,13 +45,14 @@ export async function getOrCreateChangeSet(
   ctx: Context,
   changeSetsApi: ChangeSetsApi,
   workspaceId: string,
-  changeSetId: string | undefined,
+  changeSetIdOrName: string | undefined,
   operationName: string,
 ): Promise<ChangeSetResult> {
-  // If change set specified, use it
-  if (changeSetId) {
-    // TODO: Validate that the change set exists
-    // For now, just return it
+  // If change set specified, resolve name to ID if needed
+  if (changeSetIdOrName) {
+    ctx.logger.debug(`Resolving change set: ${changeSetIdOrName}`);
+    const changeSetId = await resolveChangeSet(workspaceId, changeSetIdOrName);
+    ctx.logger.debug(`Resolved to change set ID: ${changeSetId}`);
     return {
       changeSetId,
       wasCreated: false,
