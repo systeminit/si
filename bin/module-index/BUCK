@@ -34,6 +34,8 @@ container_image(
         "SI_RBE_TOKEN": "",
     },
     build_deps = ["//bin/module-index:module-index"],
-    # TODO(fnichol): revisit post 2025-02-01
-    platform_targets = ["linux-aarch64"]
+    # Only currently need x86_64 for ECS deployments
+    platform_targets = [
+        "linux-x86_64",
+    ],
 )

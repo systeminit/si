@@ -28,5 +28,8 @@ container_image(
         "SI_RBE_TOKEN": "",
     },
     build_deps = ["//bin/innit:innit"],
-    platform_targets = ["linux-aarch64"]
+    # Only currently need x86_64
+    platform_targets = [
+        "linux-x86_64",
+    ],
 )

@@ -48,27 +48,6 @@ filegroup(
     ]),
 )
 
-export_file(
-    name = "docker-entrypoint.sh",
-)
-
-shfmt_check(
-    name = "check-format-shell",
-    srcs = [":docker-entrypoint.sh"],
-)
-
-shellcheck(
-    name = "check-lint-shell",
-    srcs = [":docker-entrypoint.sh"],
-)
-
-filegroup(
-    name = "nginx_src",
-    srcs = glob([
-        "nginx.conf",
-    ])
-)
-
 prod_deps_srcs = {
     "lib/ts-lib": "//lib/ts-lib:src",
     "lib/vue-lib": "//lib/vue-lib:src",
@@ -102,28 +81,16 @@ typescript_check(
     dev_deps_srcs = dev_deps_srcs,
 )
 
-container_image(
-    name = "web",
-    flake_lock = "//:flake.lock",
-    build_deps = [
-        "//app/web:web",
-        "//app/web:docker-entrypoint.sh",
-        "//app/web:nginx_src",
-    ]
-)
-
+# At the moment, eslint is checking format in addition to checking lints, oi...
 test_suite(
     name = "check-format",
-    tests = [
-        ":check-format-shell",
-    ],
+    tests = [],
 )
 
 test_suite(
     name = "check-lint",
     tests = [
         ":check-lint-typescript",
-        ":check-lint-shell",
     ],
 )
 
