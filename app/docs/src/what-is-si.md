@@ -115,4 +115,4 @@ Ask the Agent to review your existing infrastructure for security or architectur
 
 - [Understand the System Initiative Architecture](./explanation/architecture/index.md).
 - [Leverage your Infrastructure as Code knowledge to learn System Initiative](./explanation/iac-comparison.md).
-- [Follow the Getting Started Tutorial](./tutorials/getting-started.md).
+- [Follow the Getting Started Tutorials](./tutorials/index.md).
