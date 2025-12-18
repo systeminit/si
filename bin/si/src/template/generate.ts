@@ -1,6 +1,7 @@
 import type { Context } from "../context.ts";
 import { dirname, join } from "@std/path";
 import { ensureDir } from "@std/fs";
+import { loadTemplateShell } from "../template-loader.ts";
 
 export interface GenerateTemplateOptions {
   name: string;
@@ -20,35 +21,15 @@ export async function callGenerateTemplate(
     path: templatePath,
   });
 
-  // Try multiple paths to find the template (handles running from source vs compiled binary)
-  const possiblePaths = [
-    // When running from source
-    new URL("../../data/templates/template.ts.tmpl", import.meta.url)
-      .pathname,
-    // Relative to current working directory
-    join(Deno.cwd(), "data/templates/template.ts.tmpl"),
-    // Relative to binary location
-    join(dirname(Deno.execPath()), "data/templates/template.ts.tmpl"),
-  ];
-
-  let templateContent = "";
-
-  for (const path of possiblePaths) {
-    try {
-      templateContent = await Deno.readTextFile(path);
-      break;
-    } catch {
-      // Try next path
-    }
-  }
-
-  if (!templateContent) {
-    ctx.logger.error("Could not find template shell file");
-    throw new Error(
-      `Failed to find template shell file. Tried paths: ${
-        possiblePaths.join(", ")
-      }`,
-    );
+  // Load the template shell using the centralized template loader
+  let templateContent: string;
+  try {
+    templateContent = await loadTemplateShell();
+  } catch (error) {
+    ctx.logger.error("Could not find template shell file", {
+      error: error instanceof Error ? error.message : String(error),
+    });
+    throw error;
   }
 
   await ensureDir(dirname(templatePath));
