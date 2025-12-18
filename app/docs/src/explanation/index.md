@@ -1,44 +1,52 @@
 # Explanation
 
-- [Enable slack webhook](./enable-slack-webhook) - Enable slack webhook for a
-  workspace
-- [Working on System Initative](./working-on-si.md) - How to work on System
-  Initiative with us
-- [Creating Workspace API Tokens](./generate-a-workspace-api-token.md) - how to
-  create a token to work with the public System Initiative API.
+These articles help you understand the "why" behind System Initiative. They
+explore concepts, design decisions, and architecture to give you a deeper grasp
+of how things work.
 
 ## Cloud Providers
 
-Learn how to connect to and authenticate with cloud providers:
+Learn how System Initiative connects to cloud providers and handles
+authentication:
 
-- [Cloud Providers Overview](./cloud-providers/index.md) - overview of supported
-  cloud providers and how System Initiative integrates with them
-- [AWS (Amazon Web Services)](./cloud-providers/aws.md) - connect to and
-  authenticate with AWS, including static credentials, SSO, and assume role
-- [Azure (Microsoft Azure)](./cloud-providers/azure.md) - connect to and
-  authenticate with Azure using Service Principal
-- [DigitalOcean](./cloud-providers/digital-ocean.md) - connect to and
-  authenticate with DigitalOcean using API tokens
-- [Hetzner Cloud](./cloud-providers/hetzner.md) - connect to and authenticate
-  with Hetzner Cloud using API tokens
+- [Cloud Providers Overview](./cloud-providers/index.md) - An overview of
+  supported cloud providers and how System Initiative works with them
+- [AWS (Amazon Web Services)](./cloud-providers/aws.md) - Connect using static
+  credentials, SSO, or assume role
+- [Azure (Microsoft Azure)](./cloud-providers/azure.md) - Authenticate with
+  Azure using Service Principal
+- [DigitalOcean](./cloud-providers/digital-ocean.md) - Connect using API tokens
+- [Hetzner Cloud](./cloud-providers/hetzner.md) - Authenticate with API tokens
+
+## Getting Started
+
+- [Working on System Initiative](./working-on-si.md) - Learn how to contribute
+  to the project and collaborate with the team
+- [Enable Slack Webhook](./enable-slack-webhook.md) - Set up Slack notifications
+  for your workspace
+- [Create Workspace API Tokens](./generate-a-workspace-api-token.md) - Generate
+  and manage tokens for API authentication
+- [IaC vs System Initiative](./iac-comparison.md) - How System Initiative
+  compares to traditional Infrastructure as Code tools
 
 ## Architecture
 
-Learn about the architecture that powers System Initiative:
+Explore the design decisions and architectural principles behind System
+Initiative:
 
-- [System Initiative Architecture](./architecture/index.md) - overview of the
-  System Initiative architecture
-- [The Distributed Execution Engine](./architecture/engine.md) - how System
-  Initiative executes functions across the platform
-- [The Data Model](./architecture/snapshot.md) - understand the data model that
-  powers System Initiative
-- [Change Control](./architecture/change-control.md) - how System Initiative
-  manages changes to your infrastructure
-- [Digital Twin](./architecture/digital-twin.md) - learn about System
-  Initiative's digital twin architecture
-- [Function Execution Framework](./architecture/functions.md) - how functions
-  are executed in System Initiative
-- [Tenancy and Access Control](./architecture/tenancy.md) - understand how
-  System Initiative handles multi-tenancy and access control
-- [AI Native Collaboration](./architecture/ai.md) - how AI is integrated into
-  System Initiative
+- [System Initiative Architecture](./architecture/index.md) - A look at the
+  distributed architecture powering the platform
+- [The Distributed Execution Engine](./architecture/engine.md) - How functions
+  execute across System Initiative's infrastructure
+- [The Data Model](./architecture/snapshot.md) - The graph-based approach to
+  modeling infrastructure
+- [Change Control](./architecture/change-control.md) - The design behind safe,
+  auditable infrastructure changes
+- [Digital Twin](./architecture/digital-twin.md) - Maintaining a live model of
+  your infrastructure state
+- [Function Execution Framework](./architecture/functions.md) - Where and how
+  schema functions run
+- [Tenancy and Access Control](./architecture/tenancy.md) - How System
+  Initiative handles multiple workspaces and permissions
+- [AI Native Collaboration](./architecture/ai.md) - The role of AI throughout
+  the platform
