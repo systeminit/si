@@ -14,7 +14,7 @@ export_file(
 )
 
 export_file(
-    name = "generate_binary_metadata.py",
+    name = "generate_build_metadata.py",
     visibility = ["PUBLIC"],
 )
 

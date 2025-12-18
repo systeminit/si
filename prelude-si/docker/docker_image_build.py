@@ -3,7 +3,6 @@
 Invokes a `docker image build`.
 """
 import argparse
-import os
 import subprocess
 import json
 import sys
@@ -27,27 +26,51 @@ class BaseEnum(Enum, metaclass=MetaEnum):
     pass
 
 
-class DockerArchitecture(BaseEnum):
+class PlatformArch(BaseEnum):
+    Aarch64 = "aarch64"
+    X86_64 = "x86_64"
+
+
+class PlatformOS(BaseEnum):
+    Darwin = "darwin"
+    Linux = "linux"
+    Windows = "windows"
+
+
+class ImageArch(BaseEnum):
     Amd64 = "amd64"
     Arm64v8 = "arm64v8"
 
 
+VARIANT = "container"
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument(
-        "--git-info-json",
-        required=True,
-        help="Path to the Git metadata JSON file",
-    )
     parser.add_argument(
         "--artifact-out-file",
         required=True,
         help="Path to write the image artifact file",
     )
     parser.add_argument(
+        "--git-info-json",
+        required=True,
+        help="Path to the Git metadata JSON file",
+    )
+    parser.add_argument(
         "--build-metadata-out-file",
         required=True,
         help="Path to write the build metadata JSON file",
+    )
+    parser.add_argument(
+        "--name",
+        required=True,
+        help="Name of the image to build, from the full name {org}/{name}",
+    )
+    parser.add_argument(
+        "--org",
+        required=True,
+        help="Org of the image to build, from the full name {org}/{name}",
     )
     parser.add_argument(
         "--label-metadata-out-file",
@@ -65,14 +88,21 @@ def parse_args() -> argparse.Namespace:
         help="Path to Docker context directory",
     )
     parser.add_argument(
-        "--image-name",
-        required=True,
-        help="Name of image to build",
-    )
-    parser.add_argument(
         "--build-arg",
         action="append",
         help="Build arg options passed to `docker build`",
+    )
+    parser.add_argument(
+        "--arch",
+        required=True,
+        choices=[arch.value for arch in PlatformArch],
+        help="Target architecture",
+    )
+    parser.add_argument(
+        "--os",
+        required=True,
+        choices=[os.value for os in PlatformOS],
+        help="Target operating system",
     )
     parser.add_argument(
         "--author",
@@ -97,16 +127,23 @@ def main() -> int:
     args = parse_args()
 
     git_info = load_git_info(args.git_info_json)
-    architecture = detect_architecture()
+
+    # argparse validates these are valid enum values
+    arch = PlatformArch(args.arch)
+    os = PlatformOS(args.os)
+
+    image_arch = map_platform_to_image_arch(os, arch)
+
     label_metadata = compute_label_metadata(
         git_info,
-        architecture,
-        args.image_name,
+        image_arch,
+        args.org,
+        args.name,
         args.author,
         args.source_url,
         args.license,
     )
-    tag_metadata = compute_tag_metadata(label_metadata, architecture)
+    tag_metadata = compute_tag_metadata(label_metadata, image_arch)
 
     build_image(
         args.docker_context_dir,
@@ -120,11 +157,20 @@ def main() -> int:
     write_artifact(args.artifact_out_file, tag_metadata)
 
     b3sum = compute_b3sum(args.artifact_out_file)
-    build_metadata = compute_build_metadata(label_metadata, architecture,
-                                            b3sum)
+    build_metadata = compute_build_metadata(label_metadata, image_arch, b3sum)
     write_json(args.build_metadata_out_file, build_metadata)
 
     return 0
+
+
+def write_json(output: str, metadata: Union[Dict[str, str], List[str]]):
+    with open(output, "w") as file:
+        json.dump(metadata, file, sort_keys=True)
+
+
+def load_git_info(git_info_file: str) -> Dict[str, str | int | bool]:
+    with open(git_info_file) as file:
+        return json.load(file)
 
 
 def build_image(
@@ -161,11 +207,6 @@ def build_image(
     subprocess.run(cmd, cwd=cwd).check_returncode()
 
 
-def write_json(output: str, metadata: Union[Dict[str, str], List[str]]):
-    with open(output, "w") as file:
-        json.dump(metadata, file, sort_keys=True)
-
-
 def write_artifact(output: str, tag_metadata: List[str]):
     cmd = [
         "docker",
@@ -179,38 +220,17 @@ def write_artifact(output: str, tag_metadata: List[str]):
     subprocess.run(cmd).check_returncode()
 
 
-# Possible machine architecture detection comes from reading the Rustup shell
-# script installer--thank you for your service!
-# See: https://github.com/rust-lang/rustup/blob/master/rustup-init.sh
-def detect_architecture() -> DockerArchitecture:
-    machine = os.uname().machine
-
-    if (machine == "amd64" or machine == "x86_64" or machine == "x86-64"
-            or machine == "x64"):
-        return DockerArchitecture.Amd64
-    elif (machine == "arm64" or machine == "aarch64" or machine == "arm64v8"):
-        return DockerArchitecture.Arm64v8
-    else:
-        print(
-            f"xxx Failed to determine architecure or unsupported: {machine}",
-            file=sys.stderr,
-        )
-        sys.exit(1)
-
-
-def load_git_info(git_info_file: str) -> Dict[str, str | int | bool]:
-    with open(git_info_file) as file:
-        return json.load(file)
-
-
 def compute_label_metadata(
     git_info: Dict[str, str | int | bool],
-    architecture: DockerArchitecture,
+    image_arch: ImageArch,
+    image_org: str,
     image_name: str,
     author: str,
     source_url: str,
     license: str,
 ) -> Dict[str, str]:
+    full_image_name = f"{image_org}/{image_name}"
+
     created = git_info.get("committer_date_strict_iso8601")
     revision = git_info.get("commit_hash")
     canonical_version = git_info.get("canonical_version")
@@ -222,13 +242,13 @@ def compute_label_metadata(
 
     image_url = ("https://hub.docker.com/r/{}/" +
                  "tags?page=1&ordering=last_updated&name={}-{}").format(
-                     image_name,
+                     full_image_name,
                      canonical_version,
-                     architecture.value,
+                     image_arch.value,
                  )
 
     metadata = {
-        "name": image_name,
+        "name": full_image_name,
         "maintainer": author,
         "org.opencontainers.image.version": canonical_version,
         "org.opencontainers.image.authors": author,
@@ -236,7 +256,7 @@ def compute_label_metadata(
         "org.opencontainers.image.source": source_url,
         "org.opencontainers.image.revision": revision,
         "org.opencontainers.image.created": created,
-        "com.systeminit.image.architecture": architecture.value,
+        "com.systeminit.image.architecture": image_arch.value,
         "com.systeminit.image.image_url": image_url,
         "com.systeminit.image.commit_url": commit_url,
     }
@@ -246,18 +266,13 @@ def compute_label_metadata(
 
 def compute_tag_metadata(
     label_metadata: Dict[str, str],
-    architecture: DockerArchitecture,
+    image_arch: ImageArch,
 ) -> List[str]:
     metadata = [
         "{}:{}-{}".format(
             label_metadata.get("name"),
             label_metadata.get("org.opencontainers.image.version"),
-            architecture.value,
-        ),
-        "{}:sha-{}-{}".format(
-            label_metadata.get("name"),
-            label_metadata.get("org.opencontainers.image.revision"),
-            architecture.value,
+            image_arch.value,
         ),
     ]
 
@@ -280,9 +295,49 @@ def compute_b3sum(artifact_file: str) -> str:
     return b3sum
 
 
+def compute_build_metadata_v2(
+    git_info: Dict[str, str | int | bool],
+    family: str,
+    platform_arch: PlatformArch,
+    platform_os: PlatformOS,
+    b3sum: str,
+) -> Dict[str, str]:
+    metadata = {
+        "family": family,
+        "variant": VARIANT,
+        "version": git_info.get("canonical_version"),
+        "arch": platform_arch.value,
+        "os": platform_os.value,
+        "commit": git_info.get("commit_hash"),
+        "branch": git_info.get("branch"),
+        "b3sum": b3sum,
+    }
+
+    return metadata
+
+
+def map_platform_to_image_arch(
+    os: PlatformOS,
+    arch: PlatformArch,
+) -> ImageArch:
+    if os != PlatformOS.Linux:
+        raise ValueError(f"Unsupported platform operation system: {os.value}")
+
+    # Map to image arch names
+    image_arch_mapping = {
+        PlatformArch.X86_64: ImageArch.Amd64,
+        PlatformArch.Aarch64: ImageArch.Arm64v8,
+    }
+
+    if arch not in image_arch_mapping:
+        raise ValueError(f"Unsupported platform architecture: {arch.value}")
+
+    return image_arch_mapping[arch]
+
+
 def compute_build_metadata(
     label_metadata: Dict[str, str],
-    architecture: DockerArchitecture,
+    image_arch: ImageArch,
     b3sum: str,
 ) -> Dict[str, str]:
     metadata = {
@@ -292,12 +347,12 @@ def compute_build_metadata(
         "{}--{}--{}.tar".format(
             label_metadata.get("name", "UNKNOWN_NAME").replace("/", "--"),
             label_metadata.get("org.opencontainers.image.version"),
-            architecture.value,
+            image_arch.value,
         ),
         "version":
         label_metadata.get("org.opencontainers.image.version"),
         "architecture":
-        architecture.value,
+        image_arch.value,
         "commit":
         label_metadata.get("org.opencontainers.image.revision"),
         "b3sum":

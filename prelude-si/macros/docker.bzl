@@ -91,6 +91,7 @@ def container_image(
         variant = "container",
         destination = artifact_destination,
         cname = artifact_cname,
+        organization = organization,
         platform_targets = platform_targets,
         skip_all = skip_all_promote,
         visibility = visibility,

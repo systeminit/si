@@ -427,7 +427,6 @@ def rust_binary_artifact(
         binary = binary,
         binary_name = name,
         family = name,
-        variant = "binary",
         author = author,
         source_url = source_url,
         license = license,

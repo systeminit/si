@@ -116,6 +116,10 @@ def parse_args() -> tuple[
         help="Artifact targets [default: {}]".format(linux_target_strs()),
     )
     parser.add_argument(
+        "--organization",
+        help="Artifact's organization",
+    )
+    parser.add_argument(
         "--cname",
         help="URL hostname for artifacts references",
     )
@@ -148,6 +152,7 @@ def main() -> int:
                 args.channel,
                 args.destination,
                 artifacts,
+                args.organization,
             )
         case Destination.S3:
             promote_in_s3(
@@ -240,7 +245,12 @@ def promote_in_oci_registry(
     channel: str,
     destination_prefix: str,
     artifacts: list[ArtifactMetadata],
+    org: str | None,
 ):
+    if org is None:
+        raise ValueError(
+            "Missing '--organization' option for oci registry promotion")
+
     registry = destination_prefix.replace("oci://", "")
     image_arches = [
         map_platform_to_image_arch(md.os, md.arch) for md in artifacts
@@ -249,11 +259,11 @@ def promote_in_oci_registry(
     md = artifacts[0]
 
     images_with_tags = [
-        f"{registry}/{md.family}:{md.version}-{image_arch}"
+        f"{registry}/{org}/{md.family}:{md.version}-{image_arch}"
         for image_arch in image_arches
     ]
 
-    manifest_tag = f"{registry}/{md.family}:{channel}"
+    manifest_tag = f"{registry}/{org}/{md.family}:{channel}"
 
     print(f"--- Promoting images to '{manifest_tag}'")
 

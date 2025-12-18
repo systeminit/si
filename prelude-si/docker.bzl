@@ -1,9 +1,10 @@
 load("@prelude//python:toolchain.bzl", "PythonToolchainInfo")
 load("@prelude-si//:artifact.bzl", "ArtifactInfo")
+load("//artifact:toolchain.bzl", "ArtifactToolchainInfo")
 load("//build_context:toolchain.bzl", "BuildContextToolchainInfo")
 load("//build_context.bzl", "BuildContext", _build_context = "build_context")
 load("//docker:toolchain.bzl", "DockerToolchainInfo")
-load("//git.bzl", "GitInfo")
+load("//platform.bzl", "get_host_platform")
 
 DockerImageInfo = provider(fields = {
     "artifact": provider_field(typing.Any, default = None),  # [Artifact]
@@ -14,36 +15,77 @@ DockerImageInfo = provider(fields = {
 
 def container_image_impl(ctx: AnalysisContext) -> list[[
     DefaultInfo,
-    RunInfo,
+    ArtifactInfo,
     DockerImageInfo,
-    GitInfo,
+    RunInfo,
 ]]:
-    # ArtifactInfo,
+    artifact_toolchain = ctx.attrs._artifact_toolchain[ArtifactToolchainInfo]
+
     srcs = {ctx.attrs.dockerfile: "."}
     if ctx.attrs.srcs:
         srcs.update(ctx.attrs.srcs)
     build_context = _build_context(ctx, ctx.attrs.build_deps, srcs)
 
-    # Extract Git metadata from dependency and wrap in GitInfo provider
     git_metadata_file = ctx.attrs.git_metadata[DefaultInfo].default_outputs[0]
-    git_info = GitInfo(file = git_metadata_file)
 
-    image_info = build_docker_image(ctx, build_context, git_info)
+    # Get host platform information
+    host_os, host_arch = get_host_platform()
+
+    # Get target platform information from host platform (i.e. not yet cross-compilation aware)
+    target_os = host_os
+    target_arch = host_arch
+
+    variant = "container"
+
+    # Build artifact
+    image_info = build_docker_image(ctx, build_context, git_metadata_file, target_os, target_arch)
     run_args = docker_run_args(ctx, image_info)
+
+    # Generate build metadata
+    build_metadata = ctx.actions.declare_output("build_metadata.json")
+    metadata_cmd = cmd_args(
+        ctx.attrs._python_toolchain[PythonToolchainInfo].interpreter,
+        artifact_toolchain.generate_build_metadata[DefaultInfo].default_outputs,
+        "--artifact-file",
+        image_info.artifact,
+        "--git-info-json",
+        git_metadata_file,
+        "--build-metadata-out-file",
+        build_metadata.as_output(),
+        "--name",
+        ctx.attrs.image_name or ctx.attrs.name,
+        "--variant",
+        variant,
+        "--arch",
+        target_arch,
+        "--os",
+        target_os,
+        "--author",
+        ctx.attrs.author,
+        "--source-url",
+        ctx.attrs.source_url,
+        "--license",
+        ctx.attrs.license,
+        "--organization",
+        ctx.attrs.organization,
+    )
+    ctx.actions.run(metadata_cmd, category = "build_artifact_metadata")
 
     return [
         DefaultInfo(
             default_output = image_info.artifact,
+            sub_targets = {
+                "metadata": [DefaultInfo(default_output = build_metadata)],
+            },
         ),
-        RunInfo(args = run_args),
+        ArtifactInfo(
+            artifact = image_info.artifact,
+            metadata = build_metadata,
+            family = ctx.attrs.image_name or ctx.attrs.name,
+            variant = variant,
+        ),
         image_info,
-        # ArtifactInfo(
-        #     artifact = image_info.artifact,
-        #     metadata = build_metadata,
-        #     family = ctx.attrs.image_name or ctx.attrs.name,
-        #     variant = "container",
-        # ),
-        git_info,
+        RunInfo(args = run_args),
     ]
 
 container_image = rule(
@@ -131,13 +173,20 @@ container_image = rule(
             default = "toolchains//:docker",
             providers = [DockerToolchainInfo],
         ),
+        "_artifact_toolchain": attrs.toolchain_dep(
+            default = "toolchains//:artifact",
+            providers = [ArtifactToolchainInfo],
+        ),
     },
 )
 
 def build_docker_image(
         ctx: AnalysisContext,
         docker_build_ctx: BuildContext,
-        git_info: GitInfo) -> DockerImageInfo:
+        git_metadata_file: Artifact,
+        target_os: str,
+        target_arch: str) -> DockerImageInfo:
+    debug(git_metadata_file)
     if ctx.attrs.full_image_name:
         image_name = ctx.attrs.full_image_name
     elif ctx.attrs.organization:
@@ -148,7 +197,7 @@ def build_docker_image(
     tar_name_prefix = "{}".format(image_name.replace("/", "--"))
 
     artifact = ctx.actions.declare_output("{}.tar".format(tar_name_prefix))
-    build_metadata = ctx.actions.declare_output("build_metadata.json")
+    build_metadata = ctx.actions.declare_output("build_metadata-old.json")
     tag_metadata = ctx.actions.declare_output("tag_metadata.json")
     label_metadata = ctx.actions.declare_output("label_metadata.json")
 
@@ -157,20 +206,26 @@ def build_docker_image(
     cmd = cmd_args(
         ctx.attrs._python_toolchain[PythonToolchainInfo].interpreter,
         docker_toolchain.docker_image_build[DefaultInfo].default_outputs,
-        "--git-info-json",
-        git_info.file,
         "--artifact-out-file",
         artifact.as_output(),
+        "--git-info-json",
+        git_metadata_file,
         "--build-metadata-out-file",
         build_metadata.as_output(),
+        "--name",
+        ctx.attrs.image_name or ctx.attrs.name,
+        "--org",
+        ctx.attrs.organization,
         "--label-metadata-out-file",
         label_metadata.as_output(),
         "--tag-metadata-out-file",
         tag_metadata.as_output(),
         "--docker-context-dir",
         docker_build_ctx.root,
-        "--image-name",
-        image_name,
+        "--arch",
+        target_arch,
+        "--os",
+        target_os,
         "--author",
         ctx.attrs.author,
         "--source-url",

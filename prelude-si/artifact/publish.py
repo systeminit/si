@@ -52,6 +52,11 @@ class Variant(BaseEnum):
     Rootfs = "rootfs"
 
 
+class ImageArch(BaseEnum):
+    Amd64 = "amd64"
+    Arm64v8 = "arm64v8"
+
+
 class ArtifactMetadata(object):
 
     def __init__(
@@ -173,9 +178,13 @@ def publish_to_oci_registry(
     artifact_path: pathlib.Path,
     destination_prefix: str,
 ):
+    org = md.extra.get("organization")
+    if org is None:
+        raise ValueError("Missing 'organization' from artifact build metadata")
+
     registry = destination_prefix.replace("oci://", "")
     image_arch = map_platform_to_image_arch(md.os, md.arch)
-    image_with_tag = f"{registry}/{md.family}:{md.version}-{image_arch}"
+    image_with_tag = f"{registry}/{org}/{md.family}:{md.version}-{image_arch.value}"
 
     print(f"--- Publishing {image_with_tag}")
     load_and_push_container_image(artifact_path, image_with_tag)
@@ -256,20 +265,23 @@ def object_store_path(md: ArtifactMetadata) -> str:
     ])
 
 
-def map_platform_to_image_arch(os: PlatformOS, arch: PlatformArch) -> str:
+def map_platform_to_image_arch(
+    os: PlatformOS,
+    arch: PlatformArch,
+) -> ImageArch:
     if os != PlatformOS.Linux:
         raise ValueError(f"Unsupported platform operation system: {os.value}")
 
-    # Map to Docker arch names
-    docker_arch_mapping = {
-        PlatformArch.X86_64: "amd64",
-        PlatformArch.Aarch64: "arm64v8",
+    # Map to image arch names
+    image_arch_mapping = {
+        PlatformArch.X86_64: ImageArch.Amd64,
+        PlatformArch.Aarch64: ImageArch.Arm64v8,
     }
 
-    if arch not in docker_arch_mapping:
+    if arch not in image_arch_mapping:
         raise ValueError(f"Unsupported platform architecture: {arch.value}")
 
-    return docker_arch_mapping[arch]
+    return image_arch_mapping[arch]
 
 
 def load_and_push_container_image(
@@ -298,7 +310,7 @@ def load_and_push_container_image(
 def container_report_metadata(
     md: ArtifactMetadata,
     registry: str,
-    image_arch: str,
+    image_arch: ImageArch,
 ):
     print("\n--- Artifact published\n")
 
@@ -307,11 +319,12 @@ def container_report_metadata(
         url = "/".join([
             "https://hub.docker.com",
             "r",
+            md.extra.get("organization", "--unknown--"),
             md.family,
             "&".join([
                 "tags?page=1",
                 "ordering=last_updated",
-                f"name={md.version}-{image_arch}",
+                f"name={md.version}-{image_arch.value}",
             ]),
         ])
     else:

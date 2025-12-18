@@ -13,14 +13,16 @@ set -euxo pipefail
 # i.e. ./${git_metadata} | jq -r '.abbreviated_commit_hash' (it returns a json
 # blob output via python)
 git_metadata=$1
+# target platform arch
+platform_arch="$2"
 # i.e. ./metadata-out.json (a build metadata file containing contents of type
 # etc)
-build_metadata_out=$2
+build_metadata_out=$3
 # i.e. output the file ./johns_rootfs.tar
-tar_file_out=$3
+tar_file_out=$4
 
 # Shift the parsed arguments off after assignment
-shift 3
+shift 4
 
 # The rest of the inputs are a list of input files or directories, to also
 # include in the build i.e. consume a binary ./johns_binary.bin for use within
@@ -98,11 +100,13 @@ cyclone_args=(
 )
 
 # got get the rootfs tar and unpack it
-curl "https://dl-cdn.alpinelinux.org/alpine/v$ALPINE_VERSION/releases/$(arch)/alpine-minirootfs-$ALPINE_VERSION.0-$(arch).tar.gz" -o $ROOTFS_TAR
-sudo tar xf rootfs.tar.gz -C "$ROOTFSMOUNT"
+curl "https://dl-cdn.alpinelinux.org/alpine/v$ALPINE_VERSION/releases/$platform_arch/alpine-minirootfs-$ALPINE_VERSION.0-$platform_arch.tar.gz" -o $ROOTFS_TAR
+sudo tar xf "$ROOTFS_TAR" -C "$ROOTFSMOUNT"
 
 #ENTER CHROOT
-sudo chroot "$ROOTFSMOUNT" sh <<EOL
+sudo chroot "$ROOTFSMOUNT" /bin/sh <<EOL
+
+export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
 echo "nameserver 8.8.8.8" >"/etc/resolv.conf"
 
@@ -307,6 +311,10 @@ done
 # from copying over for some mysterious reason.
 sudo umount -fv "$ROOTFSMOUNT"
 sudo mv -v "$ROOTFS" "$tar_file_out"
+
+# Re-assign ownership back to non-root user
+owns="$(getent passwd "$USER" | awk -F: '{print $3 ":" $4}')"
+sudo chown -v "$owns" "$tar_file_out"
 
 # Then generate the build metadata
 #

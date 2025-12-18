@@ -196,6 +196,9 @@ def artifact_promote_impl(ctx: AnalysisContext) -> list[[DefaultInfo, RunInfo]]:
         "--variant",
         ctx.attrs.variant,
     )
+    if ctx.attrs.organization:
+        cmd.add("--organization")
+        cmd.add(ctx.attrs.organization)
     if ctx.attrs.cname:
         cmd.add("--cname")
         cmd.add(ctx.attrs.cname)
@@ -235,6 +238,11 @@ artifact_promote = rule(
             attrs.string(),
             default = None,
             doc = """Hostname used when calculating canonical URLs.""",
+        ),
+        "organization": attrs.option(
+            attrs.string(),
+            default = None,
+            doc = """Artifact's organization.""",
         ),
         "platform_targets": attrs.list(
             attrs.string(),

@@ -16,7 +16,7 @@ load(
 
 def rootfs_tarball(
         name,
-        pkg_name = None,
+        rootfs_name = None,
         source_url = "http://github.com/systeminit/si.git",
         author = "The System Initiative <dev@systeminit.com>",
         license = "Apache-2.0",
@@ -37,7 +37,7 @@ def rootfs_tarball(
 
     Args:
         name: Rootfs name
-        pkg_name: Package name (defaults to "{name}-rootfs")
+        rootfs_name: Package name (defaults to "{name}")
         source_url: Source code URL for metadata
         author: Author for metadata
         license: License string for metadata
@@ -49,9 +49,9 @@ def rootfs_tarball(
         visibility: Target visibility
     """
 
-    # Default pkg_name
-    if pkg_name == None:
-        pkg_name = "{}-rootfs".format(name)
+    # Default rootfs_name
+    if rootfs_name == None:
+        rootfs_name = name
 
     # Validate platform_targets
     _validate_linux_platform_targets(platform_targets, "rootfs_tarball({})".format(name))
@@ -60,7 +60,10 @@ def rootfs_tarball(
     rootfs_tarball_name = "{}-rootfs-tarball".format(name)
     _rootfs_tarball(
         name = rootfs_tarball_name,
-        rootfs_name = pkg_name,
+        rootfs_name = rootfs_name,
+        source_url = source_url,
+        author = author,
+        license = license,
         visibility = visibility,
         **kwargs
     )

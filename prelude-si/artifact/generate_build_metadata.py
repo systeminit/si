@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
 """
-Builds a metadata file for a binary.
+Builds a build metadata file for an artifact.
 """
 import argparse
-import os
 import subprocess
 import json
 import sys
@@ -27,7 +26,7 @@ class BaseEnum(Enum, metaclass=MetaEnum):
     pass
 
 
-class PlatformArchitecture(BaseEnum):
+class PlatformArch(BaseEnum):
     Aarch64 = "aarch64"
     X86_64 = "x86_64"
 
@@ -38,15 +37,19 @@ class PlatformOS(BaseEnum):
     Windows = "windows"
 
 
-VARIANT = "binary"
+class Variant(BaseEnum):
+    Binary = "binary"
+    Container = "container"
+    Omnibus = "omnibus"
+    Rootfs = "rootfs"
 
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
-        "--binary",
+        "--artifact-file",
         required=True,
-        help="Path to the binary to compute the b3sum",
+        help="Path to the artifact file to compute the b3sum",
     )
     parser.add_argument(
         "--git-info-json",
@@ -61,12 +64,18 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--name",
         required=True,
-        help="Name of binary to build",
+        help="Name of artifact that was built",
+    )
+    parser.add_argument(
+        "--variant",
+        required=True,
+        choices=[variant.value for variant in Variant],
+        help="Artifact variant kind",
     )
     parser.add_argument(
         "--arch",
         required=True,
-        choices=[arch.value for arch in PlatformArchitecture],
+        choices=[arch.value for arch in PlatformArch],
         help="Target architecture",
     )
     parser.add_argument(
@@ -78,17 +87,21 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--author",
         required=True,
-        help="Author to be used in binary metadata",
+        help="Author to be used in metadata",
     )
     parser.add_argument(
         "--source-url",
         required=True,
-        help="Source code URL to be used in binary metadata",
+        help="Source code URL to be used in metadata",
     )
     parser.add_argument(
         "--license",
         required=True,
-        help="Image license to be used in binary metadata",
+        help="Image license to be used in metadata",
+    )
+    parser.add_argument(
+        "--organization",
+        help="Organization for artifact",
     )
 
     return parser.parse_args()
@@ -100,16 +113,18 @@ def main() -> int:
     git_info = load_git_info(args.git_info_json)
 
     # argparse validates these are valid enum values
-    architecture = PlatformArchitecture(args.arch)
+    arch = PlatformArch(args.arch)
     os = PlatformOS(args.os)
 
-    b3sum = compute_b3sum(args.binary)
+    b3sum = compute_b3sum(args.artifact_file)
     build_metadata = compute_build_metadata(
         git_info,
         args.name,
-        architecture,
+        Variant(args.variant),
+        arch,
         os,
         b3sum,
+        args.organization,
     )
     write_json(args.build_metadata_out_file, build_metadata)
 
@@ -124,30 +139,6 @@ def write_json(output: str, metadata: Union[Dict[str, str], List[str]]):
 def load_git_info(git_info_file: str) -> Dict[str, str | int | bool]:
     with open(git_info_file) as file:
         return json.load(file)
-
-
-def compute_binary_metadata(
-    git_info: Dict[str, str | int | bool],
-    name: str,
-    author: str,
-    source_url: str,
-    license: str,
-    architecture: PlatformArchitecture,
-    platform_os: PlatformOS,
-) -> Dict[str, str]:
-    metadata = {
-        "name": name,
-        "version": git_info.get("canonical_version"),
-        "author": author,
-        "source_url": source_url,
-        "license": license,
-        "architecture": architecture.value,
-        "os": platform_os.value,
-        "commit": git_info.get("commit_hash"),
-        "branch": git_info.get("branch"),
-    }
-
-    return metadata
 
 
 def compute_b3sum(artifact_file: str) -> str:
@@ -169,13 +160,15 @@ def compute_b3sum(artifact_file: str) -> str:
 def compute_build_metadata(
     git_info: Dict[str, str | int | bool],
     family: str,
-    platform_arch: PlatformArchitecture,
+    variant: Variant,
+    platform_arch: PlatformArch,
     platform_os: PlatformOS,
     b3sum: str,
+    organization: str | None,
 ) -> Dict[str, str]:
     metadata = {
         "family": family,
-        "variant": VARIANT,
+        "variant": variant.value,
         "version": git_info.get("canonical_version"),
         "arch": platform_arch.value,
         "os": platform_os.value,
@@ -183,6 +176,9 @@ def compute_build_metadata(
         "branch": git_info.get("branch"),
         "b3sum": b3sum,
     }
+
+    if organization:
+        metadata["organization"] = organization
 
     return metadata
 
