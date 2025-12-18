@@ -733,6 +733,47 @@ async fn remove_subscribed_component(ctx: &mut DalContext) -> Result<()> {
     Ok(())
 }
 
+#[test]
+async fn subscription_cycles(ctx: &mut DalContext) -> Result<()> {
+    create_testy_variant(ctx).await?;
+    component::create(ctx, "testy", "subscriber").await?;
+    component::create(ctx, "testy", "source").await?;
+    component::create(ctx, "testy", "source_2").await?;
+
+    value::subscribe(
+        ctx,
+        ("subscriber", "/domain/Value"),
+        ("source", "/domain/Value"),
+    )
+    .await?;
+
+    value::subscribe(
+        ctx,
+        ("source", "/domain/Value"),
+        ("source_2", "/domain/Value"),
+    )
+    .await?;
+
+    // Self subscription should be fine
+    value::subscribe(
+        ctx,
+        ("source_2", "/domain/Value3"),
+        ("source_2", "/domain/Value4"),
+    )
+    .await?;
+
+    let bad = value::subscribe(
+        ctx,
+        ("source_2", "/domain/Value2"),
+        ("subscriber", "/domain/Value2"),
+    )
+    .await;
+
+    assert!(bad.is_err(), "cyclic subscription should fail");
+
+    Ok(())
+}
+
 async fn create_testy_variant(ctx: &DalContext) -> Result<()> {
     // Make a variant with a Value prop
     variant::create(
@@ -744,6 +785,8 @@ async fn create_testy_variant(ctx: &DalContext) -> Result<()> {
                     props: [
                         { name: "Value", kind: "string" },
                         { name: "Value2", kind: "string" },
+                        { name: "Value3", kind: "string" },
+                        { name: "Value4", kind: "string" },
                         { name: "Values", kind: "array",
                             entry: { name: "ValuesItem", kind: "string" },
                         },

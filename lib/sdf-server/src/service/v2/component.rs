@@ -93,6 +93,9 @@ impl IntoResponse for Error {
             }
             Error::AttributeValueNotFound(_, _) => StatusCode::NOT_FOUND,
             Error::Attributes(AttributesError::AttributeValue(
+                AttributeValueError::SubscriptionWouldCycle { .. },
+            ))
+            | Error::Attributes(AttributesError::AttributeValue(
                 AttributeValueError::SubscriptionTypeMismatch { .. },
             )) => StatusCode::BAD_REQUEST,
             _ => StatusCode::INTERNAL_SERVER_ERROR,
