@@ -7,7 +7,7 @@ outline:
 
 This how-to assumes:
 
-- Basic [familiarity with System Initiative](../tutorials/getting-started)
+- Basic [familiarity with System Initiative](../tutorials/index.md)
 - Have generated a
   [workspace scoped API token](../explanation/generate-a-workspace-api-token)
 - Access to an AWS account

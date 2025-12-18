@@ -7,7 +7,7 @@ outline:
 
 This how-to assumes:
 
-- Basic [familiarity with System Initiative](../tutorials/getting-started)
+- Basic [familiarity with System Initiative](../tutorials/index.md)
 - Are familiar with [AWS VPC](https://docs.aws.amazon.com/vpc/)
 
 It will teach you how to create a best practice AWS VPC and manage it with
