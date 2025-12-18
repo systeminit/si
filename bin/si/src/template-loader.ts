@@ -5,6 +5,10 @@
  */
 
 import { dirname, join } from "@std/path";
+import {
+  SI_AGENT_CONTEXT_TEMPLATE,
+  TEMPLATE_SHELL,
+} from "./embedded-templates.ts";
 
 /**
  * Generic template loader that tries multiple path strategies
@@ -39,12 +43,7 @@ async function loadTemplate(
 
   // If fallback content is provided, use it; otherwise throw error
   if (fallbackContent) {
-    console.warn(
-      `Failed to load template ${relativePath} from any path. Using fallback.`,
-    );
-    if (lastError) {
-      console.warn("Last error:", lastError.message);
-    }
+    // Using embedded template (expected for compiled binaries)
     return fallbackContent;
   } else {
     throw new Error(
@@ -58,33 +57,25 @@ async function loadTemplate(
 /**
  * Load the SI Agent Context template
  * Tries multiple strategies to find and load the template file
+ * Falls back to embedded template for compiled binaries
  */
 export async function loadAgentContextTemplate(): Promise<string> {
   return await loadTemplate(
     "SI_Agent_Context.md.tmpl",
-    // Fallback: minimal template
-    `# System Initiative Assistant Guide
-
-This is a repo for working with System Initiative infrastructure through the MCP server.
-
-## Interacting with System Initiative
-
-The only way to interact with System Initiative is through the system-initiative MCP server.
-All infrastructure operations should use the MCP tools.
-
-## Available MCP Tools
-
-Use MCP tools to discover schemas, create components, and manage infrastructure.
-
-For full documentation, see: https://docs.systeminit.com
-`,
+    // Fallback: embedded template (always available in compiled binaries)
+    SI_AGENT_CONTEXT_TEMPLATE,
   );
 }
 
 /**
  * Load the TypeScript template shell file
  * Used by the template generate command
+ * Falls back to embedded template for compiled binaries
  */
 export async function loadTemplateShell(): Promise<string> {
-  return await loadTemplate("template.ts.tmpl");
+  return await loadTemplate(
+    "template.ts.tmpl",
+    // Fallback: embedded template (always available in compiled binaries)
+    TEMPLATE_SHELL,
+  );
 }
