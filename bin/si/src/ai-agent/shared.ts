@@ -10,6 +10,7 @@
 import { ensureDir } from "@std/fs";
 import { join } from "@std/path";
 import type { Logger } from "../logger.ts";
+import { loadAgentContextTemplate } from "../template-loader.ts";
 
 /** SI Agent Context template - lazy loaded to avoid top-level await in tests */
 let _cachedTemplate: string | null = null;
@@ -19,43 +20,7 @@ async function getAgentContextTemplate(): Promise<string> {
     return _cachedTemplate;
   }
 
-  // Try multiple paths to find the template
-  const possiblePaths = [
-    // When running from source
-    new URL("../../data/templates/SI_Agent_Context.md.tmpl", import.meta.url)
-      .pathname,
-    // Relative to current working directory
-    join(Deno.cwd(), "data/templates/SI_Agent_Context.md.tmpl"),
-    // Relative to binary location
-    join(Deno.execPath(), "..", "data/templates/SI_Agent_Context.md.tmpl"),
-  ];
-
-  for (const path of possiblePaths) {
-    try {
-      _cachedTemplate = await Deno.readTextFile(path);
-      return _cachedTemplate;
-    } catch {
-      // Try next path
-    }
-  }
-
-  // Fallback: minimal template
-  _cachedTemplate = `# System Initiative Assistant Guide
-
-This is a repo for working with System Initiative infrastructure through the MCP server.
-
-## Interacting with System Initiative
-
-The only way to interact with System Initiative is through the system-initiative MCP server.
-All infrastructure operations should use the MCP tools.
-
-## Available MCP Tools
-
-Use MCP tools to discover schemas, create components, and manage infrastructure.
-
-For full documentation, see: https://docs.systeminit.com
-`;
-
+  _cachedTemplate = await loadAgentContextTemplate();
   return _cachedTemplate;
 }
 
