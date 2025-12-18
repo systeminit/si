@@ -80,6 +80,7 @@ pub use components::{
     list_components::{
         ComponentDetailsV1,
         ListComponentsV1Response,
+        QualificationStatusV1 as ListComponentsQualificationStatusV1,
     },
     manage_component::{
         ManageComponentV1Request,
@@ -313,6 +314,7 @@ pub use crate::api_types::func_run::v1::{
             SourceViewV1,
             ComponentDetailsV1,
             ListComponentsV1Response,
+            ListComponentsQualificationStatusV1,
             FindComponentV1Params,
             FuncRunV1RequestPath,
             FuncRunLogViewV1,

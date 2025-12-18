@@ -33,14 +33,22 @@ pub struct ListComponentsV1Response {
         value_type = Vec<ComponentDetailsV1>,
         example = json!([
             {
-                "component_id": "01H9ZQD35JPMBGHH69BT0Q79AA",
+                "componentId": "01H9ZQD35JPMBGHH69BT0Q79AA",
                 "name": "my-vpc",
-                "schema_name": "AWS::EC2::VPC"
+                "schemaName": "AWS::EC2::VPC"
             },
             {
-                "component_id": "01H9ZQD35JPMBGHH69BT0Q79BB",
+                "componentId": "01H9ZQD35JPMBGHH69BT0Q79BB",
                 "name": "Public 1",
-                "schema_name": "AWS::EC2::Subnet"
+                "schemaName": "AWS::EC2::Subnet",
+                "qualificationStatus": {
+                    "total": 2,
+                    "succeeded": 1,
+                    "warned": 0,
+                    "failed": 0,
+                    "running": 1
+                },
+                "canBeUpgraded": true
             }
         ])
     )]
@@ -56,6 +64,31 @@ pub struct ComponentDetailsV1 {
     pub name: String,
     pub schema_name: String,
     pub codegen: Option<Value>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub qualification_status: Option<QualificationStatusV1>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub can_be_upgraded: Option<bool>,
+}
+
+#[derive(Serialize, Debug, ToSchema)]
+pub struct QualificationStatusV1 {
+    pub total: u64,
+    pub succeeded: u64,
+    pub warned: u64,
+    pub failed: u64,
+    pub running: u64,
+}
+
+impl From<si_frontend_types::ComponentQualificationStats> for QualificationStatusV1 {
+    fn from(stats: si_frontend_types::ComponentQualificationStats) -> Self {
+        Self {
+            total: stats.total,
+            succeeded: stats.succeeded,
+            warned: stats.warned,
+            failed: stats.failed,
+            running: stats.running,
+        }
+    }
 }
 
 #[utoipa::path(
@@ -67,6 +100,8 @@ pub struct ComponentDetailsV1 {
         ("limit" = Option<String>, Query, description = "Maximum number of results to return (default: 50, max: 300)"),
         ("cursor" = Option<String>, Query, description = "Cursor for pagination (ComponentId of the last item from previous page)"),
         ("includeCodegen" = Option<bool>, Query, description = "Allow returning the codegen for the cloudformation template for the component (if it exists)"),
+        ("includeQualifications" = Option<bool>, Query, description = "Include real-time qualification status"),
+        ("includeUpgradeStatus" = Option<bool>, Query, description = "Include upgrade-ability information"),
     ),
     summary = "List all components",
     tag = "components",
@@ -74,14 +109,22 @@ pub struct ComponentDetailsV1 {
         (status = 200, description = "Components retrieved successfully", body = ListComponentsV1Response, example = json!({
                     "componentDetails": [
                         {
-                            "component_id": "01H9ZQD35JPMBGHH69BT0Q79AA",
+                            "componentId": "01H9ZQD35JPMBGHH69BT0Q79AA",
                             "name": "my-vpc",
-                            "schema_name": "AWS::EC2::VPC"
+                            "schemaName": "AWS::EC2::VPC"
                         },
                         {
-                            "component_id": "01H9ZQD35JPMBGHH69BT0Q79BB",
+                            "componentId": "01H9ZQD35JPMBGHH69BT0Q79BB",
                             "name": "Public 1",
-                            "schema_name": "AWS::EC2::Subnet"
+                            "schemaName": "AWS::EC2::Subnet",
+                            "qualificationStatus": {
+                                "total": 2,
+                                "succeeded": 1,
+                                "warned": 0,
+                                "failed": 0,
+                                "running": 1
+                            },
+                            "canBeUpgraded": true
                         }
                     ],
                     "nextCursor": null
@@ -143,19 +186,31 @@ pub async fn list_components(
             name,
             schema_name,
             codegen: None,
+            qualification_status: None,
+            can_be_upgraded: None,
         };
 
-        if let Some(codegen) = params.include_codegen {
-            if codegen {
-                let code_map_av_id =
-                    Component::find_code_map_attribute_value_id(ctx, component.id()).await?;
+        // Handle existing includeCodegen parameter for backward compatibility
+        if let Some(true) = params.include_codegen {
+            let code_map_av_id =
+                Component::find_code_map_attribute_value_id(ctx, component.id()).await?;
 
-                let view = AttributeValue::view(ctx, code_map_av_id).await?;
-                if let Some(v) = view {
-                    let details = v.get("awsCloudFormationLint");
-                    comp_response.codegen = details.cloned();
-                }
+            let view = AttributeValue::view(ctx, code_map_av_id).await?;
+            if let Some(v) = view {
+                let details = v.get("awsCloudFormationLint");
+                comp_response.codegen = details.cloned();
             }
+        }
+
+        // Handle new inclusion parameters
+        if let Some(true) = params.include_qualifications {
+            let stats =
+                super::get_qualification_stats_with_realtime_running(ctx, component.id()).await?;
+            comp_response.qualification_status = Some(stats);
+        }
+
+        if let Some(true) = params.include_upgrade_status {
+            comp_response.can_be_upgraded = Some(component.can_be_upgraded(ctx).await?);
         }
 
         comp_details.push(comp_response);
