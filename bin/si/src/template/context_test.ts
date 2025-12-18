@@ -873,6 +873,7 @@ Deno.test(
       name: "test-component",
       schemaId: "schema-456",
       resourceId: "res-789",
+      secretId: "secret-123",
       attributes: {
         "/si/name": "My Component",
         "/domain/region": "us-east-1",
@@ -911,6 +912,7 @@ Deno.test(
       name: "test-component",
       schemaId: "schema-456",
       resourceId: "res-789",
+      secretId: "secret-123",
       attributes: {},
       canBeUpgraded: false,
       connections: [],
@@ -936,6 +938,7 @@ Deno.test(
       name: "test-component",
       schemaId: "schema-456",
       resourceId: "res-789",
+      secretId: "secret-123",
       // deno-lint-ignore no-explicit-any
       attributes: undefined as any,
       canBeUpgraded: false,
