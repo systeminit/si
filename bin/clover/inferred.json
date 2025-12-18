@@ -8243,6 +8243,9 @@
   "The 12-digit account ID of the account authorized to aggregate data.": {
     "enum": null
   },
+  "The ABAC status of the general purpose bucket. When ABAC is enabled for the general purpose bucket, you can use tags to manage access to the general purpose buckets as well as for cost tracking purposes. When ABAC is disabled for the general purpose buckets, you can only use tags for cost tracking purposes. For more information, see [Using tags with S3 general purpose buckets](https://docs.aws.amazon.com/AmazonS3/latest/userguide/buckets-tagging.html).": {
+    "enum": null
+  },
   "The AMI ID to use as the base image for a container build and test instance. If not specified, Image Builder will use the appropriate ECS-optimized AMI as a base image.": {
     "enum": null
   },
@@ -15440,6 +15443,9 @@
   "The name of the template.": {
     "enum": null
   },
+  "The name of the tenant.": {
+    "enum": null
+  },
   "The name of the topic you want to create. Topic names must include only uppercase and lowercase ASCII letters, numbers, underscores, and hyphens, and must be between 1 and 256 characters long. FIFO topic names must end with ``.fifo``.\n If you don't specify a name, CFN generates a unique physical ID and uses that ID for the topic name. For more information, see [Name type](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-name.html).\n  If you specify a name, you can't perform updates that require replacement of this resource. You can perform updates that require no or some interruption. If you must replace the resource, specify a new name.": {
     "enum": null
   },
@@ -15807,6 +15813,9 @@
     "enum": null
   },
   "The number of DPUs to use for the coordinator. A coordinator is a special executor that orchestrates processing work and manages other executors in a notebook session. The default is 1.": {
+    "enum": null
+  },
+  "The number of ENA queues created with the instance.": {
     "enum": null
   },
   "The number of ENA queues to be created with the instance.": {
