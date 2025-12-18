@@ -59,8 +59,8 @@ async function loadTemplate(
  * Tries multiple strategies to find and load the template file
  * Falls back to embedded template for compiled binaries
  */
-export async function loadAgentContextTemplate(): Promise<string> {
-  return await loadTemplate(
+export function loadAgentContextTemplate(): Promise<string> {
+  return loadTemplate(
     "SI_Agent_Context.md.tmpl",
     // Fallback: embedded template (always available in compiled binaries)
     SI_AGENT_CONTEXT_TEMPLATE,
@@ -72,8 +72,8 @@ export async function loadAgentContextTemplate(): Promise<string> {
  * Used by the template generate command
  * Falls back to embedded template for compiled binaries
  */
-export async function loadTemplateShell(): Promise<string> {
-  return await loadTemplate(
+export function loadTemplateShell(): Promise<string> {
+  return loadTemplate(
     "template.ts.tmpl",
     // Fallback: embedded template (always available in compiled binaries)
     TEMPLATE_SHELL,
