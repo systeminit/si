@@ -300,6 +300,9 @@ const save = async (
     ) {
       // Bad request error due to type mismatch
       saveErrors.value[key] = "Subscription failed due to type mismatch.";
+    } else if (req.status === 400 && errorMessage?.includes("cycle")) {
+      saveErrors.value[key] =
+        "Subscription failed because it would create a cycle.";
     } else {
       // All other errors go here
       saveErrors.value[key] = `\`${value}\` failed to save`;

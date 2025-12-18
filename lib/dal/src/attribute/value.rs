@@ -289,6 +289,11 @@ pub enum AttributeValueError {
         subscription: String,
         subscription_prop_kind: PropKind,
     },
+    #[error("Subscription to {subscription} would create a cycle between components")]
+    SubscriptionWouldCycle {
+        subscriber_av_id: AttributeValueId,
+        subscription: String,
+    },
     #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),
     #[error("try lock error: {0}")]
@@ -1930,9 +1935,9 @@ impl AttributeValue {
 
     /// Set the source of this attribute value to one or more subscriptions.
     ///
-    /// This overwrites or overrides any existing value; if your intent is to append
-    /// subscriptions, you should first call AttributeValue::subscriptions() and append to that
-    /// list.
+    /// This overwrites or overrides any existing value; if your intent is to
+    /// append subscriptions, you should first call
+    /// AttributeValue::subscriptions() and append to that list.
     pub async fn set_to_subscription(
         ctx: &DalContext,
         subscriber_av_id: AttributeValueId,
@@ -1943,6 +1948,7 @@ impl AttributeValue {
         // Make sure the subscribed-to path is valid (i.e. it doesn't have to resolve
         // to a value *right now*, but it must be a valid path to the schema as it
         // exists--correct prop names, numeric indices for arrays, etc.)
+        let subscription_title = subscription.fmt_title(ctx).await;
         let subscription_prop_id = subscription.validate(ctx).await?;
         let subscription_prop_kind = Prop::kind(ctx, subscription_prop_id).await?;
         let subscriber_prop_kind = AttributeValue::prop_kind(ctx, subscriber_av_id).await?;
@@ -1950,13 +1956,25 @@ impl AttributeValue {
             return Err(AttributeValueError::SubscriptionTypeMismatch {
                 subscriber_av_id,
                 subscriber_prop_kind,
-                subscription: subscription.fmt_title(ctx).await,
+                subscription: subscription_title.clone(),
                 subscription_prop_kind,
             });
         }
 
         Self::set_to_subscription_unchecked(ctx, subscriber_av_id, subscription, func_id, reason)
-            .await
+            .await?;
+
+        Ok(())
+
+        // When we are sure there are no subscription cycles in the wild, uncomment this
+        // if SubscriptionGraph::new(ctx).await?.is_cyclic() {
+        //     Err(AttributeValueError::SubscriptionWouldCycle {
+        //         subscriber_av_id,
+        //         subscription: subscription_title,
+        //     })
+        // } else {
+        //     Ok(())
+        // }
     }
 
     /// Set the source of this attribute value to one or more subscriptions.

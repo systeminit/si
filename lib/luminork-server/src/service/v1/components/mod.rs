@@ -32,7 +32,13 @@ use dal::{
             ActionPrototypeError,
         },
     },
-    attribute::attributes::AttributeSources,
+    attribute::{
+        attributes::{
+            AttributeSources,
+            AttributesError,
+        },
+        value::AttributeValueError,
+    },
     diagram::{
         geometry::Geometry,
         view::View,
@@ -92,7 +98,7 @@ pub enum ComponentsError {
     #[error("component error: {0}")]
     ActionPrototype(#[from] ActionPrototypeError),
     #[error("attribute error: {0}")]
-    Attribute(#[from] dal::attribute::attributes::AttributesError),
+    Attribute(#[from] AttributesError),
     #[error("attribute prototype argument error: {0}")]
     AttributePrototypeArgument(
         #[from] dal::attribute::prototype::argument::AttributePrototypeArgumentError,
@@ -224,19 +230,20 @@ impl From<JsonRejection> for ComponentsError {
 impl crate::service::v1::common::ErrorIntoResponse for ComponentsError {
     fn status_and_message(&self) -> (StatusCode, String) {
         match self {
-            ComponentsError::Attribute(
-                dal::attribute::attributes::AttributesError::CannotUpdateCreateOnlyProperty(_),
-            ) => (StatusCode::PRECONDITION_FAILED, self.to_string()),
-            ComponentsError::Attribute(
-                dal::attribute::attributes::AttributesError::AttributeValue(
-                    dal::attribute::value::AttributeValueError::Prop(err),
-                ),
-            ) if matches!(**err, dal::prop::PropError::ChildPropNotFoundByName(_, _)) => {
+            ComponentsError::Attribute(AttributesError::AttributeValue(
+                AttributeValueError::SubscriptionWouldCycle { .. },
+            )) => (StatusCode::PRECONDITION_FAILED, self.to_string()),
+            ComponentsError::Attribute(AttributesError::CannotUpdateCreateOnlyProperty(_)) => {
+                (StatusCode::PRECONDITION_FAILED, self.to_string())
+            }
+            ComponentsError::Attribute(AttributesError::AttributeValue(
+                dal::attribute::value::AttributeValueError::Prop(err),
+            )) if matches!(**err, dal::prop::PropError::ChildPropNotFoundByName(_, _)) => {
                 (StatusCode::NOT_FOUND, self.to_string())
             }
-            ComponentsError::Attribute(
-                dal::attribute::attributes::AttributesError::SourceComponentNotFound(_),
-            ) => (StatusCode::NOT_FOUND, self.to_string()),
+            ComponentsError::Attribute(AttributesError::SourceComponentNotFound(_)) => {
+                (StatusCode::NOT_FOUND, self.to_string())
+            }
             ComponentsError::Component(dal::ComponentError::NotFound(_)) => {
                 (StatusCode::NOT_FOUND, self.to_string())
             }
