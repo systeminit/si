@@ -7,7 +7,7 @@ unlocks your team's productivity.
 
 Start by [learning what System Initiative is](./what-is-si.md).
 
-Follow the [Getting Started](./tutorials/getting-started.md) guide.
+Follow the [Tutorials](./tutorials/index.md) to get started.
 
 Learn about the [architecture](./explanation/architecture/index.md) that powers
 System Initiative.
