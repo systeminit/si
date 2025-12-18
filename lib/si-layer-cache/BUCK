@@ -22,6 +22,7 @@ rust_library(
         "//third-party/rust:aws-config",
         "//third-party/rust:aws-credential-types",
         "//third-party/rust:aws-sdk-s3",
+        "//third-party/rust:aws-smithy-runtime-api",
         "//third-party/rust:blake3",
         "//third-party/rust:bytes",
         "//third-party/rust:chrono",
