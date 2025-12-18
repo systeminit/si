@@ -10,7 +10,7 @@ use dal::{
     cached_module::CachedModule,
     pkg::{
         ImportOptions,
-        import_only_new_funcs,
+        import_funcs_for_module_update,
         import_pkg_from_pkg,
         import_schema_variant,
     },
@@ -135,8 +135,8 @@ async fn upgrade_schema_from_uploaded_file(
     pkg: &SiPkg,
     schema: Schema,
 ) -> Result<Vec<SchemaVariantId>, ModulesAPIError> {
-    // Import funcs from uploaded pkg
-    let mut thing_map = import_only_new_funcs(ctx, pkg.funcs()?)
+    // Import and update funcs from uploaded pkg using UpdateExisting mode
+    let mut thing_map = import_funcs_for_module_update(ctx, pkg.funcs()?)
         .await
         .map_err(ModulesAPIError::Pkg)?;
 

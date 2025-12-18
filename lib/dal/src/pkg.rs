@@ -1,11 +1,19 @@
 use std::collections::HashMap;
 
+pub use UpdateMode::{
+    SkipExisting,
+    UpdateExisting,
+};
 use chrono::{
     DateTime,
     Utc,
 };
 pub use import::{
     ImportOptions,
+    Thing,
+    ThingMap,
+    import_func,
+    import_funcs_for_module_update,
     import_only_new_funcs,
     import_pkg,
     import_pkg_from_pkg,
@@ -78,6 +86,13 @@ use crate::{
 
 pub mod export;
 pub mod import;
+
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub enum UpdateMode {
+    #[default]
+    SkipExisting,
+    UpdateExisting,
+}
 
 #[remain::sorted]
 #[derive(Debug, Error)]
