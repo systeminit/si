@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { ref, provide, onMounted } from 'vue';
+import { ref, provide, computed } from 'vue';
+import { activeTab } from './activeTab';
 
 interface Tab {
   label: string;
@@ -22,12 +23,11 @@ const tabList = ref<Tab[]>(
   })
 );
 
-const activeTab = ref(
-  props.defaultTab?.toLowerCase().replace(/\s+/g, '-') || tabList.value[0]?.value || ''
-);
+const defaultTab = computed(() => props.defaultTab?.toLowerCase().replace(/\s+/g, '-') || tabList.value[0]?.value || '')
 
 // Provide active tab to child TabPanel components
-provide('activeTab', activeTab);
+const activeOrDefault = computed(() => activeTab.value || defaultTab.value);
+provide('activeTab', activeOrDefault);
 provide('setActiveTab', (value: string) => {
   activeTab.value = value;
 });
@@ -39,7 +39,7 @@ provide('setActiveTab', (value: string) => {
       <button
         v-for="tab in tabList"
         :key="tab.value"
-        :class="['doc-tab-button', { active: activeTab === tab.value }]"
+        :class="['doc-tab-button', { active: activeOrDefault === tab.value }]"
         @click="activeTab = tab.value"
       >
         {{ tab.label }}
