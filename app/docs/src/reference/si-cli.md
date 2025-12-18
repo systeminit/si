@@ -501,6 +501,25 @@ si schema push [SCHEMA_NAME...]
 | -s, --skip-confirmation | flag     | false    | Skip confirmation prompt                           |
 | -b, --update-builtins   | flag     | false    | Change builtin schema, without creating overlays   |
 
+---
+
+### schema contribute
+
+Contribute a schema to the module index (works on HEAD change set only).
+
+> Syntax
+
+```bash
+si schema contribute <SCHEMA>
+```
+
+#### Parameters
+
+| Name   | Type   | Required | Description         |
+| ------ | ------ | -------- | ------------------- |
+| SCHEMA | string | true     | Name of the schema  |
+
+---
 
 ### schema overlay
 
