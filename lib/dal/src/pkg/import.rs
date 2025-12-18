@@ -40,6 +40,7 @@ use tokio::sync::Mutex;
 use super::{
     PkgError,
     PkgResult,
+    UpdateMode,
 };
 use crate::{
     AttributePrototype,
@@ -125,6 +126,8 @@ pub struct ImportOptions {
     /// A list of "past hashes" for this module, used to find the existing
     /// schema if a schema_id is not provided
     pub past_module_hashes: Option<Vec<String>>,
+    /// Whether to skip or update existing functions
+    pub update_mode: UpdateMode,
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -187,6 +190,7 @@ async fn import_change_set(
                     installed_module.clone(),
                     thing_map,
                     false,
+                    options.update_mode.clone(),
                 )
                 .await?;
 
@@ -253,6 +257,7 @@ async fn import_change_set(
                 installed_module.clone(),
                 thing_map,
                 options.create_unlocked,
+                options.update_mode.clone(),
             )
             .await?;
 
@@ -503,28 +508,54 @@ pub async fn import_func(
     installed_module: Option<Module>,
     thing_map: &mut ThingMap,
     create_unlocked: bool,
+    update_mode: super::UpdateMode,
 ) -> PkgResult<Func> {
-    let mut existing_func: Option<Func> = None;
-    if let Some(installed_pkg) = installed_module.clone() {
-        let associated_funcs = installed_pkg.list_associated_funcs(ctx).await?;
-        let mut maybe_matching_func: Vec<Func> = associated_funcs
+    let existing_func = if let Some(ref module) = installed_module {
+        let associated_funcs = module.list_associated_funcs(ctx).await?;
+        associated_funcs
             .into_iter()
-            .filter(|f| f.name.clone() == func_spec.name())
-            .collect();
-        if let Some(matching_func) = maybe_matching_func.pop() {
-            existing_func = Some(matching_func);
-        }
-    }
-
-    let func = if let Some(func) = existing_func {
-        func
+            .find(|f| f.name == func_spec.name())
     } else {
-        let func = create_func(ctx, func_spec, false).await?;
+        None
+    };
 
-        if !create_unlocked {
-            func.lock(ctx).await?
-        } else {
-            func
+    let func = match (existing_func, update_mode) {
+        // SkipExisting, just return the func
+        (Some(func), UpdateMode::SkipExisting) => func,
+
+        // Update existing, do that
+        (Some(existing), UpdateMode::UpdateExisting) => {
+            let func_spec_data = func_spec
+                .data()
+                .ok_or(PkgError::DataNotFound(func_spec.name().into()))?;
+
+            Func::upsert_with_id(
+                ctx,
+                existing.id, // Use existing func's ID
+                func_spec.name(),
+                func_spec_data.display_name().map(|d| d.to_owned()),
+                func_spec_data.description().map(|d| d.to_owned()),
+                func_spec_data.link().map(|l| l.to_string()),
+                func_spec_data.hidden(),
+                false, // is_builtin
+                func_spec_data.backend_kind().into(),
+                func_spec_data.response_type().into(),
+                Some(func_spec_data.handler().to_owned()),
+                Some(func_spec_data.code_base64().to_owned()),
+                func_spec_data.is_transformation(),
+                func_spec_data.last_updated_at(),
+            )
+            .await?
+        }
+
+        // No func, need a new one
+        (None, _) => {
+            let func = create_func(ctx, func_spec, false).await?;
+            if !create_unlocked {
+                func.lock(ctx).await?
+            } else {
+                func
+            }
         }
     };
 
@@ -540,6 +571,38 @@ pub async fn import_func(
     );
 
     Ok(func)
+}
+
+/// Import funcs from a package for module update/upgrade.
+pub async fn import_funcs_for_module_update(
+    ctx: &DalContext,
+    funcs: Vec<SiPkgFunc<'_>>,
+) -> PkgResult<ThingMap> {
+    use crate::func::intrinsics::IntrinsicFunc;
+
+    let mut thing_map = ThingMap::new();
+    for func_spec in funcs {
+        // Intrinsic functions should already exist - just look them up and add to thing_map
+        if IntrinsicFunc::maybe_from_str(func_spec.name()).is_some() {
+            if let Some(func_id) = Func::find_id_by_name(ctx, func_spec.name()).await? {
+                let func = Func::get_by_id(ctx, func_id).await?;
+                thing_map.insert(func_spec.unique_id().to_owned(), Thing::Func(func));
+                continue;
+            }
+        }
+
+        import_func(
+            ctx,
+            &func_spec,
+            None,
+            &mut thing_map,
+            false, // create_locked
+            super::UpdateMode::UpdateExisting,
+        )
+        .await?;
+    }
+
+    Ok(thing_map)
 }
 
 async fn create_func_argument(

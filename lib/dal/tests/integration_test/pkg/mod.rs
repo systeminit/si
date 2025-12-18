@@ -76,9 +76,12 @@ async fn import_pkg_from_pkg_set_latest_default(ctx: &mut DalContext) -> Result<
         )
         .build()?;
 
+    // Generate a unique ID for this func (not reusing schema ID)
+    let func_unique_id = ulid::Ulid::new();
+
     let func_spec = FuncSpec::builder()
         .name(asset_name.clone())
-        .unique_id(schema.id())
+        .unique_id(func_unique_id)
         .data(
             FuncSpecData::builder()
                 .name(asset_name.clone())
