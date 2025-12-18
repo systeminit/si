@@ -420,7 +420,10 @@ impl S3Layer {
                 read_retry_config.max_backoff_ms,
             ));
 
-        let s3_config = s3_config_builder.retry_config(retry_config).build();
+        let s3_config = s3_config_builder
+            .retry_config(retry_config)
+            .retry_classifier(NoSuchKeyRetryClassifier::new())
+            .build();
 
         let client = Client::from_conf(s3_config);
 
@@ -924,6 +927,9 @@ where
         _ => S3ErrorKind::Transient,
     }
 }
+
+mod retry_classifier;
+pub use retry_classifier::NoSuchKeyRetryClassifier;
 
 #[cfg(test)]
 mod tests;
