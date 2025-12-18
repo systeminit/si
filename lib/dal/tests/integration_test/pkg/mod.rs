@@ -1,9 +1,11 @@
+use chrono::Utc;
 use dal::{
     AttributeValue,
     AttributeValueId,
     Component,
     ComponentId,
     DalContext,
+    Func,
     FuncBackendKind,
     FuncBackendResponseType,
     Prop,
@@ -11,9 +13,16 @@ use dal::{
     Schema,
     SchemaVariant,
     SchemaVariantId,
+    func::intrinsics::IntrinsicFunc,
+    module::Module,
     pkg::{
         ImportOptions,
+        Thing,
+        ThingMap,
+        UpdateExisting,
         export::PkgExporter,
+        import_func,
+        import_funcs_for_module_update,
         import_pkg_from_pkg,
     },
     prop::PropPath,
@@ -301,4 +310,190 @@ fn spec_prop_child_names(parent_prop: &PropSpec, prefix: Option<&str>) -> Vec<St
         result.extend(spec_prop_child_names(child_prop, Some(&name)));
     }
     result
+}
+
+/// Test that `import_funcs_for_module_update` correctly handles intrinsic functions.
+/// Intrinsic functions should be looked up by name rather than recreated.
+#[test]
+async fn import_funcs_for_module_update_handles_intrinsics(ctx: &mut DalContext) -> Result<()> {
+    // Create a schema with variant
+    let asset_name = "upgrade_test_asset".to_string();
+    let variant = VariantAuthoringClient::create_schema_and_variant(
+        ctx,
+        asset_name.clone(),
+        None,
+        None,
+        "Integration Tests".to_string(),
+        "#00b0b0".to_string(),
+    )
+    .await?;
+
+    let schema = variant.schema(ctx).await?;
+
+    // Export the variant to a pkg spec
+    let mut exporter = PkgExporter::new_for_module_contribution(
+        asset_name.clone(),
+        "1.0.0",
+        "test@test.com",
+        schema.id(),
+        false,
+    );
+    let exported_spec = exporter.export_as_spec(ctx).await?;
+    let pkg = SiPkg::load_from_spec(exported_spec)?;
+
+    // Get the funcs from the package
+    let funcs = pkg.funcs()?;
+
+    // Collect intrinsic func specs with their unique_ids
+    let intrinsic_funcs: Vec<_> = funcs
+        .iter()
+        .filter(|f| IntrinsicFunc::maybe_from_str(f.name()).is_some())
+        .map(|f| (f.unique_id().to_string(), f.name().to_string()))
+        .collect();
+
+    assert!(
+        !intrinsic_funcs.is_empty(),
+        "Expected exported pkg to contain intrinsic functions"
+    );
+
+    // Use the actual function we're testing
+    let thing_map = import_funcs_for_module_update(ctx, funcs).await?;
+
+    // Verify all intrinsic functions are in the thing_map
+    for (unique_id, func_name) in &intrinsic_funcs {
+        let thing = thing_map
+            .get(unique_id)
+            .unwrap_or_else(|| panic!("Expected func {func_name} to be in thing_map"));
+
+        let Thing::Func(func) = thing else {
+            panic!("Expected Thing::Func, got something else for {func_name}");
+        };
+
+        assert_eq!(&func.name, func_name, "Expected func name to match");
+    }
+
+    Ok(())
+}
+
+/// Test that `import_func` with UpdateExisting mode updates an existing func's code.
+#[test]
+async fn import_func_with_update_existing_updates_code(ctx: &mut DalContext) -> Result<()> {
+    // Create a schema with variant (this creates a SchemaVariantDefinition func)
+    let asset_name = "update_existing_test".to_string();
+    let variant = VariantAuthoringClient::create_schema_and_variant(
+        ctx,
+        asset_name.clone(),
+        None,
+        None,
+        "Integration Tests".to_string(),
+        "#00b0b0".to_string(),
+    )
+    .await?;
+
+    let schema = variant.schema(ctx).await?;
+
+    // Get the func from the variant
+    let func_id = variant
+        .asset_func_id()
+        .expect("Expected variant to have an asset func");
+    let func = Func::get_by_id(ctx, func_id).await?;
+    let func_code_before = func.code_plaintext()?.expect("Expected func to have code");
+
+    // Create a module and associate the func with it
+    let module = Module::new(
+        ctx,
+        &asset_name,
+        "test_hash_123",
+        "1.0.0",
+        "Test module",
+        "test@test.com",
+        Utc::now(),
+        Some(schema.id().into()),
+    )
+    .await?;
+    module.create_association(ctx, func.id.into()).await?;
+
+    // Export the variant to a pkg spec
+    let mut exporter = PkgExporter::new_for_module_contribution(
+        asset_name.clone(),
+        "1.0.0",
+        "test@test.com",
+        schema.id(),
+        false,
+    );
+    let exported_spec = exporter.export_as_spec(ctx).await?;
+
+    // Find the schema variant definition func in the exported spec
+    let original_func_spec = exported_spec
+        .funcs
+        .iter()
+        .find(|f| f.name == func.name)
+        .expect("Expected to find asset func in exported spec");
+
+    let original_data = original_func_spec
+        .data
+        .as_ref()
+        .expect("Expected func to have data");
+
+    // Build a new func spec with modified code
+    let new_code = "function main() { return { props: [] }; }";
+    let modified_func_spec = FuncSpec::builder()
+        .name(&func.name)
+        .unique_id(original_func_spec.unique_id.clone())
+        .data(
+            FuncSpecData::builder()
+                .name(&func.name)
+                .handler(&original_data.handler)
+                .code_plaintext(new_code)
+                .backend_kind(original_data.backend_kind)
+                .response_type(original_data.response_type)
+                .build()?,
+        )
+        .build()?;
+
+    // Load the modified spec into an SiPkg
+    let modified_pkg_spec = PkgSpec::builder()
+        .name(&asset_name)
+        .created_by("test@test.com")
+        .func(modified_func_spec)
+        .version("1.0.1")
+        .build()?;
+    let modified_pkg = SiPkg::load_from_spec(modified_pkg_spec)?;
+
+    // Get the func from the package
+    let pkg_funcs = modified_pkg.funcs()?;
+    let pkg_func = pkg_funcs
+        .iter()
+        .find(|f| f.name() == func.name)
+        .expect("Expected to find func in pkg");
+
+    // Import with UpdateExisting mode, passing the module
+    let mut thing_map = ThingMap::new();
+    let updated_func = import_func(
+        ctx,
+        pkg_func,
+        Some(module),
+        &mut thing_map,
+        false,
+        UpdateExisting,
+    )
+    .await?;
+
+    // Verify the func was updated (same ID, different code)
+    assert_eq!(updated_func.id, func.id, "Expected same func ID");
+
+    let func_code_after = updated_func
+        .code_plaintext()?
+        .expect("Expected func to have code");
+
+    assert_ne!(
+        func_code_before, func_code_after,
+        "Expected code to be different after update"
+    );
+    assert_eq!(
+        func_code_after, new_code,
+        "Expected code to match the new code"
+    );
+
+    Ok(())
 }

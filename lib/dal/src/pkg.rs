@@ -1,5 +1,9 @@
 use std::collections::HashMap;
 
+pub use UpdateMode::{
+    SkipExisting,
+    UpdateExisting,
+};
 use chrono::{
     DateTime,
     Utc,
