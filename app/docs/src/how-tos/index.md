@@ -1,10 +1,10 @@
-# How To Guides
+# How-To Guides
 
-How To Guides show you how to accomplish specific tasks with System Initiative.
-They assume knowledge of both System Initiative and the task they are teaching.
-They help you solve problems quickly by showing you relevant examples, and
-relying on your pre-existing knowledge.
+These guides help you accomplish specific tasks with System Initiative. Jump in
+when you know what you want to do and need practical steps to get it done.
 
-- [Using the Public API](./use-public-api) - learn how to manage infrastructure
-  with our Public API
-- [AWS VPC](./aws-vpc) - learn how to model an AWS VPC
+## Available Guides
+
+- [Use the Public API](./use-public-api.md) - Work with the REST API to manage
+  your workspaces and infrastructure programmatically
+- [AWS VPC](./aws-vpc.md) - Build and configure a Virtual Private Cloud on AWS

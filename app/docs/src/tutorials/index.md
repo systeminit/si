@@ -1,12 +1,17 @@
 # Tutorials
 
-Tutorials are designed to help you understand how to use System Initiative by
-using System Initiative. They focus on helping you gain experience by doing,
-rather than explaining why things work the way they do.
+These tutorials help you learn System Initiative by doing. They're designed to
+give you hands-on experience with the platform, guiding you through practical
+exercises that build your skills and confidence. You don't need prior
+experience—just follow along and see what System Initiative can do.
 
-- [Installing the CLI](./install-the-cli.md) - Get set up with the CLI and AI
-  Agent tooling
-- [Discover Your Infrastructure](./discover.md) - Examine what networking
-  infrastructure you already have running
-- [Creating New Infrastructure](./creating-infrastructure.md) - Deploy a brand
-  new docker container
+## Available Tutorials
+
+- [Set Up](./setup.md) - Get started with System Initiative and create your
+  first workspace
+- [Install the CLI](./install-the-cli.md) - Set up the CLI and AI Agent tooling
+  on your machine
+- [Discover Infrastructure](./discover.md) - Learn to examine and understand
+  your existing infrastructure
+- [Create Infrastructure](./creating-infrastructure.md) - Build and deploy new
+  infrastructure from scratch
