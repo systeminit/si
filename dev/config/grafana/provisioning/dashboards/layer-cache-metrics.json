@@ -343,7 +343,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "sum(rate(layer_cache_backend_resolved_total{exported_job=~\"${service}\", cache_name=~\"${cache}\", backend=\"pg\", result=\"hit\"}[1m]))",
+          "expr": "sum(rate(layer_cache_backend_resolved_total{exported_job=~\"${service}\", cache_name=~\"${cache}\", backend=\"postgres\", result=\"hit\"}[1m]))",
           "legendFormat": "PostgreSQL",
           "refId": "C"
         },
@@ -371,6 +371,10 @@
         "legend": {
           "displayMode": "list",
           "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
         }
       }
     },
@@ -632,7 +636,7 @@
       },
       "targets": [
         {
-          "expr": "sum by (exported_job, cache_name) (rate(layer_cache_read_fallback{from_backend=\"s3\", to_backend=\"postgres\"}[5m]))",
+          "expr": "sum by (exported_job, cache_name) (rate(layer_cache_read_fallback_total{from_backend=\"s3\", to_backend=\"postgres\"}[5m]))",
           "legendFormat": "{{exported_job}}/{{cache_name}} - S3\u2192PG fallback",
           "refId": "A",
           "datasource": {
@@ -653,6 +657,12 @@
       "datasource": {
         "type": "prometheus",
         "uid": "${datasource}"
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
       }
     },
     {
@@ -1064,6 +1074,12 @@
       "datasource": {
         "type": "prometheus",
         "uid": "${datasource}"
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
       }
     },
     {
@@ -1167,6 +1183,12 @@
       "datasource": {
         "type": "prometheus",
         "uid": "${datasource}"
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
       }
     },
     {
