@@ -50,6 +50,13 @@ async function main(component: Input): Promise<Output> {
       } else {
         paramValue = _.get(component.properties, ["resource", "payload", paramName]) ||
                      _.get(component.properties, ["domain", paramName]);
+
+        // GCP often returns full URLs for reference fields (e.g., region, zone, network)
+        // Extract just the resource name from the URL
+        if (paramValue && typeof paramValue === "string" && paramValue.startsWith("https://")) {
+          const urlParts = paramValue.split("/");
+          paramValue = urlParts[urlParts.length - 1];
+        }
       }
 
       if (paramValue) {

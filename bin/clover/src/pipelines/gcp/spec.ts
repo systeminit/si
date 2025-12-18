@@ -12,6 +12,7 @@ import { gcpProviderConfig } from "./provider.ts";
 import { OnlyProperties } from "../../spec/props.ts";
 import { CfHandler, CfHandlerKind, CfProperty } from "../types.ts";
 import logger from "../../logger.ts";
+import { detectCreateOnlyProperties } from "./utils.ts";
 
 export type GcpResourceMethods = {
   get?: GcpMethod;
@@ -234,8 +235,11 @@ function buildGcpResourceSpec(
   };
 
   // Classify properties
-  const writeableProps = new Set(Object.keys(domainProperties));
+  const writeableProps = new Set(Object.keys(writableDomainProperties));
   const getProps = new Set(Object.keys(resourceValueProperties));
+
+  // createOnly: Detect properties marked as immutable or creation-time-only
+  onlyProperties.createOnly = detectCreateOnlyProperties(insert?.request);
 
   // readOnly: in GET but not writable (INSERT/UPDATE/PATCH)
   for (const prop of getProps) {
@@ -287,19 +291,9 @@ export function normalizeGcpProperty(
     normalized.type = "string";
   }
 
-  // GCP uses string+int64 to avoid JS precision issues, normalize to integer
-  if (
-    normalized.type === "string" &&
-    normalized.format &&
-    (
-      normalized.format === "int32" ||
-      normalized.format === "int64" ||
-      normalized.format === "uint32" ||
-      normalized.format === "uint64"
-    )
-  ) {
-    normalized.type = "integer";
-  }
+  // Note: GCP uses string type with int32/int64/uint32/uint64 format to avoid JS precision issues
+  // We keep these as strings since the API returns them as strings, not actual integers
+  // Converting to integer would cause type mismatches when SI tries to populate values
 
   // Normalize formats to SI-supported ones
   if (normalized.format) {
@@ -349,6 +343,10 @@ export function normalizeGcpProperty(
         "byte",
         "binary",
         "password",
+        "int32",
+        "int64",
+        "uint32",
+        "uint64",
       ].includes(format)
     ) {
       delete normalized.format;

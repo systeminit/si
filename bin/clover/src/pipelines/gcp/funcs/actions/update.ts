@@ -11,15 +11,43 @@ async function main(component: Input): Promise<Output> {
   // Parse the generated payload
   const fullPayload = JSON.parse(codeString);
 
+  // Get PropUsageMap to filter out createOnly properties
+  const propUsageMapJson = _.get(
+    component.properties,
+    ["domain", "extra", "PropUsageMap"],
+    "",
+  );
+
+  let updatePayload = fullPayload;
+
+  // Filter out createOnly properties
+  if (propUsageMapJson) {
+    try {
+      const propUsageMap = JSON.parse(propUsageMapJson);
+      if (
+        Array.isArray(propUsageMap.createOnly) &&
+        Array.isArray(propUsageMap.updatable)
+      ) {
+        // Remove createOnly properties from the payload
+        for (const createOnlyPath of propUsageMap.createOnly) {
+          // Convert /domain/propertyName to propertyName
+          const propName = createOnlyPath.replace(/^\/domain\//, "");
+          delete updatePayload[propName];
+        }
+      }
+    } catch (e) {
+      console.log(`Warning: Failed to parse PropUsageMap: ${e}`);
+    }
+  }
+
   // Get current resource state to compare
   const currentResource = component.properties?.resource?.payload;
 
   // Filter to only changed fields (GCP PATCH requires this for some resources)
-  let updatePayload = fullPayload;
   if (currentResource) {
     const changedFields: Record<string, any> = {};
 
-    for (const [key, value] of Object.entries(fullPayload)) {
+    for (const [key, value] of Object.entries(updatePayload)) {
       // Only include field if it's different from current resource
       if (!_.isEqual(value, currentResource[key])) {
         changedFields[key] = value;
@@ -27,6 +55,12 @@ async function main(component: Input): Promise<Output> {
     }
 
     updatePayload = changedFields;
+
+    // GCP requires fingerprint for updates to prevent concurrent modifications
+    // Always include the fingerprint from the current resource if it exists
+    if (currentResource.fingerprint) {
+      updatePayload.fingerprint = currentResource.fingerprint;
+    }
   }
 
   // Try to get update API path first, fall back to patch
@@ -88,6 +122,13 @@ async function main(component: Input): Promise<Output> {
       } else {
         paramValue = _.get(component.properties, ["resource", "payload", paramName]) ||
                      _.get(component.properties, ["domain", paramName]);
+
+        // GCP often returns full URLs for reference fields (e.g., region, zone, network)
+        // Extract just the resource name from the URL
+        if (paramValue && typeof paramValue === "string" && paramValue.startsWith("https://")) {
+          const urlParts = paramValue.split("/");
+          paramValue = urlParts[urlParts.length - 1];
+        }
       }
 
       if (paramValue) {

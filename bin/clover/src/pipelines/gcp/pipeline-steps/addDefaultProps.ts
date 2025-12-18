@@ -3,8 +3,16 @@ import {
   addPropSuggestSource,
   createObjectProp,
   createScalarProp,
+  toPropPath,
+  ExpandedPropSpec,
 } from "../../../spec/props.ts";
 import { GcpSchema } from "../schema.ts";
+import _ from "lodash";
+
+export interface PropUsageMap {
+  createOnly: string[];
+  updatable: string[];
+}
 
 export function addDefaultProps(specs: ExpandedPkgSpec[]): ExpandedPkgSpec[] {
   const gcpSpecs = [] as ExpandedPkgSpec[];
@@ -146,6 +154,44 @@ export function addDefaultProps(specs: ExpandedPkgSpec[]): ExpandedPkgSpec[] {
       resourceTypeProp.data.hidden = true;
       resourceTypeProp.data.defaultValue = gcpSchema.typeName;
       extraProp.entries.push(resourceTypeProp);
+    }
+
+    // Create PropUsageMap for filtering createOnly properties in updates
+    {
+      const propUsageMapProp = createScalarProp(
+        "PropUsageMap",
+        "string",
+        extraProp.metadata.propPath,
+        false,
+      );
+      const propUsageMap: PropUsageMap = {
+        createOnly: [],
+        updatable: [],
+      };
+
+      // Walk the domain properties and categorize them
+      const queue: ExpandedPropSpec[] = _.cloneDeep(domain.entries);
+
+      while (queue.length > 0) {
+        const prop = queue.pop();
+        if (!prop) break;
+
+        const fullPath = toPropPath(prop.metadata.propPath);
+
+        if (prop.metadata.createOnly) {
+          propUsageMap.createOnly.push(fullPath);
+        } else if (!prop.metadata.readOnly) {
+          propUsageMap.updatable.push(fullPath);
+        }
+
+        if (prop.kind === "object") {
+          prop.entries.forEach((p: ExpandedPropSpec) => queue.unshift(p));
+        }
+      }
+
+      propUsageMapProp.data.defaultValue = JSON.stringify(propUsageMap);
+      propUsageMapProp.data.hidden = true;
+      extraProp.entries.push(propUsageMapProp);
     }
 
     // Add Google Cloud Credential to secrets
