@@ -1,9 +1,13 @@
+use std::collections::BTreeSet;
+
 use dal::{
     AttributePrototype,
     AttributeValue,
     Component,
     DalContext,
+    component::subscription_graph::SubscriptionGraph,
     func::authoring::FuncAuthoringClient,
+    workspace_snapshot::graph::validator::ValidationIssue,
 };
 use dal_test::{
     Result,
@@ -18,6 +22,7 @@ use dal_test::{
 };
 use pretty_assertions_sorted::assert_eq;
 use serde_json::json;
+use si_id::ComponentId;
 
 pub mod default_subscriptions;
 
@@ -733,6 +738,69 @@ async fn remove_subscribed_component(ctx: &mut DalContext) -> Result<()> {
     Ok(())
 }
 
+#[test]
+async fn subscription_cycles(ctx: &mut DalContext) -> Result<()> {
+    create_testy_variant(ctx).await?;
+    component::create(ctx, "testy", "subscriber").await?;
+    component::create(ctx, "testy", "source").await?;
+    component::create(ctx, "testy", "source_2").await?;
+
+    value::subscribe(
+        ctx,
+        ("subscriber", "/domain/Value"),
+        ("source", "/domain/Value"),
+    )
+    .await?;
+
+    value::subscribe(
+        ctx,
+        ("source", "/domain/Value"),
+        ("source_2", "/domain/Value"),
+    )
+    .await?;
+
+    // Self subscription should be fine
+    value::subscribe(
+        ctx,
+        ("source_2", "/domain/Value3"),
+        ("source_2", "/domain/Value4"),
+    )
+    .await?;
+
+    ctx.workspace_snapshot()?.cleanup().await?;
+
+    let issues = ctx
+        .workspace_snapshot()?
+        .as_legacy_snapshot()?
+        .validate()
+        .await?;
+
+    assert!(issues.is_empty());
+
+    value::subscribe(
+        ctx,
+        ("source_2", "/domain/Value2"),
+        ("subscriber", "/domain/Value2"),
+    )
+    .await?;
+
+    let issues = ctx
+        .workspace_snapshot()?
+        .as_legacy_snapshot()?
+        .validate()
+        .await?;
+
+    assert_eq!(
+        &[(
+            ValidationIssue::CyclicSubscriptions,
+            "Cycle in the subscriptions between components".to_string(),
+        ),],
+        issues.as_slice()
+    );
+
+    Ok(())
+}
+
 async fn create_testy_variant(ctx: &DalContext) -> Result<()> {
     // Make a variant with a Value prop
     variant::create(
@@ -744,6 +812,8 @@ async fn create_testy_variant(ctx: &DalContext) -> Result<()> {
                     props: [
                         { name: "Value", kind: "string" },
                         { name: "Value2", kind: "string" },
+                        { name: "Value3", kind: "string" },
+                        { name: "Value4", kind: "string" },
                         { name: "Values", kind: "array",
                             entry: { name: "ValuesItem", kind: "string" },
                         },
@@ -763,6 +833,82 @@ async fn create_testy_variant(ctx: &DalContext) -> Result<()> {
         "#,
     )
     .await?;
+
+    Ok(())
+}
+
+/// Helper to extract the set of (subscriber, source) edges from a SubscriptionGraph
+fn extract_edges(graph: &SubscriptionGraph) -> BTreeSet<(ComponentId, ComponentId)> {
+    let inner = graph.inner();
+    let mut edges = BTreeSet::new();
+
+    for id in inner.all_ids() {
+        for dep in inner.direct_dependencies_of(id) {
+            edges.insert((id, dep));
+        }
+    }
+
+    edges
+}
+
+#[test]
+async fn subscription_graph_constructors_produce_identical_results(
+    ctx: &mut DalContext,
+) -> Result<()> {
+    create_testy_variant(ctx).await?;
+
+    component::create(ctx, "testy", "subscriber1").await?;
+    component::create(ctx, "testy", "subscriber2").await?;
+    component::create(ctx, "testy", "source1").await?;
+    component::create(ctx, "testy", "source2").await?;
+
+    value::set(ctx, ("source1", "/domain/Value"), "value1").await?;
+    value::set(ctx, ("source2", "/domain/Value"), "value2").await?;
+
+    value::subscribe(
+        ctx,
+        ("subscriber1", "/domain/Value"),
+        ("source1", "/domain/Value"),
+    )
+    .await?;
+
+    value::subscribe(
+        ctx,
+        ("subscriber2", "/domain/Value"),
+        ("source1", "/domain/Value2"),
+    )
+    .await?;
+
+    value::subscribe(
+        ctx,
+        ("subscriber2", "/domain/Value2"),
+        ("source2", "/domain/Value"),
+    )
+    .await?;
+
+    let sub_graph_from_dal_ctx = SubscriptionGraph::new(ctx).await?;
+    let snapshot = ctx.workspace_snapshot()?.as_legacy_snapshot()?;
+    let working_copy = snapshot.working_copy_cloned().await;
+    let sub_graph_from_snapshot = SubscriptionGraph::new_from_snapshot(&working_copy)?;
+
+    let dal_edges = extract_edges(&sub_graph_from_dal_ctx);
+    let snapshot_edges = extract_edges(&sub_graph_from_snapshot);
+
+    assert!(
+        !dal_edges.is_empty(),
+        "There should be at least some subscription edges"
+    );
+
+    assert_eq!(
+        dal_edges, snapshot_edges,
+        "Both constructors should produce identical subscription graphs"
+    );
+
+    assert_eq!(
+        sub_graph_from_dal_ctx.is_cyclic(),
+        sub_graph_from_snapshot.is_cyclic(),
+        "Both graphs should agree on whether the graph is cyclic"
+    );
 
     Ok(())
 }
