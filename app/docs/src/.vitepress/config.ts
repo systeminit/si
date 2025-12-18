@@ -154,12 +154,8 @@ export default withMermaid(defineConfig({
             link: "/reference/ai-agent",
           },
           {
-            text: "Users",
-            link: "/reference/users",
-          },
-          {
-            text: "Workspaces",
-            link: "/reference/workspaces",
+            text: "Audit Logs",
+            link: "/reference/audit-logs",
           },
           {
             text: "Change Sets",
@@ -168,10 +164,6 @@ export default withMermaid(defineConfig({
           {
             text: "Components",
             link: "/reference/components",
-          },
-          {
-            text: "Schemas",
-            link: "/reference/schema",
           },
           {
             text: "Functions",
@@ -205,6 +197,10 @@ export default withMermaid(defineConfig({
             ],
           },
           {
+            text: "Schemas",
+            link: "/reference/schema",
+          },
+          {
             text: "Review",
             link: "/reference/review",
           },
@@ -221,8 +217,12 @@ export default withMermaid(defineConfig({
             link: "/reference/templates",
           },
           {
-            text: "Audit Logs",
-            link: "/reference/audit-logs",
+            text: "Users",
+            link: "/reference/users",
+          },
+          {
+            text: "Workspaces",
+            link: "/reference/workspaces",
           },
           {
             text: "TypeScript Function API",
@@ -231,6 +231,10 @@ export default withMermaid(defineConfig({
           {
             text: "Public API",
             link: "/reference/public-api",
+          },
+          {
+            text: "CLI",
+            link: "/reference/si-cli",
           },
         ],
       },
