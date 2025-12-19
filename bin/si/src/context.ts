@@ -45,6 +45,8 @@ import type { GlobalOptions } from "./cli.ts";
 import { type Config, extractConfig } from "./cli/config.ts";
 import * as jwt from "./cli/jwt.ts";
 import { getUserAgent } from "./user_agent.ts";
+import { AxiosResponse } from "axios";
+import { AxiosRequestConfig } from "axios";
 
 // Extend axios types to include metadata for request timing
 declare module "axios" {
@@ -300,102 +302,7 @@ export class Context {
     }
 
     // Add global interceptors once
-    if (!this.interceptorsAdded) {
-      const logger = getLogger(["api"]);
-
-      axios.interceptors.request.use((config) => {
-        config.metadata = { startTime: Date.now() };
-        const fullUrl = `${config.baseURL || ""}${config.url || ""}`;
-        logger.trace(`API Request: ${config.method?.toUpperCase()} ${fullUrl}`);
-
-        if (config.params && Object.keys(config.params).length > 0) {
-          const paramStr = Object.entries(config.params).map(([k, v]) => `${k}=${v}`).join(", ");
-          logger.trace(`  Query Params: ${paramStr}`);
-        }
-
-        // Log request body
-        if (config.data) {
-          if (typeof config.data === "object") {
-            const dataEntries = Object.entries(config.data);
-            if (dataEntries.length > 0) {
-              const bodyStr = dataEntries.map(([k, v]) => `${k}=${JSON.stringify(v)}`).join(", ");
-              logger.trace(`  Request Body: ${bodyStr}`);
-            }
-          } else if (typeof config.data === "string") {
-            const trimmed = config.data.trim();
-            if (trimmed) {
-              try {
-                const parsed = JSON.parse(trimmed);
-                const entries = Object.entries(parsed);
-                const bodyStr = entries.map(([k, v]) => `${k}=${JSON.stringify(v)}`).join(", ");
-                logger.trace(`  Request Body: ${bodyStr}`);
-              } catch {
-                logger.trace(`  Request Body: ${trimmed}`);
-              }
-            }
-          }
-        }
-
-        return config;
-      });
-
-      axios.interceptors.response.use(
-        (response) => {
-          const duration = response.config.metadata?.startTime
-            ? Date.now() - response.config.metadata.startTime
-            : null;
-          const fullUrl = `${response.config.baseURL || ""}${response.config.url || ""}`;
-
-          logger.trace(
-            `API Response: ${response.config.method?.toUpperCase()} ${fullUrl} → ${response.status} ${response.statusText}${duration ? ` (${duration}ms)` : ""}`
-          );
-
-          if (response.data && typeof response.data === "object") {
-            const dataEntries = Object.entries(response.data);
-            for (const [k, v] of dataEntries) {
-              if (Array.isArray(v)) {
-                logger.trace(`    ${k}: [${v.length} items]`);
-                // Show first few items of array
-                v.slice(0, 3).forEach((item, idx) => {
-                  if (typeof item === "object") {
-                    const itemEntries = Object.entries(item);
-                    const itemStr = itemEntries.map(([ik, iv]) => `${ik}=${JSON.stringify(iv)}`).join(", ");
-                    logger.trace(`      [${idx}]: ${itemStr}`);
-                  } else {
-                    logger.trace(`      [${idx}]: ${JSON.stringify(item)}`);
-                  }
-                });
-                if (v.length > 3) {
-                  logger.trace(`      ... ${v.length - 3} more items`);
-                }
-              } else {
-                try {
-                  logger.trace(`    ${k}: ${JSON.stringify(v)}`);
-                } catch {
-                  logger.trace(`    ${k}: [object]`);
-                }
-              }
-            }
-          }
-
-          return response;
-        },
-        (error) => {
-          const duration = error.config?.metadata?.startTime
-            ? Date.now() - error.config.metadata.startTime
-            : null;
-          const fullUrl = `${error.config?.baseURL || ""}${error.config?.url || ""}`;
-
-          logger.trace(
-            `API Response Error: ${error.config?.method?.toUpperCase()} ${fullUrl} → ${error.response?.status || "No Status"} ${error.response?.statusText || error.message}${duration ? ` (${duration}ms)` : ""}`
-          );
-
-          return Promise.reject(error);
-        },
-      );
-
-      this.interceptorsAdded = true;
-    }
+    addInterceptors();
 
     return new Configuration({
       basePath: ctx.baseUrl,
@@ -407,6 +314,121 @@ export class Context {
         },
       },
     });
+  }
+}
+
+/// Global flag to ensure interceptors are only added once
+let INTERCEPTORS_ADDED = false;
+
+function addInterceptors() {
+  if (INTERCEPTORS_ADDED) return;
+  INTERCEPTORS_ADDED = true;
+
+  const logger = getLogger(["api"]);
+
+  axios.interceptors.request.use((config) => {
+    config.metadata = { startTime: Date.now() };
+    const fullUrl = `${config.baseURL || ""}${config.url || ""}`;
+    logger.trace(`API Request: ${config.method?.toUpperCase()} ${fullUrl}`);
+
+    if (config.params && Object.keys(config.params).length > 0) {
+      const paramStr = Object.entries(config.params)
+        .map(([k, v]) => `${k}=${v}`)
+        .join(", ");
+      logger.trace(`  Query Params: ${paramStr}`);
+    }
+
+    // Log request body
+    printPayload(config);
+
+    return config;
+  });
+
+  axios.interceptors.response.use(
+    (response) => {
+      const duration = response.config.metadata?.startTime
+        ? Date.now() - response.config.metadata.startTime
+        : null;
+      const fullUrl = `${response.config.baseURL || ""}${
+        response.config.url || ""
+      }`;
+
+      logger.trace(
+        `API Response: ${response.config.method?.toUpperCase()} ${fullUrl} → ${
+          response.status
+        } ${response.statusText}${duration ? ` (${duration}ms)` : ""}`,
+      );
+
+      printPayload(response);
+
+      return response;
+    },
+    (error) => {
+      const duration = error.config?.metadata?.startTime
+        ? Date.now() - error.config.metadata.startTime
+        : null;
+      const fullUrl = `${error.config?.baseURL || ""}${
+        error.config?.url || ""
+      }`;
+
+      logger.trace(
+        `API Response Error: ${error.config?.method?.toUpperCase()} ${fullUrl} → ${
+          error.response?.status || "No Status"
+        } ${error.response?.statusText || error.message}${
+          duration ? ` (${duration}ms)` : ""
+        }`,
+      );
+
+      printPayload(error.response);
+
+      return Promise.reject(error);
+    },
+  );
+
+  function printPayload(response: AxiosResponse | AxiosRequestConfig) {
+    if (response.data) {
+      switch (typeof response.data) {
+        case "object": {
+          const dataEntries = Object.entries(response.data);
+          for (const [k, v] of dataEntries) {
+            if (Array.isArray(v)) {
+              logger.trace(`    ${k}: [${v.length} items]`);
+              // Show first few items of array
+              v.slice(0, 3).forEach((item, idx) => {
+                if (typeof item === "object") {
+                  const itemEntries = Object.entries(item);
+                  const itemStr = itemEntries
+                    .map(([ik, iv]) => `${ik}=${JSON.stringify(iv)}`)
+                    .join(", ");
+                  logger.trace(`      [${idx}]: ${itemStr}`);
+                } else {
+                  logger.trace(`      [${idx}]: ${JSON.stringify(item)}`);
+                }
+              });
+              if (v.length > 3) {
+                logger.trace(`      ... ${v.length - 3} more items`);
+              }
+            } else {
+              try {
+                logger.trace(`    ${k}: ${JSON.stringify(v)}`);
+              } catch {
+                logger.trace(`    ${k}: [object]`);
+              }
+            }
+          }
+          break;
+        }
+        case "string": {
+          for (const line of response.data.split("\n")) {
+            logger.trace(`    ${line}`);
+          }
+          break;
+        }
+        default: {
+          logger.trace(`    [${typeof response.data} ${response.data}]`);
+        }
+      }
+    }
   }
 }
 
