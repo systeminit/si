@@ -1,4 +1,5 @@
 import { setTimeout } from "node:timers/promises";
+import { setTimeout as setTimeoutCb } from "node:timers";
 import { execa, type Result, type Options } from "npm:execa";
 
 export interface WatchArgs {
@@ -13,6 +14,30 @@ export interface WatchArgs {
 export interface WatchResult {
   result: SiExecResult;
   failed?: "deadlineExceeded" | "commandFailed";
+}
+
+export interface RetryOptions {
+  maxAttempts?: number;
+  baseDelay?: number;
+  maxDelay?: number;
+  jitter?: boolean;
+  isRateLimitedFn?: (error: any) => boolean;
+}
+
+export interface LROPollOptions {
+  url: string;
+  headers: Record<string, string>;
+  maxAttempts?: number;
+  baseDelay?: number;
+  maxDelay?: number;
+  isCompleteFn: (response: Response, body: any) => boolean;
+  isErrorFn?: (response: Response, body: any) => boolean;
+  extractResultFn?: (response: Response, body: any) => any | Promise<any>;
+}
+
+export interface RetryResult<T> {
+  result: T;
+  attempts: number;
 }
 
 // import readline from "readline";
@@ -40,6 +65,32 @@ function mergedOptions(userOptions?: Options): Options {
     stdin: userOptions?.input ? "pipe" : "ignore",
     env: { LD_LIBRARY_PATH: "" },
   };
+}
+
+/**
+ * Calculates exponential backoff delay with optional jitter
+ */
+function calculateDelay(
+  attempt: number,
+  baseDelay: number,
+  maxDelay: number,
+  useJitter: boolean = true
+): number {
+  const exponentialDelay = Math.min(baseDelay * Math.pow(2, attempt - 1), maxDelay);
+  if (useJitter) {
+    const jitter = Math.random() * 0.3 * exponentialDelay;
+    return exponentialDelay + jitter;
+  }
+  return exponentialDelay;
+}
+
+/**
+ * Promise-based delay utility
+ */
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => {
+    setTimeoutCb(() => resolve(), ms);
+  });
 }
 
 export const makeExec = (_executionId: string) => {
@@ -113,7 +164,128 @@ export const makeExec = (_executionId: string) => {
     }
   }
 
-  return { waitUntilEnd, watch };
+  /**
+   * Executes a function with exponential backoff retry logic
+   */
+  async function withRetry<T>(
+    fn: () => Promise<T>,
+    options: RetryOptions = {}
+  ): Promise<RetryResult<T>> {
+    const {
+      maxAttempts = 20,
+      baseDelay = 1000,
+      maxDelay = 90000,
+      jitter = true,
+      isRateLimitedFn
+    } = options;
+
+    let lastError: any;
+
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        const result = await fn();
+        console.log(`[RETRY] Operation successful on attempt ${attempt}`);
+        return { result, attempts: attempt };
+      } catch (error) {
+        lastError = error;
+        
+        // Check if this is a rate limiting error that should be retried
+        const isRateLimited = isRateLimitedFn ? isRateLimitedFn(error) : false;
+        
+        if (attempt < maxAttempts && isRateLimited) {
+          const delayMs = calculateDelay(attempt, baseDelay, maxDelay, jitter);
+          console.log(`[RETRY] Rate limited on attempt ${attempt}, waiting ${Math.round(delayMs)}ms before retry`);
+          await delay(delayMs);
+          continue;
+        } else if (attempt < maxAttempts && !isRateLimitedFn) {
+          // If no rate limit function provided, retry all errors
+          const delayMs = calculateDelay(attempt, baseDelay, maxDelay, jitter);
+          console.log(`[RETRY] Error on attempt ${attempt}, waiting ${Math.round(delayMs)}ms before retry`);
+          await delay(delayMs);
+          continue;
+        } else {
+          // Max attempts reached or non-retryable error
+          console.error(`[RETRY] Failed after ${attempt} attempts:`, error);
+          throw lastError;
+        }
+      }
+    }
+
+    throw lastError;
+  }
+
+  /**
+   * Polls a long-running operation until completion
+   */
+  async function pollLRO(options: LROPollOptions): Promise<any> {
+    const {
+      url,
+      headers,
+      maxAttempts = 20,
+      baseDelay = 2000,
+      maxDelay = 30000,
+      isCompleteFn,
+      isErrorFn,
+      extractResultFn
+    } = options;
+
+    console.log(`[LRO] Starting polling for: ${url}`);
+
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      console.log(`[LRO] Poll attempt ${attempt}`);
+
+      const response = await fetch(url, {
+        method: "GET",
+        headers
+      });
+
+      let body: any;
+      try {
+        body = await response.json();
+      } catch {
+        // If JSON parsing fails, use text
+        body = await response.text();
+      }
+
+      // Check if operation failed
+      if (isErrorFn && isErrorFn(response, body)) {
+        console.error(`[LRO] Operation failed:`, body);
+        throw new Error(`LRO operation failed: ${JSON.stringify(body)}`);
+      }
+
+      // Check if operation completed
+      if (isCompleteFn(response, body)) {
+        console.log(`[LRO] Operation completed on attempt ${attempt}`);
+        return extractResultFn ? await extractResultFn(response, body) : body;
+      }
+
+      // Continue polling
+      if (attempt < maxAttempts) {
+        const delayMs = calculateDelay(attempt, baseDelay, maxDelay, true);
+        console.log(`[LRO] Waiting ${Math.round(delayMs)}ms before next poll`);
+        await delay(delayMs);
+      }
+    }
+
+    throw new Error(`LRO polling timeout after ${maxAttempts} attempts`);
+  }
+
+  /**
+   * Enhanced command execution with built-in retry logic
+   */
+  async function waitUntilEndWithRetry(
+    execaFile: string,
+    execaArgs?: readonly string[],
+    execaOptions?: Options,
+    retryOptions?: RetryOptions
+  ): Promise<RetryResult<SiExecResult>> {
+    return withRetry(
+      () => waitUntilEnd(execaFile, execaArgs, execaOptions),
+      retryOptions
+    );
+  }
+
+  return { waitUntilEnd, watch, withRetry, pollLRO, waitUntilEndWithRetry };
 };
 
 // export async function siExecStream(
