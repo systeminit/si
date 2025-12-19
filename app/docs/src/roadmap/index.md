@@ -5,28 +5,29 @@ outline:
 
 # Roadmap
 
-Updated December 10, 2025.
+Updated December 19, 2025.
 
 Want to influence the road map?
 [Learn more about how to work on System Initiative](../explanation/working-on-si.md).
 
-## SI CLI (In public beta)
+## SI CLI (Generally Available)
 
 We are introducing a CLI for System Initiative. It gives you tools to manage
 your workspace without the web app. You can manage components, author schemas,
 and generate templates for reuse. The CLI also gives you direct control of the
 AI Agent from your terminal.
 
-## Provider Coverage (In Public Beta)
+## Provider Coverage
 
 We are expanding our list of supported
-[cloud providers](https://docs.systeminit.com/explanation/cloud-providers), starting with
-Azure and Google Cloud. These new providers will be available in Q4 2025.
+[cloud providers](https://docs.systeminit.com/explanation/cloud-providers),
+starting with Azure and Google Cloud. These new providers will be available in
+Q4 2025.
 
 - Azure (in public beta)
 - Hetzner Cloud (in public beta)
 - DigitalOcean (in public beta)
-- Google Cloud (in development)
+- Google Cloud (in private beta)
 
 ## AI Authoring (Generally Available)
 
