@@ -33,7 +33,7 @@ get help. The community is eager to answer your questions and get you started on
   clarify how to use particular parts of the system.
 - The [Changelog](./changelog/index.md) keeps you up to date on the latest
   features and weekly demos.
-- The [Road Map](./roadmap/index.md) talks about where we are heading.
+- The [Roadmap](./roadmap/index.md) talks about where we are heading.
 
 ## Contributing to System Initiative
 
