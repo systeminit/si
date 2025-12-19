@@ -420,10 +420,7 @@ impl S3Layer {
                 read_retry_config.max_backoff_ms,
             ));
 
-        let s3_config = s3_config_builder
-            .retry_config(retry_config)
-            .retry_classifier(NoSuchKeyRetryClassifier::new())
-            .build();
+        let s3_config = s3_config_builder.retry_config(retry_config).build();
 
         let client = Client::from_conf(s3_config);
 
