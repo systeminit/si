@@ -197,10 +197,15 @@ function buildGcpResourceSpec(
   let typeName = `Google Cloud ${cleanTitle} ${fullResourceName}`;
   // Remove duplicate "Cloud" words
   typeName = typeName.replace(/\bCloud\s+Cloud\b/gi, "Cloud");
+  // Capitalize the last word (e.g., "networks" -> "Networks")
+  typeName = typeName.replace(/\s(\w+)$/, (_, word) => ` ${word.charAt(0).toUpperCase()}${word.slice(1)}`);
 
-  const description = getResponseSchema.description ||
+  // Normalize the asset description
+  const description = normalizeDescription(
+    getResponseSchema.description ||
     get.description ||
-    `GCP ${doc.name} ${fullResourceName} resource`;
+    `GCP ${doc.name} ${fullResourceName} resource`
+  )!;
 
   const requiredProperties = new Set(
     getResponseSchema.required || insert?.request?.required || [],
@@ -281,10 +286,28 @@ function normalizeGcpSchemaProperties(
   return normalized;
 }
 
+/**
+ * Normalizes description text by replacing newlines with spaces
+ * and collapsing multiple spaces. GCP descriptions often have
+ * embedded newlines that cause awkward formatting.
+ */
+function normalizeDescription(desc: string | undefined): string | undefined {
+  if (!desc) return desc;
+  return desc
+    .replace(/\n/g, " ")      // Replace newlines with spaces
+    .replace(/\s+/g, " ")     // Collapse multiple spaces
+    .trim();
+}
+
 export function normalizeGcpProperty(
   prop: RawGcpProperty,
 ): NormalizedGcpSchema {
   const normalized: NormalizedGcpSchema = { ...prop };
+
+  // Normalize the prop descriptions
+  if (normalized.description) {
+    normalized.description = normalizeDescription(normalized.description);
+  }
 
   // Transform "any" type to "string" (most permissive type that's supported)
   if (normalized.type === "any") {

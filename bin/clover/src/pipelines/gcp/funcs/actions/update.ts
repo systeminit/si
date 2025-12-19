@@ -44,12 +44,14 @@ async function main(component: Input): Promise<Output> {
   const currentResource = component.properties?.resource?.payload;
 
   // Filter to only changed fields (GCP PATCH requires this for some resources)
+  // Only compare fields that exist in the current resource - if a field doesn't exist
+  // in the resource response, we shouldn't try to update it
   if (currentResource) {
     const changedFields: Record<string, any> = {};
 
     for (const [key, value] of Object.entries(updatePayload)) {
-      // Only include field if it's different from current resource
-      if (!_.isEqual(value, currentResource[key])) {
+      // Only include field if it exists in current resource AND is different
+      if (key in currentResource && !_.isEqual(value, currentResource[key])) {
         changedFields[key] = value;
       }
     }
@@ -166,14 +168,14 @@ async function main(component: Input): Promise<Output> {
 
     console.log(`[UPDATE] Operation complete`);
     return {
-      payload: finalResource,
+      payload: normalizeGcpResourceValues(finalResource),
       status: "ok",
     };
   }
 
   // Handle synchronous response
   return {
-    payload: responseJson,
+    payload: normalizeGcpResourceValues(responseJson),
     status: "ok",
   };
 }
@@ -273,4 +275,41 @@ async function getAccessToken(serviceAccountJson: string): Promise<{ token: stri
     token: tokenResult.stdout.trim(),
     projectId,
   };
+}
+
+// URL normalization for GCP resource values
+const GCP_URL_PATTERN = /^https:\/\/[^/]*\.?googleapis\.com\//;
+const LOCATION_SEGMENTS = new Set(["regions", "zones", "locations"]);
+
+function normalizeGcpResourceValues<T>(obj: T): T {
+  if (obj === null || obj === undefined) return obj;
+  if (Array.isArray(obj)) return obj.map(item => normalizeGcpResourceValues(item)) as T;
+  if (typeof obj === "object") {
+    const normalized: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(obj)) {
+      if (typeof value === "string" && GCP_URL_PATTERN.test(value)) {
+        const pathParts = new URL(value).pathname.split("/").filter(Boolean);
+        if (pathParts.length >= 2 && LOCATION_SEGMENTS.has(pathParts[pathParts.length - 2])) {
+          normalized[key] = pathParts[pathParts.length - 1];
+        } else {
+          const projectsIdx = pathParts.indexOf("projects");
+          if (projectsIdx !== -1) {
+            normalized[key] = pathParts.slice(projectsIdx).join("/");
+          } else {
+            // For non-project APIs (e.g., Storage), extract after API version (v1, v2, etc.)
+            const versionIdx = pathParts.findIndex(p => /^v\d+/.test(p));
+            normalized[key] = versionIdx !== -1 && versionIdx + 1 < pathParts.length
+              ? pathParts.slice(versionIdx + 1).join("/")
+              : pathParts[pathParts.length - 1] || value;
+          }
+        }
+      } else if (typeof value === "object" && value !== null) {
+        normalized[key] = normalizeGcpResourceValues(value);
+      } else {
+        normalized[key] = value;
+      }
+    }
+    return normalized as T;
+  }
+  return obj;
 }

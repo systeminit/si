@@ -80,17 +80,20 @@ async function main({ thisComponent }: Input): Promise<Output> {
   const resourceProperties = await response.json();
   console.log(resourceProperties);
 
+  // Normalize GCP URLs to resource names
+  const normalizedProperties = normalizeGcpResourceValues(resourceProperties);
+
   const properties = {
     ...component,
     domain: {
       ...component.domain,
-      ...resourceProperties,
+      ...normalizedProperties,
     },
   };
 
   let needsRefresh = true;
   if (!resourcePayload) {
-    properties.resource = resourceProperties;
+    properties.resource = normalizedProperties;
     needsRefresh = false;
   }
 
@@ -158,4 +161,41 @@ async function getAccessToken(serviceAccountJson: string): Promise<{ token: stri
     token: tokenResult.stdout.trim(),
     projectId,
   };
+}
+
+// URL normalization for GCP resource values
+const GCP_URL_PATTERN = /^https:\/\/[^/]*\.?googleapis\.com\//;
+const LOCATION_SEGMENTS = new Set(["regions", "zones", "locations"]);
+
+function normalizeGcpResourceValues<T>(obj: T): T {
+  if (obj === null || obj === undefined) return obj;
+  if (Array.isArray(obj)) return obj.map(item => normalizeGcpResourceValues(item)) as T;
+  if (typeof obj === "object") {
+    const normalized: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(obj)) {
+      if (typeof value === "string" && GCP_URL_PATTERN.test(value)) {
+        const pathParts = new URL(value).pathname.split("/").filter(Boolean);
+        if (pathParts.length >= 2 && LOCATION_SEGMENTS.has(pathParts[pathParts.length - 2])) {
+          normalized[key] = pathParts[pathParts.length - 1];
+        } else {
+          const projectsIdx = pathParts.indexOf("projects");
+          if (projectsIdx !== -1) {
+            normalized[key] = pathParts.slice(projectsIdx).join("/");
+          } else {
+            // For non-project APIs (e.g., Storage), extract after API version (v1, v2, etc.)
+            const versionIdx = pathParts.findIndex(p => /^v\d+/.test(p));
+            normalized[key] = versionIdx !== -1 && versionIdx + 1 < pathParts.length
+              ? pathParts.slice(versionIdx + 1).join("/")
+              : pathParts[pathParts.length - 1] || value;
+          }
+        }
+      } else if (typeof value === "object" && value !== null) {
+        normalized[key] = normalizeGcpResourceValues(value);
+      } else {
+        normalized[key] = value;
+      }
+    }
+    return normalized as T;
+  }
+  return obj;
 }
