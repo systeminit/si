@@ -38,6 +38,7 @@ interface ResourceSpec extends GcpResourceMethods {
   resourceName: string;
   resourcePath: string[];
   handlers: { [key in CfHandlerKind]?: CfHandler };
+  availableScopes?: string[]; // Scopes this resource supports (e.g., ["projects", "organizations", "folders"])
 }
 
 export function parseGcpDiscoveryDocument(
@@ -58,8 +59,12 @@ export function parseGcpDiscoveryDocument(
     collectResources(doc.resources, [], resourceSpecs);
   }
 
+  // Deduplicate resources by their path after stripping scope prefix
+  // Group by stripped path and track all available scopes
+  const deduplicatedSpecs = deduplicateScopedResources(resourceSpecs);
+
   // Process each resource
-  for (const resourceSpec of resourceSpecs) {
+  for (const resourceSpec of deduplicatedSpecs) {
     try {
       const spec = buildGcpResourceSpec(resourceSpec, doc);
       if (spec) {
@@ -82,13 +87,84 @@ export function parseGcpDiscoveryDocument(
   return specs;
 }
 
+/**
+ * Deduplicate resources that exist at multiple scopes (projects, organizations, folders, billingAccounts).
+ * Groups resources by their path after stripping the scope prefix, keeps one representative,
+ * and records all available scopes.
+ */
+function deduplicateScopedResources(resourceSpecs: ResourceSpec[]): ResourceSpec[] {
+  const byStrippedPath = new Map<string, { spec: ResourceSpec; scopes: string[] }>();
+
+  for (const spec of resourceSpecs) {
+    const scope = getScopePrefix(spec.resourcePath);
+    const strippedPath = stripScopePrefix(spec.resourcePath);
+    const key = strippedPath.join(".");
+
+    if (byStrippedPath.has(key)) {
+      // Add this scope to existing entry
+      const existing = byStrippedPath.get(key)!;
+      if (scope && !existing.scopes.includes(scope)) {
+        existing.scopes.push(scope);
+      }
+    } else {
+      // First occurrence - use stripped path and record scope
+      byStrippedPath.set(key, {
+        spec: {
+          ...spec,
+          resourcePath: strippedPath,
+          resourceName: spec.resourceName,
+        },
+        scopes: scope ? [scope] : [],
+      });
+    }
+  }
+
+  // Convert back to array, adding availableScopes where there are multiple
+  return Array.from(byStrippedPath.values()).map(({ spec, scopes }) => ({
+    ...spec,
+    availableScopes: scopes.length > 1 ? scopes : undefined,
+  }));
+}
+
 // Resource names to skip
 const SKIP_RESOURCE_PATTERNS = [
   /[Oo]perations?$/, // operations, Operations, operation, Operation
 ];
 
+// Scope prefixes that indicate a multi-scope resource
+// These will be deduplicated into a single asset with a scope selector
+const SCOPE_PREFIXES = ["projects", "organizations", "folders", "billingAccounts"];
+
+// Path segments to strip from resource paths (they don't add meaningful context)
+// "locations" and "zones" are stripped because regional vs global is handled by the location parameter
+const STRIP_PATH_SEGMENTS = ["locations", "zones"];
+
 function shouldSkipResource(resourceName: string): boolean {
   return SKIP_RESOURCE_PATTERNS.some((pattern) => pattern.test(resourceName));
+}
+
+function getScopePrefix(resourcePath: string[]): string | null {
+  if (resourcePath.length === 0) return null;
+  const firstSegment = resourcePath[0].toLowerCase();
+  const match = SCOPE_PREFIXES.find((prefix) => firstSegment === prefix.toLowerCase());
+  return match || null;
+}
+
+function stripScopePrefix(resourcePath: string[]): string[] {
+  let path = resourcePath;
+
+  // Strip scope prefix (projects, organizations, etc.)
+  const scope = getScopePrefix(path);
+  if (scope) {
+    path = path.slice(1);
+  }
+
+  // Strip other non-meaningful segments (like "locations")
+  path = path.filter(segment =>
+    !STRIP_PATH_SEGMENTS.some(strip => segment.toLowerCase() === strip.toLowerCase())
+  );
+
+  return path;
 }
 
 /// Recursively collect all resources and their methods
@@ -152,6 +228,7 @@ function buildGcpResourceSpec(
     delete: deleteMethod,
     list,
     handlers,
+    availableScopes,
   } = resourceSpec;
 
   // We need at least a get method to build a spec
@@ -197,6 +274,32 @@ function buildGcpResourceSpec(
       typeof prop === "object" && prop !== null && !prop.readOnly
     ),
   );
+
+  // Add 'parent' property if required by API path parameters but not in schema
+  // GCP APIs often require a 'parent' path parameter (e.g., projects/x/locations/y)
+  // that isn't part of the request body schema
+  const insertParams = insert?.parameterOrder || [];
+  const listParams = list?.parameterOrder || [];
+  const needsParent = (insertParams.includes("parent") || listParams.includes("parent")) &&
+    !writableDomainProperties["parent"];
+
+  if (needsParent) {
+    writableDomainProperties["parent"] = {
+      type: "string",
+      description: "The parent resource name (e.g., projects/my-project, organizations/123, folders/456, or projects/my-project/locations/us-central1)",
+    };
+  }
+
+  // Add 'scope' property if this resource supports multiple scopes
+  // This allows users to select which scope type to use
+  if (availableScopes && availableScopes.length > 1) {
+    writableDomainProperties["scope"] = {
+      type: "string",
+      description: "The scope type for this resource. Determines the format of the parent value.",
+      enum: availableScopes,
+      default: availableScopes[0], // Default to first scope (usually "projects")
+    };
+  }
 
   // Determine primary identifier from path parameters
   const primaryIdentifier = determinePrimaryIdentifier(get);

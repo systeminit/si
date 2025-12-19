@@ -54,6 +54,9 @@ async function main({ thisComponent }: Input): Promise<Output> {
       }
 
       if (paramValue) {
+        // GCP uses {+param} for "reserved expansion" where value can contain slashes (e.g., projects/x/locations/y)
+        // and {param} for simple parameters that need URL encoding
+        url = url.replace(`{+${paramName}}`, paramValue);
         url = url.replace(`{${paramName}}`, encodeURIComponent(paramValue));
       }
     }
