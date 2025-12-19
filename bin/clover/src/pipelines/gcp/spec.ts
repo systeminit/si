@@ -207,9 +207,24 @@ function buildGcpResourceSpec(
     `GCP ${doc.name} ${fullResourceName} resource`
   )!;
 
-  const requiredProperties = new Set(
-    getResponseSchema.required || insert?.request?.required || [],
-  );
+  // Detect required properties for creation
+  // GCP uses annotations.required on each method that require it
+  const requiredProperties = new Set<string>();
+
+  // First check schema-level required array (rarely populated in GCP)
+  for (const prop of getResponseSchema.required || insert?.request?.required || []) {
+    requiredProperties.add(prop);
+  }
+
+  // Then check property-level annotations.required for the insert method
+  if (insert?.request?.properties) {
+    const insertMethodId = insert.id; // e.g., "compute.instances.insert"
+    for (const [propName, propDef] of Object.entries(insert.request.properties)) {
+      if (propDef.annotations?.required?.includes(insertMethodId)) {
+        requiredProperties.add(propName);
+      }
+    }
+  }
 
   const schema: GcpSchema = {
     typeName,

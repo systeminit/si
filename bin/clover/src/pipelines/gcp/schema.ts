@@ -34,6 +34,10 @@ export type NormalizedGcpSchema = Extend<
     items?: NormalizedGcpSchema;
     properties?: Record<string, NormalizedGcpSchema>;
     additionalProperties?: NormalizedGcpSchema;
+    // annotations.required lists methods that require this property
+    annotations?: {
+      required?: string[];
+    };
   }
 >;
 
