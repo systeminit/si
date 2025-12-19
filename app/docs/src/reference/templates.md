@@ -140,6 +140,95 @@ Running this template will create a 'rebuild-recreate' change set with 17 new co
 If a component has a subscription to another component that also has an entry in the working set, its subscription will be updated to point to its peer in the working set. If it has a subscription to a component that is not in the working set, it will remain subscribed to the existing subscription. For example, if all the components subscribe to an AWS Credential, and the AWS Credential is not in the working set, they will remain subscribed to the original AWS Credential.
 :::
 
+### Dry Run Mode
+
+Templates support a dry-run mode that previews what changes would be made without actually creating or modifying any components. This is useful for:
+
+- Verifying search queries match the expected components
+- Testing input variable parsing and validation
+- Previewing component name transformations
+- Checking attribute changes before applying them
+
+<DocTabs tabs="CLI">
+<TabPanel value="CLI">
+
+To run a template in dry-run mode:
+
+```shellscript [Dry Run]
+$ si template run vpc-pattern.ts --key test --dry-run
+✨ info    si              Loading Template: "file:///home/toddhoward/templates/vpc-pattern.ts"
+✨ info    si              Building baseline with search strings: [ 'schema:"AWS::EC2::EIP"',
+                             'schema:"AWS::EC2::InternetGateway"',
+                             'schema:"AWS::EC2::NatGateway"',
+                             'schema:"AWS::EC2::Route"',
+                             'schema:"AWS::EC2::RouteTable"',
+                             'schema:"AWS::EC2::Subnet"',
+                             'schema:"AWS::EC2::SubnetRouteTableAssociation"',
+                             'schema:"AWS::EC2::VPC"',
+                             'schema:"AWS::EC2::VPCGatewayAttachment"' ]
+✨ info    si              Found 29 unique components from search
+✨ info    si              Loaded baseline component "AWS::EC2::EIP" "demo-eip-natgw-1c" (1/29)
+✨ info    si              Loaded baseline component "AWS::EC2::EIP" "demo-eip-natgw-1b" (2/29)
+✨ info    si              Loaded baseline component "AWS::EC2::EIP" "demo-eip-natgw-1a" (3/29)
+✨ info    si              Loaded baseline component "AWS::EC2::InternetGateway" "demo-igw" (4/29)
+✨ info    si              Loaded baseline component "AWS::EC2::NatGateway" "demo-natgw-1a" (5/29)
+✨ info    si              Loaded baseline component "AWS::EC2::NatGateway" "demo-natgw-1b" (6/29)
+✨ info    si              Loaded baseline component "AWS::EC2::NatGateway" "demo-natgw-1c" (7/29)
+✨ info    si              Loaded baseline component "AWS::EC2::Route" "demo-public-route-igw" (8/29)
+✨ info    si              Loaded baseline component "AWS::EC2::Route" "demo-private-route-natgw-1a" (9/29)
+✨ info    si              Loaded baseline component "AWS::EC2::Route" "demo-private-route-natgw-1c" (10/29)
+✨ info    si              Loaded baseline component "AWS::EC2::Route" "demo-private-route-natgw-1b" (11/29)
+✨ info    si              Loaded baseline component "AWS::EC2::RouteTable" "demo-private-rtb-1a" (12/29)
+✨ info    si              Loaded baseline component "AWS::EC2::RouteTable" "demo-private-rtb-1c" (13/29)
+✨ info    si              Loaded baseline component "AWS::EC2::RouteTable" "demo-private-rtb-1b" (14/29)
+✨ info    si              Loaded baseline component "AWS::EC2::RouteTable" "demo-public-rtb" (15/29)
+✨ info    si              Loaded baseline component "AWS::EC2::Subnet" "demo-public-subnet-1a" (16/29)
+✨ info    si              Loaded baseline component "AWS::EC2::Subnet" "demo-private-subnet-1a" (17/29)
+✨ info    si              Loaded baseline component "AWS::EC2::Subnet" "demo-public-subnet-1b" (18/29)
+✨ info    si              Loaded baseline component "AWS::EC2::Subnet" "demo-private-subnet-1c" (19/29)
+✨ info    si              Loaded baseline component "AWS::EC2::Subnet" "demo-private-subnet-1b" (20/29)
+✨ info    si              Loaded baseline component "AWS::EC2::Subnet" "demo-public-subnet-1c" (21/29)
+✨ info    si              Loaded baseline component "AWS::EC2::SubnetRouteTableAssociation" "demo-public-subnet-1a-rtb-assoc" (22/29)
+✨ info    si              Loaded baseline component "AWS::EC2::SubnetRouteTableAssociation" "demo-public-subnet-1c-rtb-assoc" (23/29)
+✨ info    si              Loaded baseline component "AWS::EC2::SubnetRouteTableAssociation" "demo-private-subnet-1c-rtb-assoc" (24/29)
+✨ info    si              Loaded baseline component "AWS::EC2::SubnetRouteTableAssociation" "demo-public-subnet-1b-rtb-assoc" (25/29)
+✨ info    si              Loaded baseline component "AWS::EC2::SubnetRouteTableAssociation" "demo-private-subnet-1a-rtb-assoc" (26/29)
+✨ info    si              Loaded baseline component "AWS::EC2::SubnetRouteTableAssociation" "demo-private-subnet-1b-rtb-assoc" (27/29)
+✨ info    si              Loaded baseline component "AWS::EC2::VPC" "demo-vpc" (28/29)
+✨ info    si              Loaded baseline component "AWS::EC2::VPCGatewayAttachment" "demo-igw-attachment" (29/29)
+✨ info    si              Built baseline with 29 components from search
+✨ info    si              Initializing working set: 29 components
+✨ info    si              Getting or creating change set: "vpc-pattern-test"
+✨ info    si              Found 0 existing components
+✨ info    si              Computing delta
+✨ info    si              Pending changes: 29 creates, 0 updates, 0 deletes
+✨ info    si              Dry Run: Creating "AWS::EC2::EIP" "demo-eip-natgw-1c" (1/29)
+✨ info    si              Dry Run: Setting attributes on "demo-eip-natgw-1c": { "/si/name": "demo-eip-natgw-1c",
+                             "/si/type": "component",
+                             "/domain/Domain": "vpc",
+                             "/domain/extra/Region":
+                              { "$source": { component: "01K3SS2GHZJ2Z548EY6VDVVW69", path: "/domain/region" } },
+                             "/secrets/AWS Credential":
+                              { "$source": { component: "01K3SS2G957T335HDHFR8VP86Q", path: "/secrets/AWS Credential" } } }
+✨ info    si              Dry Run: Creating "AWS::EC2::EIP" "demo-eip-natgw-1b" (2/29)
+✨ info    si              Dry Run: Setting attributes on "demo-eip-natgw-1b": { "/si/name": "demo-eip-natgw-1b",
+                             "/si/type": "component",
+                             "/domain/Domain": "vpc",
+                             "/domain/extra/Region":
+                              { "$source": { component: "01K3SS2GHZJ2Z548EY6VDVVW69", path: "/domain/region" } },
+                             "/secrets/AWS Credential":
+                              { "$source": { component: "01K3SS2G957T335HDHFR8VP86Q", path: "/secrets/AWS Credential" } } }
+✨ info    si              Dry Run: Creating "AWS::EC2::EIP" "demo-eip-natgw-1a" (3/29)
+...
+✨ info    si              Dry run complete: 29 creates, 0 updates, 0 deletes
+~/templates (sibook)
+```
+
+Dry-run mode executes the template logic including search, input validation, name patterns, and transformations, but stops before creating the change set or making any modifications to the workspace.
+
+</TabPanel>
+</DocTabs>
+
 ### Invocation Key
 
 Each template run requires an invocation key to be passed with the `--key` parameter. This value is used to correlate a particular invocation of the template to the components it creates or updates. This is how we enable idempotency over subsequent invocations of the template. By allowing you to specify the key, we also enable you to run the same template more than once against the same workspace.

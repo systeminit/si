@@ -103,12 +103,16 @@ export default withMermaid(defineConfig({
         collapsed: false,
         items: [
           {
-            text: "Use the Public API",
-            link: "/how-tos/use-public-api",
-          },
-          {
             text: "AWS VPC",
             link: "/how-tos/aws-vpc",
+          },
+          {
+            text: "Create Templates",
+            link: "/how-tos/create-templates",
+          },
+          {
+            text: "Use the Public API",
+            link: "/how-tos/use-public-api",
           },
         ],
       },
@@ -132,6 +136,24 @@ export default withMermaid(defineConfig({
           {
             text: "Components",
             link: "/reference/components",
+          },
+          {
+            text: "Developer Resources",
+            collapsed: false,
+            items: [
+              {
+                text: "CLI",
+                link: "/reference/si-cli",
+              },
+              {
+                text: "Public API",
+                link: "/reference/public-api",
+              },
+              {
+                text: "TypeScript Function API",
+                link: "/reference/typescript/README",
+              }
+            ]
           },
           {
             text: "Functions",
@@ -191,19 +213,7 @@ export default withMermaid(defineConfig({
           {
             text: "Workspaces",
             link: "/reference/workspaces",
-          },
-          {
-            text: "TypeScript Function API",
-            link: "/reference/typescript/README",
-          },
-          {
-            text: "Public API",
-            link: "/reference/public-api",
-          },
-          {
-            text: "CLI",
-            link: "/reference/si-cli",
-          },
+          }
         ],
       },
       {
@@ -230,7 +240,7 @@ export default withMermaid(defineConfig({
           {
             text: "Cloud Providers",
             link: "/explanation/cloud-providers/index",
-            collapsed: true,
+            collapsed: false,
             items: [
               {
                 text: "AWS",
