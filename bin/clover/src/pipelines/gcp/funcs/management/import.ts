@@ -59,23 +59,29 @@ async function main({ thisComponent }: Input): Promise<Output> {
     }
   }
 
-  // Make the API request
-  const response = await fetch(url, {
-    method: "GET",
-    headers: {
-      "Authorization": `Bearer ${token}`,
-    },
-  });
+  // Make the API request with retry logic
+  const response = await siExec.withRetry(async () => {
+    const resp = await fetch(url, {
+      method: "GET",
+      headers: {
+        "Authorization": `Bearer ${token}`,
+      },
+    });
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.log("Failed to import Google Cloud resource");
-    console.error(errorText);
-    return {
-      status: "error",
-      message: `Import error; API returned ${response.status} ${response.statusText}: ${errorText}`,
-    };
-  }
+    if (!resp.ok) {
+      const errorText = await resp.text();
+      console.log("Failed to import Google Cloud resource");
+      console.error(errorText);
+      const error = new Error(`Import error; API returned ${resp.status} ${resp.statusText}: ${errorText}`) as any;
+      error.status = resp.status;
+      error.body = errorText;
+      throw error;
+    }
+
+    return resp;
+  }, {
+    isRateLimitedFn: (error) => error.status === 429
+  }).then((r) => r.result);
 
   const resourceProperties = await response.json();
   console.log(resourceProperties);
