@@ -9,7 +9,7 @@ sets are automatically updated to reflect those changes.
 :::tip
 
 A change set is like an auto-rebasing git branch that can never have conflicts.
-Unlike tracking state in Git, they are tailor made for the dynamic, fluid nature
+Unlike tracking state in Git, they are tailor-made for the dynamic, fluid nature
 of how infrastructure changes, regardless of how those changes were made.
 
 :::
@@ -17,7 +17,7 @@ of how infrastructure changes, regardless of how those changes were made.
 ## The HEAD Change Set
 
 The HEAD Change Set represents the current state of your resources in the real
-world. The all your components and resources, along with any actions that are
+world. All your components and resources, along with any actions that are
 currently enqueued, are tracked on the HEAD Change Set.
 
 :::info
@@ -35,16 +35,16 @@ As you make changes to component attributes, enqueue actions, develop schemas,
 or write functions, the Change Set tracks your modifications as an operational
 transform relative to HEAD. It is also tracked in an audit log that records who
 made the change, when they made it, what changed, and any downstream
-side-effects that happened as a result (for example, changing an attribute on
+side effects that happened as a result (for example, changing an attribute on
 one component might cause attributes on other components to change based on
 subscriptions - these are also tracked.)
 
 :::tip
 
 The ability to track the _downstream effects_ of a particular update is a
-critical difference between Change Sets and Git. By having the underyling data
+critical difference between Change Sets and Git. By having the underlying data
 model understand not only the specific change you made, but the downstream
-effects, System Initiative provides a comprehensive view of a change sets
+effects, System Initiative provides a comprehensive view of a change set's
 impact. It also provides an audit log that can attest to the provenance of every
 granular change.
 
@@ -58,7 +58,7 @@ to our core data-model. When a Change Set is applied to HEAD, the set of
 Operational Transforms are applied to the underlying
 [graph data model](../explanation/architecture/snapshot.md). Each change is
 idempotent, convergent, and ordered in time - which ensures that as multiple
-changes are applied they will never conflict.
+changes are applied, they will never conflict.
 
 ## Creating a Change Set
 
