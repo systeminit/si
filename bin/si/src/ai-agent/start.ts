@@ -39,15 +39,32 @@ export async function callAiAgentStart(
 
   const tool = options.tool || config.tool || "claude";
 
-  // Check if tool is available
-  const toolCommand = tool === "claude" ? "claude" : tool;
+  // Get the CLI command for the tool
+  const toolCommand = getToolCommand(tool);
   const toolAvailable = await checkToolAvailable(toolCommand);
 
   if (!toolAvailable) {
-    logger.error(`❌ ${getToolDisplayName(tool)} is not installed!`);
-    logger.info(`\nPlease install ${getToolDisplayName(tool)}:`);
-    logger.info(getToolInstallUrl(tool));
-    throw new Error(`${getToolDisplayName(tool)} not found`);
+    logger.error(`❌ ${getToolDisplayName(tool)} CLI is not installed!`);
+    logger.info(`\nTo use ${getToolDisplayName(tool)} with the SI MCP server:`);
+
+    if (tool === "cursor") {
+      logger.info("  1. Install the Cursor CLI:");
+      logger.info("     See: https://cursor.com/docs/cli/overview");
+      logger.info(
+        "  2. Or launch Cursor manually and it will use the .cursor/mcp.json configuration",
+      );
+      if (Deno.build.os === "darwin") {
+        logger.info('     macOS: open -a "Cursor"');
+      } else if (Deno.build.os === "windows") {
+        logger.info("     Windows: Start Cursor from the Start menu");
+      } else {
+        logger.info("     Linux: Launch Cursor from your applications menu");
+      }
+    } else {
+      logger.info(`  Install from: ${getToolInstallUrl(tool)}`);
+    }
+
+    throw new Error(`${getToolDisplayName(tool)} CLI not found`);
   }
 
   ctx.analytics.trackEvent("ai-agent start", {
@@ -81,6 +98,20 @@ export async function callAiAgentStart(
     logger.error(`Failed to launch ${getToolDisplayName(tool)}: ${errorMsg}`);
     throw error;
   }
+}
+
+/**
+ * Get the CLI command for a tool
+ */
+function getToolCommand(tool: string): string {
+  const commands: Record<string, string> = {
+    claude: "claude",
+    codex: "codex",
+    opencode: "opencode",
+    cursor: "cursor-agent",
+    windsurf: "windsurf",
+  };
+  return commands[tool] || tool;
 }
 
 /**
@@ -136,7 +167,7 @@ function getToolConfigInfo(tool: string): string {
     claude: ".mcp.json",
     codex: "~/.codex/config.toml",
     opencode: "opencode.jsonc",
-    cursor: ".mcp.json",
+    cursor: ".cursor/mcp.json",
     windsurf: ".mcp.json",
   };
   return configInfo[tool] || "configuration file";

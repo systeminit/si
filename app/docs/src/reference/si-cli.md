@@ -283,7 +283,7 @@ si ai-agent init [OPTIONS]
 | Name         | Type   | Required | Description                                              | Default           |
 | ------------ | ------ | -------- | -------------------------------------------------------- | ----------------- |
 | --target-dir | string | false    | Directory to create config files                         | Current directory |
-| --tool       | string | false    | AI tool to use: `claude`, `codex`, `opencode`            | -                 |
+| --tool       | string | false    | AI tool to use: `claude`, `codex`, `opencode`, `cursor`  | -                 |
 
 
 ### ai-agent start

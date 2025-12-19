@@ -215,8 +215,8 @@ For more tips on working with the AI Agent:
 ## Using other Agents and Models
 
 You can use the System Initiative MCP Server with your own agents and underlying
-models. We currently support [OpenAI Codex](https://openai.com/codex/) and
-[OpenCode.ai](https://opencode.ai/). To use either of these tools, you can pass
+models. We currently support [OpenAI Codex](https://openai.com/codex/),
+[OpenCode.ai](https://opencode.ai/) and [Cursor](https://cursor.com). To use either of these tools, you can pass
 a `--tool` command when configuring and starting the agent:
 
 ```bash

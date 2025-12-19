@@ -1126,8 +1126,7 @@ export const DEBUG_PROVIDER_CHOICE = undefined;
                         @mousedown="
                           onboardingTracking('external_link_opencode')
                         "
-                      />
-                      and
+                      />,
                       <NewButton
                         aria-label="ai-agent-codex-right"
                         :class="
@@ -1144,6 +1143,24 @@ export const DEBUG_PROVIDER_CHOICE = undefined;
                         target="_blank"
                         label="OpenAI Codex"
                         @mousedown="onboardingTracking('external_link_codex')"
+                      />
+                      and
+                      <NewButton
+                        aria-label="ai-agent-cursor-right"
+                        :class="
+                          clsx(
+                            'underline',
+                            themeClasses(
+                              'hover:text-action-500',
+                              'hover:text-action-300',
+                            ),
+                          )
+                        "
+                        tone="nostyle"
+                        href="https://cursor.com/"
+                        target="_blank"
+                        label="Cursor"
+                        @mousedown="onboardingTracking('external_link_cursor')"
                       />
                       with more tools coming soon.
                     </div>
