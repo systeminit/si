@@ -64,103 +64,19 @@ const schemaCreateEditGetInputSchemaRaw = {
     .string()
     .optional()
     .describe(
-      `
-      <description>A typescript function, starting with "function main() {", defining the schema's properties using an AssetBuilder. Documentation on how to write this function can be found at https://docs.systeminit.com/reference/asset/schema</description>
-      <aws-good-example>
-        const asset = new AssetBuilder();
+      `A TypeScript function starting with "function main() {" that defines the schema's properties using AssetBuilder.
 
-        const stringProp = new PropBuilder()
-            .setName("StringProp")
-            .setKind("string")
-            .setDocumentation("Documentation text explaining this prop goes here.")
-            .setWidget(new PropWidgetDefinitionBuilder().setKind("text").build())
-            .build();
+      Complete documentation: https://docs.systeminit.com/reference/schema
 
-        const integerProp = new PropBuilder()
-            .setName("IntegerProp")
-            .setKind("integer")
-            .setDocumentation("Documentation text explaining this prop goes here.")
-            .setWidget(new PropWidgetDefinitionBuilder().setKind("text").build())
-            .build();
+      Basic pattern:
+      - Create AssetBuilder instance
+      - Use PropBuilder for properties (kinds: string, integer, boolean, object, array, map)
+      - Configure widgets via PropWidgetDefinitionBuilder (types: text, checkbox, select, password, codeEditor, etc.)
+      - Use SecretPropBuilder for secret requirements
+      - Add props to asset with addProp() or addSecretProp()
+      - Return asset.build()
 
-        const booleanProp = new PropBuilder()
-            .setName("BooleanProp")
-            .setKind("boolean")
-            .setDocumentation("Documentation text explaining this prop goes here.")
-            .setWidget(new PropWidgetDefinitionBuilder().setKind("checkbox").build())
-            .build();
-
-        const codeEditorProp = new PropBuilder()
-            .setName("CodeEditorProp")
-            .setKind("string")
-            .setDocumentation("Documentation text explaining this prop goes here.")
-            .setWidget(new PropWidgetDefinitionBuilder().setKind("codeEditor").build())
-            .build();
-
-        const passwordProp = new PropBuilder()
-            .setName("PasswordProp")
-            .setKind("string")
-            .setDocumentation("Documentation text explaining this prop goes here.")
-            .setWidget(new PropWidgetDefinitionBuilder().setKind("password").build())
-            .build();
-
-        const objectProp = new PropBuilder()
-            .setName("ObjectProp")
-            .setKind("object")
-            .addChild(booleanProp)
-            .build();
-
-        const arrayProp = new PropBuilder()
-            .setName("ArrayProp")
-            .setKind("array")
-            .setEntry(passwordProp)
-            .build();
-
-        const mapProp = new PropBuilder()
-            .setName("MapProp")
-            .setKind("map")
-            .setEntry(integerProp)
-            .build();
-
-        const extraProp = new PropBuilder()
-            .setName("extra")
-            .setKind("object")
-            .setHidden(false)
-            .setWidget(new PropWidgetDefinitionBuilder()
-                .setKind("header")
-                .build())
-            .addChild(
-                new PropBuilder()
-                .setName("Region")
-                .setKind("string")
-                .setHidden(false)
-                .setWidget(new PropWidgetDefinitionBuilder()
-                    .setKind("text")
-                    .build())
-                .suggestSource({
-                    schema: "Region",
-                    prop: "/domain/region"
-                })
-                .build()
-            )
-            .build();
-
-        const AWSCredentialSecretProp = new SecretPropBuilder()
-            .setName("AWS Credential")
-            .setSecretKind("AWS Credential")
-            .build();
-
-        asset.addProp(stringProp);
-        asset.addProp(codeEditorProp);
-        asset.addProp(objectProp);
-        asset.addProp(arrayProp);
-        asset.addProp(mapProp);
-        asset.addProp(extraProp);
-        asset.addSecretProp(AWSCredentialSecretProp)
-
-        return asset.build();
-      </aws-good-example>
-      `,
+      Key methods: setName(), setKind(), setDocumentation(), setWidget(), addChild() (for objects), setEntry() (for arrays/maps), suggestSource() (for subscriptions)`,
     ),
 };
 
