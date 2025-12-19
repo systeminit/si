@@ -49,6 +49,10 @@ use telemetry::{
     prelude::*,
 };
 use telemetry_nats::propagation;
+use telemetry_utils::{
+    histogram,
+    monotonic,
+};
 use thiserror::Error;
 use tokio::sync::watch;
 
@@ -275,6 +279,7 @@ pin_project! {
         state: State<R, C>,
         last_compressing_heartbeat_tx: Option<watch::Sender<Instant>>,
         span: Option<Span>,
+        span_started_at: Option<Instant>,
     }
 }
 
@@ -291,6 +296,7 @@ impl<S, R, C> CompressingStream<S, R, C> {
             state: Default::default(),
             last_compressing_heartbeat_tx: last_compressing_heartbeat_tx.into(),
             span: None,
+            span_started_at: None,
         }
     }
 }
@@ -330,6 +336,9 @@ where
                 );
                 s.follows_from(follows_from);
 
+                // Track when span started for total duration metric
+                *this.span_started_at = Some(Instant::now());
+
                 s
             });
             let _guard = span.enter();
@@ -338,9 +347,27 @@ where
                 // 1. Reading the first message from the subscription
                 State::ReadFirstMessage => {
                     // Read first message from subscription
+                    let poll_start = Instant::now();
                     match this.subscription.poll_next_unpin(cx) {
                         // Read the first Jetstream message successfully
                         Poll::Ready(Some(Ok(message))) => {
+                            let poll_duration = poll_start.elapsed();
+                            debug!(
+                                poll_duration_ms = poll_duration.as_millis(),
+                                "subscription.poll_next_unpin completed for first message",
+                            );
+
+                            // Metrics: Track subscription poll latency and message count
+                            histogram!(
+                                compressing_stream_subscription_poll_latency_ms =
+                                    poll_duration.as_millis() as f64,
+                                message_position = "first"
+                            );
+                            monotonic!(
+                                compressing_stream_messages_read = 1,
+                                message_position = "first"
+                            );
+
                             update_heartbeat(this.last_compressing_heartbeat_tx);
 
                             // Determine the stream sequence number of this message so we can
@@ -430,7 +457,16 @@ where
                             return Poll::Ready(None);
                         }
                         // Pending on the first message, so we are pending too
-                        Poll::Pending => return Poll::Pending,
+                        Poll::Pending => {
+                            let pending_duration = poll_start.elapsed();
+                            if pending_duration.as_millis() > 0 {
+                                debug!(
+                                    pending_duration_ms = pending_duration.as_millis(),
+                                    "subscription.poll_next_unpin returned Pending for first message",
+                                );
+                            }
+                            return Poll::Pending;
+                        }
                     }
                 }
                 // 2. Calculating the number of messages to read, a.k.a the "read window"
@@ -443,9 +479,24 @@ where
                     // Caclulate the number of messages available to read, a.k.a the "read window".
                     // This is the number of messages we will unconditionally read in as our "read
                     // window".
+                    let calc_start = Instant::now();
                     match calculate_read_window_fut.poll_unpin(cx) {
                         // Read window calculated successfully
                         Poll::Ready(Ok(read_window)) => {
+                            let calc_duration = calc_start.elapsed();
+                            debug!(
+                                calc_duration_ms = calc_duration.as_millis(),
+                                read_window = read_window,
+                                "calculate_read_window completed",
+                            );
+
+                            // Metrics: Track read window calculation latency and size
+                            histogram!(
+                                compressing_stream_read_window_calc_latency_ms =
+                                    calc_duration.as_millis() as f64
+                            );
+                            histogram!(compressing_stream_read_window_size = read_window as f64);
+
                             update_heartbeat(this.last_compressing_heartbeat_tx);
                             span.record("read_window.count", read_window);
 
@@ -640,8 +691,28 @@ where
                     span_contexts,
                 } => {
                     // Read next message from subscription in read window
+                    let poll_start = Instant::now();
                     match this.subscription.poll_next_unpin(cx) {
                         Poll::Ready(Some(Ok(message))) => {
+                            let poll_duration = poll_start.elapsed();
+                            debug!(
+                                poll_duration_ms = poll_duration.as_millis(),
+                                requests_so_far = requests.len(),
+                                read_window = *read_window,
+                                "subscription.poll_next_unpin completed for next message in window",
+                            );
+
+                            // Metrics: Track subscription poll latency and message count
+                            histogram!(
+                                compressing_stream_subscription_poll_latency_ms =
+                                    poll_duration.as_millis() as f64,
+                                message_position = "subsequent"
+                            );
+                            monotonic!(
+                                compressing_stream_messages_read = 1,
+                                message_position = "subsequent"
+                            );
+
                             update_heartbeat(this.last_compressing_heartbeat_tx);
 
                             // Determine the stream sequence number of this message so we can
@@ -750,7 +821,18 @@ where
                             continue;
                         }
                         // Pending on the next message, so we are pending too
-                        Poll::Pending => return Poll::Pending,
+                        Poll::Pending => {
+                            let pending_duration = poll_start.elapsed();
+                            if pending_duration.as_millis() > 0 {
+                                debug!(
+                                    pending_duration_ms = pending_duration.as_millis(),
+                                    requests_so_far = requests.len(),
+                                    read_window = *read_window,
+                                    "subscription.poll_next_unpin returned Pending for next message in window",
+                                );
+                            }
+                            return Poll::Pending;
+                        }
                     }
                 }
                 // 5. Parsing the next message into an API request in the read window
@@ -868,9 +950,22 @@ where
                     }
 
                     // Compress multiple API requests into a single compressed request
+                    let compress_start = Instant::now();
                     match compress_messages_fut.poll_unpin(cx) {
                         // Requests compressed successfully
                         Poll::Ready(Ok(compressed_request)) => {
+                            let compress_duration = compress_start.elapsed();
+
+                            // Metrics: Track compression operation
+                            histogram!(
+                                compressing_stream_compress_latency_ms =
+                                    compress_duration.as_millis() as f64
+                            );
+                            monotonic!(
+                                compressing_stream_compress_operations = 1,
+                                result = "success"
+                            );
+
                             update_heartbeat(this.last_compressing_heartbeat_tx);
                             span.record("compressed.kind", compressed_request.as_ref());
 
@@ -909,6 +1004,12 @@ where
                         }
                         // Error while compressing requests
                         Poll::Ready(Err(err)) => {
+                            // Metrics: Track compression failures
+                            monotonic!(
+                                compressing_stream_compress_operations = 1,
+                                result = "error"
+                            );
+
                             update_heartbeat(this.last_compressing_heartbeat_tx);
 
                             // Nothing much we can do at this point, if we can't compress then we
@@ -973,9 +1074,19 @@ where
                     deleted_count,
                 } => {
                     // Delete a message
+                    let delete_start = Instant::now();
                     match delete_message_fut.poll_unpin(cx) {
                         // Message was deleted successfully
                         Poll::Ready(Ok(_)) => {
+                            let delete_duration = delete_start.elapsed();
+
+                            // Metrics: Track message deletion
+                            histogram!(
+                                compressing_stream_message_delete_latency_ms =
+                                    delete_duration.as_millis() as f64
+                            );
+                            monotonic!(compressing_stream_messages_deleted = 1, result = "success");
+
                             update_heartbeat(this.last_compressing_heartbeat_tx);
                             *deleted_count += 1;
 
@@ -1121,6 +1232,16 @@ where
                     compressed_request,
                 } => {
                     update_heartbeat(this.last_compressing_heartbeat_tx);
+
+                    // Metrics: Track total span duration from start to yield
+                    if let Some(span_start) = this.span_started_at.take() {
+                        let total_duration = span_start.elapsed();
+                        histogram!(
+                            compressing_stream_total_span_duration_ms =
+                                total_duration.as_millis() as f64
+                        );
+                    }
+                    monotonic!(compressing_stream_items_yielded = 1);
 
                     let subject = subject
                         .take()
