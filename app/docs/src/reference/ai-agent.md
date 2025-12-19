@@ -1,7 +1,7 @@
 # AI Agent
 
 The AI Agent is one of the primary ways you will interact with System
-Initiative. It allows you to express your intent in natural language, and let
+Initiative. It allows you to express your intent in natural language and let
 the AI Agent take care of the implementation details.
 
 ## Architecture
@@ -28,7 +28,7 @@ many tools to ensure you get precisely what you want out of the system.
 ## Cost Model
 
 System Initiative does not sit between you and the underlying model/agent
-provider. We do not mark-up your token usage. It is up to you how you pay for
+provider. We do not mark up your token usage. It is up to you how you pay for
 the underlying model.
 
 ## Installing the Agent
@@ -44,7 +44,7 @@ To authenticate to your System Initiative workspace, run:
 si login
 ```
 
-This will open our login page and authenticate your CLI. It will them prompt you to choose a workspace:
+This will open our login page and authenticate your CLI. It will then prompt you to choose a workspace:
 
 ```bash
 si login
@@ -68,7 +68,7 @@ Select a workspace from the list:
 ✨ info    si              Set default workspace to: MissionControl Workspace
 ```
 
-You are now authenticated against this workspace and a workspace token has been generated.
+You are now authenticated against this workspace, and a workspace token has been generated.
 
 ## Starting the Agent
 
@@ -78,7 +78,7 @@ To start the agent, firstly, run:
 si ai-agent init
 ```
 
-This will use the previously workspace token and generate the correct `CLAUDE.md`,
+This will use the previous workspace token and generate the correct `CLAUDE.md`,
 `.mcp.json` and `.claude/settings.local.json` files that are necessary for
 running the agent. The command will also tell you how to install Claude Code.
 
@@ -92,7 +92,7 @@ This will start Claude Code and connect it to the locally running MCP server.
 
 :::tip
 
-After you switch workspaces e.g. `si workspace switch`, you will want to re-run the AI
+After you switch workspaces e.g., `si workspace switch`, you will want to re-run the AI
 agent initialization command to populate the agent with the new workspace API
 token.
 
@@ -172,7 +172,7 @@ work of the agent, and it is more likely to generate a good outcome.
 
 ### Clear your Context
 
-The AI Agent has a context window that is quite large, and we try and provide
+The AI Agent has a context window that is quite large, and we try to provide
 tools that allow the agent to explore the data it needs from your infrastructure
 in a token-friendly way. That said, the longer the conversation chain in the
 agent, the more likely it is to start making mistakes.
@@ -189,7 +189,7 @@ template and allowing the Agent to drive it. The same is true with policy -
 write qualifications and validations to ensure that components are correct,
 rather than relying on careful prompting or context to get it right.
 
-### Review the Agents Work
+### Review the Agents' Work
 
 When working with the AI Agent, review its work. Use the 'R' hot-key to bring up
 a review screen whilst on the web app, and ensure that all the correct
@@ -249,7 +249,7 @@ export SI_API_TOKEN=DEADB33F
 si ai-agent stdio
 ```
 
-First you need to set the `SI_API_TOKEN` environment variable, which is a valid
+First, you need to set the `SI_API_TOKEN` environment variable, which is a valid
 [workspace API token](./workspaces.md#api-token-management). Then you can run
 the MCP server directly.
 
@@ -308,7 +308,7 @@ Add a `.vscode/mcp.json` file to your workspace, following
 }
 ```
 
-VS Code will prompt you to paste your API Token in, which it will store in it's
+VS Code will prompt you to paste your API Token in, which it will store in its
 own 'secure secret storage'.
 
 :::warning 
