@@ -177,6 +177,32 @@ function buildGcpResourceSpec(
     Object.assign(domainProperties, patchProps);
   }
 
+  // Add path parameters (region, zone, etc.) to domain - these are needed to build API URLs
+  // Exclude "project" as it comes from the credential
+  // Only override if the property is readOnly or doesn't exist - some resources (like Subnetwork)
+  // have writable region/zone fields that should be sent in the body too
+  // Track which ones we add as path-only so we can mark them required later
+  const pathParamsToAdd = ["region", "zone", "location"];
+  const addedPathOnlyParams: string[] = [];
+  for (const paramName of pathParamsToAdd) {
+    if (insert?.parameters?.[paramName]) {
+      const existingProp = domainProperties[paramName];
+      const isReadOnly = existingProp && typeof existingProp === "object" && existingProp.readOnly;
+
+      if (!existingProp || isReadOnly) {
+        const param = insert.parameters[paramName];
+        domainProperties[paramName] = {
+          type: param.type || "string",
+          description: param.description,
+        };
+        // Track this as path-only if we're overriding a readOnly prop or adding new
+        if (param.required) {
+          addedPathOnlyParams.push(paramName);
+        }
+      }
+    }
+  }
+
   // Remove read-only properties from domain
   const writableDomainProperties = Object.fromEntries(
     Object.entries(domainProperties).filter(([_, prop]) =>
@@ -213,6 +239,11 @@ function buildGcpResourceSpec(
         requiredProperties.add(propName);
       }
     }
+  }
+
+  // Mark path-only parameters as required (e.g., region for Address, zone for Instance)
+  for (const paramName of addedPathOnlyParams) {
+    requiredProperties.add(paramName);
   }
 
   const schema: GcpSchema = {
