@@ -82,6 +82,15 @@ export function parseGcpDiscoveryDocument(
   return specs;
 }
 
+// Resource names to skip
+const SKIP_RESOURCE_PATTERNS = [
+  /[Oo]perations?$/, // operations, Operations, operation, Operation
+];
+
+function shouldSkipResource(resourceName: string): boolean {
+  return SKIP_RESOURCE_PATTERNS.some((pattern) => pattern.test(resourceName));
+}
+
 /// Recursively collect all resources and their methods
 function collectResources(
   resources: Record<string, GcpResource>,
@@ -89,6 +98,11 @@ function collectResources(
   collected: ResourceSpec[],
 ) {
   for (const [resourceName, resource] of Object.entries(resources)) {
+    if (shouldSkipResource(resourceName)) {
+      logger.debug(`Skipping operation resource: ${resourceName}`);
+      continue;
+    }
+
     const resourcePath = [...parentPath, resourceName];
 
     if (resource.methods) {
@@ -201,14 +215,18 @@ function buildGcpResourceSpec(
   const requiredProperties = new Set<string>();
 
   // First check schema-level required array (rarely populated in GCP)
-  for (const prop of getResponseSchema.required || insert?.request?.required || []) {
+  for (
+    const prop of getResponseSchema.required || insert?.request?.required || []
+  ) {
     requiredProperties.add(prop);
   }
 
   // Then check property-level annotations.required for the insert method
   if (insert?.request?.properties) {
     const insertMethodId = insert.id; // e.g., "compute.instances.insert"
-    for (const [propName, propDef] of Object.entries(insert.request.properties)) {
+    for (
+      const [propName, propDef] of Object.entries(insert.request.properties)
+    ) {
       if (propDef.annotations?.required?.includes(insertMethodId)) {
         requiredProperties.add(propName);
       }
