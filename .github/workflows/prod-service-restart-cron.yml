@@ -1,8 +1,9 @@
 name: Production Service Restart Cron
 
 on:
-  schedule:
-    - cron: "0 20 * * 6,0" # Deploys every weekend at 8pm UTC
+  workflow_dispatch: {}
+  # schedule:
+  #   - cron: "0 20 * * 6,0" # Deploys every weekend at 8pm UTC
 
 concurrency:
   group: restart-production
