@@ -13,9 +13,11 @@
 /** SI Agent Context template for CLAUDE.md, AGENTS.md, OPENCODE.md */
 export const SI_AGENT_CONTEXT_TEMPLATE = `# System Initiative Assistant Guide
 
-This is a repo designed to help DevOps Engineers, SREs, and Software Developers manage infrastructure through the System Initiative MCP server.
+This is a repo designed to help DevOps Engineers, SREs, and Software Developers
+manage infrastructure through the System Initiative MCP server.
 
-You will use your knowledge of cloud infrastructure to provide expert level advice on:
+You will use your knowledge of cloud infrastructure to provide expert level
+advice on:
 
 - Configuration of components
 - Resource Optimization
@@ -25,78 +27,66 @@ You will use your knowledge of cloud infrastructure to provide expert level advi
 
 ## Interacting with the System Initiative MCP server
 
-The only way to interact with System Initiative is through the system-initiative MCP server. Unless the user specifically says otherwise, every question they ask you is intended to be resolved through interacting with the MCP server (rather than using file tools, etc.)
+The only way to interact with System Initiative is through the system-initiative
+MCP server. Unless the user specifically says otherwise, every question they ask
+you is intended to be resolved through interacting with the MCP server (rather
+than using file tools, etc.)
 
 ### Change Sets
 
-Change Sets provide a safe environment for proposing changes to components before applying them to the real world. While working in a change set, you are working in a simulation of the real world.
+Change Sets provide a safe environment for proposing changes to components
+before applying them to the real world. While working in a change set, you are
+working in a simulation of the real world.
 
-The HEAD change set is the current state of the outside world. It cannot be edited directly, and is instead updated only when change sets are applied to it, and actions are executed.
+The HEAD change set is the current state of the outside world. It cannot be
+edited directly, and is instead updated only when change sets are applied to it,
+and actions are executed.
 
-When the user asks to create or edit anything, if they do not provide a change set for you to work in, create one for them with an appropriate name.
+When the user asks to create or edit anything, if they do not provide a change
+set for you to work in, create one for them with an appropriate name.
 
-After you make changes in a change set, check for qualification failures to find out if your changes will work.
+After you make changes in a change set, check for qualification failures to find
+out if your changes will work.
 
-After you apply a change set, check for action failures to find immediate problems applying the changes to the real world.
+After you apply a change set, check for action failures to find immediate
+problems applying the changes to the real world.
 
 ### Components
 
 #### Hetzner Cloud Components
 
-System Initiative supports Hetzner Cloud infrastructure management through dedicated schemas.
-
-##### Available Hetzner Schemas
-
-**Credential:**
-- **Hetzner::Credential::ApiToken** - API token for authenticating with Hetzner Cloud
-
-**Core Infrastructure:**
-- **Hetzner::Cloud::Servers** - Virtual machines
-- **Hetzner::Cloud::Volumes** - Block storage for servers
-- **Hetzner::Cloud::Networks** - Private networks for server-to-server communication
-- **Hetzner::Cloud::Firewalls** - Network access control
-- **Hetzner::Cloud::LoadBalancers** - Load balancers for traffic distribution
-- **Hetzner::Cloud::SshKeys** - SSH public keys for server authentication
-
-**IP Management:**
-- **Hetzner::Cloud::FloatingIps** - Globally assignable IPs (note: "Ips" not "IPs")
-- **Hetzner::Cloud::PrimaryIps** - Datacenter-bound IPs
-
-**Certificates & High Availability:**
-- **Hetzner::Cloud::Certificates** - TLS/SSL certificates
-- **Hetzner::Cloud::PlacementGroups** - Control server placement for availability
-
-**Reference Resources:**
-- **Hetzner::Cloud::Images** - VM disk blueprints
-- **Hetzner::Cloud::ServerTypes** - Available server configurations
-- **Hetzner::Cloud::LoadBalancerTypes** - Available load balancer configurations
-- **Hetzner::Cloud::Locations** - Geographic locations
-- **Hetzner::Cloud::Datacenters** - Virtual datacenters
-- **Hetzner::Cloud::Isos** - ISO images for custom OS (note: lowercase "isos")
-- **Hetzner::Cloud::Pricing** - Pricing information
+System Initiative supports Hetzner Cloud infrastructure management through
+dedicated schemas.
 
 ##### Creating Hetzner Components
 
 **Important Naming Convention:**
-- Schema names use **plural** form (e.g., \`Hetzner::Cloud::Servers\`, not \`Server\`)
 
-**Credential Requirements:**
-When creating Hetzner components, always set:
-- \`/secrets/Hetzner Api Token\`: should subscribe to a Hetzner::Credential::ApiToken component's \`/secrets/Hetzner::Credential::ApiToken\`
+- Schema names use **plural** form (e.g., \`Hetzner::Cloud::Servers\`, not
+  \`Server\`)
 
-**Free Resources:**
-These resources are free to create and maintain:
+**Credential Requirements:** When creating Hetzner components, always set:
+
+- \`/secrets/Hetzner Api Token\`: should subscribe to a
+  Hetzner::Credential::ApiToken component's
+  \`/secrets/Hetzner::Credential::ApiToken\`
+
+**Free Resources:** These resources are free to create and maintain:
+
 - SSH Keys
 - Networks (private network definitions)
 - Firewalls (firewall rule definitions)
 - Placement Groups
 
-**Array Attribute Paths:**
-When setting array attributes, the schema uses specific patterns:
-- For simple arrays like \`source_ips\`, use indexed path: \`/domain/rules/0/source_ips/0\`
+**Array Attribute Paths:** When setting array attributes, the schema uses
+specific patterns:
+
+- For simple arrays like \`source_ips\`, use indexed path:
+  \`/domain/rules/0/source_ips/0\`
 - Do NOT append field names like \`source_ipsItem\` to indexed arrays
 
 **Example: Creating a Network**
+
 \`\`\`
 /domain/name: "my-network"
 /domain/ip_range: "10.0.0.0/16"
@@ -105,6 +95,7 @@ When setting array attributes, the schema uses specific patterns:
 \`\`\`
 
 **Example: Creating a Firewall**
+
 \`\`\`
 /domain/name: "my-firewall"
 /domain/rules/0/direction: "in"
@@ -117,94 +108,82 @@ When setting array attributes, the schema uses specific patterns:
 
 #### DigitalOcean Components
 
-System Initiative supports DigitalOcean infrastructure management through dedicated schemas.
-
-##### Available DigitalOcean Schemas
-
-**Credential:**
-- **DigitalOcean Credential** - API token for authenticating with DigitalOcean
-
-**Core Infrastructure:**
-- **DigitalOcean Droplet** - Virtual machines
-- **DigitalOcean Volume** - Block storage for Droplets
-- **DigitalOcean Volume Snapshot** - Snapshots of block storage volumes
-- **DigitalOcean VPC** - Virtual Private Cloud for private networking
-- **DigitalOcean Firewall** - Network access control for Droplets
-- **DigitalOcean Load Balancer** - Load balancers for traffic distribution
-- **DigitalOcean SSH Key** - SSH public keys for Droplet authentication
-
-**IP Management:**
-- **DigitalOcean Floating IP** - Globally assignable IPs (legacy)
-- **DigitalOcean Reserved IP** - Reserved IPs for assignment to resources
-
-**Compute & Applications:**
-- **DigitalOcean App Platform** - Platform-as-a-Service for application deployment
-- **DigitalOcean Kubernetes Cluster** - Managed Kubernetes clusters
-- **DigitalOcean Database Cluster** - Managed database clusters (PostgreSQL, MySQL, Redis, MongoDB, Kafka, OpenSearch, Valkey)
-
-**Storage & Content Delivery:**
-- **DigitalOcean Container Registry** - Docker container image registry
-- **DigitalOcean Custom Image** - Custom VM images
-
-**DNS & Certificates:**
-- **DigitalOcean Domain** - DNS domain management
-
-**Management & Organization:**
-- **DigitalOcean Project** - Project organization for resources
-- **DigitalOcean Tag** - Labels for resource organization
-- **DigitalOcean Monitoring Alert Policy** - Monitoring and alerting policies
+System Initiative supports DigitalOcean infrastructure management through
+dedicated schemas.
 
 ##### Creating DigitalOcean Components
 
 **Important Naming Convention:**
+
 - Schema names have spaces between words, not colons, slashes, or hyphens.
 
-**Credential Requirements:**
-When creating DigitalOcean components, always set:
-- \`/secrets/DigitalOcean Credential\`: should subscribe to a DigitalOcean Credential component's \`/secrets/DigitalOcean Credential\`
+**Credential Requirements:** When creating DigitalOcean components, always set:
+
+- \`/secrets/DigitalOcean Credential\`: should subscribe to a DigitalOcean
+  Credential component's \`/secrets/DigitalOcean Credential\`
 
 ##### DigitalOcean Resource Actions
 
 Most DigitalOcean resources support these actions:
+
 - **Create Asset** - Create the resource in DigitalOcean
 - **Update Asset** - Update existing resource
 - **Refresh Asset** - Sync state from DigitalOcean
 - **Delete Asset** - Remove the resource from DigitalOcean
 
 And these management functions:
+
 - **Import from DigitalOcean** - Import an existing resource by ID
 - **Discover on DigitalOcean** - Discover all resources of this type
 
 #### Microsoft Azure Components
 
-System Initiative supports Microsoft Azure infrastructure management using Azure Resource Manager (ARM) resource types.
+System Initiative supports Microsoft Azure infrastructure management using Azure
+Resource Manager (ARM) resource types.
 
 #### IMPORTANT NOTE Regarding Azure/Microsoft
 
-Users may use the terms "Azure" and "Microsoft" interchangibly to refer to Microsoft Azure components, schemas, resources, etc. Respond to users accordingly.
+Users may use the terms "Azure" and "Microsoft" interchangibly to refer to
+Microsoft Azure components, schemas, resources, etc. Respond to users
+accordingly.
 
-When looking up a schema by its name, the schema name will start with Microsoft, not Azure.
+When looking up a schema by its name, the schema name will start with Microsoft,
+not Azure.
 
 ##### Key Microsoft Azure Schemas
 
-- **Microsoft Credential** - Authentication credentials for Azure - the secret details must be provided by the user
-- **Microsoft.Resources/locations** - Azure region specification (e.g., "eastus", "westus2") - prefer using this component to just using a location string
-- **Microsoft.Resources/subscription** - Azure subscription ID reference - prefer using this component to just using a subscription ID string
-- **Microsoft.Resources/resourceGroups** - Container for related Azure resources (required for most resources) - resource groups can be managed via CRUD by System Initiative
+- **Microsoft Credential** - Authentication credentials for Azure - the secret
+  details must be provided by the user
+- **Microsoft.Resources/locations** - Azure region specification (e.g.,
+  "eastus", "westus2") - prefer using this component to just using a location
+  string
+- **Microsoft.Resources/subscription** - Azure subscription ID reference -
+  prefer using this component to just using a subscription ID string
+- **Microsoft.Resources/resourceGroups** - Container for related Azure resources
+  (required for most resources) - resource groups can be managed via CRUD by
+  System Initiative
 
-When creating any Microsoft Azure component that is not a Microsoft Credential, Microsoft.Resources/locations, or Microsoft.Resources/subscription those three components must exist to be subscribed to by the component. The only exception to this is the Microsoft.Resources/resourceGroups component, which only requires a Microsoft Credential and Microsoft.Resources/locations.
+When creating any Microsoft Azure component that is not a Microsoft Credential,
+Microsoft.Resources/locations, or Microsoft.Resources/subscription those three
+components must exist to be subscribed to by the component. The only exception
+to this is the Microsoft.Resources/resourceGroups component, which only requires
+a Microsoft Credential and Microsoft.Resources/locations.
 
 If a resource group does not exist, create one for the user.
 
 ##### Creating Microsoft Azure Components
 
 **Important Schema Naming:**
-- Schema names use the **Microsoft ARM resource type format** (e.g., \`Microsoft.Network/loadBalancers\`)
-- This differs from AWS (AWS::Service::Resource) and Hetzner (Hetzner::Cloud::Resources)
+
+- Schema names use the **Microsoft ARM resource type format** (e.g.,
+  \`Microsoft.Network/loadBalancers\`)
+- This differs from AWS (AWS::Service::Resource) and Hetzner
+  (Hetzner::Cloud::Resources)
 
 **Required Foundation Components:**
 
 Before creating Microsoft Azure resources, you need:
+
 1. **Microsoft Credential** component for authentication
 2. **Microsoft.Resources/locations** component for the location
 3. **Microsoft.Resources/subscription** component with subscription ID
@@ -213,6 +192,7 @@ Before creating Microsoft Azure resources, you need:
 **Standard Attribute Pattern:**
 
 Microsoft Azure resources typically use these subscriptions:
+
 \`\`\`
 /domain/name: "resource-name" - this path may also include the slug at the end of the schema name (for example, "/domain/resourceGroupName")
 /domain/subscriptionId: {$source: {component: "subscription-id", path: "/domain/subscriptionId"}}
@@ -220,30 +200,47 @@ Microsoft Azure resources typically use these subscriptions:
 /domain/resourceGroup: {$source: {component: "rg-id", path: "/domain/name"}}
 \`\`\`
 
-**If multiple Microsoft Credential or Microsoft.Resources/locations components are present, you should ask the user which ones they want to use.**
+**If multiple Microsoft Credential or Microsoft.Resources/locations components
+are present, you should ask the user which ones they want to use.**
 
-**Array Attribute Paths:**
-When setting array attributes in Microsoft Azure resources:
-- Arrays use \`[array]\` placeholder with an item suffix: \`/domain/properties/subnets/[array]/name\`
-- Replace \`[array]\` with zero-indexed numbers: \`/domain/properties/subnets/0/name\`
-- Some arrays have item suffixes like \`addressPrefixesItem\`: \`/domain/properties/addressSpace/addressPrefixes/[array]/addressPrefixesItem\`
+**Array Attribute Paths:** When setting array attributes in Microsoft Azure
+resources:
+
+- Arrays use \`[array]\` placeholder with an item suffix:
+  \`/domain/properties/subnets/[array]/name\`
+- Replace \`[array]\` with zero-indexed numbers:
+  \`/domain/properties/subnets/0/name\`
+- Some arrays have item suffixes like \`addressPrefixesItem\`:
+  \`/domain/properties/addressSpace/addressPrefixes/[array]/addressPrefixesItem\`
 - Always check the schema attributes to see the exact path structure
-- Nested arrays follow the same pattern: \`/domain/properties/securityRules/[array]/properties/sourceAddressPrefixes/[array]/sourceAddressPrefixesItem\`
+- Nested arrays follow the same pattern:
+  \`/domain/properties/securityRules/[array]/properties/sourceAddressPrefixes/[array]/sourceAddressPrefixesItem\`
 
 ##### Using Microsoft ID Template for Azure Resource IDs
 
-Microsoft Azure resources often require full resource IDs for references. Favor getting this ID from the \`/resource_value/id\` of the subscribed component. If a resource is not available, you can also use **Microsoft ID Template** components (NOT generic String Templates) to build these dynamically:
+Microsoft Azure resources often require full resource IDs for references. Favor
+getting this ID from the \`/resource_value/id\` of the subscribed component. If a
+resource is not available, you can also use **Microsoft ID Template** components
+(NOT generic String Templates) to build these dynamically:
 
 **Microsoft ID Template Attributes:**
-- \`/domain/Template\` - The full Azure resource ID pattern (optional, you can let it auto-generate from the variables)
-- \`/domain/Variables/subId\` - Subscription ID (required) - subscribe to Azure Subscription component
-- \`/domain/Variables/group\` - Resource group name (required) - subscribe to Resource Group component
-- \`/domain/Variables/type\` - Azure resource type like \`Microsoft.Network/loadBalancers\` (required)
-- \`/domain/Variables/resourceSubPath\` - Path to sub-resource like \`vnet1/subnets\` (optional)
+
+- \`/domain/Template\` - The full Azure resource ID pattern (optional, you can let
+  it auto-generate from the variables)
+- \`/domain/Variables/subId\` - Subscription ID (required) - subscribe to Azure
+  Subscription component
+- \`/domain/Variables/group\` - Resource group name (required) - subscribe to
+  Resource Group component
+- \`/domain/Variables/type\` - Azure resource type like
+  \`Microsoft.Network/loadBalancers\` (required)
+- \`/domain/Variables/resourceSubPath\` - Path to sub-resource like
+  \`vnet1/subnets\` (optional)
 - \`/domain/Variables/value\` - The resource name (required)
-- \`/domain/Rendered/Value\` - The final rendered ID (DO NOT SET - this is the output you subscribe to)
+- \`/domain/Rendered/Value\` - The final rendered ID (DO NOT SET - this is the
+  output you subscribe to)
 
 **Pattern for simple resource IDs:**
+
 \`\`\`
 Component: lb-backend-pool-id (Microsoft ID Template)
 Attributes:
@@ -255,6 +252,7 @@ Attributes:
 \`\`\`
 
 **Pattern for nested sub-resources (e.g., subnet within VNet):**
+
 \`\`\`
 Component: subnet-id (Microsoft ID Template)
 Attributes:
@@ -266,6 +264,7 @@ Attributes:
 \`\`\`
 
 **Or specify the full template explicitly:**
+
 \`\`\`
 Component: resource-id (Microsoft ID Template)
 Attributes:
@@ -277,6 +276,7 @@ Attributes:
 \`\`\`
 
 **Access the rendered output by subscribing to:**
+
 \`\`\`
 /domain/Rendered/Value
 \`\`\`
@@ -284,6 +284,7 @@ Attributes:
 ##### Common Azure Resource Examples
 
 **Example: Creating a Virtual Network**
+
 \`\`\`
 Component: my-vnet (Microsoft.Network/virtualNetworks)
 Attributes:
@@ -297,6 +298,7 @@ Attributes:
 \`\`\`
 
 **Example: Creating a Network Security Group**
+
 \`\`\`
 Component: my-nsg (Microsoft.Network/networkSecurityGroups)
 Attributes:
@@ -318,6 +320,7 @@ Note: Use schema-attributes-list to verify the exact paths. Some NSG attributes 
 \`\`\`
 
 **Example: Creating a Virtual Machine**
+
 \`\`\`
 Component: my-vm (Microsoft.Compute/virtualMachines)
 Attributes:
@@ -342,6 +345,7 @@ Note: Use schema-attributes-list to verify array attribute paths - some may requ
 \`\`\`
 
 **Example: Creating a Load Balancer with Microsoft ID Templates**
+
 \`\`\`
 # 1. Create Microsoft ID Templates for Load Balancer sub-resources
 Component: lb-frontend-ip-id (Microsoft ID Template)
@@ -393,32 +397,38 @@ Attributes:
 ##### Azure Resource Actions
 
 Most Azure resources support these actions:
+
 - **Create Asset** - Create the resource in Azure
 - **Update Asset** - Update existing resource
 - **Refresh Asset** - Sync state from Azure
 - **Delete Asset** - Remove the resource from Azure
 
 And these management functions:
+
 - **Import from Azure** - Import an existing resource by ID
 - **Discover on Azure** - Discover all resources of this type
 
 ##### Azure Resource ID Format
 
 Azure resource IDs follow this predictable pattern:
+
 \`\`\`
 /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceType}/{resourceName}
 \`\`\`
 
 For nested resources (like subnets within a VNet):
+
 \`\`\`
 /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.Network/virtualNetworks/{vnetName}/subnets/{subnetName}
 \`\`\`
 
-Use Microsoft ID Template components to build these IDs dynamically and subscribe other resources to the rendered output.
+Use Microsoft ID Template components to build these IDs dynamically and
+subscribe other resources to the rendered output.
 
 ##### Key Differences from AWS and Hetzner
 
 **vs AWS:**
+
 - Uses ARM resource types instead of CloudFormation types
 - Requires explicit Resource Group for most resources
 - Uses Subscription ID instead of AWS Account ID
@@ -426,6 +436,7 @@ Use Microsoft ID Template components to build these IDs dynamically and subscrib
 - Location is just region name (e.g., "eastus") not complex identifier
 
 **vs Hetzner:**
+
 - More complex nested resource structures
 - Requires Resource Group as parent container
 - Uses \`properties\` object for most configuration
@@ -435,6 +446,7 @@ Use Microsoft ID Template components to build these IDs dynamically and subscrib
 ##### Planning Azure Infrastructure
 
 Before creating Azure components:
+
 1. Create foundation components (Credential, Location, Subscription)
 2. Create Resource Group(s) to organize resources
 3. Plan network topology (VNet, subnets, NSGs)
@@ -445,16 +457,21 @@ Before creating Azure components:
 
 #### AWS Components
 
-System Initiative uses the CloudFormation schema through the Cloud Control service.
+System Initiative uses the CloudFormation schema through the Cloud Control
+service.
 
-When you create AWS Components for the user, you should always create the following subscriptions if the schema allows it:
+When you create AWS Components for the user, you should always create the
+following subscriptions if the schema allows it:
 
 - /domain/extra/Region: should subscribe to a Region components /domain/region.
-- /secrets/AWS Credential: should subscribe to an AWS Credential components /secrets/AWS Credential
+- /secrets/AWS Credential: should subscribe to an AWS Credential components
+  /secrets/AWS Credential
 
-If no Region or AWS Credential component is present, you should tell the user to create them first.
+If no Region or AWS Credential component is present, you should tell the user to
+create them first.
 
-If multiple Region or AWS Credential components are present, you should ask the user which they want to use.
+If multiple Region or AWS Credential components are present, you should ask the
+user which they want to use.
 
 If you are working with AWS IAM components:
 
@@ -463,29 +480,35 @@ If you are working with AWS IAM components:
 
 ##### 🔍 Schema Search Case Sensitivity
 
-When checking for available AWS schemas (for example, \`AWS::VpcLattice::Service\`), **System Initiative's schema search is case-sensitive**.
-If a search for a schema name returns no results, try alternate casing variations, such as:
+When checking for available AWS schemas (for example,
+\`AWS::VpcLattice::Service\`), **System Initiative's schema search is
+case-sensitive**. If a search for a schema name returns no results, try
+alternate casing variations, such as:
 
 - \`AWS::VpcLattice::Service\`
 - \`AWS::VPCLattice::Service\`
 - \`AWS::VPCLATTICE::Service\`
 
-Searching across multiple case variations ensures accurate discovery of AWS CloudFormation resources.
-For best results, always include all plausible casing patterns when verifying schema availability.
+Searching across multiple case variations ensures accurate discovery of AWS
+CloudFormation resources. For best results, always include all plausible casing
+patterns when verifying schema availability.
 
 ##### Using AWS Account Component with String Templates for IAM Policies
 
-When creating IAM policies that require dynamic values like AWS Account ID, use the **AWS Account** component with **String Template** components:
+When creating IAM policies that require dynamic values like AWS Account ID, use
+the **AWS Account** component with **String Template** components:
 
 **Pattern:**
 
 1. Create an **AWS Account** component to retrieve account information
-2. Create **String Template** components to build dynamic ARNs or policy documents
+2. Create **String Template** components to build dynamic ARNs or policy
+   documents
 3. Subscribe IAM components to the String Template's rendered output
 
 **Example: GitHub OIDC Trust Policy**
 
 1. Create AWS Account component:
+
    \`\`\`
    Component: aws-account-info (AWS Account)
    Attributes:
@@ -493,6 +516,7 @@ When creating IAM policies that require dynamic values like AWS Account ID, use 
    \`\`\`
 
 2. Create String Template for OIDC Provider ARN:
+
    \`\`\`
    Component: github-oidc-provider-arn (String Template)
    Attributes:
@@ -501,6 +525,7 @@ When creating IAM policies that require dynamic values like AWS Account ID, use 
    \`\`\`
 
 3. Create String Template for trust policy document:
+
    \`\`\`
    Component: github-trust-policy (String Template)
    Attributes:
@@ -516,11 +541,13 @@ When creating IAM policies that require dynamic values like AWS Account ID, use 
    \`\`\`
 
 **Available AWS Account Attributes:**
+
 - \`/domain/AccountData/Account\` - AWS Account ID (12 digits)
 - \`/domain/AccountData/Arn\` - ARN of the caller identity
 - \`/domain/AccountData/UserId\` - Unique identifier of the caller
 
 **String Template Usage:**
+
 - Use \`<%= VariableName %>\` to insert variable values
 - Access rendered output via \`/domain/Rendered/Value\`
 - Can nest String Templates (subscribe one template to another's output)
@@ -528,11 +555,13 @@ When creating IAM policies that require dynamic values like AWS Account ID, use 
 
 #### AWS IAM Component Creation Guide
 
-When creating and configuring AWS IAM components (roles, users, policies, etc.) for specific use cases, follow these guidelines:
+When creating and configuring AWS IAM components (roles, users, policies, etc.)
+for specific use cases, follow these guidelines:
 
 ##### Available AWS IAM Schemas
 
 These are the ONLY IAM schemas available in System Initiative:
+
 - **AWS::IAM::Role** - For service roles and cross-account access
 - **AWS::IAM::User** - For human users or programmatic access
 - **AWS::IAM::Group** - For grouping users with similar permissions
@@ -541,53 +570,66 @@ These are the ONLY IAM schemas available in System Initiative:
 - **AWS::IAM::UserPolicy** - For attaching managed policies to users (by ARN)
 - **AWS::IAM::InstanceProfile** - For EC2 instance roles
 
-**IMPORTANT**: These seven schemas are the ONLY IAM-related schemas available. Do not attempt to create or reference any other IAM schemas as they do not exist in this system.
+**IMPORTANT**: These seven schemas are the ONLY IAM-related schemas available.
+Do not attempt to create or reference any other IAM schemas as they do not exist
+in this system.
 
 **Key Distinction - AWS::IAM::RolePolicy in System Initiative:**
-- In System Initiative, **AWS::IAM::RolePolicy** is used to **attach existing managed policies** to roles by their ARN
-- This is different from AWS CloudFormation where RolePolicy is for inline policies
-- To attach a managed policy: Create AWS::IAM::RolePolicy with \`/domain/PolicyArn\` subscribing to the managed policy's \`/resource_value/Arn\`
-- AWS::IAM::RolePolicy does **NOT** have \`/domain/extra/Region\` - only \`/domain/RoleName\`, \`/domain/PolicyArn\`, and \`/secrets/AWS Credential\`
+
+- In System Initiative, **AWS::IAM::RolePolicy** is used to **attach existing
+  managed policies** to roles by their ARN
+- This is different from AWS CloudFormation where RolePolicy is for inline
+  policies
+- To attach a managed policy: Create AWS::IAM::RolePolicy with
+  \`/domain/PolicyArn\` subscribing to the managed policy's \`/resource_value/Arn\`
+- AWS::IAM::RolePolicy does **NOT** have \`/domain/extra/Region\` - only
+  \`/domain/RoleName\`, \`/domain/PolicyArn\`, and \`/secrets/AWS Credential\`
 
 **Analyze Requirements**
-   - Based on the use case, determine which IAM components are needed
-   - Consider security best practices (principle of least privilege)
-   - Plan the relationships between components
+
+- Based on the use case, determine which IAM components are needed
+- Consider security best practices (principle of least privilege)
+- Plan the relationships between components
 
 **Query Schema Actions and Create Core IAM Components**
-   - **FIRST**: Use schema query tools to discover available actions for your target schema
-   - Start with the primary component (usually Role or User)
-   - Use component-create tool with appropriate schema
-   - Configure all required properties with proper values
-   - Note: Action names are System Initiative-specific, not standard AWS API names
+
+- **FIRST**: Use schema query tools to discover available actions for your
+  target schema
+- Start with the primary component (usually Role or User)
+- Use component-create tool with appropriate schema
+- Configure all required properties with proper values
+- Note: Action names are System Initiative-specific, not standard AWS API names
 
 **Configure Policies (CRITICAL - JSON Formatting)**
 
-   **Policy Configuration Rules:**
-   - ALWAYS provide complete, valid JSON as a string
-   - Use proper JSON escaping for quotes
-   - Include Version field ("2012-10-17")
-   - Follow AWS policy syntax exactly
+**Policy Configuration Rules:**
 
-   **Good Example:**
-   \`\`\`
-   Trust policy for EC2 role:
-   "{
-     \\"Version\\": \\"2012-10-17\\",
-     \\"Statement\\": [{
-       \\"Effect\\": \\"Allow\\",
-       \\"Principal\\": { \\"Service\\": \\"ec2.amazonaws.com\\" },
-       \\"Action\\": \\"sts:AssumeRole\\"
-     }]
-   }"
-   \`\`\`
+- ALWAYS provide complete, valid JSON as a string
+- Use proper JSON escaping for quotes
+- Include Version field ("2012-10-17")
+- Follow AWS policy syntax exactly
 
-   **Bad Example:**
-   \`\`\`
-   [object Object]
-   "{{ trust_policy }}"
-   undefined
-   \`\`\`
+**Good Example:**
+
+\`\`\`
+Trust policy for EC2 role:
+"{
+  \\"Version\\": \\"2012-10-17\\",
+  \\"Statement\\": [{
+    \\"Effect\\": \\"Allow\\",
+    \\"Principal\\": { \\"Service\\": \\"ec2.amazonaws.com\\" },
+    \\"Action\\": \\"sts:AssumeRole\\"
+  }]
+}"
+\`\`\`
+
+**Bad Example:**
+
+\`\`\`
+[object Object]
+"{{ trust_policy }}"
+undefined
+\`\`\`
 
 6. **Create Supporting Components**
    - Add any required ManagedPolicies with specific permissions
@@ -600,7 +642,8 @@ These are the ONLY IAM schemas available in System Initiative:
      1. Create AWS::IAM::ManagedPolicy with the policy document
      2. Create AWS::IAM::RolePolicy component
      3. Set \`/domain/RoleName\` to subscribe to the role's \`/domain/RoleName\`
-     4. Set \`/domain/PolicyArn\` to subscribe to the managed policy's \`/resource_value/Arn\`
+     4. Set \`/domain/PolicyArn\` to subscribe to the managed policy's
+        \`/resource_value/Arn\`
      5. Set \`/secrets/AWS Credential\` subscription
    - Example:
      \`\`\`
@@ -613,12 +656,14 @@ These are the ONLY IAM schemas available in System Initiative:
    - Review all components for completeness
    - Ensure JSON policies are properly formatted
    - Verify relationships are correctly established
-   - **CRITICAL**: Query the qualifications on each schema to check for validation errors before applying the change set
+   - **CRITICAL**: Query the qualifications on each schema to check for
+     validation errors before applying the change set
    - Address any qualification failures before proceeding
 
 ##### Planning Framework
 
 Before creating components, analyze:
+
 - What AWS services need to be accessed?
 - Is this for human users or service roles?
 - What's the minimum set of permissions required?
@@ -628,38 +673,47 @@ Before creating components, analyze:
 ##### Common Policy Templates
 
 **S3 Read-Only Access Policy:**
+
 \`\`\`json
 {
   "Version": "2012-10-17",
-  "Statement": [{
-    "Effect": "Allow",
-    "Action": ["s3:GetObject", "s3:ListBucket"],
-    "Resource": ["arn:aws:s3:::bucket-name/*", "arn:aws:s3:::bucket-name"]
-  }]
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": ["s3:GetObject", "s3:ListBucket"],
+      "Resource": ["arn:aws:s3:::bucket-name/*", "arn:aws:s3:::bucket-name"]
+    }
+  ]
 }
 \`\`\`
 
 **Lambda Execution Role Trust Policy:**
+
 \`\`\`json
 {
   "Version": "2012-10-17",
-  "Statement": [{
-    "Effect": "Allow",
-    "Principal": { "Service": "lambda.amazonaws.com" },
-    "Action": "sts:AssumeRole"
-  }]
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Principal": { "Service": "lambda.amazonaws.com" },
+      "Action": "sts:AssumeRole"
+    }
+  ]
 }
 \`\`\`
 
 **EC2 Instance Role Trust Policy:**
+
 \`\`\`json
 {
   "Version": "2012-10-17",
-  "Statement": [{
-    "Effect": "Allow",
-    "Principal": { "Service": "ec2.amazonaws.com" },
-    "Action": "sts:AssumeRole"
-  }]
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Principal": { "Service": "ec2.amazonaws.com" },
+      "Action": "sts:AssumeRole"
+    }
+  ]
 }
 \`\`\`
 `;
