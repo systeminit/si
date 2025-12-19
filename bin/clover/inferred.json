@@ -448,6 +448,17 @@
       "SECURITYHUB_POLICY"
     ]
   },
+  "The volume type. This parameter can be one of the following values:\n  +  General Purpose SSD: ``gp2`` | ``gp3``\n  +  Provisioned IOPS SSD: ``io1`` | ``io2``\n  +  Throughput Optimized HDD: ``st1``\n  +  Cold HDD: ``sc1``\n  +  Magnetic: ``standard``\n  \n  Throughput Optimized HDD (``st1``) and Cold HDD (``sc1``) volumes can't be used as boot volumes.\n  For more information, see [Amazon EBS volume types](https://docs.aws.amazon.com/ebs/latest/userguide/ebs-volume-types.html) in the *Amazon EBS User Guide*.\n Default: ``gp2``": {
+    "enum": [
+      "gp2",
+      "gp3",
+      "io1",
+      "io2",
+      "st1",
+      "sc1",
+      "standard"
+    ]
+  },
   "The volume type. This parameter can be one of the following values:\n  +  General Purpose SSD: ``gp2`` | ``gp3``\n  +  Provisioned IOPS SSD: ``io1`` | ``io2``\n  +  Throughput Optimized HDD: ``st1``\n  +  Cold HDD: ``sc1``\n  +  Magnetic: ``standard``\n  \n For more information, see [Amazon EBS volume types](https://docs.aws.amazon.com/ebs/latest/userguide/ebs-volume-types.html).\n Default: ``gp2``": {
     "enum": [
       "gp2",
@@ -468,6 +479,17 @@
       "st1",
       "sc1",
       "standard"
+    ]
+  },
+  "The data type of the field, which determines validation rules, input constraints, and display format. Each type has specific constraints: Text (string input), Number (numeric values), Boolean (true/false), DateTime (date/time picker), SingleSelect (dropdown options), Url (URL validation), User (Amazon Connect user selection).": {
+    "enum": [
+      "Text",
+      "Number",
+      "Boolean",
+      "DateTime",
+      "SingleSelect",
+      "Url",
+      "User"
     ]
   },
   "The day of the week on which the scheduled audit takes place. Can be one of SUN, MON, TUE,WED, THU, FRI, or SAT. This field is required if the frequency parameter is set to WEEKLY or BIWEEKLY.": {
@@ -3650,6 +3672,15 @@
   "A description about the dataset, and its functionality.": {
     "enum": null
   },
+  "A description explaining the purpose and behavior of this case rule. Helps administrators understand when and why this rule applies to case fields.": {
+    "enum": null
+  },
+  "A description explaining the purpose and usage of this field in cases. Helps agents and administrators understand what information should be captured in this field.": {
+    "enum": null
+  },
+  "A description explaining the purpose and use case for this template. Should indicate what types of cases this template is designed for and any specific workflow it supports.": {
+    "enum": null
+  },
   "A description for the AWS Verified Access endpoint.": {
     "enum": null
   },
@@ -3881,6 +3912,12 @@
   "A descriptive name for the Amazon EMR Studio.": {
     "enum": null
   },
+  "A descriptive name for the case rule. Must be unique within the domain and should clearly indicate the rule's purpose (e.g., 'Priority Field Required for Urgent Cases').": {
+    "enum": null
+  },
+  "A descriptive name for the layout. Must be unique within the Cases domain and should clearly indicate the layout's purpose and field organization.": {
+    "enum": null
+  },
   "A detailed description of the Studio.": {
     "enum": null
   },
@@ -4074,6 +4111,9 @@
     "enum": null
   },
   "A name for the table. If you don't specify a name, CFNlong generates a unique physical ID and uses that ID for the table name. For more information, see [Name Type](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-name.html).\n  If you specify a name, you cannot perform updates that require replacement of this resource. You can perform updates that require no or some interruption. If you must replace the resource, specify a new name.": {
+    "enum": null
+  },
+  "A name for the template. It must be unique per domain.": {
     "enum": null
   },
   "A name to help identify the public key.": {
@@ -9260,6 +9300,9 @@
   "The Amazon Resource Name (ARN) of the OpenSearch domain.": {
     "enum": null
   },
+  "The Amazon Resource Name (ARN) of the Outpost on which to create the volume.\n If you intend to use a volume with an instance running on an outpost, then you must create the volume on the same outpost as the instance. You can't use a volume created in an AWS Region with an instance on an AWS outpost, or the other way around.": {
+    "enum": null
+  },
   "The Amazon Resource Name (ARN) of the Outpost.": {
     "enum": null
   },
@@ -9612,6 +9655,9 @@
     "enum": null
   },
   "The Amazon S3 destination URI for log publishing.": {
+    "enum": null
+  },
+  "The Amazon S3 destination URI for log publishing. When omitted, EMR falls back to cluster-level logging behavior.": {
     "enum": null
   },
   "The Amazon S3 directory that contains the database installation files for your CEV. For example, a valid bucket name is ``123456789012/cev1``. If this setting isn't specified, no prefix is assumed.": {
@@ -10169,6 +10215,12 @@
   "The ID of the Availability Zone in which to create the volume. For example, ``us-east-1a``.\n Either ``AvailabilityZone`` or ``AvailabilityZoneId`` must be specified, but not both.": {
     "enum": null
   },
+  "The ID of the Availability Zone in which to create the volume. For example, ``us-east-1a``.\n Either ``AvailabilityZone`` or ``AvailabilityZoneId`` must be specified, but not both.\n If you are creating a volume copy, omit this parameter. The volume copy is created in the same Availability Zone as the source volume.": {
+    "enum": null
+  },
+  "The ID of the Availability Zone in which to create the volume. For example, ``use1-az1``.\n Either ``AvailabilityZone`` or ``AvailabilityZoneId`` must be specified, but not both.\n If you are creating a volume copy, omit this parameter. The volume copy is created in the same Availability Zone as the source volume.": {
+    "enum": null
+  },
   "The ID of the Capacity Reservation in which to run the instance.": {
     "enum": null
   },
@@ -10586,6 +10638,9 @@
   "The ID of the software set to apply.": {
     "enum": null
   },
+  "The ID of the source EBS volume to copy. When specified, the volume is created as an exact copy of the specified volume. Only specify to create a volume copy. To create a new empty volume or to create a volume from a snapshot, omit this parameter,": {
+    "enum": null
+  },
   "The ID of the source attachment through which traffic enters a transit gateway": {
     "enum": null
   },
@@ -10857,6 +10912,9 @@
     "enum": null
   },
   "The KMS key ARN to encrypt the logs published to the given Amazon S3 destination.": {
+    "enum": null
+  },
+  "The KMS key ARN to encrypt the logs published to the given Amazon S3 destination. When omitted, EMR falls back to cluster-level logging behavior.": {
     "enum": null
   },
   "The KMS key ARN to encrypt the logs stored in managed log persistence.": {
@@ -11816,6 +11874,9 @@
   "The current state of the instance.": {
     "enum": null
   },
+  "The current status of the template. Active templates can be used to create new cases, while Inactive templates are disabled but preserved for existing cases.": {
+    "enum": null
+  },
   "The current version of the MSK cluster": {
     "enum": null
   },
@@ -12542,6 +12603,9 @@
   "The display name of the calculated attribute.": {
     "enum": null
   },
+  "The display name of the field as it appears to agents in the case interface. Should be descriptive and user-friendly (e.g., 'Customer Priority Level', 'Issue Category').": {
+    "enum": null
+  },
   "The display name of the image.": {
     "enum": null
   },
@@ -13164,6 +13228,9 @@
     "enum": null
   },
   "The identifier of the kms-key-long to use for Amazon EBS encryption. If ``KmsKeyId`` is specified, the encrypted state must be ``true``.\n If you omit this property and your account is enabled for encryption by default, or *Encrypted* is set to ``true``, then the volume is encrypted using the default key specified for your account. If your account does not have a default key, then the volume is encrypted using the aws-managed-key.\n Alternatively, if you want to specify a different key, you can specify one of the following:\n  +  Key ID. For example, 1234abcd-12ab-34cd-56ef-1234567890ab.\n  +  Key alias. Specify the alias for the key, prefixed with ``alias/``. For example, for a key with the alias ``my_cmk``, use ``alias/my_cmk``. Or to specify the aws-managed-key, use ``alias/aws/ebs``.\n  +  Key ARN. For example, arn:aws:kms:us-east-1:012345678910:key/1234abcd-12ab-34cd-56ef-1234567890ab.\n  +  Alias ARN. For example, arn:aws:kms:us-east-1:012345678910:alias/ExampleAlias.": {
+    "enum": null
+  },
+  "The identifier of the kms-key-long to use for Amazon EBS encryption. If ``KmsKeyId`` is specified, the encrypted state must be ``true``.\n If you omit this property and your account is enabled for encryption by default, or *Encrypted* is set to ``true``, then the volume is encrypted using the default key specified for your account. If your account does not have a default key, then the volume is encrypted using the aws-managed-key.\n Alternatively, if you want to specify a different key, you can specify one of the following:\n  +  Key ID. For example, 1234abcd-12ab-34cd-56ef-1234567890ab.\n  +  Key alias. Specify the alias for the key, prefixed with ``alias/``. For example, for a key with the alias ``my_cmk``, use ``alias/my_cmk``. Or to specify the aws-managed-key, use ``alias/aws/ebs``.\n  +  Key ARN. For example, arn:aws:kms:us-east-1:012345678910:key/1234abcd-12ab-34cd-56ef-1234567890ab.\n  +  Alias ARN. For example, arn:aws:kms:us-east-1:012345678910:alias/ExampleAlias.\n  \n If you are creating a volume copy, omit this parameter. The volume is automatically encrypted with the same KMS key as the source volume. You can't copy unencrypted volumes.": {
     "enum": null
   },
   "The identifier of the project in which the connection should be created. If ": {
@@ -14103,6 +14170,9 @@
     "enum": null
   },
   "The name for the traffic distribution group.": {
+    "enum": null
+  },
+  "The name for your Cases domain. It must be unique for your AWS account.": {
     "enum": null
   },
   "The name given by the user to the data filter cell.": {
@@ -16958,6 +17028,9 @@
   "The scheduling expression. For example, \"cron(0 20 * * ? *)\", \"rate(5 minutes)\". For more information, see Creating an Amazon EventBridge rule that runs on a schedule.": {
     "enum": null
   },
+  "The schema of the settings for contact flow module in JSON Schema V4 format.": {
+    "enum": null
+  },
   "The scope of the connection.": {
     "enum": null
   },
@@ -17090,6 +17163,9 @@
   "The size of the volume, in GiBs": {
     "enum": null
   },
+  "The size of the volume, in GiBs.\n  +  Required for new empty volumes.\n  +  Optional for volumes created from snapshots and volume copies. In this case, the size defaults to the size of the snapshot or source volume. You can optionally specify a size that is equal to or larger than the size of the source snapshot or volume.\n  \n Supported volume sizes:\n  +  gp2: ``1 - 16,384`` GiB\n  +  gp3: ``1 - 65,536`` GiB\n  +  io1: ``4 - 16,384`` GiB\n  +  io2: ``4 - 65,536`` GiB\n  +  st1 and sc1: ``125 - 16,384`` GiB\n  +  standard: ``1 - 1024`` GiB": {
+    "enum": null
+  },
   "The size of the volume, in GiBs. You must specify either a snapshot ID or a volume size. If you specify a snapshot, the default is the snapshot size, and you can specify a volume size that is equal to or larger than the snapshot size.\n Valid sizes:\n  +  gp2: ``1 - 16,384`` GiB\n  +  gp3: ``1 - 65,536`` GiB\n  +  io1: ``4 - 16,384`` GiB\n  +  io2: ``4 - 65,536`` GiB\n  +  st1 and sc1: ``125 - 16,384`` GiB\n  +  standard: ``1 - 1024`` GiB": {
     "enum": null
   },
@@ -17106,6 +17182,9 @@
     "enum": null
   },
   "The snapshot from which to create the volume": {
+    "enum": null
+  },
+  "The snapshot from which to create the volume. Only specify to create a volume from a snapshot. To create a new empty volume, omit this parameter and specify a value for ``Size`` instead. To create a volume copy, omit this parameter and specify ``SourceVolumeId`` instead.": {
     "enum": null
   },
   "The snapshot from which to create the volume. You must specify either a snapshot ID or a volume size.": {
@@ -17999,6 +18078,9 @@
   "The unique identifier of a customer profile.": {
     "enum": null
   },
+  "The unique identifier of a layout.": {
+    "enum": null
+  },
   "The unique identifier of a security control across standards. Values for this field typically consist of an AWS service name and a number, such as APIGateway.3.": {
     "enum": null
   },
@@ -18009,6 +18091,9 @@
     "enum": null
   },
   "The unique identifier of the Amazon Redshift cluster.": {
+    "enum": null
+  },
+  "The unique identifier of the Cases domain.": {
     "enum": null
   },
   "The unique identifier of the Cloud Exadata Infrastructure containing this Autonomous VM cluster.": {
