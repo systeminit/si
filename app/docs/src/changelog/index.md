@@ -2,6 +2,77 @@
 
 All notable changes to System Initiative will be documented in this file.
 
+## December 15th to 19th, 2025
+
+### ✨ Added
+
+- Added the ability to **leave a workspace** through the Public API and Auth
+  Portal.
+- Added support for `--open` on change set commands in the SI Binary to open a
+  change set.
+- Added support for passing a **workspace name** to `si workspace switch` in the
+  SI Binary.
+- Added the ability to **capture request and response logs** from commands in
+  the SI Binary.
+- Added support in the Public API for identifying **which secret a component is
+  connected to**.
+- Added support for passing a **name** to `si secret create` and
+  `si secret update` in the SI Binary.
+- Added the ability to **contribute schemas via the CLI**.
+
+### 🔄 Changed
+
+- Updated how **secrets are updated** via the SI Binary.
+
+### 🐞 Fixed
+
+- Fixed an issue where creating a secret in the CLI errored if the secret wasn't
+  installed.
+- Fixed incorrect rendering of **nested action dependencies** in the
+  ActionsPanel of the Web App.
+- Fixed an issue where the **actions panel** sometimes showed the wrong selected
+  action.
+- Fixed a broken **bulk edit** keyboard shortcut in the Web App.
+- Fixed an issue where authoring a **schema change** could break the schema.
+- Fixed an issue where multiselecting deleted and non-deleted components
+  prevented using the **erase** context menu in the Web App.
+- Fixed unnecessary restrictions on contributing **schema changes** in Luminork.
+- Fixed an issue in the Web App to avoid **graph cycles** in the action list.
+- Fixed an issue causing **duplicate actions** from other change sets on the
+  same component.
+- Fixed change set **apply exit logic** in the SI Binary.
+- Fixed an issue where writing **AI agent files and templates** was broken.
+
+## December 8th to 12th, 2025
+
+### ✨ Added
+
+- Launched **Microsoft Entra assets**.
+- Added support for **OpenCode.ai** to the AI agent.
+- Added the ability to **authenticate to System Initiative** via the CLI.
+- Added the ability to **navigate to a change set** from the CLI.
+- Added the ability to **update a secret** from the CLI.
+- Added the ability to **apply a change set** and view running actions from the
+  CLI.
+- Added the ability to **reference shared functions** when authoring via the
+  CLI.
+
+### 🔄 Changed
+
+- Deprecated the **Docker-based SI MCP server**.
+- Improved **workspace selection** behavior in the CLI.
+
+### 🐞 Fixed
+
+- Fixed an issue where the **secret create** command did not respect the API
+  token environment variable in the SI CLI.
+- Fixed an issue where the **ApplyChangeSetModal** title scrolled incorrectly in
+  the Web App.
+- Fixed an issue where running templates did not trigger the **authentication
+  flow** in the CLI.
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/5gEe4l6xzyc?si=cHNTIkp9jbOM0AS3" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+
 ## December 2nd to 7th, 2025
 
 ### ✨ Added
