@@ -1,6 +1,9 @@
 # Force to https
 http://*   https://:splat  301!
 
+# Redirect getting-started tutorial to index page
+/tutorials/getting-started /tutorials/index 301
+
 # Redirect moved IaC comparison doc
 /reference/iac-comparison  /explanation/iac-comparison  301
 
