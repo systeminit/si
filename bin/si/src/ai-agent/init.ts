@@ -19,6 +19,8 @@ import {
   createClaudeMd,
   createClaudeSettings,
   createCodexConfig,
+  createCursorConfig,
+  createCursorRules,
   createMcpConfig,
   createOpenCodeConfig,
   createOpenCodeMd,
@@ -154,6 +156,18 @@ export async function callAiAgentInit(
       break;
     }
 
+    case "cursor": {
+      // Create MCP configuration for Cursor
+      logger.info("📄 Creating Cursor MCP configuration file...");
+      const mcpPath = await createCursorConfig(apiToken, baseUrl, targetDir);
+      logger.info(`✅ Created Cursor MCP configuration: ${mcpPath}\n`);
+
+      logger.info("📄 Creating .cursorrules context file...");
+      const cursorRulesPath = await createCursorRules(targetDir);
+      logger.info(`✅ Created .cursorrules: ${cursorRulesPath}\n`);
+      break;
+    }
+
     default:
       logger.warn(
         `Unknown tool: ${tool}. Skipping tool-specific configuration.`,
@@ -195,6 +209,27 @@ export async function callAiAgentInit(
       logger.info(
         '  3. Use OpenCode interactively or with prompts (opencode -p "your prompt")',
       );
+      break;
+
+    case "cursor":
+      logger.info("  1. Install Cursor if not already installed:");
+      logger.info("     Download from https://cursor.sh/");
+      logger.info("  2. Option A - Use the Cursor CLI:");
+      logger.info(
+        "     Install cursor-agent CLI (see https://cursor.com/docs/cli/overview)",
+      );
+      logger.info("     Then run: si ai-agent start");
+      logger.info("  2. Option B - Use the Cursor GUI:");
+      logger.info(
+        "     Launch Cursor manually (it will auto-load the MCP server from .cursor/mcp.json)",
+      );
+      if (Deno.build.os === "darwin") {
+        logger.info('     macOS: open -a "Cursor"');
+      } else if (Deno.build.os === "windows") {
+        logger.info("     Windows: Start Cursor from the Start menu");
+      } else {
+        logger.info("     Linux: Launch Cursor from your applications menu");
+      }
       break;
 
     case "claude":

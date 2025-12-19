@@ -45,8 +45,8 @@ import type { GlobalOptions } from "./cli.ts";
 import { type Config, extractConfig } from "./cli/config.ts";
 import * as jwt from "./cli/jwt.ts";
 import { getUserAgent } from "./user_agent.ts";
-import { AxiosResponse } from "axios";
-import { AxiosRequestConfig } from "axios";
+import type { AxiosResponse } from "axios";
+import type { AxiosRequestConfig } from "axios";
 
 // Extend axios types to include metadata for request timing
 declare module "axios" {
@@ -354,9 +354,9 @@ function addInterceptors() {
       }`;
 
       logger.trace(
-        `API Response: ${response.config.method?.toUpperCase()} ${fullUrl} → ${
-          response.status
-        } ${response.statusText}${duration ? ` (${duration}ms)` : ""}`,
+        `API Response: ${response.config.method?.toUpperCase()} ${fullUrl} → ${response.status} ${response.statusText}${
+          duration ? ` (${duration}ms)` : ""
+        }`,
       );
 
       printPayload(response);

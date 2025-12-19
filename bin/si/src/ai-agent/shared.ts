@@ -25,7 +25,7 @@ async function getAgentContextTemplate(): Promise<string> {
 }
 
 /** Supported AI coding tools */
-export type AiTool = "claude" | "codex" | "opencode";
+export type AiTool = "claude" | "codex" | "opencode" | "cursor";
 
 /** Configuration for the AI Agent */
 export interface AiAgentConfig {
@@ -45,6 +45,7 @@ export const TOOL_COMMANDS: Record<AiTool, string> = {
   claude: "claude",
   codex: "codex",
   opencode: "opencode",
+  cursor: "cursor-agent",
 };
 
 /** MCP server configuration structure */
@@ -479,6 +480,50 @@ export const createAgentsMd = (targetDir: string): Promise<string> =>
  */
 export const createOpenCodeMd = (targetDir: string): Promise<string> =>
   createContextFile(targetDir, "OPENCODE.md");
+
+/**
+ * Create the .cursorrules file with System Initiative context for Cursor
+ * This provides Cursor with context about working with SI infrastructure
+ * Cursor reads .cursorrules from the project root for project-specific instructions
+ */
+export const createCursorRules = (targetDir: string): Promise<string> =>
+  createContextFile(targetDir, ".cursorrules");
+
+/**
+ * Create the .cursor/mcp.json configuration file for Cursor
+ * Cursor uses a different location than Claude Code (.cursor/mcp.json vs .mcp.json)
+ */
+export async function createCursorConfig(
+  apiToken: string,
+  baseUrl: string,
+  targetDir: string,
+): Promise<string> {
+  // Get the absolute path to the si binary
+  const siBinaryPath = Deno.execPath();
+
+  // Create .cursor directory
+  const cursorDir = join(targetDir, ".cursor");
+  await ensureDir(cursorDir);
+
+  const mcpPath = join(cursorDir, "mcp.json");
+
+  // Create the MCP configuration for Cursor
+  const mcpConfig = {
+    mcpServers: {
+      "system-initiative": {
+        command: siBinaryPath,
+        args: ["ai-agent", "stdio"],
+        env: {
+          SI_API_TOKEN: apiToken,
+          SI_BASE_URL: baseUrl,
+        },
+      },
+    },
+  };
+
+  await Deno.writeTextFile(mcpPath, JSON.stringify(mcpConfig, null, 2));
+  return mcpPath;
+}
 
 /**
  * Create the opencode.jsonc configuration file for OpenCode.ai
