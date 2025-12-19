@@ -75,6 +75,7 @@
           rust-toolchain
           rustfmt-nightly
           taplo
+          zip
 
           # breakpointHook
         ]
