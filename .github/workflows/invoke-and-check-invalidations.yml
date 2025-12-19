@@ -31,7 +31,7 @@ jobs:
       - name: Invalidate web cache
         run: |
           aws cloudfront create-invalidation --distribution-id ${{ secrets.CLOUDFRONT_DIST_ID }} \
-          --paths "/cyclone/stable/*" "/sdf/stable/*" "/rebaser/stable/*" "/pinga/stable/*" "/veritech/stable/*" "/forklift/stable/*" "/edda/stable/*" "/luminork/stable/*" \
+          --paths "/cyclone/stable/*" "/sdf/stable/*" "/rebaser/stable/*" "/pinga/stable/*" "/veritech/stable/*" "/forklift/stable/*" "/edda/stable/*" "/luminork/stable/*" "/si/stable/*" \
           --query 'Invalidation.Id' --output text
 
       - name: Checkout code
