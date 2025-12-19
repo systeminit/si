@@ -43,43 +43,6 @@ deno_binary_artifact(
     binary = ":si",
 )
 
-# Convenience aliases for cross-compilation
-alias(
-    name = "si-linux-x86_64",
-    actual = ":si",
-    default_target_platform = "prelude-si//platforms:linux-x86_64",
-)
-
-alias(
-    name = "si-linux-aarch64",
-    actual = ":si",
-    default_target_platform = "prelude-si//platforms:linux-aarch64",
-)
-
-alias(
-    name = "si-darwin-x86_64",
-    actual = ":si",
-    default_target_platform = "prelude-si//platforms:darwin-x86_64",
-)
-
-alias(
-    name = "si-darwin-aarch64",
-    actual = ":si",
-    default_target_platform = "prelude-si//platforms:darwin-aarch64",
-)
-
-alias(
-    name = "si-windows-x86_64",
-    actual = ":si",
-    default_target_platform = "prelude-si//platforms:windows-x86_64",
-)
-
-alias(
-    name = "si-windows-aarch64",
-    actual = ":si",
-    default_target_platform = "prelude-si//platforms:windows-aarch64",
-)
-
 deno_format(
     name = "fix-format",
     srcs = glob(["**/*.ts"]),

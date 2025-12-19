@@ -1,33 +1,10 @@
-load(
-    "@prelude//python:toolchain.bzl",
-    "PythonToolchainInfo",
-)
-load(
-    "//artifact.bzl",
-    "ArtifactInfo",
-)
-load(
-    "//build_context:toolchain.bzl",
-    "BuildContextToolchainInfo",
-)
-load(
-    "//build_context.bzl",
-    "BuildContext",
-    _build_context = "build_context",
-)
-load(
-    "//git:toolchain.bzl",
-    "GitToolchainInfo",
-)
-load(
-    "//git.bzl",
-    "GitInfo",
-    _git_info = "git_info",
-)
-load(
-    "//nix:toolchain.bzl",
-    "NixToolchainInfo",
-)
+load("@prelude//python:toolchain.bzl", "PythonToolchainInfo")
+load("//artifact:toolchain.bzl", "ArtifactToolchainInfo")
+load("//artifact.bzl", "ArtifactInfo")
+load("//build_context:toolchain.bzl", "BuildContextToolchainInfo")
+load("//build_context.bzl", "BuildContext", _build_context = "build_context")
+load("//nix:toolchain.bzl", "NixToolchainInfo")
+load("//platform.bzl", "get_host_platform")
 
 NixBinaryInfo = provider(fields = {
     "artifact": provider_field(typing.Any, default = None),  # [Artifact]
@@ -65,7 +42,6 @@ def nix_binary_impl(ctx: AnalysisContext) -> list[[
     DefaultInfo,
     NixBinaryInfo,
     ArtifactInfo,
-    GitInfo,
 ]]:
     if ctx.attrs.binary_name:
         name = ctx.attrs.binary_name
@@ -73,7 +49,8 @@ def nix_binary_impl(ctx: AnalysisContext) -> list[[
         name = ctx.attrs.name
 
     build_context = _build_context(ctx, [ctx.attrs.build_dep], ctx.attrs.srcs)
-    git_info = _git_info(ctx)
+
+    git_metadata_file = ctx.attrs.git_metadata[DefaultInfo].default_outputs[0]
 
     artifact = ctx.actions.declare_output(name)
     build_metadata = ctx.actions.declare_output("build_metadata.json")
@@ -85,7 +62,7 @@ def nix_binary_impl(ctx: AnalysisContext) -> list[[
         ctx.attrs._python_toolchain[PythonToolchainInfo].interpreter,
         nix_toolchain.nix_binary_build[DefaultInfo].default_outputs,
         "--git-info-json",
-        git_info.file,
+        git_metadata_file,
         "--artifact-out-file",
         artifact.as_output(),
         "--build-metadata-out-file",
@@ -121,7 +98,6 @@ def nix_binary_impl(ctx: AnalysisContext) -> list[[
             family = name,
             variant = "binary",
         ),
-        git_info,
     ]
 
 nix_binary = rule(
@@ -150,6 +126,10 @@ nix_binary = rule(
         "license": attrs.string(
             doc = """License string to be used in binary metadata.""",
         ),
+        "git_metadata": attrs.dep(
+            default = "prelude-si//build_metadata:git",
+            doc = """Git metadata target providing repository information.""",
+        ),
         "_python_toolchain": attrs.toolchain_dep(
             default = "toolchains//:python",
             providers = [PythonToolchainInfo],
@@ -157,10 +137,6 @@ nix_binary = rule(
         "_build_context_toolchain": attrs.toolchain_dep(
             default = "toolchains//:build_context",
             providers = [BuildContextToolchainInfo],
-        ),
-        "_git_toolchain": attrs.toolchain_dep(
-            default = "toolchains//:git",
-            providers = [GitToolchainInfo],
         ),
         "_nix_toolchain": attrs.toolchain_dep(
             default = "toolchains//:nix",
@@ -171,33 +147,43 @@ nix_binary = rule(
 
 def nix_omnibus_pkg_impl(ctx: AnalysisContext) -> list[[
     DefaultInfo,
-    NixOmnibusPkgInfo,
     ArtifactInfo,
-    GitInfo,
+    NixOmnibusPkgInfo,
 ]]:
+    artifact_toolchain = ctx.attrs._artifact_toolchain[ArtifactToolchainInfo]
+    nix_toolchain = ctx.attrs._nix_toolchain[NixToolchainInfo]
+
     if ctx.attrs.pkg_name:
         name = ctx.attrs.pkg_name
     else:
         name = ctx.attrs.name
 
     build_context = _build_context(ctx, [ctx.attrs.build_dep], ctx.attrs.srcs)
-    git_info = _git_info(ctx)
 
+    git_metadata_file = ctx.attrs.git_metadata[DefaultInfo].default_outputs[0]
+
+    # Get host platform information
+    host_os, host_arch = get_host_platform()
+
+    # Get target platform information from host platform (i.e. not yet cross-compilation aware)
+    target_os = host_os
+    target_arch = host_arch
+
+    variant = "omnibus"
+
+    # Build artifact
     artifact = ctx.actions.declare_output("{}.tar.gz".format(name))
-    build_metadata = ctx.actions.declare_output("build_metadata.json")
+    build_metadata_old = ctx.actions.declare_output("build_metadata-old.json")
     pkg_metadata = ctx.actions.declare_output("pkg_metadata.json")
-
-    nix_toolchain = ctx.attrs._nix_toolchain[NixToolchainInfo]
-
-    cmd = cmd_args(
+    build_cmd = cmd_args(
         ctx.attrs._python_toolchain[PythonToolchainInfo].interpreter,
         nix_toolchain.nix_omnibus_pkg_build[DefaultInfo].default_outputs,
         "--git-info-json",
-        git_info.file,
+        git_metadata_file,
         "--artifact-out-file",
         artifact.as_output(),
         "--build-metadata-out-file",
-        build_metadata.as_output(),
+        build_metadata_old.as_output(),
         "--pkg-metadata-out-file",
         pkg_metadata.as_output(),
         "--build-context-dir",
@@ -211,27 +197,54 @@ def nix_omnibus_pkg_impl(ctx: AnalysisContext) -> list[[
         "--license",
         ctx.attrs.license,
     )
+    ctx.actions.run(build_cmd, category = "build_nix_omnibus_pkg")
 
-    ctx.actions.run(cmd, category = "nix_omnibus_pkg_build")
+    # Generate build metadata
+    build_metadata = ctx.actions.declare_output("build_metadata.json")
+    metadata_cmd = cmd_args(
+        ctx.attrs._python_toolchain[PythonToolchainInfo].interpreter,
+        artifact_toolchain.generate_build_metadata[DefaultInfo].default_outputs,
+        "--artifact-file",
+        artifact,
+        "--git-info-json",
+        git_metadata_file,
+        "--build-metadata-out-file",
+        build_metadata.as_output(),
+        "--name",
+        name,
+        "--variant",
+        variant,
+        "--arch",
+        target_arch,
+        "--os",
+        target_os,
+        "--author",
+        ctx.attrs.author,
+        "--source-url",
+        ctx.attrs.source_url,
+        "--license",
+        ctx.attrs.license,
+    )
+    ctx.actions.run(metadata_cmd, category = "build_artifact_metadata")
 
     return [
         DefaultInfo(
             default_output = artifact,
+            sub_targets = {
+                "metadata": [DefaultInfo(default_output = build_metadata)],
+            },
+        ),
+        ArtifactInfo(
+            artifact = artifact,
+            metadata = build_metadata,
+            family = name,
+            variant = variant,
         ),
         NixOmnibusPkgInfo(
             artifact = artifact,
             build_metadata = build_metadata,
             pkg_metadata = pkg_metadata,
         ),
-        ArtifactInfo(
-            artifact = artifact,
-            metadata = build_metadata,
-            # TODO(johnrwatson): it would be better to calculate these fields
-            # or have some other manner or determining them.
-            family = "nix_omnibus",
-            variant = "tar",
-        ),
-        git_info,
     ]
 
 nix_omnibus_pkg = rule(
@@ -252,13 +265,17 @@ nix_omnibus_pkg = rule(
             doc = """Mapping of sources files to the relative directory in a build context..""",
         ),
         "author": attrs.string(
-            doc = """Image author to be used in package metadata.""",
+            doc = """Image author to be used in artifact metadata.""",
         ),
         "source_url": attrs.string(
-            doc = """Source code URL to be used in package metadata.""",
+            doc = """Source code URL to be used in artifact metadata.""",
         ),
         "license": attrs.string(
-            doc = """License string to be used in package metadata.""",
+            doc = """License string to be used in artifact metadata.""",
+        ),
+        "git_metadata": attrs.dep(
+            default = "prelude-si//build_metadata:git",
+            doc = """Git metadata target providing repository information.""",
         ),
         "_python_toolchain": attrs.toolchain_dep(
             default = "toolchains//:python",
@@ -268,13 +285,13 @@ nix_omnibus_pkg = rule(
             default = "toolchains//:build_context",
             providers = [BuildContextToolchainInfo],
         ),
-        "_git_toolchain": attrs.toolchain_dep(
-            default = "toolchains//:git",
-            providers = [GitToolchainInfo],
-        ),
         "_nix_toolchain": attrs.toolchain_dep(
             default = "toolchains//:nix",
             providers = [NixToolchainInfo],
+        ),
+        "_artifact_toolchain": attrs.toolchain_dep(
+            default = "toolchains//:artifact",
+            providers = [ArtifactToolchainInfo],
         ),
     },
 )

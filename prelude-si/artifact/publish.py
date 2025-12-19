@@ -30,6 +30,7 @@ class BaseEnum(Enum, metaclass=MetaEnum):
 
 
 class Destination(BaseEnum):
+    OCI = "oci"
     S3 = "s3"
 
 
@@ -46,8 +47,14 @@ class PlatformOS(BaseEnum):
 
 class Variant(BaseEnum):
     Binary = "binary"
+    Container = "container"
     Omnibus = "omnibus"
     Rootfs = "rootfs"
+
+
+class ImageArch(BaseEnum):
+    Amd64 = "amd64"
+    Arm64v8 = "arm64v8"
 
 
 class ArtifactMetadata(object):
@@ -80,8 +87,8 @@ def parse_args() -> tuple[argparse.Namespace, Destination]:
         required=True,
         help="Destination [examples: {}]".format(", ".join([
             "s3://my-bucket",
+            "oci://docker.io",
             "gcs://bucket-name",
-            "docker://docker.io",
         ])),
     )
     parser.add_argument(
@@ -118,12 +125,20 @@ def main() -> int:
     md = load_metadata(args.metadata_file)
 
     match destination:
+        case Destination.OCI:
+            publish_to_oci_registry(
+                md,
+                args.artifact_file,
+                args.destination,
+            )
         case Destination.S3:
-            url = "/".join([args.destination, object_store_path(md)])
-            print("--- Publishing {}".format(os.path.basename(url)))
-            s3_upload(args.artifact_file, url)
-            s3_upload(args.metadata_file, url + ".metadata.json")
-            s3_report_metadata(md, url, args.cname)
+            publish_to_s3(
+                md,
+                args.artifact_file,
+                args.metadata_file,
+                args.destination,
+                args.cname,
+            )
 
     return 0
 
@@ -143,7 +158,40 @@ def load_metadata(json_file: str) -> ArtifactMetadata:
     )
 
 
-def s3_upload(artifact_path, s3_url):
+def publish_to_s3(
+    md: ArtifactMetadata,
+    artifact_path: pathlib.Path,
+    metadata_path: pathlib.Path,
+    destination_prefix: str,
+    cname: str | None,
+):
+    url = "/".join([destination_prefix, object_store_path(md)])
+
+    print("--- Publishing {}".format(os.path.basename(url)))
+    s3_upload(artifact_path, url)
+    s3_upload(metadata_path, url + ".metadata.json")
+    s3_report_metadata(md, url, cname)
+
+
+def publish_to_oci_registry(
+    md: ArtifactMetadata,
+    artifact_path: pathlib.Path,
+    destination_prefix: str,
+):
+    org = md.extra.get("organization")
+    if org is None:
+        raise ValueError("Missing 'organization' from artifact build metadata")
+
+    registry = destination_prefix.replace("oci://", "")
+    image_arch = map_platform_to_image_arch(md.os, md.arch)
+    image_with_tag = f"{registry}/{org}/{md.family}:{md.version}-{image_arch.value}"
+
+    print(f"--- Publishing {image_with_tag}")
+    load_and_push_container_image(artifact_path, image_with_tag)
+    container_report_metadata(md, registry, image_arch)
+
+
+def s3_upload(artifact_path: pathlib.Path, s3_url: str):
     cmd = [
         "aws",
         "s3",
@@ -181,11 +229,15 @@ def s3_report_metadata(md: ArtifactMetadata, url: str, cname: str | None):
             value,
         ))
 
-    return None
-
 
 def artifact_name(md: ArtifactMetadata) -> str:
-    prefix = f"{md.family}-{md.version}-{md.variant.value}-{md.os.value}-{md.arch.value}"
+    prefix = "-".join([
+        md.family,
+        md.version,
+        md.variant.value,
+        md.os.value,
+        md.arch.value,
+    ])
 
     match md.variant:
         case Variant.Binary:
@@ -194,8 +246,6 @@ def artifact_name(md: ArtifactMetadata) -> str:
                     return f"{prefix}.tar.gz"
                 case PlatformOS.Windows:
                     return f"{prefix}.zip"
-                case _:
-                    raise TypeError(f"unsupport Platform type: {md.os}")
         case Variant.Omnibus:
             return f"{prefix}.tar.gz"
         case Variant.Rootfs:
@@ -213,6 +263,91 @@ def object_store_path(md: ArtifactMetadata) -> str:
         md.arch.value,
         artifact_name(md),
     ])
+
+
+def map_platform_to_image_arch(
+    os: PlatformOS,
+    arch: PlatformArch,
+) -> ImageArch:
+    if os != PlatformOS.Linux:
+        raise ValueError(f"Unsupported platform operation system: {os.value}")
+
+    # Map to image arch names
+    image_arch_mapping = {
+        PlatformArch.X86_64: ImageArch.Amd64,
+        PlatformArch.Aarch64: ImageArch.Arm64v8,
+    }
+
+    if arch not in image_arch_mapping:
+        raise ValueError(f"Unsupported platform architecture: {arch.value}")
+
+    return image_arch_mapping[arch]
+
+
+def load_and_push_container_image(
+    artifact_path: pathlib.Path,
+    image_with_tag: str,
+):
+    # Load OCI tarball into Docker Engine
+    load_cmd = [
+        "docker",
+        "load",
+        "--input",
+        str(artifact_path),
+    ]
+    print(f"  - Loading OCI tarball: {artifact_path}")
+    subprocess.run(load_cmd).check_returncode()
+
+    push_cmd = [
+        "docker",
+        "push",
+        image_with_tag,
+    ]
+    print(f"  - Pushing container image: {image_with_tag}")
+    subprocess.run(push_cmd).check_returncode()
+
+
+def container_report_metadata(
+    md: ArtifactMetadata,
+    registry: str,
+    image_arch: ImageArch,
+):
+    print("\n--- Artifact published\n")
+
+    url = None
+    if registry == "docker.io":
+        url = "/".join([
+            "https://hub.docker.com",
+            "r",
+            md.extra.get("organization", "--unknown--"),
+            md.family,
+            "&".join([
+                "tags?page=1",
+                "ordering=last_updated",
+                f"name={md.version}-{image_arch.value}",
+            ]),
+        ])
+    else:
+        raise ValueError(f"Unsupported container registry: {registry}")
+
+    rows = {
+        "Family": md.family,
+        "Version": md.version,
+        "Variant": md.variant.value,
+        "OS": md.os.value,
+        "Arch": md.arch.value,
+        "Blake3Sum": md.b3sum,
+        "Revision": md.commit,
+        "Artifact URL": url,
+    }
+    header_max_len = max(len(name) for name in rows.keys())
+
+    for name, value in rows.items():
+        print("    {0:<{1}} : {2}".format(
+            name,
+            header_max_len,
+            value,
+        ))
 
 
 if __name__ == "__main__":

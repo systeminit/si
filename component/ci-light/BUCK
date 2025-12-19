@@ -1,8 +1,9 @@
 load(
     "@prelude-si//:macros.bzl",
-    "docker_image",
+    "container_image",
 )
 
-docker_image(
+container_image(
     name = "ci-light",
+    default_target = True,
 )

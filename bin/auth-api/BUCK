@@ -1,20 +1,19 @@
 load(
     "@prelude-si//:macros.bzl",
+    "container_image",
     "eslint",
     "export_file",
+    "npm_bin",
     "package_node_modules",
     "typescript_check",
-    "docker_image",
-    "npm_bin",
     "typescript_dist",
     "typescript_runnable_dist",
     "typescript_runnable_dist_bin",
 )
-
 load(
     "@prelude-si//:pnpm.bzl",
-    "pnpm_task_library",
     "pnpm_task_binary",
+    "pnpm_task_library",
 )
 
 export_file(
@@ -150,15 +149,14 @@ pnpm_task_binary(
     visibility = ["PUBLIC"],
 )
 
-docker_image(
-    name = "image",
-    image_name = "auth-api",
+container_image(
+    name = "auth-api",
     flake_lock = "//:flake.lock",
     build_deps = [
         "//bin/auth-api:auth-api",
     ],
-    # TODO(fnichol): revisit post 2025-02-01
-    promote_multi_arches = [
-        "amd64",
+    # Only currently need x86_64 for ECS deployments
+    platform_targets = [
+        "linux-x86_64",
     ],
 )

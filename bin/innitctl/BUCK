@@ -1,6 +1,6 @@
 load(
     "@prelude-si//:macros.bzl",
-    "docker_image",
+    "container_image",
     "rust_binary",
 )
 
@@ -20,7 +20,7 @@ rust_binary(
     git_metadata = False,
 )
 
-docker_image(
+container_image(
     name = "image",
     image_name = "innitctl",
     build_args = {

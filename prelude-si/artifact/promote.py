@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Promotes an artifact to a channel in an object store such as AWS S3.
+Promotes an artifact to a channel in a destination.
 """
 import argparse
 import os
@@ -29,6 +29,7 @@ class BaseEnum(Enum, metaclass=MetaEnum):
 
 
 class Destination(BaseEnum):
+    OCI = "oci"
     S3 = "s3"
 
 
@@ -48,6 +49,7 @@ Target = Tuple[PlatformOS, PlatformArch]
 
 class Variant(BaseEnum):
     Binary = "binary"
+    Container = "container"
     Omnibus = "omnibus"
     Rootfs = "rootfs"
 
@@ -114,6 +116,10 @@ def parse_args() -> tuple[
         help="Artifact targets [default: {}]".format(linux_target_strs()),
     )
     parser.add_argument(
+        "--organization",
+        help="Artifact's organization",
+    )
+    parser.add_argument(
         "--cname",
         help="URL hostname for artifacts references",
     )
@@ -141,8 +147,15 @@ def main() -> int:
     (args, destination, artifacts) = parse_args()
 
     match destination:
+        case Destination.OCI:
+            promote_in_oci_registry(
+                args.channel,
+                args.destination,
+                artifacts,
+                args.organization,
+            )
         case Destination.S3:
-            s3_promote(
+            promote_in_s3(
                 args.channel,
                 args.destination,
                 artifacts,
@@ -166,9 +179,9 @@ def parse_metadata(
     )
 
 
-def s3_promote(
+def promote_in_s3(
     channel: str,
-    s3_bucket: str,
+    destination_prefix: str,
     artifacts: list[ArtifactMetadata],
     cname: str | None,
     cloudfront_distribution_id: str | None,
@@ -176,7 +189,7 @@ def s3_promote(
     if not artifacts:
         return
 
-    bucket_name = re.sub(r"^s3://", "", s3_bucket)
+    bucket_name = re.sub(r"^s3://", "", destination_prefix)
 
     if cname is None:
         base_url = f"https://{bucket_name}.s3.amazonaws.com"
@@ -226,6 +239,72 @@ def s3_promote(
     print("\n--- Artifacts promoted")
     for url in artifact_urls:
         print(f"  - {url}")
+
+
+def promote_in_oci_registry(
+    channel: str,
+    destination_prefix: str,
+    artifacts: list[ArtifactMetadata],
+    org: str | None,
+):
+    if org is None:
+        raise ValueError(
+            "Missing '--organization' option for oci registry promotion")
+
+    registry = destination_prefix.replace("oci://", "")
+    image_arches = [
+        map_platform_to_image_arch(md.os, md.arch) for md in artifacts
+    ]
+
+    md = artifacts[0]
+
+    images_with_tags = [
+        f"{registry}/{org}/{md.family}:{md.version}-{image_arch}"
+        for image_arch in image_arches
+    ]
+
+    manifest_tag = f"{registry}/{org}/{md.family}:{channel}"
+
+    print(f"--- Promoting images to '{manifest_tag}'")
+
+    print("  - Creating a multi-arch manifest for the following images:")
+    for image_with_tag in images_with_tags:
+        print(f"      - {image_with_tag}")
+
+    manifest_create_cmd = [
+        "docker",
+        "manifest",
+        "create",
+        manifest_tag,
+    ]
+    for image_with_tag in images_with_tags:
+        manifest_create_cmd.append("--amend")
+        manifest_create_cmd.append(image_with_tag)
+    subprocess.run(manifest_create_cmd).check_returncode()
+
+    print(f"  - Pushing manifest to {manifest_tag}")
+    manifest_push_cmd = [
+        "docker",
+        "manifest",
+        "push",
+        "--purge",
+        manifest_tag,
+    ]
+    subprocess.run(manifest_push_cmd).check_returncode()
+
+    url = "/".join([
+        "https://hub.docker.com",
+        "r",
+        md.family,
+        "&".join([
+            "tags?page=1",
+            "ordering=last_updated",
+            f"name={channel}",
+        ]),
+    ])
+
+    print("\n--- Artifacts promoted")
+    print(f"  - {url}")
 
 
 def s3_put_object(
@@ -330,6 +409,22 @@ def object_store_path(md: ArtifactMetadata) -> str:
         md.arch.value,
         artifact_name(md),
     ])
+
+
+def map_platform_to_image_arch(os: PlatformOS, arch: PlatformArch) -> str:
+    if os != PlatformOS.Linux:
+        raise ValueError(f"Unsupported platform operation system: {os.value}")
+
+    # Map to Docker arch names
+    docker_arch_mapping = {
+        PlatformArch.X86_64: "amd64",
+        PlatformArch.Aarch64: "arm64v8",
+    }
+
+    if arch not in docker_arch_mapping:
+        raise ValueError(f"Unsupported platform architecture: {arch.value}")
+
+    return docker_arch_mapping[arch]
 
 
 if __name__ == "__main__":

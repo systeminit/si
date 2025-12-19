@@ -9,7 +9,6 @@ load(
     "alias",
     "deno_binary",
     "export_file",
-    "nix_omnibus_pkg",
 )
 
 export_file(
@@ -81,15 +80,4 @@ deno_test(
         "worker-options",
     ],
     parallel = False,
-)
-
-nix_omnibus_pkg(
-    name = "omnibus",
-    pkg_name = "lang-js",
-    build_dep = "//bin/lang-js:lang-js",
-    srcs = {
-        "//:flake.nix": ".",
-        "//:flake.lock": ".",
-        "//:rust-toolchain": ".",
-    },
 )

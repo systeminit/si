@@ -1,13 +1,13 @@
 load(
     "@prelude-si//:macros.bzl",
-    "docker_image",
+    "container_image",
     "filegroup",
     "shellcheck",
     "shfmt_check",
     "test_suite",
 )
 
-docker_image(
+container_image(
     name = "postgres",
     srcs = {
         "entrypoint-wrapper.sh": ".",
@@ -34,6 +34,7 @@ docker_image(
         "--publish",
         "5432:5432",
     ],
+    default_target = True,
 )
 
 filegroup(

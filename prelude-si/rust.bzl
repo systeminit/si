@@ -1,70 +1,12 @@
-load(
-    "@prelude//decls/re_test_common.bzl",
-    "re_test_common",
-)
-load(
-    "@prelude//python:toolchain.bzl",
-    "PythonToolchainInfo",
-)
-load(
-    "@prelude//test/inject_test_run_info.bzl",
-    "inject_test_run_info",
-)
-load(
-    "@prelude//tests:re_utils.bzl",
-    "get_re_executors_from_props",
-)
-load(
-    "@prelude-si//:artifact.bzl",
-    "ArtifactInfo",
-)
-load(
-    "@prelude-si//:test.bzl",
-    "inject_test_env",
-)
-load(
-    "//artifact:toolchain.bzl",
-    "ArtifactToolchainInfo",
-)
-load(
-    "//git:toolchain.bzl",
-    "GitToolchainInfo",
-)
-load(
-    "//git.bzl",
-    _git_info = "git_info",
-)
-load(
-    "//rust:toolchain.bzl",
-    "SiRustToolchainInfo",
-)
-
-def _get_host_platform():
-    """Get host platform arch and os for artifact metadata.
-
-    Note: This detects the build host platform. For cross-compilation,
-    Deno artifacts use toolchain-provided platform info instead.
-
-    Returns: tuple of (arch, os) as strings matching artifact format
-    """
-    arch = host_info().arch
-    os = host_info().os
-
-    if arch.is_x86_64:
-        arch_str = "x86_64"
-    elif arch.is_aarch64:
-        arch_str = "aarch64"
-    else:
-        fail("Unsupported host architecture for Rust artifacts")
-
-    if os.is_linux:
-        os_str = "linux"
-    elif os.is_macos:
-        os_str = "macos"
-    else:
-        fail("Unsupported host OS for Rust artifacts")
-
-    return (arch_str, os_str)
+load("@prelude//decls/re_test_common.bzl", "re_test_common")
+load("@prelude//python:toolchain.bzl", "PythonToolchainInfo")
+load("@prelude//test/inject_test_run_info.bzl", "inject_test_run_info")
+load("@prelude//tests:re_utils.bzl", "get_re_executors_from_props")
+load("@prelude-si//:artifact.bzl", "ArtifactInfo")
+load("@prelude-si//:test.bzl", "inject_test_env")
+load("//artifact:toolchain.bzl", "ArtifactToolchainInfo")
+load("//platform.bzl", "get_host_platform")
+load("//rust:toolchain.bzl", "SiRustToolchainInfo")
 
 def clippy_check_impl(ctx: AnalysisContext) -> list[[
     DefaultInfo,
@@ -225,33 +167,78 @@ def crate_context(ctx: AnalysisContext) -> CrateContext:
         srcs_tree = srcs_tree,
     )
 
-def _rust_binary_artifact_impl(ctx):
-    binary = ctx.attrs.binary[DefaultInfo].default_outputs[0]
-    git_info = _git_info(ctx)
-    build_metadata = ctx.actions.declare_output("build_metadata.json")
-
-    si_rust_toolchain = ctx.attrs._si_rust_toolchain[SiRustToolchainInfo]
+def _rust_binary_artifact_impl(ctx) -> list[[
+    DefaultInfo,
+    ArtifactInfo,
+]]:
     artifact_toolchain = ctx.attrs._artifact_toolchain[ArtifactToolchainInfo]
+    si_rust_toolchain = ctx.attrs._si_rust_toolchain[SiRustToolchainInfo]
 
-    # Get host platform for artifact metadata
-    host_arch, host_os = _get_host_platform()
+    binary = ctx.attrs.binary[DefaultInfo].default_outputs[0]
 
-    # Generate metadata using generic script with explicit platform
-    cmd = cmd_args(
+    git_metadata_file = ctx.attrs.git_metadata[DefaultInfo].default_outputs[0]
+
+    # Get host platform information
+    host_os, host_arch = get_host_platform()
+
+    # Get target platform information from host platform (i.e. not yet cross-compilation aware)
+    target_os = host_os
+    target_arch = host_arch
+
+    variant = "binary"
+
+    # Build artitfact
+    pkg_metadata = ctx.actions.declare_output("pkg_metadata.json")
+    archive_ext = ".zip" if target_os == "windows" else ".tar.gz"
+    archive = ctx.actions.declare_output("{}{}".format(ctx.attrs.binary_name, archive_ext))
+    archive_cmd = cmd_args(
         ctx.attrs._python_toolchain[PythonToolchainInfo].interpreter,
-        artifact_toolchain.generate_binary_metadata[DefaultInfo].default_outputs,
+        artifact_toolchain.create_binary_archive[DefaultInfo].default_outputs,
+        "--name",
+        ctx.attrs.binary_name,
         "--binary",
         binary,
         "--git-info-json",
-        git_info.file,
+        git_metadata_file,
+        "--artifact-out-file",
+        archive.as_output(),
+        "--pkg-metadata-out-file",
+        pkg_metadata.as_output(),
+        "--os",
+        target_os,
+        "--arch",
+        target_arch,
+        "--author",
+        ctx.attrs.author,
+        "--source-url",
+        ctx.attrs.source_url,
+        "--license",
+        ctx.attrs.license,
+        "--usr-local-bin",
+        "--binary-name",
+        ctx.attrs.binary_name,
+    )
+    ctx.actions.run(archive_cmd, category = "build_binary_artifact")
+
+    # Generate build metadata
+    build_metadata = ctx.actions.declare_output("build_metadata.json")
+    metadata_cmd = cmd_args(
+        ctx.attrs._python_toolchain[PythonToolchainInfo].interpreter,
+        artifact_toolchain.generate_build_metadata[DefaultInfo].default_outputs,
+        "--artifact-file",
+        archive,
+        "--git-info-json",
+        git_metadata_file,
         "--build-metadata-out-file",
         build_metadata.as_output(),
         "--name",
         ctx.attrs.binary_name,
+        "--variant",
+        variant,
         "--arch",
-        host_arch,
+        target_arch,
         "--os",
-        host_os,
+        target_os,
         "--author",
         ctx.attrs.author,
         "--source-url",
@@ -259,37 +246,20 @@ def _rust_binary_artifact_impl(ctx):
         "--license",
         ctx.attrs.license,
     )
-
-    ctx.actions.run(cmd, category = "rust_metadata")
-
-    # Create archive using generic script with usr-local-bin layout
-    tarred_binary = ctx.actions.declare_output("{}.tar.gz".format(ctx.attrs.binary_name))
-
-    archive_cmd = cmd_args(
-        ctx.attrs._python_toolchain[PythonToolchainInfo].interpreter,
-        artifact_toolchain.create_binary_archive[DefaultInfo].default_outputs,
-        "--binary",
-        binary,
-        "--metadata",
-        build_metadata,
-        "--output",
-        tarred_binary.as_output(),
-        "--os",
-        host_os,
-        "--usr-local-bin",
-        "--binary-name",
-        ctx.attrs.binary_name,
-    )
-
-    ctx.actions.run(archive_cmd, category = "binary_archive")
+    ctx.actions.run(metadata_cmd, category = "build_artifact_metadata")
 
     return [
-        DefaultInfo(default_output = tarred_binary),
+        DefaultInfo(
+            default_output = archive,
+            sub_targets = {
+                "metadata": [DefaultInfo(default_output = build_metadata)],
+            },
+        ),
         ArtifactInfo(
-            artifact = tarred_binary,
+            artifact = archive,
             metadata = build_metadata,
             family = ctx.attrs.family,
-            variant = ctx.attrs.variant,
+            variant = variant,
         ),
     ]
 
@@ -305,21 +275,24 @@ rust_binary_artifact = rule(
         "family": attrs.string(
             doc = "Artifact family name.",
         ),
-        "variant": attrs.string(
-            doc = "Artifact variant.",
-        ),
         "author": attrs.string(
-            doc = """Image author to be used in package metadata.""",
+            doc = "Author to be used in artifact metadata.",
         ),
         "source_url": attrs.string(
-            doc = """Source code URL to be used in package metadata.""",
+            doc = "Source code URL to be used in artifact metadata.",
         ),
         "license": attrs.string(
-            doc = """License string to be used in package metadata.""",
+            doc = "License string to be used in artifact metadata.",
         ),
-        "_git_toolchain": attrs.toolchain_dep(
-            default = "toolchains//:git",
-            providers = [GitToolchainInfo],
+        "platform_targets": attrs.list(
+            attrs.string(),
+            default = [],
+            doc = """List of target platforms this artifact supports.
+            Used by CI to determine which platforms to build.""",
+        ),
+        "git_metadata": attrs.dep(
+            default = "prelude-si//build_metadata:git",
+            doc = """Git metadata target providing repository information.""",
         ),
         "_python_toolchain": attrs.toolchain_dep(
             default = "toolchains//:python",

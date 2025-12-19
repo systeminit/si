@@ -75,6 +75,7 @@
           rust-toolchain
           rustfmt-nightly
           taplo
+          zip
 
           # breakpointHook
         ]
@@ -358,35 +359,7 @@
 
           sdf = binDerivation {pkgName = "sdf";};
 
-          si-fs = binDerivation {pkgName = "si-fs";};
-
-          si-fs-standalone = standaloneBinaryDerivation {
-            pkgName = "si-fs-standalone";
-            fromPkg = packages.si-fs;
-          };
-
           veritech = binDerivation {pkgName = "veritech";};
-
-          web = appDerivation rec {
-            pkgName = "web";
-            extraBuildPhase = ''
-              buck2 build app/web:nginx_src --verbose 3 --out build/nginx
-              buck2 build app/web:docker-entrypoint.sh \
-                --verbose 3 --out build/docker-entrypoint.sh
-            '';
-            extraInstallPhase = ''
-              patchShebangs --host build/docker-entrypoint.sh
-              substituteInPlace build/docker-entrypoint.sh \
-                --replace @@nginx@@ "${nginx}/bin/nginx" \
-                --replace @@conf@@ "$out/conf/nginx.conf" \
-                --replace @@prefix@@ "$out"
-
-              mkdir -pv "$out/bin" "$out/conf"
-              cp -pv build/nginx/nginx.conf "$out/conf/nginx.conf"
-              cp -pv "${nginx}/conf/mime.types" "$out/conf"/
-              cp -pv build/docker-entrypoint.sh "$out/bin/${pkgName}"
-            '';
-          };
         };
 
         devShells.default = mkShell {

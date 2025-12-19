@@ -7,7 +7,7 @@ load(
     "@prelude-si//:macros.bzl",
     "alias",
     "deno_binary",
-    "docker_image",
+    "container_image",
     "export_file",
 )
 
@@ -84,9 +84,8 @@ export_file(
     name = "deno.json",
 )
 
-docker_image(
-    name = "image",
-    image_name = "si-function-tester",
+container_image(
+    name = "si-function-tester",
     flake_lock = "//:flake.lock",
     srcs = {
         ":types.ts": ".",

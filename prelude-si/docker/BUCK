@@ -17,14 +17,6 @@ export_file(
     name = "docker_image_build.py",
 )
 
-export_file(
-    name = "docker_image_push.py",
-)
-
-export_file(
-    name = "docker_image_promote.py",
-)
-
 yapf_check(
     name = "check-format-python",
     srcs = glob(["**/*.py"]),

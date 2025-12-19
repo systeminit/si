@@ -1,23 +1,7 @@
 load(
     "@prelude-si//:macros.bzl",
     "rust_binary",
-    "rust_binary_pkg",
-    "test_suite",
-)
-
-test_suite(
-    name = "check-lint",
-    tests = [
-        ":check-lint-rust-bin",
-        ":check-lint-rust-unit",
-    ],
-)
-
-test_suite(
-    name = "check-format",
-    tests = [
-        ":check-format-rust",
-    ],
+    "rust_binary_artifact",
 )
 
 rust_binary(
@@ -40,7 +24,7 @@ rust_binary(
     visibility = ["PUBLIC"],
 )
 
-rust_binary_pkg(
+rust_binary_artifact(
     name = "veritech",
-    binary = ":veritech"
+    binary = ":veritech",
 )

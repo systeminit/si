@@ -1,9 +1,9 @@
 load(
     "@prelude-si//:macros.bzl",
-    "docker_image",
+    "container_image",
 )
 
-docker_image(
+container_image(
     name = "otelcol",
     srcs = {
         "config.yaml": ".",
@@ -19,4 +19,5 @@ docker_image(
         "--publish",
         "4318:4318",
     ],
+    default_target = True,
 )

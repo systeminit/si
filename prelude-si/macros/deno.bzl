@@ -1,7 +1,9 @@
 load(
     "@prelude-si//:artifact.bzl",
+    _VALID_PLATFORM_TARGETS = "VALID_PLATFORM_TARGETS",
     _artifact_promote = "artifact_promote",
     _artifact_publish = "artifact_publish",
+    _validate_platform_targets = "validate_platform_targets",
 )
 load(
     "@prelude-si//:build_metadata.bzl",
@@ -26,8 +28,12 @@ def deno_binary(
         deno_json = "deno.json",
         deno_lock = "deno.lock",
         git_metadata = True,
+        platform_targets = _VALID_PLATFORM_TARGETS,
         visibility = ["PUBLIC"],
         **kwargs):
+    # Validate all platform targets
+    _validate_platform_targets(platform_targets, "deno_binary_artifact({})".format(name))
+
     # If Git metadata is enabled, generate and add to extra_srcs
     if git_metadata:
         git_metadata_target = "{}-git-metadata-typescript".format(name)
@@ -51,6 +57,15 @@ def deno_binary(
         visibility = visibility,
         **kwargs
     )
+
+    for target in platform_targets:
+        # Convenience alias for cross-compilation
+        _alias(
+            name = "{}-{}".format(name, target),
+            actual = ":{}".format(name),
+            default_target_platform = "prelude-si//platforms:{}".format(target),
+            visibility = visibility,
+        )
 
     if not rule_exists("build"):
         _alias(
@@ -82,6 +97,10 @@ def deno_binary_artifact(
         license = "Apache-2.0",
         artifact_destination = "s3://si-artifacts-prod",
         artifact_cname = "artifacts.systeminit.com",
+        platform_targets = _VALID_PLATFORM_TARGETS,
+        skip_all_publish = False,
+        skip_all_promote = False,
+        default_target = False,
         visibility = ["PUBLIC"]):
     """Create Deno binary artifact with publish/promote targets for all platforms.
 
@@ -93,31 +112,46 @@ def deno_binary_artifact(
     Plus platform-specific aliases for each:
     - :{name}-binary-artifact-{platform}
     - :publish-{name}-binary-artifact-{platform}
-    - :promote-{name}-binary-artifact-{platform}
 
-    Where platform is: linux-x86_64, linux-aarch64, darwin-x86_64,
-                       darwin-aarch64, windows-x86_64, windows-aarch64
+    Args:
+        name: Binary name
+        binary: The deno_binary target
+        source_url: Source code URL for metadata
+        author: Author for metadata
+        license: License string for metadata
+        artifact_destination: S3 destination for artifacts
+        artifact_cname: Canonical hostname for artifact URLs
+        platform_targets: List of target platforms. Defaults to all supported Deno platforms.
+        skip_all_publish: Skip publishing this artifact (default: False)
+        skip_all_promote: Skip promoting this artifact (default: False)
+        visibility: Target visibility
     """
 
+    # Validate all platform targets
+    _validate_platform_targets(platform_targets, "deno_binary_artifact({})".format(name))
+
     # Base artifact target
+    deno_binary_artifact_name = "{}-binary-artifact".format(name)
     _deno_binary_artifact(
-        name = "{}-binary-artifact".format(name),
+        name = deno_binary_artifact_name,
         binary = binary,
         binary_name = name,
         family = name,
-        variant = "binary",
         author = author,
         source_url = source_url,
         license = license,
+        platform_targets = platform_targets,
         visibility = visibility,
     )
 
     # Base publish target
     _artifact_publish(
         name = "publish-{}-binary-artifact".format(name),
-        artifact = ":{}-binary-artifact".format(name),
+        artifact = ":{}".format(deno_binary_artifact_name),
         destination = artifact_destination,
         cname = artifact_cname,
+        platform_targets = platform_targets,
+        skip_all = skip_all_publish,
         visibility = visibility,
     )
 
@@ -128,20 +162,12 @@ def deno_binary_artifact(
         variant = "binary",
         destination = artifact_destination,
         cname = artifact_cname,
+        platform_targets = platform_targets,
+        skip_all = skip_all_promote,
         visibility = visibility,
     )
 
-    # Platform-specific aliases
-    platforms = [
-        "linux-x86_64",
-        "linux-aarch64",
-        "darwin-x86_64",
-        "darwin-aarch64",
-        "windows-x86_64",
-        "windows-aarch64",
-    ]
-
-    for platform in platforms:
+    for platform in platform_targets:
         # Artifact alias
         _alias(
             name = "{}-binary-artifact-{}".format(name, platform),
@@ -158,10 +184,9 @@ def deno_binary_artifact(
             visibility = visibility,
         )
 
-        # Promote alias
+    if default_target:
         _alias(
-            name = "promote-{}-binary-artifact-{}".format(name, platform),
-            actual = ":promote-{}-binary-artifact".format(name),
-            default_target_platform = "prelude-si//platforms:{}".format(platform),
+            name = name,
+            actual = ":{}".format(deno_binary_artifact_name),
             visibility = visibility,
         )

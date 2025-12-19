@@ -1,12 +1,12 @@
 load(
     "@prelude-si//:macros.bzl",
-    "docker_image",
+    "container_image",
     "shellcheck",
     "shfmt_check",
     "test_suite",
 )
 
-docker_image(
+container_image(
     name = "ci-base",
     srcs = {
         "//:flake.nix": ".",
@@ -32,6 +32,7 @@ docker_image(
         "--volume",
         "/var/run/docker.sock:/var/run/docker.sock",
     ],
+    default_target = True,
 )
 
 shfmt_check(

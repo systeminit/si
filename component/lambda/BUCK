@@ -1,12 +1,13 @@
 load(
     "@prelude-si//:macros.bzl",
-    "docker_image",
+    "container_image",
 )
 
-docker_image(
+container_image(
     name = "lambda",
     srcs = {
         "docker-entrypoint.sh": ".",
         "functions/": ".",
     },
+    default_target = True,
 )

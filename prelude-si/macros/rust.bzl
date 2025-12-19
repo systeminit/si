@@ -1,7 +1,9 @@
 load(
     "@prelude-si//:artifact.bzl",
+    _VALID_LINUX_PLATFORM_TARGETS = "VALID_LINUX_PLATFORM_TARGETS",
     _artifact_promote = "artifact_promote",
     _artifact_publish = "artifact_publish",
+    _validate_linux_platform_targets = "validate_linux_platform_targets",
 )
 load(
     "@prelude-si//:build_metadata.bzl",
@@ -61,6 +63,7 @@ def rust_binary(
             git_metadata = "prelude-si//build_metadata:git",
             visibility = visibility,
         )
+
         # Automatically wire Git metadata OUT_DIR for version stamping
         base_env["OUT_DIR"] = "$(location :{})".format(git_metadata_target)
 
@@ -380,41 +383,83 @@ def rust_test(
         **kwargs
     )
 
-def rust_binary_pkg(
+def rust_binary_artifact(
         name,
         binary,
         source_url = "http://github.com/systeminit/si.git",
         author = "The System Initiative <dev@systeminit.com>",
         license = "Apache-2.0",
-        publish_target = "publish-binary",
-        promote_target = "promote-binary",
         artifact_destination = "s3://si-artifacts-prod",
         artifact_cname = "artifacts.systeminit.com",
+        platform_targets = _VALID_LINUX_PLATFORM_TARGETS,
+        skip_all_publish = False,
+        skip_all_promote = False,
+        default_target = False,
         visibility = ["PUBLIC"]):
+    """Create Rust binary artifact with publish/promote targets.
+
+    Creates base targets:
+    - :{name}-binary-artifact
+    - :publish-{name}-binary-artifact
+    - :promote-{name}-binary-artifact
+
+    Args:
+        name: Binary name
+        binary: The rust_binary target
+        source_url: Source code URL for metadata
+        author: Author for metadata
+        license: License string for metadata
+        artifact_destination: S3 destination for artifacts
+        artifact_cname: Canonical hostname for artifact URLs
+        platform_targets: List of target platforms. Defaults to Linux native platforms.
+        skip_all_publish: Skip publishing this artifact (default: False)
+        skip_all_promote: Skip promoting this artifact (default: False)
+        visibility: Target visibility
+    """
+
+    # Validate platform_targets
+    _validate_linux_platform_targets(platform_targets, "rust_binary_artifact({})".format(name))
+
+    # Base artifact target
+    rust_binary_artifact_name = "{}-binary-artifact".format(name)
     _rust_binary_artifact(
-        name = "{}-artifact-info".format(name),
+        name = rust_binary_artifact_name,
         binary = binary,
         binary_name = name,
+        family = name,
         author = author,
-        family = name,
-        license = license,
         source_url = source_url,
-        variant = "binary",
-    )
-
-    _artifact_publish(
-        name = publish_target,
-        artifact = ":{}-artifact-info".format(name),
-        destination = artifact_destination,
-        cname = artifact_cname,
+        license = license,
+        platform_targets = platform_targets,
         visibility = visibility,
     )
 
+    # Base publish target
+    _artifact_publish(
+        name = "publish-{}-binary-artifact".format(name),
+        artifact = ":{}".format(rust_binary_artifact_name),
+        destination = artifact_destination,
+        cname = artifact_cname,
+        platform_targets = platform_targets,
+        skip_all = skip_all_publish,
+        visibility = visibility,
+    )
+
+    # Base promote target
     _artifact_promote(
-        name = promote_target,
+        name = "promote-{}-binary-artifact".format(name),
         family = name,
         variant = "binary",
         destination = artifact_destination,
         cname = artifact_cname,
+        platform_targets = platform_targets,
+        skip_all = skip_all_promote,
         visibility = visibility,
     )
+
+    if default_target:
+        _alias(
+            name = name,
+            actual = ":{}".format(rust_binary_artifact_name),
+            visibility = visibility,
+        )

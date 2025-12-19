@@ -7,25 +7,17 @@ load(
     "cmd_script",
 )
 load(
-    "//artifact:toolchain.bzl",
-    "ArtifactToolchainInfo",
-)
-load(
     "@prelude-si//:artifact.bzl",
     "ArtifactInfo",
+)
+load(
+    "//artifact:toolchain.bzl",
+    "ArtifactToolchainInfo",
 )
 load(
     "//deno:toolchain.bzl",
     "DenoToolchainInfo",
     "DenoWorkspaceInfo",
-)
-load(
-    "//git.bzl",
-    _git_info = "git_info",
-)
-load(
-    "//git:toolchain.bzl",
-    "GitToolchainInfo",
 )
 
 DenoTargetRuntimeInfo = provider(fields = {
@@ -537,32 +529,69 @@ deno_target_runtime = rule(
     },
 )
 
-def _deno_binary_artifact_impl(ctx):
-    """Implementation for deno_binary_artifact rule."""
-    binary = ctx.attrs.binary[DefaultInfo].default_outputs[0]
-    git_info = _git_info(ctx)
-
-    deno_toolchain = ctx.attrs._deno_toolchain[DenoToolchainInfo]
+def _deno_binary_artifact_impl(ctx) -> list[[
+    DefaultInfo,
+    ArtifactInfo,
+]]:
     artifact_toolchain = ctx.attrs._artifact_toolchain[ArtifactToolchainInfo]
+    deno_toolchain = ctx.attrs._deno_toolchain[DenoToolchainInfo]
+
+    binary = ctx.attrs.binary[DefaultInfo].default_outputs[0]
+
+    git_metadata_file = ctx.attrs.git_metadata[DefaultInfo].default_outputs[0]
 
     # Get platform information from Deno toolchain
     target_os = deno_toolchain.target_os
     target_arch = deno_toolchain.target_arch
 
-    # Generate metadata
-    build_metadata = ctx.actions.declare_output("build_metadata.json")
+    variant = "binary"
 
-    metadata_cmd = cmd_args(
+    # Build artitfact
+    pkg_metadata = ctx.actions.declare_output("pkg_metadata.json")
+    archive_ext = ".zip" if target_os == "windows" else ".tar.gz"
+    archive = ctx.actions.declare_output("{}{}".format(ctx.attrs.binary_name, archive_ext))
+    archive_cmd = cmd_args(
         ctx.attrs._python_toolchain[PythonToolchainInfo].interpreter,
-        artifact_toolchain.generate_binary_metadata[DefaultInfo].default_outputs,
+        artifact_toolchain.create_binary_archive[DefaultInfo].default_outputs,
+        "--name",
+        ctx.attrs.binary_name,
         "--binary",
         binary,
         "--git-info-json",
-        git_info.file,
+        git_metadata_file,
+        "--artifact-out-file",
+        archive.as_output(),
+        "--pkg-metadata-out-file",
+        pkg_metadata.as_output(),
+        "--os",
+        target_os,
+        "--arch",
+        target_arch,
+        "--author",
+        ctx.attrs.author,
+        "--source-url",
+        ctx.attrs.source_url,
+        "--license",
+        ctx.attrs.license,
+        # Note: no --usr-local-bin flag, using flat layout
+    )
+    ctx.actions.run(archive_cmd, category = "build_binary_artifact")
+
+    # Generate build metadata
+    build_metadata = ctx.actions.declare_output("build_metadata.json")
+    metadata_cmd = cmd_args(
+        ctx.attrs._python_toolchain[PythonToolchainInfo].interpreter,
+        artifact_toolchain.generate_build_metadata[DefaultInfo].default_outputs,
+        "--artifact-file",
+        archive,
+        "--git-info-json",
+        git_metadata_file,
         "--build-metadata-out-file",
         build_metadata.as_output(),
         "--name",
         ctx.attrs.binary_name,
+        "--variant",
+        variant,
         "--arch",
         target_arch,
         "--os",
@@ -574,36 +603,20 @@ def _deno_binary_artifact_impl(ctx):
         "--license",
         ctx.attrs.license,
     )
-
-    ctx.actions.run(metadata_cmd, category = "binary_metadata")
-
-    # Create archive (tar.gz for unix, zip for Windows)
-    archive_ext = ".zip" if target_os == "windows" else ".tar.gz"
-    archive = ctx.actions.declare_output("{}{}".format(ctx.attrs.binary_name, archive_ext))
-
-    archive_cmd = cmd_args(
-        ctx.attrs._python_toolchain[PythonToolchainInfo].interpreter,
-        artifact_toolchain.create_binary_archive[DefaultInfo].default_outputs,
-        "--binary",
-        binary,
-        "--metadata",
-        build_metadata,
-        "--output",
-        archive.as_output(),
-        "--os",
-        target_os,
-        # Note: no --usr-local-bin flag, using flat layout
-    )
-
-    ctx.actions.run(archive_cmd, category = "binary_archive")
+    ctx.actions.run(metadata_cmd, category = "build_artifact_metadata")
 
     return [
-        DefaultInfo(default_output = archive),
+        DefaultInfo(
+            default_output = archive,
+            sub_targets = {
+                "metadata": [DefaultInfo(default_output = build_metadata)],
+            },
+        ),
         ArtifactInfo(
             artifact = archive,
             metadata = build_metadata,
             family = ctx.attrs.family,
-            variant = ctx.attrs.variant,
+            variant = variant,
         ),
     ]
 
@@ -619,9 +632,6 @@ deno_binary_artifact = rule(
         "family": attrs.string(
             doc = "Artifact family name.",
         ),
-        "variant": attrs.string(
-            doc = "Artifact variant.",
-        ),
         "author": attrs.string(
             doc = "Author to be used in artifact metadata.",
         ),
@@ -631,9 +641,15 @@ deno_binary_artifact = rule(
         "license": attrs.string(
             doc = "License string to be used in artifact metadata.",
         ),
-        "_git_toolchain": attrs.toolchain_dep(
-            default = "toolchains//:git",
-            providers = [GitToolchainInfo],
+        "platform_targets": attrs.list(
+            attrs.string(),
+            default = [],
+            doc = """List of target platforms this artifact supports.
+            Used by CI to determine which platforms to build.""",
+        ),
+        "git_metadata": attrs.dep(
+            default = "prelude-si//build_metadata:git",
+            doc = """Git metadata target providing repository information.""",
         ),
         "_python_toolchain": attrs.toolchain_dep(
             default = "toolchains//:python",
