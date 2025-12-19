@@ -555,7 +555,10 @@ impl S3Layer {
         use std::time::Instant;
 
         use aws_sdk_s3::{
-            error::SdkError,
+            error::{
+                DisplayErrorContext,
+                SdkError,
+            },
             operation::get_object::GetObjectError,
         };
         use telemetry_utils::histogram;
@@ -629,6 +632,16 @@ impl S3Layer {
 
                 // Not a "not found" error - wrap with context
                 let aws_error = AwsSdkError::GetObject(sdk_err);
+
+                // Log detailed error context before categorization
+                error!(
+                    error = %DisplayErrorContext(&aws_error),
+                    cache_name = %self.cache_name,
+                    key = %key,
+                    operation = "get_object",
+                    "S3 operation failure"
+                );
+
                 let s3_error = categorize_s3_error(
                     aws_error,
                     crate::error::S3Operation::Get,
