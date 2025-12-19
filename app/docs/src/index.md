@@ -18,7 +18,7 @@ to System Intiative functionality.
 ## Getting help
 
 The [Discord Server](https://discord.com/invite/system-init) is the best way to
-get help. The community is eager to answer your questions and to help.
+get help. The community is eager to answer your questions and get you started on your journey.
 
 ## How the documentation is organized
 
@@ -28,7 +28,7 @@ get help. The community is eager to answer your questions and to help.
   System Initiative. They assume knowledge of both System Initiative and the
   task they are teaching.
 - [Reference guides](./reference/index.md) give you just the facts about how to
-  use the System Initiative CLI, AI Agent, Web Interface and APIs.
+  use the System Initiative CLI, AI Agent, Web Interface, and APIs.
 - [Explanations](./explanation/index.md) provides the more detailed material to
   clarify how to use particular parts of the system.
 - The [Changelog](./changelog/index.md) keeps you up to date on the latest
