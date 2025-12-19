@@ -7,7 +7,7 @@ outline:
 
 Updated December 19, 2025.
 
-Want to influence the road map?
+Want to influence the roadmap?
 [Learn more about how to work on System Initiative](../explanation/working-on-si.md).
 
 ## SI CLI (Generally Available)
