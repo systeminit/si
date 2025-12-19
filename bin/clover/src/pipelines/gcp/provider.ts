@@ -17,6 +17,7 @@ import {
 } from "./funcs.ts";
 import { GcpSchema, NormalizedGcpSchema } from "./schema.ts";
 import { normalizeGcpProperty } from "./spec.ts";
+import { buildGcpCategory } from "./utils.ts";
 import { generateGcpSpecs } from "./pipeline.ts";
 import { fetchGcpDiscoveryDocuments } from "./discovery.ts";
 import { JSONSchema } from "../draft_07.ts";
@@ -39,16 +40,7 @@ function createDocLink(
 
 function gcpCategory(schema: SuperSchema): string {
   const gcpSchema = schema as GcpSchema;
-  // Remove "API" and version suffixes (v1, v2, II, III, etc.) from title
-  const cleanTitle = gcpSchema.title
-    .replace(/\s+API\s*$/i, "") // Remove trailing "API"
-    .replace(/\s+API\s+/gi, " ") // Remove "API" in the middle
-    .replace(/\s+v\d+$/i, "") // Remove version numbers like "v1", "v2"
-    .replace(/\s+I{1,3}$/i, "") // Remove roman numerals I, II, III
-    .trim();
-  const category = `Google Cloud ${cleanTitle}`;
-  // Remove duplicate "Cloud" words (e.g., "Google Cloud Cloud Storage" -> "Google Cloud Storage")
-  return category.replace(/\bCloud\s+Cloud\b/gi, "Cloud");
+  return buildGcpCategory(gcpSchema.title);
 }
 
 function gcpIsChildRequired(

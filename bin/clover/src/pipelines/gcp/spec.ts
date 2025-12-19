@@ -12,7 +12,11 @@ import { gcpProviderConfig } from "./provider.ts";
 import { OnlyProperties } from "../../spec/props.ts";
 import { CfHandler, CfHandlerKind, CfProperty } from "../types.ts";
 import logger from "../../logger.ts";
-import { detectCreateOnlyProperties } from "./utils.ts";
+import {
+  buildGcpTypeName,
+  detectCreateOnlyProperties,
+  titleCaseResourcePath,
+} from "./utils.ts";
 
 export type GcpResourceMethods = {
   get?: GcpMethod;
@@ -183,28 +187,13 @@ function buildGcpResourceSpec(
   // Determine primary identifier from path parameters
   const primaryIdentifier = determinePrimaryIdentifier(get);
 
-  // Build GCP schema
-  const fullResourceName = resourcePath.join(".");
-
-  // Clean up title: remove "API", version suffixes, etc.
-  const cleanTitle = (doc.title || doc.name)
-    .replace(/\s+API\s*$/i, "") // Remove trailing "API"
-    .replace(/\s+API\s+/gi, " ") // Remove "API" in the middle
-    .replace(/\s+v\d+$/i, "") // Remove version numbers like "v1", "v2"
-    .replace(/\s+I{1,3}$/i, "") // Remove roman numerals I, II, III
-    .trim();
-
-  let typeName = `Google Cloud ${cleanTitle} ${fullResourceName}`;
-  // Remove duplicate "Cloud" words
-  typeName = typeName.replace(/\bCloud\s+Cloud\b/gi, "Cloud");
-  // Capitalize the last word (e.g., "networks" -> "Networks")
-  typeName = typeName.replace(/\s(\w+)$/, (_, word) => ` ${word.charAt(0).toUpperCase()}${word.slice(1)}`);
+  const typeName = buildGcpTypeName(doc.title || doc.name, resourcePath);
 
   // Normalize the asset description
   const description = normalizeDescription(
     getResponseSchema.description ||
-    get.description ||
-    `GCP ${doc.name} ${fullResourceName} resource`
+      get.description ||
+      `GCP ${doc.name} ${titleCaseResourcePath(resourcePath)} resource`,
   )!;
 
   const requiredProperties = new Set(
@@ -294,8 +283,8 @@ function normalizeGcpSchemaProperties(
 function normalizeDescription(desc: string | undefined): string | undefined {
   if (!desc) return desc;
   return desc
-    .replace(/\n/g, " ")      // Replace newlines with spaces
-    .replace(/\s+/g, " ")     // Collapse multiple spaces
+    .replace(/\n/g, " ") // Replace newlines with spaces
+    .replace(/\s+/g, " ") // Collapse multiple spaces
     .trim();
 }
 
