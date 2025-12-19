@@ -68,26 +68,37 @@ async function main(component: Input): Promise<Output> {
     }
   }
 
-  // Make the API request
-  const response = await fetch(url, {
-    method: "DELETE", // delete is always DELETE
-    headers: {
-      "Authorization": `Bearer ${token}`,
-    },
-  });
+  // Make the API request with retry logic
+  const response = await siExec.withRetry(async () => {
+    const resp = await fetch(url, {
+      method: "DELETE", // delete is always DELETE
+      headers: {
+        "Authorization": `Bearer ${token}`,
+      },
+    });
 
-  if (!response.ok) {
-    // If already deleted (404), consider it success
-    if (response.status === 404) {
-      return {
-        status: "ok",
-      };
+    if (!resp.ok) {
+      // If already deleted (404), consider it success
+      if (resp.status === 404) {
+        return resp;
+      }
+
+      const errorText = await resp.text();
+      const error = new Error(`Unable to delete resource; API returned ${resp.status} ${resp.statusText}: ${errorText}`) as any;
+      error.status = resp.status;
+      error.body = errorText;
+      throw error;
     }
 
-    const errorText = await response.text();
+    return resp;
+  }, {
+    isRateLimitedFn: (error) => error.status === 429
+  }).then((r) => r.result);
+
+  // Handle 404 as success for delete operations
+  if (response.status === 404) {
     return {
-      status: "error",
-      message: `Unable to delete resource; API returned ${response.status} ${response.statusText}: ${errorText}`,
+      status: "ok",
     };
   }
 

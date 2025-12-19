@@ -139,23 +139,29 @@ async function main(component: Input): Promise<Output> {
     }
   }
 
-  // Make the API request with only changed fields
-  const response = await fetch(url, {
-    method: updateApiPath.httpMethod,
-    headers: {
-      "Authorization": `Bearer ${token}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(updatePayload),
-  });
+  // Make the API request with retry logic
+  const response = await siExec.withRetry(async () => {
+    const resp = await fetch(url, {
+      method: updateApiPath.httpMethod,
+      headers: {
+        "Authorization": `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(updatePayload),
+    });
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    return {
-      status: "error",
-      message: `Unable to update resource; API returned ${response.status} ${response.statusText}: ${errorText}`,
-    };
-  }
+    if (!resp.ok) {
+      const errorText = await resp.text();
+      const error = new Error(`Unable to update resource; API returned ${resp.status} ${resp.statusText}: ${errorText}`) as any;
+      error.status = resp.status;
+      error.body = errorText;
+      throw error;
+    }
+
+    return resp;
+  }, {
+    isRateLimitedFn: (error) => error.status === 429
+  }).then((r) => r.result);
 
   const responseJson = await response.json();
 
@@ -163,8 +169,48 @@ async function main(component: Input): Promise<Output> {
   if (responseJson.kind && responseJson.kind.includes("operation")) {
     console.log(`[UPDATE] LRO detected, polling for completion...`);
 
-    // Poll the operation until it completes
-    const finalResource = await pollOperation(responseJson, baseUrl, token);
+    // Use selfLink or construct URL from operation name
+    const pollingUrl = responseJson.selfLink || `${baseUrl}${responseJson.name}`;
+
+    // Poll the operation until it completes using new siExec.pollLRO
+    const finalResource = await siExec.pollLRO({
+      url: pollingUrl,
+      headers: { "Authorization": `Bearer ${token}` },
+      maxAttempts: 20,
+      baseDelay: 2000,
+      maxDelay: 30000,
+      isCompleteFn: (response: any, body: any) => body.status === "DONE",
+      isErrorFn: (response: any, body: any) => !!body.error,
+      extractResultFn: async (response: any, body: any) => {
+        // If operation has error, throw it
+        if (body.error) {
+          throw new Error(`Operation failed: ${JSON.stringify(body.error)}`);
+        }
+        
+        // For update operations, fetch the final resource from targetLink
+        if (body.targetLink) {
+          const resourceResponse = await fetch(body.targetLink, {
+            method: "GET",
+            headers: { "Authorization": `Bearer ${token}` },
+          });
+
+          if (!resourceResponse.ok) {
+            throw new Error(`Failed to fetch final resource: ${resourceResponse.status}`);
+          }
+
+          return await resourceResponse.json();
+        }
+
+        // Some operations include the updated resource in the response field
+        if (body.response) {
+          return body.response;
+        }
+        
+        // Fallback: return the operation body
+        console.warn("[GCP] Operation completed but no response or targetLink found");
+        return body;
+      }
+    });
 
     console.log(`[UPDATE] Operation complete`);
     return {
@@ -178,64 +224,6 @@ async function main(component: Input): Promise<Output> {
     payload: normalizeGcpResourceValues(responseJson),
     status: "ok",
   };
-}
-
-async function pollOperation(
-  operation: any,
-  baseUrl: string,
-  token: string,
-): Promise<any> {
-  const delay = (ms: number) => new Promise(res => setTimeout(res, ms));
-
-  // Use selfLink or construct URL from operation name
-  const pollingUrl = operation.selfLink || `${baseUrl}${operation.name}`;
-
-  console.log(`[LRO] Polling URL: ${pollingUrl}`);
-
-  // Poll until operation status is DONE
-  let currentOp = operation;
-  while (currentOp.status !== "DONE") {
-    await delay(2000); // Simple 2-second polling interval
-
-    console.log(`[LRO] Polling operation status...`);
-    const response = await fetch(pollingUrl, {
-      method: "GET",
-      headers: { "Authorization": `Bearer ${token}` },
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`[LRO] Polling failed: ${response.status} ${response.statusText}`);
-      console.error(`[LRO] Error body: ${errorText}`);
-      throw new Error(`Operation polling failed: ${response.status} ${response.statusText} - ${errorText}`);
-    }
-
-    currentOp = await response.json();
-    console.log(`[LRO] Operation status: ${currentOp.status}`);
-  }
-
-  console.log(`[LRO] Operation completed with status: ${currentOp.status}`);
-
-  // Check for operation error
-  if (currentOp.error) {
-    throw new Error(`Operation failed: ${JSON.stringify(currentOp.error)}`);
-  }
-
-  // Fetch the final resource from targetLink
-  if (!currentOp.targetLink) {
-    throw new Error("Operation completed but no targetLink found");
-  }
-
-  const resourceResponse = await fetch(currentOp.targetLink, {
-    method: "GET",
-    headers: { "Authorization": `Bearer ${token}` },
-  });
-
-  if (!resourceResponse.ok) {
-    throw new Error(`Failed to fetch resource: ${resourceResponse.status}`);
-  }
-
-  return await resourceResponse.json();
 }
 
 async function getAccessToken(serviceAccountJson: string): Promise<{ token: string; projectId: string | undefined }> {

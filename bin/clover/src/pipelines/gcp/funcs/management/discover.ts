@@ -94,20 +94,26 @@ async function main({ thisComponent }: Input): Promise<Output> {
       currentUrl = `${listUrl}${separator}pageToken=${encodeURIComponent(nextPageToken)}`;
     }
 
-    const listResponse = await fetch(currentUrl, {
-      method: "GET",
-      headers: {
-        "Authorization": `Bearer ${token}`,
-      },
-    });
+    const listResponse = await siExec.withRetry(async () => {
+      const resp = await fetch(currentUrl, {
+        method: "GET",
+        headers: {
+          "Authorization": `Bearer ${token}`,
+        },
+      });
 
-    if (!listResponse.ok) {
-      const errorText = await listResponse.text();
-      return {
-        status: "error",
-        message: `Google Cloud API Error: ${listResponse.status} ${listResponse.statusText} - ${errorText}`,
-      };
-    }
+      if (!resp.ok) {
+        const errorText = await resp.text();
+        const error = new Error(`Google Cloud API Error: ${resp.status} ${resp.statusText} - ${errorText}`) as any;
+        error.status = resp.status;
+        error.body = errorText;
+        throw error;
+      }
+
+      return resp;
+    }, {
+      isRateLimitedFn: (error) => error.status === 429
+    }).then((r) => r.result);
 
     const listData = await listResponse.json();
 
@@ -161,18 +167,29 @@ async function main({ thisComponent }: Input): Promise<Output> {
       }
     }
 
-    // Fetch the full resource details
-    const resourceResponse = await fetch(getUrl, {
-      method: "GET",
-      headers: {
-        "Authorization": `Bearer ${token}`,
-      },
-    });
+    // Fetch the full resource details with retry
+    let resourceResponse;
+    try {
+      resourceResponse = await siExec.withRetry(async () => {
+        const resp = await fetch(getUrl, {
+          method: "GET",
+          headers: {
+            "Authorization": `Bearer ${token}`,
+          },
+        });
 
-    if (!resourceResponse.ok) {
-      console.log(
-        `Failed to fetch ${resourceId}, skipping (status: ${resourceResponse.status})`,
-      );
+        if (!resp.ok) {
+          const error = new Error(`Failed to fetch ${resourceId}`) as any;
+          error.status = resp.status;
+          throw error;
+        }
+
+        return resp;
+      }, {
+        isRateLimitedFn: (error) => error.status === 429
+      }).then((r) => r.result);
+    } catch (error) {
+      console.log(`Failed to fetch ${resourceId} after retries, skipping`);
       continue;
     }
 
