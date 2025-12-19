@@ -15,7 +15,8 @@ import { isValid } from "ulid";
 
 const name = "schema-attributes-list";
 const title = "List all the attributes of a schema";
-const description = `<description>Lists all the attributes of a schema. Returns the schema name and an array of attribute objects that contain the Attribute Name, Path, and if it is Required. On failure, returns error details.</description><usage>Use this tool to discover what attributes (sometimes called properties) are available for a schema.</usage>`;
+const description =
+  `<description>Lists all the attributes of a schema. Returns the schema name and an array of attribute objects that contain the Attribute Name, Path, and if it is Required. On failure, returns error details.</description><usage>Use this tool to discover what attributes (sometimes called properties) are available for a schema.</usage>`;
 
 const ListSchemaAttributesInputSchemaRaw = {
   schemaNameOrId: z
@@ -110,10 +111,12 @@ export function schemaAttributesListTool(server: McpServer) {
               });
               schemaId = response.data.schemaId;
             } catch (error) {
-              const errorMessage =
-                error instanceof Error ? error.message : String(error);
+              const errorMessage = error instanceof Error
+                ? error.message
+                : String(error);
               return errorResponse({
-                message: `Unable to find the schema - check the name and try again. Tell the user we are sorry: ${errorMessage}`,
+                message:
+                  `Unable to find the schema - check the name and try again. Tell the user we are sorry: ${errorMessage}`,
               });
             }
           } else {
@@ -141,7 +144,7 @@ export function schemaAttributesListTool(server: McpServer) {
 
           return successResponse(
             responseData,
-            "For AWS schemas, you can use a web search to find the cloudformation schema",
+            "For AWS schemas, you can use a web search to find the cloudformation schema. If Azure (or Microsoft) schemas, you can use a web search to find the Azure resource manager specification",
           );
         } catch (error) {
           return errorResponse(error);
