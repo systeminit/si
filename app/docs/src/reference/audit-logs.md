@@ -8,13 +8,13 @@ Audit Logs provide real-time and historic visibility into all changes and events
 
 :::info
 
-Currently, Audit Logs are currently only accessible through the Web Application interface. They are available on a per-change-set basis, allowing you to audit changes in your working change set or review the complete history of HEAD.
+Currently, Audit Logs are only accessible through the Web Application interface. They are available on a per-change-set basis, allowing you to audit changes in your working change set or review the complete history of HEAD.
 
 :::
 
 :::tip
 
-If you are intending to review changes before applying your [change set](./change-sets.md) to HEAD, you may want to use the [Review](./review.md) feature instead.
+If you are intending to review changes before applying your [change set](./change-sets.md) to HEAD, you can use the [Review](./review.md) feature instead.
 
 :::
 
@@ -26,7 +26,7 @@ If you are intending to review changes before applying your [change set](./chang
 Audit Logs can be accessed via the Audit Logs dashboard.
 
 - When viewing HEAD, you'll see the complete audit history of all changes that have been applied to your workspace.
-- When viewing non-HEAD change set, you'll only see the changes made within that change set.
+- When viewing a non-HEAD change set, you'll only see the changes made within that change set.
 
 Here's how you can navigate to the Audit Logs dashboard:
 
@@ -69,7 +69,7 @@ Here's how you can switch change sets within the Audit Logs dashboard:
 ## Audit Log Structure
 
 All Audit Logs share the same structure, which includes the entity name, entity
-type, kind, metadata and more. However, the metadata field’s structure will
+type, kind, metadata, and more. However, the metadata field’s structure will
 change based on the Audit Log kind. This gives each Audit Log kind the ability
 to attach kind-specific information, such as showing the “before value” and
 “after value” when updating a property for a [Component](./components.md).
@@ -84,8 +84,8 @@ All Audit Logs can be serialized to and deserialized from JSON.
 
 Each Audit Log entry captures a specific event within System Initiative and contains the following information:
 
-- **Event Kind**: The type of action that occurred (e.g. "UpdatePropertyEditorValue")
-- **Entity Type**: The kind of object affected (e.g. "Property")
+- **Event Kind**: The type of action that occurred (e.g., "UpdatePropertyEditorValue")
+- **Entity Type**: The kind of object affected (e.g., "Property")
 - **Entity Name**: The specific name of the object that was changed
 - **Change Set**: The change set where the event occurred
 - **User**: The [user](./users.md) that performed the action
@@ -93,7 +93,7 @@ Each Audit Log entry captures a specific event within System Initiative and cont
 
 ### Metadata
 
-While the top level fields contain information that all Audit Logs are guaranteed to have, the "metadata" field can contain arbitrary information based on the given Event Kind. For example, if you rename a Component, the "metadata" object will likely contain a "componentId" corresponding to the Component renamed.
+While the top-level fields contain information that all Audit Logs are guaranteed to have, the "metadata" field can contain arbitrary information based on the given Event Kind. For example, if you rename a Component, the "metadata" object will likely contain a "componentId" that corresponds to the renamed Component.
 
 ### Audit Log Structure Example
 
@@ -138,7 +138,7 @@ Component that has been deleted:
 ```
 
 Now, here is another example for that same Component, but for when one of its
-properities was modified:
+properties were modified:
 
 ```json
 {
@@ -235,7 +235,7 @@ Here is how you can expand rows to view individual log data:
 
 ![View expansion and copy to clipboard](./audit-logs/expanding-2.png)
 
-2. Observe the expanded row with both its top level fields and its inner metadata blob
+2. Observe the expanded row with both its top-level fields and its inner metadata blob
 3. Click on the clipboard icon to copy the entire log to your clipboard
 
 ![Expand another row](./audit-logs/expanding-3.png)
