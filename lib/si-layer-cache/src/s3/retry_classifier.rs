@@ -37,14 +37,6 @@ use aws_smithy_runtime_api::client::{
 #[derive(Debug, Clone, Default)]
 pub struct NoSuchKeyRetryClassifier;
 
-impl NoSuchKeyRetryClassifier {
-    /// Create a new NoSuchKeyRetryClassifier
-    #[allow(dead_code)]
-    pub fn new() -> Self {
-        Self
-    }
-}
-
 impl ClassifyRetry for NoSuchKeyRetryClassifier {
     fn classify_retry(&self, ctx: &InterceptorContext) -> RetryAction {
         // Check for a result
@@ -102,7 +94,7 @@ mod tests {
 
     #[test]
     fn test_nosuchkey_is_retryable() {
-        let classifier = NoSuchKeyRetryClassifier::new();
+        let classifier = NoSuchKeyRetryClassifier;
         let error = GetObjectError::NoSuchKey(
             aws_sdk_s3::types::error::NoSuchKey::builder()
                 .message("The specified key does not exist.")
@@ -120,7 +112,7 @@ mod tests {
 
     #[test]
     fn test_other_errors_not_retryable() {
-        let classifier = NoSuchKeyRetryClassifier::new();
+        let classifier = NoSuchKeyRetryClassifier;
         let error = GetObjectError::InvalidObjectState(
             aws_sdk_s3::types::error::InvalidObjectState::builder()
                 .message("Object is archived")
