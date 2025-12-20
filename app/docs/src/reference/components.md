@@ -6,7 +6,7 @@ outline: [2, 3]
 
 Components are the 1:1 mapping to your cloud infrastructure. System Initiative
 components are instances of [Schemas](./schema.md). You can name components
-within System Initiative and those names will not affect your cloud
+within System Initiative, and those names will not affect your cloud
 infrastructure.
 
 Components have attribute data and resource data. Attribute data represents all
@@ -16,11 +16,11 @@ the state of your cloud infrastructure.
 ## Attributes
 
 Components have attributes that can be assigned values. Attributes are typed
-(boolean, number, string) and defined by its schema. Each change to a
+(boolean, number, string) and defined by their schema. Each change to a
 component's attribute values is tracked in the audit log.
 
 Attributes are organized into hierarchical trees. For example, the
-`AWS::EC2::Subnet` component has an attribute named `VpcId`. It's location in
+`AWS::EC2::Subnet` component has an attribute named `VpcId`. Its location in
 the attribute tree, what we call the path, is `/domain/VpcId`.
 
 System Initiative supports maps, objects, and arrays in the attribute tree.
@@ -33,11 +33,11 @@ is a list that supports any of the aforementioned types.
 Subscriptions are how components depend on one another. A subscription moves the
 value from Component A's specified attribute path to another attribute path on
 Component B. The paths are not required to match. When the value in Component A
-is changed that change will be reflected in Component B.
+is changed, that change will be reflected in Component B.
 
 Let's use the VPC example in AWS again. When creating a `Subnet` component that
-needs a `VpcId` you want that component to subscribe to the `Vpc` component in
-order to obtain the `VpcId` the subnet needs. The `VpcId` value will flow from
+needs a `VpcId`, you want that component to subscribe to the `Vpc` component 
+to obtain the `VpcId` the subnet needs. The `VpcId` value will flow from
 the `Vpc` component into the `Subnet` component whenever it changes.
 
 ## Resources
@@ -46,15 +46,15 @@ A resource in System Initiative is the data that describes the specific instance
 within the cloud provider. The cloud provider controls the shape of the resource
 data.
 
-Most components can have a resource. When you create a component it will
-initially not have a resource. If you import a component it will have a
+Most components can have a resource. When you create a component, it will
+initially not have a resource. If you import a component, it will have a
 resource. A Component with a resource represents cloud infrastructure in the
 real world. [Actions](./actions.md) update resources within System Initiative
 and apply your changes within SI to your cloud infrastructure.
 
 :::info
 
-Certain Components like "AWS Region" do not have a resource, as it does not map
+Certain Components, like "AWS Region," do not have a resource, as they do not map
 to an instance of cloud infrastructure; rather, it is a reference for
 pre-existing cloud configuration data.
 
@@ -271,14 +271,14 @@ find_response = api.get_component(
 <TabPanel value="CLI">
 
 The `component update` command accepts a filename as its only parameter. That
-file contains both the data to identify as well as the values you want the
+file contains both the data to identify and the values you want the
 component data updated to. I added the region attribute and set it to
-`us-east-1` below
+`us-east-1` below.
 
 :::tip
 
 The `component get` command with the `-o json` is a helpful way to get the state
-of the component data in a format that is easy to edit.
+of the component data in an easy-to-edit format.
 
 :::
 
@@ -327,7 +327,7 @@ $ si component update -c 01KC2F3RWYRYQDZ3BRNG69FC28 mycomponent.json
 ![Setting an attribute](./components/set-property.png)
 
 1. Navigate to the component detail page.
-2. Filter and / or scroll to the attribute you wish to update
+2. Filter and/or scroll to the attribute you wish to update
 3. Type the value you want to set, hit tab (or enter)
 
 </TabPanel>
@@ -376,14 +376,14 @@ response = api.update_component(
 <TabPanel value="CLI">
 
 The `component update` command accepts a filename as its only parameter. That
-file contains both the data to identify as well as the values you want the
+file contains both the data to identify and the values you want the
 component data updated to. I added the region attribute and configured a
-subscription to the value of the region component
+subscription to the value of the region component.
 
 :::tip
 
 The `component get` command with the `-o json` is a helpful way to get the state
-of the component data in a format that is easy to edit.
+of the component data in an easy-to-edit format.
 
 :::
 
@@ -438,7 +438,7 @@ $ si component update -c 01KC2F3RWYRYQDZ3BRNG69FC28 mycomponent.json
 ![Subscribing to an attribute](./components/subscribe-property.png)
 
 1. Navigate to the component detail page.
-2. Filter and / or scroll to the attribute you wish to make a subscription
+2. Filter and/or scroll to the attribute you wish to make a subscription to.
 3. Find the component, path, and value you want to subscribe to with either the
    keyboard or mouse and select it (click, tab, or enter).
 
@@ -498,7 +498,7 @@ response = api.update_component(
 
 :::tip
 
-To remove a piece of cloud infrastructure you will delete its corresponding
+To remove a piece of cloud infrastructure, you will delete its corresponding
 component. A deleted component will remain in your Change Set until its
 corresponding resource has been removed by its delete [action](./actions.md).
 
@@ -529,7 +529,7 @@ To delete a Component:
 ![Deleting a Component](./components/grid-delete.png)
 
 1. Find the component on the grid.
-2. Right click to open the context menu.
+2. Right-click to open the context menu.
 3. Click delete.
 4. Confirm your selection.
 
@@ -567,9 +567,9 @@ response = api.delete_component(
 
 :::tip
 
-Erasing is not the same as Deleting. When you no longer want to manage a piece
-of cloud infrastructure in System Initiative you will erase its corresponding
-component. The component will no longer be present in your Change Set and the
+Erasing is not the same as deleting. When you no longer want to manage a piece
+of cloud infrastructure in System Initiative, you will erase its corresponding
+component. The component will no longer be present in your Change Set, and the
 cloud infrastructure will not be modified.
 
 :::
@@ -600,7 +600,7 @@ To erase a Component:
 ![Erasing a Component](./components/grid-delete.png)
 
 1. Find the component on the grid.
-2. Right click to open the context menu.
+2. Right-click to open the context menu.
 3. Click Erase.
 4. Confirm your selection.
 
