@@ -1,9 +1,9 @@
 # Functions Reference
 
 A Function is code associated with a [schema](./schema.md) which defines an
-operation that schema can do.
+operation that the schema can do.
 
-Functions are written in TypeScript, and executed within a sandbox environment
+Functions are written in TypeScript and executed within a sandbox environment
 using [Firecracker](https://firecracker-microvm.github.io/).
 
 ## Function Basics
@@ -45,7 +45,7 @@ const child = await siExec.waitUntilEnd("aws", [
 ]);
 ```
 
-We're always adding more shell commands to the environment though Nix.
+We're always adding more shell commands to the environment through Nix.
 [You can see the current list of included commands in the source code](https://github.com/systeminit/si/blob/main/flake.nix#L96).
 
 Send a PR if you need something added.
@@ -96,8 +96,8 @@ requestStorage.setItem("foo");
 
 <TabPanel value="AI Agent">
 
-To author a function with the AI Agent, simply tell the agent what kind of
-function you wish to create on which schema. You may also need to supply the
+To author a function with the AI Agent, tell the agent what kind of
+function you wish to create on which schema. You may also need to provide the
 agent with additional necessary cloud provider documentation for the function to
 use.
 
@@ -127,7 +127,7 @@ and the schema and schema variant ids for the schema variant you want to add the
 function to.
 
 These examples create an action function - for other function types, the format
-is similar but the endpoint is different.
+is similar, but the endpoint is different.
 
 ::: code-group
 
@@ -175,7 +175,7 @@ response = api.create_variant_action(
 
 ### Create Action Example
 
-A create action that uses generated code, `siExec` and a secret to create an AWS
+A create action that uses generated code, `siExec`, and a secret to create an AWS
 EKS cluster:
 
 ```typescript
@@ -279,7 +279,7 @@ async function main(component: Input): Promise<Output> {
 
 ::: warning
 
-Ensure you include previous resource payload on failure!
+Ensure you include the previous resource payload on failure!
 
 :::
 
@@ -525,7 +525,7 @@ async function main(): Promise<Output> {
 }
 ```
 
-This function converts a docker image to a butane systemd unit file. It takes an
+This function converts a Docker image to a butane systemd unit file. It takes an
 input argument named `images`, which pulls from the Input Socket
 `Container Image`, and writes to the output location `/domain/systemd/units`:
 
@@ -669,7 +669,7 @@ async function main(secret: Input): Promise<Output> {
 }
 ```
 
-Authenticating with Docker Hub, by writing out a docker configuration json:
+Authenticating with Docker Hub, by writing out a Docker configuration json:
 
 ```typescript
 async function main(secret: Input): Promise<Output> {
@@ -815,7 +815,7 @@ async function main(input: Input): Promise<Output> {
 }
 ```
 
-Validating that a docker image exists in the registry:
+Validating that a Docker image exists in the registry:
 
 ```typescript
 async function main(component: Input): Promise<Output> {
@@ -1062,7 +1062,7 @@ async function main({ thisComponent, components }: Input): Promise<Output> {
 
 A component with a management component attached to it can have relationships
 with other types of components that it is allowed to manage. These management
-relationships are the component context the function can act upon and allow
+relationships are the component context that the function can act upon and allow
 those components to be configured.
 
 ```typescript
