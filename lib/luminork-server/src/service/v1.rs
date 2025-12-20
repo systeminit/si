@@ -9,6 +9,7 @@ pub mod common;
 mod components;
 mod debug_funcs;
 mod funcs;
+mod graph;
 mod management_funcs;
 mod schemas;
 mod search;
@@ -56,11 +57,6 @@ pub use components::{
         AddActionV1Response,
     },
     add_to_view::AddToViewV1Request,
-    component_relationships::{
-        ComponentRelationshipV1,
-        ComponentRelationshipsV1Response,
-        RelationshipTypeV1,
-    },
     create_component::{
         CreateComponentV1Request,
         CreateComponentV1Response,
@@ -214,7 +210,6 @@ pub use crate::api_types::func_run::v1::{
         components::get_component::get_component,
         components::create_component::create_component,
         components::list_components::list_components,
-        components::component_relationships::component_relationships,
         components::search_components::search_components,
         components::find_component::find_component,
         components::update_component::update_component,
@@ -267,6 +262,7 @@ pub use crate::api_types::func_run::v1::{
         secrets::delete_secret::delete_secret,
         secrets::update_secret::update_secret,
         secrets::get_secrets::get_secrets,
+        graph::summary::graph_summary,
         search::search,
     ),
     components(
@@ -318,9 +314,6 @@ pub use crate::api_types::func_run::v1::{
             ComponentPropViewV1,
             SourceViewV1,
             ComponentDetailsV1,
-            ComponentRelationshipV1,
-            ComponentRelationshipsV1Response,
-            RelationshipTypeV1,
             ListComponentsV1Response,
             FindComponentV1Params,
             FuncRunV1RequestPath,

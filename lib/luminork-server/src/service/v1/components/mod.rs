@@ -63,7 +63,6 @@ use crate::AppState;
 
 pub mod add_action;
 pub mod add_to_view;
-pub mod component_relationships;
 pub mod create_component;
 pub mod delete_component;
 pub mod duplicate_components;
@@ -639,7 +638,6 @@ pub fn routes() -> Router<AppState> {
     Router::new()
         .route("/", post(create_component::create_component))
         .route("/", get(list_components::list_components))
-        .route("/relationships", get(component_relationships::component_relationships))
         .route("/find", get(find_component::find_component))
         .route("/search", post(search_components::search_components))
         .route(
