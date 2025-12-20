@@ -5,7 +5,7 @@ performs a specific operation on a [resource](./components.md#resources), such
 as creating, updating, or deleting it. Actions are the bridge between your
 intended configuration ([components](./components.md)) and their associated
 resources. When you apply a change set, the actions enqueued within it are
-executed to bring reality into alignment with what you have modeled.
+executed to align reality with what you have modeled.
 
 Actions only run after their dependencies succeed, ensuring that resources are
 updated in the correct order based on their relationships.
@@ -23,7 +23,7 @@ when you add a new component that should have an associated resource.
 
 When you apply a change set containing a create action, it executes, sending the
 component's configuration to the cloud provider. If the action is successful, it
-returns a `resourceId` that identifies the newly created resource. Then a
+returns a `resourceId` that identifies the newly created resource. Then, a
 refresh action automatically runs afterward to populate the resource data for
 the component.
 
@@ -83,14 +83,14 @@ recreate them.
 
 ## Action Execution Order
 
-Actions execute in an order determined automatically by the relationships
+Actions are executed in an order determined automatically by the relationships
 between components. For example:
 
 - A VPC must be created before its subnets
 - Subnets must be created before instances that use them
 - Resources are deleted in reverse dependency order
 
-You don't need to manually specify action ordering - System Initiative
+You don't need to specify action ordering - System Initiative 
 determines the correct sequence based on subscriptions between components.
 
 ## Actions and Change Control
@@ -103,17 +103,17 @@ When you work in a change set:
 
 - Actions are enqueued based on your changes
 - You can review all proposed actions before applying
-- No changes are made to actual infrastructure until you apply the change set
+- No changes are made to the actual infrastructure until you apply the change set
 - After applying, actions execute and modify real resources
 
 Refresh actions and qualifications are the only functions that can run directly
 on HEAD without going through a change set, since they don't modify resources -
-they only read current state or validate configuration.These are the core
+they only read current state or validate configuration. These are the core
 properties set
 
 ## Action Arguments
 
-Action functions take an `Input` argument. It has a `properties` field which
+Action functions take an `Input` argument. It has a `properties` field, which
 contains an object that has:
 
 - The `si` properties
@@ -139,7 +139,7 @@ contains an object that has:
 
   This is information pulled into the component properties from resource payload
   data. These are properties added with the `addResourceProp()` method of a
-  components schema.
+  component's schema.
 
 - Any generated `code`
 
@@ -271,7 +271,7 @@ To remove a queued action:
 
 ![Remove Action](./actions/remove-actions.png)
 
-On the Grid view you can remove a queued action via its menu. Open the menu by
+On the Grid view, you can remove a queued action via its menu. Open the menu by
 clicking on the three vertical dots icon.
 </TabPanel>
 <TabPanel value="Public API">
@@ -336,7 +336,7 @@ To put a queued action on hold:
 
 ![Put Action On Hold](./actions/on-hold-actions.png)
 
-On the Grid view you can put an action on hold or back into the queue via its
+On the Grid view, you can put an action on hold or back into the queue via its
 menu. Open the menu by clicking on the three vertical dots icon.
 
 </TabPanel>
@@ -396,7 +396,7 @@ To retry an action:
 
 ![Retry Action](./actions/retry-actions.png)
 
-On the Grid view you can retry a failed action by clicking the retry icon. You
+On the Grid view, you can retry a failed action by clicking the retry icon. You
 can also use the Retry All button to retry all failed actions.
 
 </TabPanel>
