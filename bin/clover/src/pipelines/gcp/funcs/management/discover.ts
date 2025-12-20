@@ -78,6 +78,9 @@ async function main({ thisComponent }: Input): Promise<Output> {
       }
 
       if (paramValue) {
+        // GCP uses {+param} for "reserved expansion" where value can contain slashes (e.g., projects/x/locations/y)
+        // and {param} for simple parameters that need URL encoding
+        listUrl = listUrl.replace(`{+${paramName}}`, paramValue);
         listUrl = listUrl.replace(`{${paramName}}`, encodeURIComponent(paramValue));
       }
     }
@@ -162,6 +165,9 @@ async function main({ thisComponent }: Input): Promise<Output> {
         }
 
         if (paramValue) {
+          // GCP uses {+param} for "reserved expansion" where value can contain slashes (e.g., projects/x/locations/y)
+          // and {param} for simple parameters that need URL encoding
+          getUrl = getUrl.replace(`{+${paramName}}`, paramValue);
           getUrl = getUrl.replace(`{${paramName}}`, encodeURIComponent(paramValue));
         }
       }
