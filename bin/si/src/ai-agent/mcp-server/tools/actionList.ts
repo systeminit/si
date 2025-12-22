@@ -7,6 +7,10 @@ import {
   ComponentsApi,
   SchemasApi,
 } from "@systeminit/api-client";
+import type {
+  GetComponentV1Response,
+  GetSchemaV1Response,
+} from "@systeminit/api-client";
 import {
   errorResponse,
   findHeadChangeSet,
@@ -15,11 +19,13 @@ import {
   withAnalytics,
 } from "./commonBehavior.ts";
 import { type ActionList, ActionSchema } from "../data/actions.ts";
+import { cache, generateCacheKey } from "../cache.ts";
 import { Context } from "../../../context.ts";
 
 const name = "action-list";
 const title = "List actions";
-const description = `<description>Lists all actions. Returns an array of actions with actionId, componentId, Name, kind, and state. On failure, returns error details</description><usage>Use this tool when the user asks what actions are present.</usage>`;
+const description =
+  `<description>Lists all actions. Returns an array of actions with actionId, componentId, Name, kind, and state. On failure, returns error details</description><usage>Use this tool when the user asks what actions are present.</usage>`;
 
 const ListActionsInputSchemaRaw = {
   changeSetId: z
@@ -85,30 +91,69 @@ export function actionListTool(server: McpServer) {
             let compSchemaName: string | undefined = undefined;
             if (action.componentId) {
               try {
-                const compApi = new ComponentsApi(apiConfig);
-                const comp = await compApi.getComponent({
-                  workspaceId,
+                // Try cache first for component
+                const componentCacheKey = generateCacheKey(
+                  "component",
+                  action.componentId,
                   changeSetId,
-                  componentId: action.componentId,
-                });
-                compName = comp.data.component.name;
-                const compSchemaId = comp.data.component.schemaId;
-                try {
-                  const schemaApi = new SchemasApi(apiConfig);
-                  const schema = await schemaApi.getSchema({
+                );
+                let componentData = cache.get<GetComponentV1Response>(
+                  componentCacheKey,
+                  changeSetId,
+                );
+
+                if (!componentData) {
+                  // Cache miss - fetch component from API
+                  const compApi = new ComponentsApi(apiConfig);
+                  const comp = await compApi.getComponent({
                     workspaceId,
                     changeSetId,
-                    schemaId: compSchemaId,
+                    componentId: action.componentId,
                   });
-                  compSchemaName = schema.data.name;
+                  componentData = comp.data;
+                  // Cache the result
+                  cache.set(componentCacheKey, componentData, changeSetId);
+                }
+
+                compName = componentData.component.name;
+                const compSchemaId = componentData.component.schemaId;
+
+                try {
+                  // Try cache first for schema
+                  const schemaCacheKey = generateCacheKey(
+                    "schema",
+                    compSchemaId,
+                    changeSetId,
+                  );
+                  let schemaData = cache.get<GetSchemaV1Response>(
+                    schemaCacheKey,
+                    changeSetId,
+                  );
+
+                  if (!schemaData) {
+                    // Cache miss - fetch schema from API
+                    const schemaApi = new SchemasApi(apiConfig);
+                    const schema = await schemaApi.getSchema({
+                      workspaceId,
+                      changeSetId,
+                      schemaId: compSchemaId,
+                    });
+                    schemaData = schema.data;
+                    // Cache the result
+                    cache.set(schemaCacheKey, schemaData, changeSetId);
+                  }
+
+                  compSchemaName = schemaData.name;
                 } catch (error) {
                   return errorResponse({
-                    message: `Error getting schema for extra details while listing actions; bug! ${error}`,
+                    message:
+                      `Error getting schema for extra details while listing actions; bug! ${error}`,
                   });
                 }
               } catch (error) {
                 return errorResponse({
-                  message: `Error getting component for extra details while listing actions; bug! ${error}`,
+                  message:
+                    `Error getting component for extra details while listing actions; bug! ${error}`,
                 });
               }
             }

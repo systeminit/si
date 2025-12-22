@@ -9,8 +9,10 @@ import {
   withAnalytics,
 } from "./commonBehavior.ts";
 import { ChangeSetsApi, SchemasApi } from "@systeminit/api-client";
+import type { GetSchemaVariantV1Response } from "@systeminit/api-client";
 import { Context } from "../../../context.ts";
 import { buildAttributesStructure } from "../data/schemaAttributes.ts";
+import { cache, generateCacheKey } from "../cache.ts";
 import { isValid } from "ulid";
 
 const name = "schema-attributes-list";
@@ -123,20 +125,38 @@ export function schemaAttributesListTool(server: McpServer) {
             schemaId = schemaNameOrId;
           }
 
-          const response = await siSchemasApi.getDefaultVariant({
-            workspaceId: workspaceId,
-            changeSetId: changeSetId!,
+          // Try cache first
+          const cacheKey = generateCacheKey(
+            "schema-variant",
             schemaId,
-          });
+            changeSetId!,
+          );
+          let variantData = cache.get<GetSchemaVariantV1Response>(
+            cacheKey,
+            changeSetId!,
+          );
 
-          if (response.status === 202) {
-            return errorResponse({
-              message:
-                "The data is not yet available for this request. Try again in a few seconds",
+          if (!variantData) {
+            // Cache miss - fetch from API
+            const response = await siSchemasApi.getDefaultVariant({
+              workspaceId: workspaceId,
+              changeSetId: changeSetId!,
+              schemaId,
             });
+
+            if (response.status === 202) {
+              return errorResponse({
+                message:
+                  "The data is not yet available for this request. Try again in a few seconds",
+              });
+            }
+
+            variantData = response.data;
+            // Cache the result
+            cache.set(cacheKey, variantData, changeSetId!);
           }
 
-          const attributeDetails = buildAttributesStructure(response.data);
+          const attributeDetails = buildAttributesStructure(variantData);
           responseData = {
             schemaName: attributeDetails.schemaName,
             attributes: attributeDetails.attributes,

@@ -9,11 +9,13 @@ import {
   withAnalytics,
 } from "./commonBehavior.ts";
 import { ChangeSetsApi, SchemasApi } from "@systeminit/api-client";
+import type { GetSchemaVariantV1Response } from "@systeminit/api-client";
 import { Context } from "../../../context.ts";
 import {
   buildAttributeDocsIndex,
   formatDocumentation,
 } from "../data/schemaAttributes.ts";
+import { cache, generateCacheKey } from "../cache.ts";
 import { isValid } from "ulid";
 
 const name = "schema-attributes-documentation";
@@ -146,20 +148,36 @@ export function schemaAttributesDocumentationTool(server: McpServer) {
             schemaId = schemaNameOrId;
           }
 
-          const response = await siSchemasApi.getDefaultVariant({
-            workspaceId: workspaceId,
-            changeSetId: changeSetId!,
-            schemaId: schemaId,
-          });
+          // Try cache first
+          const cacheKey = generateCacheKey(
+            "schema-variant",
+            schemaId,
+            changeSetId!,
+          );
+          let variant = cache.get<GetSchemaVariantV1Response>(
+            cacheKey,
+            changeSetId!,
+          );
 
-          if (response.status === 202) {
-            return errorResponse({
-              message:
-                "The data is not yet available for this request. Try again in a few seconds",
+          if (!variant) {
+            // Cache miss - fetch from API
+            const response = await siSchemasApi.getDefaultVariant({
+              workspaceId: workspaceId,
+              changeSetId: changeSetId!,
+              schemaId: schemaId,
             });
-          }
 
-          const variant = response.data;
+            if (response.status === 202) {
+              return errorResponse({
+                message:
+                  "The data is not yet available for this request. Try again in a few seconds",
+              });
+            }
+
+            variant = response.data;
+            // Cache the result
+            cache.set(cacheKey, variant, changeSetId!);
+          }
 
           // Build a path -> { description, docLink } index once (O(n))
           const docsIndex = buildAttributeDocsIndex(variant);
@@ -176,7 +194,7 @@ export function schemaAttributesDocumentationTool(server: McpServer) {
           );
 
           if (!schemaName) {
-            schemaName = response.data.displayName as string;
+            schemaName = variant.displayName as string;
           }
 
           responseData = {

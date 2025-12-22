@@ -2,6 +2,8 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod-v3";
 import { validateFunctionCode } from "../validators/funcValidator.ts";
 import { FuncsApi, SchemasApi } from "@systeminit/api-client";
+import type { GetSchemaVariantV1Response } from "@systeminit/api-client";
+import { cache, generateCacheKey } from "../cache.ts";
 import { Context } from "../../../context.ts";
 import {
   errorResponse,
@@ -51,23 +53,24 @@ const DEFAULT_QUALIFICATION_FUNCTION = `function main() {
     return { result: "success", message: "All good!" };
 }`;
 
-const DEFAULT_CODEGEN_FUNCTION = `async function main(component: Input): Promise<Output> {
+const DEFAULT_CODEGEN_FUNCTION =
+  `async function main(component: Input): Promise<Output> {
   return {
     format: "json",
     code: JSON.stringify(component),
   };
 }`;
 
-const DEFAULT_MANAGEMENT_FUNCTION = `async function main({ thisComponent, components }: Input): Promise<Output> {
+const DEFAULT_MANAGEMENT_FUNCTION =
+  `async function main({ thisComponent, components }: Input): Promise<Output> {
   throw new Error("unimplemented!");
 }`;
 
-const DEFAULT_ACTION_FUNCTION = `async function main(component: Input): Promise<Output> {
+const DEFAULT_ACTION_FUNCTION =
+  `async function main(component: Input): Promise<Output> {
   throw new Error("unimplemented!");
 }`;
 
-// Reduced token usage: Reference documentation instead of embedding massive examples
-// Previous: ~31KB (~15K tokens) | New: ~2KB (~500 tokens) | Savings: 96.7%
 const functionCodeDescribe = [
   `<description>
     A TypeScript function definition. Complete documentation with examples: https://docs.systeminit.com/reference/function
@@ -226,8 +229,8 @@ export function funcCreateEditGetTool(server: McpServer) {
           });
 
           // then get the default variant
-          const responseGetDefaultVariant =
-            await siSchemasApi.getDefaultVariant({
+          const responseGetDefaultVariant = await siSchemasApi
+            .getDefaultVariant({
               workspaceId: workspaceId,
               changeSetId,
               schemaId,
@@ -282,8 +285,7 @@ export function funcCreateEditGetTool(server: McpServer) {
               return successResponse(
                 {
                   funcId: funcId,
-                  name:
-                    responseGetFunc.data.displayName ||
+                  name: responseGetFunc.data.displayName ||
                     responseGetFunc.data.name,
                   functionCode: updateFuncV1Request.code,
                 },
@@ -357,8 +359,8 @@ export function funcCreateEditGetTool(server: McpServer) {
               } else if (functionType === "management") {
                 // Create a management function
                 const code = functionCode ?? DEFAULT_MANAGEMENT_FUNCTION;
-                const responseCreate =
-                  await siSchemasApi.createVariantManagement({
+                const responseCreate = await siSchemasApi
+                  .createVariantManagement({
                     workspaceId: workspaceId,
                     changeSetId,
                     schemaId,
@@ -404,8 +406,8 @@ export function funcCreateEditGetTool(server: McpServer) {
               } else if (functionType === "qualification") {
                 // Create a qualification function
                 const code = functionCode ?? DEFAULT_QUALIFICATION_FUNCTION;
-                const responseCreate =
-                  await siSchemasApi.createVariantQualification({
+                const responseCreate = await siSchemasApi
+                  .createVariantQualification({
                     workspaceId: workspaceId,
                     changeSetId,
                     schemaId,
@@ -522,12 +524,30 @@ export function funcCreateEditGetTool(server: McpServer) {
             };
 
             // get variant data for the variant we're working on
-            const responseGetVariant = await siSchemasApi.getVariant({
-              ...baseParams,
-            });
+            // Try cache first
+            const variantCacheKey = generateCacheKey(
+              "schema-variant",
+              schemaId,
+              schemaVariantId,
+              changeSetId,
+            );
+            let variantData = cache.get<GetSchemaVariantV1Response>(
+              variantCacheKey,
+              changeSetId,
+            );
+
+            if (!variantData) {
+              // Cache miss - fetch from API
+              const responseGetVariant = await siSchemasApi.getVariant({
+                ...baseParams,
+              });
+              variantData = responseGetVariant.data;
+              // Cache the result
+              cache.set(variantCacheKey, variantData, changeSetId);
+            }
 
             // issue a warning if the schema this function is being created on is a builtin
-            if (responseGetVariant.data.installedFromUpstream) {
+            if (variantData.installedFromUpstream) {
               hints =
                 "Warn the user that because this function was created on a schema created by System Initiative that they will lose their customizations (like this function) if they upgrade the schema. Repeat this warning any time the user edits a function on a builtin schema.";
             }
@@ -573,7 +593,7 @@ export function funcCreateEditGetTool(server: McpServer) {
                 // Before attempting to create this action, check if an action of the same type already exists.
                 let canMakeAction = true;
                 // deno-lint-ignore no-explicit-any
-                responseGetVariant.data.variantFuncs.forEach((func: any) => {
+                variantData.variantFuncs.forEach((func: any) => {
                   if (
                     func.funcKind.kind === "action" &&
                     func.funcKind.actionKind === actionKind
