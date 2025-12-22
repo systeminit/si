@@ -234,6 +234,95 @@ fn custom_histogram_configs() -> Vec<HistogramBucketConfig> {
                 60.0,  // 60s
             ],
         ),
+        HistogramBucketConfig::new(
+            "compressing_stream_total_span_duration_ms",
+            &[
+                1.0,     // 1ms
+                5.0,     // 5ms
+                10.0,    // 10ms
+                25.0,    // 25ms
+                50.0,    // 50ms
+                100.0,   // 100ms
+                250.0,   // 250ms
+                500.0,   // 500ms
+                1000.0,  // 1s
+                2000.0,  // 2s
+                3000.0,  // 3s
+                4000.0,  // 4s
+                5000.0,  // 5s
+                7500.0,  // 7.5s
+                10000.0, // 10s
+                15000.0, // 15s
+                30000.0, // 30s
+            ],
+        ),
+        HistogramBucketConfig::new(
+            "compressing_stream_subscription_poll_latency_ms",
+            &[
+                0.1,     // 100μs
+                0.5,     // 500μs
+                1.0,     // 1ms
+                5.0,     // 5ms
+                10.0,    // 10ms
+                25.0,    // 25ms
+                50.0,    // 50ms
+                100.0,   // 100ms
+                250.0,   // 250ms
+                500.0,   // 500ms
+                1000.0,  // 1s
+                2500.0,  // 2.5s
+                5000.0,  // 5s
+                10000.0, // 10s
+            ],
+        ),
+        HistogramBucketConfig::new(
+            "compressing_stream_read_window_calc_latency_ms",
+            &[
+                1.0,    // 1ms
+                5.0,    // 5ms
+                10.0,   // 10ms
+                25.0,   // 25ms
+                50.0,   // 50ms
+                100.0,  // 100ms
+                250.0,  // 250ms
+                500.0,  // 500ms
+                1000.0, // 1s
+                2500.0, // 2.5s
+                5000.0, // 5s
+            ],
+        ),
+        HistogramBucketConfig::new(
+            "compressing_stream_compress_latency_ms",
+            &[
+                1.0,    // 1ms
+                5.0,    // 5ms
+                10.0,   // 10ms
+                25.0,   // 25ms
+                50.0,   // 50ms
+                100.0,  // 100ms
+                250.0,  // 250ms
+                500.0,  // 500ms
+                1000.0, // 1s
+                2500.0, // 2.5s
+                5000.0, // 5s
+            ],
+        ),
+        HistogramBucketConfig::new(
+            "compressing_stream_message_delete_latency_ms",
+            &[
+                0.1,    // 100μs
+                0.5,    // 500μs
+                1.0,    // 1ms
+                5.0,    // 5ms
+                10.0,   // 10ms
+                25.0,   // 25ms
+                50.0,   // 50ms
+                100.0,  // 100ms
+                250.0,  // 250ms
+                500.0,  // 500ms
+                1000.0, // 1s
+            ],
+        ),
     ]
 }
 
