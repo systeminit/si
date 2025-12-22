@@ -1,0 +1,36 @@
+{
+  "name": "prompt",
+  "scopeName": "source.prompt",
+  "patterns": [
+    { "include": "#user-prompt" },
+    { "include": "#response-indicator" },
+    { "include": "#inline-code" },
+    { "include": "#bold" },
+    { "include": "#italic" }
+  ],
+  "repository": {
+    "user-prompt": {
+      "match": "^(>)\\s*(.*)$",
+      "captures": {
+        "1": { "name": "keyword.operator.prompt" },
+        "2": { "name": "markup.bold.prompt" }
+      }
+    },
+    "response-indicator": {
+      "match": "●",
+      "name": "entity.name.function.prompt"
+    },
+    "inline-code": {
+      "match": "`[^`]+`",
+      "name": "markup.inline.raw.string.prompt"
+    },
+    "bold": {
+      "match": "\\*\\*[^*]+\\*\\*",
+      "name": "markup.bold.prompt"
+    },
+    "italic": {
+      "match": "(?<!\\*)\\*[^*]+\\*(?!\\*)",
+      "name": "markup.italic.prompt"
+    }
+  }
+}

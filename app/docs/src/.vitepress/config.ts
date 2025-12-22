@@ -3,6 +3,7 @@ import dotenv from "dotenv";
 import path from "path";
 import lightbox from "vitepress-plugin-lightbox";
 import { withMermaid } from "vitepress-plugin-mermaid";
+import promptLang from "./languages/prompt.tmLanguage.json";
 
 dotenv.config();
 
@@ -14,6 +15,7 @@ export default withMermaid(defineConfig({
       light: "github-light",
       dark: "github-dark",
     },
+    languages: [promptLang as any],
     config: (md) => {
       md.use(lightbox, {});
     },
