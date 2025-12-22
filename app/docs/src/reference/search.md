@@ -12,8 +12,8 @@ outline:
 - Combine them: Search for `prod schema:AWS::EC2::Instance` to find EC2
   instances with prod in their name!
 
-When you need more than mere words can convey, you can use more advanced search
-features like attribute searches and boolean logic.
+When you need more than mere words can convey, you can use more advanced search 
+features such as attribute searches and boolean logic.
 
 ### Attribute Search Syntax
 
@@ -30,7 +30,7 @@ instances with that type. Specific syntax for attribute searches:
   regardless of size.
 
   Wildcards can be placed anywhere in the value: `InstanceType:m*.large` will
-  match `m8g.large`, `m7g.large` and even `m7i-flex.large`.
+  match `m8g.large`, `m7g.large`, and even `m7i-flex.large`.
 
   > Tip: While building your infrastructure, you may want to find things where
   > you did _not_ specify an attribute. For example, `!AvailabilityZone:*` will
@@ -49,7 +49,7 @@ instances with that type. Specific syntax for attribute searches:
   `LaunchTemplate version 1`.
 
   Sometimes an attribute has a generic name, and you need to specify more of its
-  path. `LaunchTemplate/Version:1` is useful because it will _not_ bring in
+  path. `LaunchTemplate/Version:1` is helpful because it will _not_ bring in
   every other AWS resource with a random `Version` field set to 1.
 - **Schema:** `schema:AWS::EC2::Instance`, or `schema:Instance`, will find all
   EC2 instances.
@@ -60,7 +60,7 @@ All of these features can be mixed and matched:
 
 ### Boolean Logic
 
-Sometimes you need more precise logic than just "find things matching A, B and
+Sometimes you need more precise logic than "find things matching A, B, and
 C." For this, we support full boolean logic, with nesting.
 
 - **Negation:** `!InstanceType:m8g.large` will match all instances that are
@@ -72,9 +72,9 @@ C." For this, we support full boolean logic, with nesting.
   supported but redundant: `prod Instance` and `prod & Instance` do the same
   thing.
 
-## Putting It All together
+## Putting It All Together
 
-This search will bring back `m8g.medium` instances, and load balancers with
+This search will bring back `m8g.medium` instances and load balancers with
 `MaxSize>1`, in prod:
 
 ```
