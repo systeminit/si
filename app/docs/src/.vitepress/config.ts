@@ -109,6 +109,10 @@ export default withMermaid(defineConfig({
             link: "/how-tos/aws-vpc",
           },
           {
+            text: "Create a Qualification",
+            link: "/how-tos/create-a-qualification",
+          },
+          {
             text: "Create Templates",
             link: "/how-tos/create-templates",
           },
@@ -154,8 +158,8 @@ export default withMermaid(defineConfig({
               {
                 text: "TypeScript Function API",
                 link: "/reference/typescript/README",
-              }
-            ]
+              },
+            ],
           },
           {
             text: "Functions",
@@ -215,7 +219,7 @@ export default withMermaid(defineConfig({
           {
             text: "Workspaces",
             link: "/reference/workspaces",
-          }
+          },
         ],
       },
       {
