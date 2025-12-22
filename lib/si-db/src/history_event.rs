@@ -18,8 +18,7 @@ use crate::{
     user::User,
 };
 
-const SYSTEMINIT_EMAIL_SUFFIX: &str = "@systeminit.com";
-const TEST_SYSTEMINIT_EMAIL_SUFFIX: &str = "@test.systeminit.com";
+const SYSTEMINIT_EMAIL_SUFFIX: &str = "systeminit.com";
 
 #[remain::sorted]
 #[derive(Deserialize, Serialize, Debug, PartialEq, Eq, strum::Display, Clone, Copy, Hash)]
@@ -45,8 +44,23 @@ impl HistoryActor {
 
     pub async fn email_is_systeminit(&self, ctx: &impl SiDbContext) -> Result<bool> {
         let email_as_lowercase = self.email(ctx).await?.to_lowercase();
-        Ok(email_as_lowercase.ends_with(SYSTEMINIT_EMAIL_SUFFIX)
-            || email_as_lowercase.ends_with(TEST_SYSTEMINIT_EMAIL_SUFFIX))
+        Ok(Self::is_systeminit_domain(email_as_lowercase))
+    }
+
+    fn is_systeminit_domain(email: String) -> bool {
+        let email = email.to_lowercase();
+
+        // Use rsplitn so you only split on the final @. The part after the last @ is the domain.
+        // Attackers can insert extra @ characters in the local part. rsplitn(2, "@") gives
+        // exactly two pieces when the input is valid. If you get anything else, treat the
+        // email as invalid. Only accept an exact domain match.
+        let parts: Vec<&str> = email.rsplitn(2, '@').collect();
+        let domain = match parts.as_slice() {
+            [domain, _local] => *domain,
+            _ => return false,
+        };
+
+        domain == SYSTEMINIT_EMAIL_SUFFIX
     }
 
     pub fn user_pk(&self) -> Option<UserPk> {
