@@ -56,7 +56,17 @@ pub async fn get_email_for_auth_token(
 }
 
 pub fn is_systeminit_email(email: &str) -> bool {
-    email.to_lowercase().ends_with("@systeminit.com")
+    let email = email.to_lowercase();
+
+    // Use rsplitn so you only split on the final @. The part after the last @ is the domain.
+    // Attackers can insert extra @ characters in the local part. rsplitn(2, "@") gives
+    // exactly two pieces when the input is valid. If you get anything else, treat the
+    // email as invalid. Only accept an exact domain match.
+    let parts: Vec<&str> = email.rsplitn(2, '@').collect();
+    match parts.as_slice() {
+        [domain, _local] => *domain == "systeminit.com",
+        _ => false,
+    }
 }
 
 pub async fn is_systeminit_auth_token(
