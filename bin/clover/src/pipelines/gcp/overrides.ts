@@ -1,5 +1,18 @@
 import { PropOverrideFn, SchemaOverrideFn } from "../types.ts";
-import { suggest, widget } from "../generic/overrides.ts";
+import {
+  attachExtraActionFunction,
+  objectPropForOverride,
+  propForOverride,
+  suggest,
+  widget,
+} from "../generic/overrides.ts";
+import { ExpandedPkgSpec } from "../../spec/pkgs.ts";
+import {
+  addPropSuggestSource,
+  createScalarProp,
+  ExpandedPropSpec,
+} from "../../spec/props.ts";
+import { ulid } from "https://deno.land/x/ulid@v0.3.0/mod.ts";
 
 // Common GCP regions as of 2025
 // Based on official GCP documentation: https://cloud.google.com/about/locations
@@ -274,4 +287,86 @@ export const GCP_PROP_OVERRIDES: Record<
 export const GCP_SCHEMA_OVERRIDES: Map<
   string,
   SchemaOverrideFn | SchemaOverrideFn[]
-> = new Map();
+> = new Map([
+  [
+    "Google Cloud Compute Engine InstanceGroups",
+    (spec: ExpandedPkgSpec) => {
+      const variant = spec.schemas[0].variants[0];
+      const domainPath = variant.domain.metadata.propPath;
+
+      // Create "instances" array prop for add/remove instances actions
+      const itemProp = createScalarProp("instance", "string", [...domainPath, "instances"], false);
+      addPropSuggestSource(itemProp, { schema: `${GCP_COMPUTE} Instances`, prop: "/resource_value/selfLink" });
+
+      const instancesProp: ExpandedPropSpec = {
+        kind: "array",
+        name: "instances",
+        uniqueId: ulid(),
+        cfProp: undefined,
+        typeProp: itemProp,
+        data: {
+          name: "instances",
+          validationFormat: null,
+          defaultValue: null,
+          funcUniqueId: null,
+          inputs: [],
+          widgetKind: "Array",
+          widgetOptions: null,
+          hidden: false,
+          docLink: null,
+          documentation: "Instance selfLinks or names to add/remove from this instance group.",
+          uiOptionals: null,
+        },
+        metadata: {
+          createOnly: false,
+          readOnly: false,
+          writeOnly: false,
+          primaryIdentifier: false,
+          propPath: [...domainPath, "instances"],
+          required: false,
+        },
+      };
+
+      variant.domain.entries.push(instancesProp);
+
+      // Mark "instances" as excluded from codegen (not sent to create/update API)
+      const extraProp = objectPropForOverride(variant.domain, "extra");
+      const propUsageMapProp = propForOverride(extraProp, "PropUsageMap");
+      if (propUsageMapProp.data?.defaultValue) {
+        const propUsageMap = JSON.parse(
+          propUsageMapProp.data.defaultValue as string,
+        );
+        // Add "instances" to the list of properties to exclude from API calls
+        propUsageMap.excluded = propUsageMap.excluded || [];
+        propUsageMap.excluded.push("instances");
+        propUsageMapProp.data.defaultValue = JSON.stringify(propUsageMap);
+      }
+
+      // Add "Add Instances" action
+      const {
+        func: addInstancesFunc,
+        actionFuncSpec: addInstancesActionFuncSpec,
+      } = attachExtraActionFunction(
+        "./src/pipelines/gcp/funcs/overrides/InstanceGroups/actions/addInstances.ts",
+        "Add Instances to Group",
+        "other",
+        "7d08100a4de7e37dc1bc55fd82ca71ff4938718436d93b8bf38f775d1d65d941",
+      );
+      spec.funcs.push(addInstancesFunc);
+      variant.actionFuncs.push(addInstancesActionFuncSpec);
+
+      // Add "Remove Instances" action
+      const {
+        func: removeInstancesFunc,
+        actionFuncSpec: removeInstancesActionFuncSpec,
+      } = attachExtraActionFunction(
+        "./src/pipelines/gcp/funcs/overrides/InstanceGroups/actions/removeInstances.ts",
+        "Remove Instances from Group",
+        "other",
+        "1729e7ecf77967b8a440f7a25057d4dac5c0e0a8fc1831c42359ead6f7f7fd7d",
+      );
+      spec.funcs.push(removeInstancesFunc);
+      variant.actionFuncs.push(removeInstancesActionFuncSpec);
+    },
+  ],
+]);
