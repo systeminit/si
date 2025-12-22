@@ -1,10 +1,10 @@
 # Schema Reference
 
-A Schema is code which defines a [component](./components.md).
+A Schema is code that defines a [component](./components.md).
 
 Schemas are defined as TypeScript functions that use the
 [AssetBuilder API](/reference/typescript/asset_builder/README). This document
-augments the API documentation by laying out practical examples of each option,
+augments the API documentation by laying out practical examples of each option 
 and briefly explaining what they do.
 
 ## Schema Basics
@@ -84,7 +84,7 @@ All properties have:
 
 - A Kind, which defines its fundamental data type, specified by `setKind()`.
 - A Name, specified by `setName()`.
-- An optional Validation Format, specified by `setValidationFormat()` which uses
+- An optional Validation Format, specified by `setValidationFormat()`, which uses
   [Joi to specify valid values](https://joi.dev/api/?v=17.13.3).
 - An optional Default Value, specified by `setDefaultValue()`.
 - An optional boolean field that hides the property from the attributes UI,
@@ -116,7 +116,7 @@ const keyNameProp = new PropBuilder()
 asset.addProp(keyNameProp);
 ```
 
-A string with options, that displays as a select box, with a default value:
+A string with options that displays as a select box, with a default value:
 
 ```typescript
 const keyType = new PropBuilder()
@@ -377,7 +377,7 @@ the future!
 
 ## Resource Properties
 
-Resource Properties are used to extract information from Resources, and store
+Resource Properties are used to extract information from Resources and store
 them as hidden properties.
 
 They are defined the same way as component properties, but with the
@@ -472,5 +472,5 @@ Username and Password.
 1. Resist the temptation to abstract the resource you are modeling. Schemas in
    System Initiative work best when they are as close to 1:1 models of the
    upstream.
-2. Frequently the right set of properties for a component mirror what they need
+2. Frequently, the correct set of properties for a component mirrors what they need
    when they are created.
