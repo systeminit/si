@@ -190,18 +190,22 @@ export function createDefaultPropFromJsonSchema(
       const name = propPath[propPath.length - 1];
       const required = providerConfig.isChildRequired(schema, parentProp, name);
       const propUniqueId = ulid();
+
+      // Check for custom docLink in original schema prop (before normalization)
+      const customDocLink = (schemaProp as any).docLink || (cfProp as any).docLink;
+
       const data: ExpandedPropSpec["data"] = {
         name,
         validationFormat: null,
-        defaultValue: null,
+        defaultValue: cfProp.default !== undefined ? cfProp.default : null,
         funcUniqueId: null,
         inputs: [],
         widgetKind: null,
         widgetOptions: [],
         hidden: false,
-        docLink: parentProp?.kind === "object"
-          ? docFn(schema, schemaProp.defName, name)
-          : null,
+        // Use custom docLink if provided, otherwise generate from schema
+        docLink: customDocLink ||
+          (parentProp?.kind === "object" ? docFn(schema, schemaProp.defName, name) : null),
         documentation: htmlToMarkdown(cfProp.description),
         uiOptionals: null,
       };
@@ -392,8 +396,10 @@ export function createDefaultPropFromJsonSchema(
         prop.kind = "array";
         prop.data.widgetKind = "Array";
 
+        // Use custom array item name if provided, otherwise default to {name}Item
+        const itemName = (schemaProp as any).itemName || (cfProp as any).itemName || `${name}Item`;
         const typeProp = createPropFromJsonSchema(
-          [...propPath, `${name}Item`],
+          [...propPath, itemName],
           cfProp.items,
           prop,
         );

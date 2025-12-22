@@ -161,10 +161,16 @@ function generateSecretPropBuilderString(
   prop: ExpandedPropSpec,
   indent_level: number,
 ): string {
+  // Extract the secretKind from the widget options
+  const secretKindOption = prop.data?.widgetOptions?.find(
+    (opt) => opt.label === "secretKind"
+  );
+  const secretKind = secretKindOption?.value ?? prop.name;
+
   return (
     `new SecretPropBuilder()\n` +
     `${indent(indent_level)}.setName("${prop.name}")\n` +
-    `${indent(indent_level)}.setSecretKind("${prop.name}")\n` +
+    `${indent(indent_level)}.setSecretKind("${secretKind}")\n` +
     `${indent(indent_level)}.build()`
   );
 }
