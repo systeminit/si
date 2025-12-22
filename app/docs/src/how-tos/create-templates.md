@@ -36,7 +36,7 @@ By the end of this "how-to", you'll have created a template that:
 
 Before creating a template, you need working infrastructure to use as a baseline. For this guide, we'll assume you have a simple VPC setup with subnets in a workspace.
 
-If you need to create one, follow the [AWS VPC guide](./aws-vpc.md) first.
+If you need to create one, follow the [AWS VPC AI Agent "how-to"](./aws-vpc-ai-agent.md) or the [AWS VPC CLI or Web Application "how-to"](./aws-vpc-cli-web-application.md) first.
 For this "how-to", we will be using names and examples based on it.
 
 ### Generate a New Template
