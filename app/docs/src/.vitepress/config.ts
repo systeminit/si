@@ -224,20 +224,39 @@ export default withMermaid(defineConfig({
         collapsed: false,
         items: [
           {
-            text: "Working on System Initiative",
-            link: "/explanation/working-on-si",
-          },
-          {
-            text: "Enable Slack Webhook",
-            link: "/explanation/enable-slack-webhook",
-          },
-          {
-            text: "Create Workspace API Tokens",
-            link: "/explanation/generate-a-workspace-api-token",
-          },
-          {
-            text: "IaC vs System Initiative",
-            link: "/explanation/iac-comparison",
+            text: "Architecture",
+            link: "/explanation/architecture/index",
+            collapsed: true,
+            items: [
+              {
+                text: "AI Native Collaboration",
+                link: "/explanation/architecture/ai",
+              },
+              {
+                text: "Change Control",
+                link: "/explanation/architecture/change-control",
+              },
+              {
+                text: "Digital Twin",
+                link: "/explanation/architecture/digital-twin",
+              },
+              {
+                text: "Function Execution Framework",
+                link: "/explanation/architecture/functions",
+              },
+              {
+                text: "Tenancy and Access Control",
+                link: "/explanation/architecture/tenancy",
+              },
+              {
+                text: "The Data Model",
+                link: "/explanation/architecture/snapshot",
+              },
+              {
+                text: "The Distributed Exection Engine",
+                link: "/explanation/architecture/engine",
+              },
+            ],
           },
           {
             text: "Cloud Providers",
@@ -263,39 +282,24 @@ export default withMermaid(defineConfig({
             ],
           },
           {
-            text: "Architecture",
-            link: "/explanation/architecture/index",
-            collapsed: true,
-            items: [
-              {
-                text: "The Distributed Exection Engine",
-                link: "/explanation/architecture/engine",
-              },
-              {
-                text: "The Data Model",
-                link: "/explanation/architecture/snapshot",
-              },
-              {
-                text: "Change Control",
-                link: "/explanation/architecture/change-control",
-              },
-              {
-                text: "Digital Twin",
-                link: "/explanation/architecture/digital-twin",
-              },
-              {
-                text: "Function Execution Framework",
-                link: "/explanation/architecture/functions",
-              },
-              {
-                text: "Tenancy and Access Control",
-                link: "/explanation/architecture/tenancy",
-              },
-              {
-                text: "AI Native Collaboration",
-                link: "/explanation/architecture/ai",
-              },
-            ],
+            text: "Create Workspace API Tokens",
+            link: "/explanation/generate-a-workspace-api-token",
+          },
+          {
+            text: "Enable Slack Webhook",
+            link: "/explanation/enable-slack-webhook",
+          },
+          {
+            text: "IaC vs System Initiative",
+            link: "/explanation/iac-comparison",
+          },
+          {
+            text: "Policy Layers in System Initiative",
+            link: "/explanation/policy-layers",
+          },
+          {
+            text: "Working on System Initiative",
+            link: "/explanation/working-on-si",
           },
         ],
       },
