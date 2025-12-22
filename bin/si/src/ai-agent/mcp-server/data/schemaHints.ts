@@ -17,7 +17,7 @@ export function validateSchemaPrereqs(
       return errorResponse({
         response: { status: "bad prereq", data: {} },
         message:
-          "This is an AWS resource, and to import it we must have /domain/extra/Region set to a valid value or subscription, and /secrets/AWS Credential set to a subscription.",
+          "This is an AWS resource, and to import, or discover, it we must have /domain/extra/Region set to a valid value or subscription, and /secrets/AWS Credential set to a subscription.",
       });
     }
   }
@@ -28,7 +28,7 @@ export function validateSchemaPrereqs(
       return errorResponse({
         response: { status: "bad prereq", data: {} },
         message:
-          "This is a Hetzner resource, and to import it we must have /secrets/Hetzner API Token set to a subscription.",
+          "This is a Hetzner resource, and to import, or discover, it we must have /secrets/Hetzner API Token set to a subscription.",
       });
     }
   }
@@ -41,7 +41,7 @@ export function validateSchemaPrereqs(
       return errorResponse({
         response: { status: "bad prereq", data: {} },
         message:
-          "This is an Azure / Microsoft resource, and to import it we must have /domain/location and /domain/subscriptionId set to a valid value or subscription and /secrets/Microsoft Credential set to a subscription.",
+          "This is an Azure / Microsoft resource, and to import, or discover, it we must have /domain/location and /domain/subscriptionId set to a valid value or subscription and /secrets/Microsoft Credential set to a subscription.",
       });
     }
   }
@@ -52,7 +52,18 @@ export function validateSchemaPrereqs(
       return errorResponse({
         response: { status: "bad prereq", data: {} },
         message:
-          "This is a DigitalOcean resource, and to import it we must have /secrets/DigitalOcean Credential set to a subscription.",
+          "This is a DigitalOcean resource, and to import, or discover, it we must have /secrets/DigitalOcean Credential set to a subscription.",
+      });
+    }
+  }
+
+  if (schemaName.startsWith("Google Cloud")) {
+    const hasCredential = has("/secrets/Google Cloud Credential");
+    if (!hasCredential) {
+      return errorResponse({
+        response: { status: "bad prereq", data: {} },
+        message:
+          "This is a Google Cloud resource, and to import, or discover, it we must have /secrets/Google Cloud Credential set to a subscription.",
       });
     }
   }
