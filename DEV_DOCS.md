@@ -1,9 +1,12 @@
-# Documentation
+# Developer Documentation
 
 [![Discord Server](https://img.shields.io/badge/discord-5865F2?style=for-the-badge&logo=discord&logoColor=white)](https://discord.com/invite/system-init)
 
-Welcome to the documentation for the System Initiative software.
+Welcome to the documentation for developing the System Initiative software.
 This document not only contains information about SI itself, but also about running and developing SI in general.
+
+> [!TIP]
+> If you are looking for documentation to use System Initiative, go to our [docs site](https://docs.systeminit.com).
 
 The sections within range from guides to knowledge-base-esque information.
 The goal for the document is to value longer living documentation and notes over precise documentation that reflects a point in time feature of the system.

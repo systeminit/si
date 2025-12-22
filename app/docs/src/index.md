@@ -5,15 +5,10 @@
 System Initiative is an AI Native Infrastructure Automation Platform that
 unlocks your team's productivity.
 
-Start by [learning what System Initiative is](./what-is-si.md).
-
-Follow the [Tutorials](./tutorials/index.md) to get started.
-
-Learn about the [architecture](./explanation/architecture/index.md) that powers
-System Initiative.
-
-Understand how existing [IaC capabilities map](./explanation/iac-comparison.md)
-to System Intiative functionality.
+- Start by [learning what System Initiative is](./what-is-si.md)
+- Follow the [Tutorials](./tutorials/index.md) to get started
+- Learn about the [architecture](./explanation/architecture/index.md) that powers System Initiative
+- Understand how existing [IaC capabilities map](./explanation/iac-comparison.md) to System Intiative functionality
 
 ## Getting help
 
@@ -44,7 +39,7 @@ about it in our Open Source FAQ</a>.
 
 - Use the `Edit This Page` links to contribute to the documentation.
 - The
-  <a href="https://github.com/systeminit/si/blob/main/README.md" target="__self">Development
-  Environment</a> documentation in
-  <a href="https://github.com/systeminit/si">GitHub</a> will help you start
+  <a href="https://github.com/systeminit/si/blob/main/README.md" target="__self">
+  README</a> in our
+  <a href="https://github.com/systeminit/si">repository on GitHub</a> will help you start
   working on the System Initiative software.
