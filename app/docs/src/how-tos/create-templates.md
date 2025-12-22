@@ -4,31 +4,29 @@ outline: [2,3,4]
 
 # How to Create Templates
 
-This guide walks you through creating a System Initiative template from start to finish. Templates allow you to capture working infrastructure patterns and replicate them across workspaces with customization through inputs and transformations.
+This how-to assumes:
+
+- [System Initiative CLI installed](/tutorials/install-the-cli)
+- A workspace with working infrastructure you want to template
+- The CLI authenticated and using that workspace using `si login` or with a manually created [API token](/explanation/generate-a-workspace-api-token)
+- Basic familiarity with [TypeScript](https://www.typescriptlang.org/)
+
+It will teach you how to create a System Initiative template that captures working infrastructure patterns and replicates them across workspaces with customization through inputs and transformations.
+
+We will cover:
+
+- Searching for specific components in a workspace
+- Accepting input variables to customize the output
+- Renaming components based on patterns
+- Transforming component attributes
+- Handling external component references
+- Caching and reusing templates across workspaces
 
 :::tip
 
 There is a [reference page for templates](../reference/templates.md) that provides comprehensive information on the feature. You may wish to cross-reference this "how-to" with the aforementioned page to bolster your template.
 
 :::
-
-## Prerequisites
-
-1. [System Initiative CLI installed](/tutorials/install-the-cli)
-1. A workspace with working infrastructure you want to template
-1. The CLI authenticated and using that workspace using `si login` or with a manually created [API token](/explanation/generate-a-workspace-api-token)
-1. Basic familiarity with [TypeScript](https://www.typescriptlang.org/)
-
-## What You'll Build
-
-By the end of this "how-to", you'll have created a template that:
-
-1. Searches for specific components in a workspace
-1. Accepts input variables to customize the output
-1. Renames components based on patterns
-1. Transforms component attributes
-1. Handles external component references
-1. Can be cached and reused across workspaces
 
 ## Walkthrough
 
