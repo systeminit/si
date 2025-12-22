@@ -1,6 +1,9 @@
-# AWS (Amazon Web Services)
+---
+outline:
+  level: [1, 2, 3, 4]
+---
 
-Updated November 17, 2025.
+# AWS (Amazon Web Services) Support in System Initiative
 
 System Initiative supports AWS resources through the
 [AWS Cloud Control API](https://docs.aws.amazon.com/cloudcontrolapi/latest/userguide/what-is-cloudcontrolapi.html),

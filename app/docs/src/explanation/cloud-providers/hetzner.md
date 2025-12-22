@@ -5,8 +5,6 @@ outline:
 
 # Hetzner Cloud Support in System Initiative
 
-Updated November 17, 2025.
-
 System Initiative supports Hetzner Cloud resources through their
 [OpenAPI Specification](https://docs.hetzner.cloud/cloud.spec.json). This allows
 us to automatically generate and maintain accurate coverage of available

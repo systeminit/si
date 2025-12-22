@@ -112,7 +112,7 @@ Below is a quick translation between various aspects of Terraform and System Ini
 | **Resource Removal** | `terraform state rm` and manual code removal to stop managing resources | Component erase from the graph with clear relationship impact visualization |
 | **Manual Overrides** | `terraform taint` to force resource recreation on next apply | Direct action queuing (Delete + Create) against specific components with immediate contextual feedback |
 | **Data Flow** | Output blocks and data sources for passing values between modules and external data retrieval | System and user-authored functions for data transformation and binding between components with real-time updates |
-| **Version Management** | `required_providers` blocks and `terraform.lock.hcl` for provider/module version pinning | On-demand asset upgrades with granular component-level version control |
+| **Version Management** | `required_providers` blocks and `terraform.lock.hcl` for provider/module version pinning | On-demand component upgrades with granular component-level version control |
 | **Branching Strategy** | Git branches for parallel development with manual merge | Change Sets as automatically rebasing branches with conflict-free merges |
 | **Change Review** | Pull requests with external CI/CD integration for plan/apply workflows | Built-in change review system with granular approvals and real-time collaboration |
 | **Resource Import** | `terraform import` with manual state file manipulation and code generation | Full-fidelity discovery and import with automatic relationship detection and visual integration |
@@ -170,15 +170,15 @@ provider "random" {}
 
 These blocks define what version of the underlying provider code will be used, and the options that will apply globally to all the resources that the provider exposes. The providers themselves define how the resource declarations map to API calls in the underlying cloud API.
 
-System Initiative does not have an equivalent provider layer. Instead, it works in terms of *assets* and *functions*. An asset is defined by its *schema* and by *functions* that define its behavior - for example, *action functions* that define operations such as *create*, *update*, or *delete*. These functions can be shared across multiple assets - for example, all of our AWS assets share the same fundamental CRUD action functions. One valuable side effect of our approach is that you can view the specifics directly on the asset.
+System Initiative does not have an equivalent provider layer. Instead, it works in terms of *schemas* and *functions*. The *functions* define its behavior - for example, *action functions* that define operations such as *create*, *update*, or *delete*. These functions can be shared across multiple schema - for example, all of our AWS schemas share the same fundamental CRUD action functions. One valuable side effect of our approach is that you can view the specifics directly on the schema.
 
 ![Action Function](./iac-comparison/action-function.png)
 
 :::tip
-This is a good example of how removing the provider layer simplifies the architecture. System Initiative assets are *fully programmable* from within System Initiative - no need to switch programming languages, move outside the DSL, etc. The underlying data model is designed to track changes and improvements over time. Also, this is the kind of action that doesn't exist in Terraform - it knows how to create and destroy resources, but it cannot understand how to 'restart' an instance at a point in time.
+This is a good example of how removing the provider layer simplifies the architecture. System Initiative schemas are *fully programmable* from within System Initiative - no need to switch programming languages, move outside the DSL, etc. The underlying data model is designed to track changes and improvements over time. Also, this is the kind of action that doesn't exist in Terraform - it knows how to create and destroy resources, but it cannot understand how to 'restart' an instance at a point in time.
 :::
 
-When it comes to specifying "provider options", those are modeled as *assets* directly. For example, the AWS Region is itself an asset with an attribute of the region. If you want the region to be set by default, you make that region the *default subscription*, which would cause all new components created to have that region set automatically. An upside of this approach is a dramatic increase in flexibility - having multiple regions, credentials, etc. in the same *workspace* is trivial.
+When it comes to specifying "provider options", those are modeled as *schemas* directly. For example, the AWS Region is itself a schema with an attribute of the region. If you want the region to be set by default, you make that region the *default subscription*, which would cause all new components created to have that region set automatically. An upside of this approach is a dramatic increase in flexibility - having multiple regions, credentials, etc. in the same *workspace* is trivial.
 
 ```mermaid
 graph TB
@@ -198,7 +198,7 @@ graph TB
     end
 ```
 
-By eliminating the concept of providers entirely, and focusing instead on how *assets* compose, we eliminate the complexity of determining which underlying versions should run (you can have multiple versions installed at the level of a single resource, if that's what you need), the pain of trying to override those options on a per-resource basis, and make the underlying system easier to understand, extend, and debug.
+By eliminating the concept of providers entirely, and focusing instead on how *schemas* compose, we eliminate the complexity of determining which underlying versions should run (you can have multiple versions installed at the level of a single resource, if that's what you need), the pain of trying to override those options on a per-resource basis, and make the underlying system easier to understand, extend, and debug.
 
 ### Resources
 
@@ -234,7 +234,7 @@ Create an ec2 instance named web that uses ami-a0cfeed8 and is a t2.micro.
 It should have a Name tag that subscribes to the id of a Random Pet named
 'ec2 web random name'.
 ```
-It will then make a plan, inspect the schema for the relevant assets, and create the components in a new change set. After a few seconds of work, it will respond with something like this:
+It will then make a plan, inspect the schema for the relevant schemas, and create the components in a new change set. After a few seconds of work, it will respond with something like this:
 
 ```
 ● Excellent! I've successfully created:
@@ -479,9 +479,9 @@ Terraform also allows you to define 'ephemeral' resources and variables, which a
 You may be wondering about [HashiCorp Vault](https://registry.terraform.io/providers/hashicorp/vault/latest/docs). Vault is integrated with Terraform through the 'Vault Provider', which exposes resources that you can use to consume secret data as attributes. The same underlying challenges apply - this solves the problem of connecting to vault, getting the data from secure storage, and then injecting it as a variable - but the variables themselves are no different than when they were injected through tfvars or credentials.
 :::
 
-System Initiative provides secrets as a first-class part of the data model. They are defined as an *asset*, with a *schema* that sets the shape of the secret data that needs to be stored, and an *authentication* function that handles configuring the execution environment for when a secret is required. When you want to pass a secret value into System Initiative, you create a new component, then set the values. They are encrypted first by your browser, using the public half of a workspace level [Ed25519 public keypair](https://en.wikipedia.org/wiki/EdDSA). This keypair is itself encrypted at rest with a cluster level key-pair inside our infrastructure (this ensures that, in the event of data compromise, your keys cannot be read without externally stored key material.) Then our database itself is encrypted at rest by [AWS](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Overview.Encryption.html). The data is then sent to System Initiative over HTTPS. This model ensures that your secrets are not transmitted across the wire unencrypted, even when you set them, and are encrypted at rest (even if the database were to be dumped in plain text.)
+System Initiative provides secrets as a first-class part of the data model. They are defined as a *schema* that sets the shape of the secret data that needs to be stored, and an *authentication* function that handles configuring the execution environment for when a secret is required. When you want to pass a secret value into System Initiative, you create a new component, then set the values. They are encrypted first by your browser, using the public half of a workspace level [Ed25519 public keypair](https://en.wikipedia.org/wiki/EdDSA). This keypair is itself encrypted at rest with a cluster level key-pair inside our infrastructure (this ensures that, in the event of data compromise, your keys cannot be read without externally stored key material.) Then our database itself is encrypted at rest by [AWS](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Overview.Encryption.html). The data is then sent to System Initiative over HTTPS. This model ensures that your secrets are not transmitted across the wire unencrypted, even when you set them, and are encrypted at rest (even if the database were to be dumped in plain text.)
 
-Here is the full source code for our AWS Credential asset as an example of how easy it is to build even a complex secret:
+Here is the full source code for our AWS Credential schema as an example of how easy it is to build even a complex secret:
 
 :::code-group
 ```typescript [AWS Credential Schema]
@@ -610,9 +610,9 @@ async function main(secret: Input): Promise < Output > {
 ```
 :::
 
-When you need to reference a secret from another component (for example, all our AWS assets require an AWS Credential to perform operations with AWS), you use a *secret subscription*. Rather than dynamically passing their underlying values like a regular subscription, secret subscriptions trigger the *authentication* function to run before any functionality that requires the secret. When those functions execute, we decrypt your secret, pass it into the secure micro-vm that is running the function, and then run the authentication function, which can set up the data necessary for the final behavior that needs the secret data. We then track the secrets used across every function invocation and redact any occurrence of the secret value from our logs, function output, etc. We do not allow secret values to be consumed by regular attributes - so you cannot leak them by subscribing to the value itself. They must be consumed *by the underlying functions*.
+When you need to reference a secret from another component (for example, all our AWS schemas require an AWS Credential to perform operations with AWS), you use a *secret subscription*. Rather than dynamically passing their underlying values like a regular subscription, secret subscriptions trigger the *authentication* function to run before any functionality that requires the secret. When those functions execute, we decrypt your secret, pass it into the secure micro-vm that is running the function, and then run the authentication function, which can set up the data necessary for the final behavior that needs the secret data. We then track the secrets used across every function invocation and redact any occurrence of the secret value from our logs, function output, etc. We do not allow secret values to be consumed by regular attributes - so you cannot leak them by subscribing to the value itself. They must be consumed *by the underlying functions*.
 
-This is a place where our fundamental design truly shines. We not only redact your secret information, but we make sure its stored safely *end to end* - from the moment you give us the secret material to the moment it's used in a function. We prevent you from accidental leakage, provide defense in depth, and allow you to define and consume your own secret components just like any other asset in System Initiative. Everything is redacted, we go out of our way to ensure you cannot leak the data, and you cannot consume it as a plain text value subscription. System Initiative is secure by default.
+This is a place where our fundamental design truly shines. We not only redact your secret information, but we make sure its stored safely *end to end* - from the moment you give us the secret material to the moment it's used in a function. We prevent you from accidental leakage, provide defense in depth, and allow you to define and consume your own secret components just like any other schema in System Initiative. Everything is redacted, we go out of our way to ensure you cannot leak the data, and you cannot consume it as a plain text value subscription. System Initiative is secure by default.
 
 ### Data Sources
 

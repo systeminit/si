@@ -22,4 +22,4 @@ System Initiative connects to cloud providers through their official APIs:
 
 ## Request Additional Provider Support
 
-Need support for a provider not listed here? [Request it on our Discord](https://discord.com/invite/system-init) or [open an issue on GitHub](https://github.com/systeminit/si/issues).
+Need support for a provider not listed here? [Request it on our Discord server](https://discord.com/invite/system-init) or [open an issue on GitHub](https://github.com/systeminit/si/issues).

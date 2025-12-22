@@ -5,8 +5,6 @@ outline:
 
 # Azure Support in System Initiative
 
-Updated November 26, 2025.
-
 System Initiative supports Azure resources through the
 [Azure Resource Manager (ARM) REST API Specification](https://github.com/Azure/azure-rest-api-specs).
 We automatically generate coverage using the latest stable API versions. If a
