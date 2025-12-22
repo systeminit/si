@@ -3,7 +3,7 @@ outline:
   level: [2, 3, 4]
 ---
 
-# How to Create and Manage an AWS VPC
+# How to Create and Manage an AWS VPC with the CLI or Web Application
 
 This how-to assumes:
 
@@ -26,11 +26,11 @@ We will cover:
 When you have completed this guide, you should have Components that look like
 this in your Grid:
 
-![AWS VPC Diagram](./aws-vpc/aws-vpc-complete-grid.png)
+![AWS VPC Diagram](./aws-vpc-cli-web-application/aws-vpc-complete-grid.png)
 
 and like this in your Map:
 
-![AWS VPC Diagram](./aws-vpc/aws-vpc-complete-map.png)
+![AWS VPC Diagram](./aws-vpc-cli-web-application/aws-vpc-complete-map.png)
 
 ## Create a Change Set
 
@@ -50,7 +50,7 @@ $ export SI_CHANGE_SET_ID=01KCMGWWD388NJ2DH6KQPXYEG8
 
 To create a Change Set:
 
-![Create a Change Set](./aws-vpc/create-change-set.png)
+![Create a Change Set](./aws-vpc-cli-web-application/create-change-set.png)
 
 1. Press the `C` hotkey or click the 'Create Change Set' button from the top
    bar.
@@ -73,20 +73,20 @@ $ si secret create "AWS Credential" --name "aws-credential-dev" --use-local-prof
 ✨ info    si              Re-querying secret definitions...
 ✨ info    si              Discovering credentials from local environment...
 ✨ info    si              ✓ Found 3 credential(s) in local environment
-✨ info    si              
+✨ info    si
 ✨ info    si              Creating AWS Credential component "aws-credential-dev"...
 ✨ info    si              ✓ Component created with ID: 01KCMKRVATDC6Y3XZNRGMKVDP5
 ✨ info    si              Creating secret data...
 ✨ info    si              ✓ Secret created with ID: 01KCMKRVYHRXY7JFK26SYMX155
 ✨ info    si              Attaching secret to component...
 ✨ info    si              ✓ Secret attached to component
-✨ info    si              
+✨ info    si
 ✨ info    si              ✓ Credential created successfully!
 ✨ info    si                Component ID: 01KCMKRVATDC6Y3XZNRGMKVDP5
 ✨ info    si                Secret ID: 01KCMKRVYHRXY7JFK26SYMX155
 ✨ info    si                Secret Name: aws-credential-dev
 ✨ info    si                Change Set ID: 01KCMGWWD388NJ2DH6KQPXYEG8
-✨ info    si              
+✨ info    si
 ✨ info    si              Next steps:
 ✨ info    si                1. Apply the change set to make the credential available
 ✨ info    si                2. Other components can now use this credential
@@ -97,11 +97,11 @@ $ si secret create "AWS Credential" --name "aws-credential-dev" --use-local-prof
 
 Press `N` (or click `Add a component`) search for `AWS Credential`, select it then hit `Enter` to create an `AWS Credential` Component.
 
-![Create AWS Credentials 1](./aws-vpc/create-aws-credentials-1.png)
+![Create AWS Credentials 1](./aws-vpc-cli-web-application/create-aws-credentials-1.png)
 
 Now configure your AWS Credentials to a valid AWS account, and press `Add Secret`, hit `Esc` to return to the Grid. You now have a valid AWS Credential component to use for this VPC.
 
-![Create AWS Credentials 2](./aws-vpc/create-aws-credentials-2.png)
+![Create AWS Credentials 2](./aws-vpc-cli-web-application/create-aws-credentials-2.png)
 
 </TabPanel>
 </DocTabs>
@@ -134,7 +134,7 @@ Component ID: 01KCMSAE7PFY34B1AYNBXYDKWB
 
 Press `N`, then search for, select and add an `AWS Region` to your Change Set. Name the Component, `AWS Region`, set the `region` property to`us-east-1` and Subscribe the credential property to your AWS Credential. Hit `Esc` to return to the Grid.
 
-![Select an AWS Region](./aws-vpc/select-an-aws-region.png)
+![Select an AWS Region](./aws-vpc-cli-web-application/select-an-aws-region.png)
 
 </TabPanel>
 </DocTabs>
@@ -182,7 +182,7 @@ Subscribe the `region` property to your AWS Region.
 
 Subscribe the `credential` property to your AWS Credential.
 
-![Create a VPC Component](./aws-vpc/create-a-vpc-component.png)
+![Create a VPC Component](./aws-vpc-cli-web-application/create-a-vpc-component.png)
 
 Press `Esc` to return to the Grid.
 
@@ -268,7 +268,7 @@ Component ID: 01KCMZS15RMPVZY2EA2TBEWGCD
 Add a
 `AWS::EC2::Subnet` Component to your Change Set, then right click it, and press `D` to duplicate the Component (add a prefix to each duplicate of `Public` if you like) until you have 3 of them.
 
-![Duplicate the Public Subnet Component](./aws-vpc/create-public-subnet.png)
+![Duplicate the Public Subnet Component](./aws-vpc-cli-web-application/create-public-subnet.png)
 
 Then Configure them as follows:
 
@@ -359,7 +359,7 @@ Set the `Domain` of each of the Elastic IP Components to be `vpc`.
 
 Subscribe to your `Region` and `AWS Credential` properties for each of the NAT Gateway EIP Components.
 
-![Create the Elastic IPs for each NAT Gateway](./aws-vpc/create-elastic-ip.png)
+![Create the Elastic IPs for each NAT Gateway](./aws-vpc-cli-web-application/create-elastic-ip.png)
 
 Press `Esc` to return to the Grid.
 
@@ -446,7 +446,7 @@ In NatGateway 1, subscribe the `SubnetId` property to your `AWS::EC2::Subnet` Co
 
 In NatGateway 1, subscribe the `AllocationId` property to your `AWS::EC2::EIP` Component named `NAT Gateway EIP 1`. Repeat this for NatGateway 2 and 3 to subscribe to the matching `AllocationId` properties.
 
-![Create the NAT Gateway Components](./aws-vpc/create-nat-gateway.png)
+![Create the NAT Gateway Components](./aws-vpc-cli-web-application/create-nat-gateway.png)
 
 Set the `ConnectivityType` of each of the NAT Gateway Components to be `public`.
 
@@ -509,7 +509,7 @@ Set the name to be `IGW`.
 
 Subscribe to your `Region` and `AWS Credential` properties
 
-![Create IGW](./aws-vpc/create-igw.png)
+![Create IGW](./aws-vpc-cli-web-application/create-igw.png)
 
 Press `Esc` to return to the Grid.
 
@@ -521,7 +521,7 @@ Subscribe to your VPCs `VpcId` and your InternetGateways `InternetGatewayId`.
 
 Subscribe to your `Region` and `AWS Credential` properties.
 
-![Create Gateway VPC Attachment](./aws-vpc/create-vpcgwa.png)
+![Create Gateway VPC Attachment](./aws-vpc-cli-web-application/create-vpcgwa.png)
 
 Press `Esc` to return to the Grid.
 
@@ -623,7 +623,7 @@ In the `VpcId` property subscribe to your VPCs `VpcId`.
 
 Subscribe to your `Region` and `AWS Credential` properties.
 
-![Create the Public Route Table Component](./aws-vpc/create-public-route-table.png)
+![Create the Public Route Table Component](./aws-vpc-cli-web-application/create-public-route-table.png)
 
 Add 3 `AWS::EC2::SubnetRouteTableAssociation` components to the Grid, remember you can duplicate using `D`.
 
@@ -635,7 +635,7 @@ Subscribe the `SubnetId` to the corresponding `Public (1|2|3)` Component.
 
 Subscribe to your `Region` and `AWS Credential` properties.
 
-![Create the Public Subnet Route Table Association Components](./aws-vpc/create-public-subnet-route-table-association.png)
+![Create the Public Subnet Route Table Association Components](./aws-vpc-cli-web-application/create-public-subnet-route-table-association.png)
 
 Press `Esc` to return to the Grid.
 
@@ -683,7 +683,7 @@ Subscribe the `GatewayId` property to the `IGW` Component.
 
 Subscribe to your `Region` and `AWS Credential` properties.
 
-![Create a Route Component](./aws-vpc/create-route.png)
+![Create a Route Component](./aws-vpc-cli-web-application/create-route.png)
 
 Press `Esc` to return to the Grid.
 
@@ -694,13 +694,13 @@ Press `Esc` to return to the Grid.
 
 Let's take a look at what we have in our Workspace so far.
 
-![Current State of Play Grid](./aws-vpc/current-state-of-play-grid.png)
+![Current State of Play Grid](./aws-vpc-cli-web-application/current-state-of-play-grid.png)
 
 You can see all the components you have created so far in descending order. In the Actions panel on the right hand side you can see there are 17 Actions queued - these are all the real world resources that will be created once you apply your change set.
 
 If you click the `Map` button in the top left of the Grid, you seen the visual relationship between the components are creating:
 
-![Current State of Play Map](./aws-vpc/current-state-of-play-map.png)
+![Current State of Play Map](./aws-vpc-cli-web-application/current-state-of-play-map.png)
 
 Where the Components are placed on this Map is determined by the dependant property Subscriptions.
 
@@ -791,7 +791,7 @@ Subscribe the `VpcId` property to the `VpcId` of the How to VPC Component for ea
 
 Subscribe the `Region` and `AWS Credential` properties in each Private Subnet.
 
-![Create the Private Subnet Components](./aws-vpc/create-private-subnet.png)
+![Create the Private Subnet Components](./aws-vpc-cli-web-application/create-private-subnet.png)
 
 Here you can see the 3 Private Subnet components and their property Subscriptions. Click the Grid button in the top left of the screen to return to the Grid.
 
@@ -872,7 +872,7 @@ Subscribe the `VpcId` property to the `VpcId` of the How to VPC Component for ea
 
 Subscribe the `Region` and `AWS Credential` properties in each Private Route table.
 
-![Create the Private Route Table Components](./aws-vpc/create-private-route-table.png)
+![Create the Private Route Table Components](./aws-vpc-cli-web-application/create-private-route-table.png)
 
 </TabPanel>
 </DocTabs>
@@ -961,7 +961,7 @@ Subscribe to the corresponding `NatGatewayId` property of each existing `NAT Gat
 
 Subscribe to the `Region` and `AWS Credential` properties.
 
-![Create the Private Route Components](./aws-vpc/create-private-route.png)
+![Create the Private Route Components](./aws-vpc-cli-web-application/create-private-route.png)
 
 Press `Esc` to return to the Grid.
 
@@ -1046,7 +1046,7 @@ Subscribe the `SubnetId` property to the `SubnetId` of the corresponding Private
 
 Subscribe to the `Region` and `AWS Credential` properties.
 
-![Create the Private Subnet Route Table Associations](./aws-vpc/create-private-subnet-route-table-association.png)
+![Create the Private Subnet Route Table Associations](./aws-vpc-cli-web-application/create-private-subnet-route-table-association.png)
 
 Press `Esc` to return to your Grid.
 
@@ -1057,11 +1057,11 @@ Press `Esc` to return to your Grid.
 
 Now you can see a scrollable list of 29 pending Create Actions, and all of the individual Components on the Grid required for you to create your How to VPC!
 
-![All Pending Create Actions](./aws-vpc/all-pending-create-actions.png)
+![All Pending Create Actions](./aws-vpc-cli-web-application/all-pending-create-actions.png)
 
 You can also view the Map to see all of your Components:
 
-![View all pending on Map](./aws-vpc/view-all-pending-on-map.png)
+![View all pending on Map](./aws-vpc-cli-web-application/view-all-pending-on-map.png)
 
 <DocTabs tabs="CLI,Web Application">
 <TabPanel value="CLI">
@@ -1086,7 +1086,7 @@ Now click the `Apply Change Set` button to:
 - Create 3 Elastic IPs and 3 NAT Gateways
 - Create 4 Route Tables and the subnet associations and 4 Routes
 
-![Apply your Change Set](./aws-vpc/apply.png)
+![Apply your Change Set](./aws-vpc-cli-web-application/apply.png)
 
 </TabPanel>
 </DocTabs>

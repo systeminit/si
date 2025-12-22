@@ -106,7 +106,17 @@ export default withMermaid(defineConfig({
         items: [
           {
             text: "AWS VPC",
-            link: "/how-tos/aws-vpc",
+            collapsed: false,
+            items: [
+              {
+                text: "AI Agent",
+                link: "/how-tos/aws-vpc-ai-agent",
+              },
+              {
+                text: "CLI or Web Application",
+                link: "/how-tos/aws-vpc-cli-web-application",
+              },
+            ],
           },
           {
             text: "Create Templates",

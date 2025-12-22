@@ -27,3 +27,6 @@ http://*   https://:splat  301!
 
 # Redirect moved explanation docs
 /explanation/search-syntax  /reference/search  301
+
+# Redirect moved how-to docs
+/how-tos/aws-vpc /how-tos/aws-vpc-ai-agent
