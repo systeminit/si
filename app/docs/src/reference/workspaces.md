@@ -248,6 +248,113 @@ response = api.remove_member(
 </TabPanel>
 </DocTabs>
 
+### Leaving a Workspace
+
+<DocTabs tabs="CLI, Web Application,Public API">
+<TabPanel value="CLI">
+
+To leave a workspace with the CLI:
+
+```shellscript [leave a workspace]
+si workspace leave "Production Workspace"
+? Are you sure you want to leave workspace "Production Workspace"? (y/N) › Yes
+✨ info    si              Leaving workspace "Production Workspace"...
+✨ info    si              Successfully left workspace: Production Workspace
+
+```
+
+</TabPanel>
+<TabPanel value="Web Application">
+Click on the 'Gear' icon on an existing workspace and choose 'Settings'.
+
+![Workspace Settings Link](./workspaces/workspace-settings.png)
+
+From here you can change leave your workspace.
+
+:::info
+
+Workspace owners are not permitted to leave their workspace
+
+:::
+
+</TabPanel>
+<TabPanel value="Public API">
+
+:::code-group
+
+```typescript [TypeScript]
+const api = new WorkspaceManagementApi(apiConfig);
+const response = api.leaveWorkspace({
+  workspaceId,
+});
+```
+
+```python [Python]
+api = WorkspaceManagementApi(client)
+api.leave_workspace(
+    workspace_id="your-workspace-id"
+)
+```
+
+:::
+
+</TabPanel>
+</DocTabs>
+
+### Deleting a Workspace
+
+<DocTabs tabs="CLI, Web Application,Public API">
+<TabPanel value="CLI">
+
+To delete a workspace with the CLI:
+
+```shellscript [delete a workspace]
+si workspace delete "Production Workspace"
+? Are you sure you want to delete workspace "Production Workspace"? To recover this operation, you need to contact customer service at support@systeminit.com. This operation will leave any existing resources running. (y/N) › Yes
+✨ info    si              Deleting workspace "Production Workspace"...
+✨ info    si              Successfully deleted workspace: Production Workspace
+```
+
+</TabPanel>
+<TabPanel value="Web Application">
+Click on the 'Gear' icon on an existing workspace and choose 'Settings'.
+
+![Workspace Settings Link](./workspaces/workspace-settings.png)
+
+From here you can change delete your workspace. 
+
+:::info
+
+Only workspace owners can delete a workspace!
+
+:::
+
+![Workspace Settings Page](./workspaces/workspace-settings-page.png)
+
+</TabPanel>
+<TabPanel value="Public API">
+
+:::code-group
+
+```typescript [TypeScript]
+const api = new WorkspaceManagementApi(apiConfig);
+const response = api.deleteWorkspace({
+  workspaceId,
+});
+```
+
+```python [Python]
+api = WorkspaceManagementApi(client)
+api.delete_workspace(
+    workspace_id="your-workspace-id"
+)
+```
+
+:::
+
+</TabPanel>
+</DocTabs>
+
 ## API Token Management
 
 API Tokens in System Initiative are used by the [Public API](./public-api.md)
@@ -272,7 +379,7 @@ Each option will lead you to the API Tokens management screen:
 
 ![API Token Screen](./workspaces/api-token-screen.png)
 
-## Generate API Token
+### Generate API Token
 
 To generate a new API token, provide a _token name_ and a suitable _expiration_,
 such as '1y' or '48h'.
@@ -285,7 +392,7 @@ access to your System Initiative workspace on your behalf!
 
 It will then appear in the 'Active Tokens' list.
 
-## Revoking an API Token
+### Revoking an API Token
 
 While API Tokens cannot be retrieved, they can be revoked. To revoke an API
 token, click the 'Trash' icon next to the token you wish to revoke. It will then
