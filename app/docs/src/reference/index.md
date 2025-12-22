@@ -25,6 +25,6 @@ Reference guides are technical descriptions of System Initiative's components an
 
 ## Developer Resources
 
-- [TypeScript Function API](./typescript/README.md) - TypeScript API documentation for writing functions
+- [CLI](./si-cli.md) - Command-line tool for managing schemas, templates, components, and AI agent integration
 - [Public API](./public-api.md) - REST API reference for programmatic workspace management
-- [SI CLI](./si-cli.md) - Command-line tool for managing schemas, templates, components, and AI agent integration
+- [TypeScript Function API](./typescript/README.md) - TypeScript API documentation for writing functions

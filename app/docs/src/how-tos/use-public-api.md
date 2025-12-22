@@ -31,10 +31,10 @@ code will be available at the end of the guide.
 
 The application we are going to write uses 2 environment variables:
 
-- SI_API_TOKEN
-- SI_WORKSPACE_ID
+- `SI_API_TOKEN`
+- `SI_WORKSPACE_ID`
 
-These are required and the application will fail without them
+These are required and the application will fail without them.
 
 ### Create a Python Virtual Environment
 
