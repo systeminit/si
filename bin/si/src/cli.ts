@@ -102,6 +102,14 @@ import {
   callWorkspaceCreate,
   type WorkspaceCreateOptions,
 } from "./workspace/create.ts";
+import {
+  callWorkspaceLeave,
+  type WorkspaceLeaveOptions,
+} from "./workspace/leave.ts";
+import {
+  callWorkspaceDelete,
+  type WorkspaceDeleteOptions,
+} from "./workspace/delete.ts";
 
 /**
  * Global options available to all commands
@@ -481,7 +489,9 @@ function buildWorkspaceCommand() {
       }
     })
     .command("switch", buildWorkspaceSwitchCommand())
-    .command("create", buildWorkspaceCreateCommand());
+    .command("create", buildWorkspaceCreateCommand())
+    .command("leave", buildWorkspaceLeaveCommand())
+    .command("delete", buildWorkspaceDeleteCommand());
 }
 
 /**
@@ -620,6 +630,42 @@ function buildWorkspaceCreateCommand() {
         ...options,
         name: name as string,
       } as WorkspaceCreateOptions);
+    });
+}
+
+/**
+ * Builds the leave-workspace command for leaving a workspace.
+ *
+ * @returns A SubCommand configured for workspace leaving
+ * @internal
+ */
+function buildWorkspaceLeaveCommand() {
+  return createSubCommand(true)
+    .description("Leave a workspace")
+    .arguments("<workspace:string>")
+    .action(async (options, workspace) => {
+      await callWorkspaceLeave({
+        ...options,
+        workspace: workspace as string,
+      } as WorkspaceLeaveOptions);
+    });
+}
+
+/**
+ * Builds the delete-workspace command for deleting a workspace.
+ *
+ * @returns A SubCommand configured for workspace deletion
+ * @internal
+ */
+function buildWorkspaceDeleteCommand() {
+  return createSubCommand(true)
+    .description("Delete a workspace (soft delete - can be recovered)")
+    .arguments("<workspace:string>")
+    .action(async (options, workspace) => {
+      await callWorkspaceDelete({
+        ...options,
+        workspace: workspace as string,
+      } as WorkspaceDeleteOptions);
     });
 }
 
