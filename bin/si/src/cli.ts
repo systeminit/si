@@ -43,11 +43,13 @@ import { callComponentGet } from "./component/get.ts";
 import { callComponentUpdate } from "./component/update.ts";
 import { callComponentDelete } from "./component/delete.ts";
 import { callComponentSearch } from "./component/search.ts";
+import { callComponentUpgrade } from "./component/upgrade.ts";
 import type { TemplateContextOptions } from "./template/run.ts";
 import type { ComponentGetOptions } from "./component/get.ts";
 import type { ComponentUpdateOptions } from "./component/update.ts";
 import type { ComponentDeleteOptions } from "./component/delete.ts";
 import type { ComponentSearchOptions } from "./component/search.ts";
+import type { ComponentUpgradeOptions } from "./component/upgrade.ts";
 import { type AiAgentInitOptions, callAiAgentInit } from "./ai-agent/init.ts";
 import {
   type AiAgentStartOptions,
@@ -1332,6 +1334,34 @@ function buildComponentCommand() {
           await callComponentSearch(
             query as string,
             options as ComponentSearchOptions,
+          );
+        }),
+    )
+    .command(
+      "upgrade",
+      createSubCommand(true)
+        .description("Upgrade component(s) to latest schema version")
+        .arguments("[component:string]")
+        .option(
+          "-c, --change-set <id-or-name:string>",
+          "Change set ID or name (creates new change set if not specified)",
+        )
+        .option(
+          "--all",
+          "Upgrade all upgradable components (required if no component specified)",
+        )
+        .option(
+          "--schema-category <category:string>",
+          "Filter by schema category (e.g., AWS::EC2) when using --all",
+        )
+        .option(
+          "--dry-run",
+          "Preview upgrades without applying changes",
+        )
+        .action(async (options, component) => {
+          await callComponentUpgrade(
+            component as string | undefined,
+            options as ComponentUpgradeOptions,
           );
         }),
     );

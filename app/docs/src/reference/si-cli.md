@@ -801,6 +801,68 @@ si component search <query> [OPTIONS]
 | --full-component  | flag     | false    | Show full component details for each result           | false   |
 
 
+### component upgrade
+
+Upgrade component(s) to the latest schema version.
+
+This command checks if components can be upgraded before creating a change set, preventing orphaned change sets for no-op operations. If no change set is specified, it automatically creates one with a descriptive name.
+
+> Syntax
+
+```bash
+# Upgrade a specific component
+si component upgrade <component> [OPTIONS]
+
+# Upgrade all upgradable components
+si component upgrade --all [OPTIONS]
+```
+
+#### Parameters
+
+| Name               | Type   | Required | Description                                                      | Default |
+| ------------------ | ------ | -------- | ---------------------------------------------------------------- | ------- |
+| component          | string | false    | Component name or ID (required unless --all is specified)        | -       |
+| -c, --change-set   | string | false    | Change set ID or name (creates new change set if not specified)  | -       |
+| --all              | flag   | false    | Upgrade all upgradable components (required if no component specified) | false |
+| --schema-category  | string | false    | Filter by schema category (e.g., `AWS::EC2`) when using --all   | -       |
+| --dry-run          | flag   | false    | Preview upgrades without applying changes                        | false   |
+
+#### Examples
+
+```bash
+# Upgrade a specific component (auto-creates change set)
+si component upgrade my-ec2-instance
+
+# Upgrade a component in an existing change set
+si component upgrade my-s3-bucket -c my-changes
+
+# Upgrade all upgradable components
+si component upgrade --all
+
+# Upgrade only AWS::EC2 components
+si component upgrade --all --schema-category AWS::EC2
+
+# Preview what would be upgraded
+si component upgrade --all --dry-run
+```
+
+#### Behavior
+
+- Checks if components can be upgraded in HEAD **before** creating a change set
+- If nothing can be upgraded, exits cleanly without creating a change set
+- For bulk upgrades (`--all`), processes components one at a time
+- Individual component failures don't stop bulk upgrades
+- Auto-created change sets are abandoned on error
+- Returns exit code 1 if any components fail to upgrade
+
+#### Notes
+
+- Components can only be upgraded in a change set, not on HEAD
+- The `canBeUpgraded` flag indicates if a newer schema version is available
+- Use `--schema-category` to filter bulk upgrades (e.g., `AWS::EC2`, `Hetzner::Cloud`)
+- Schema category filters use the format `Provider::Service` (e.g., `Microsoft.Network` won't work, use `Microsoft`)
+
+
 ## secret
 
 Manage secrets and credentials.
