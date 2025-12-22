@@ -286,6 +286,23 @@ export function hasStoredConfig(): boolean {
 }
 
 /**
+ * Removes a workspace folder from local storage.
+ *
+ * @param userId - The user ID who owns the workspace
+ * @param workspaceId - The workspace ID to remove
+ */
+export function removeWorkspace(userId: string, workspaceId: string): void {
+  try {
+    const workspacePath = join(authPath(), userId, workspaceId);
+    Deno.removeSync(workspacePath, { recursive: true });
+  } catch (error) {
+    if (!(error instanceof Deno.errors.NotFound)) {
+      console.warn(`Failed to remove workspace folder: ${error}`);
+    }
+  }
+}
+
+/**
  * Logs out by clearing the current user and workspace settings.
  *
  * If clear = true this removes the stored authentication state for the user,

@@ -177,6 +177,50 @@ si workspace create <name>
 | name | string | true     | Name of workspace   |
 
 
+### workspace leave
+
+Leave a workspace (remove yourself as a member).
+
+> Syntax
+
+```bash
+si workspace leave <workspace>
+```
+
+#### Parameters
+
+| Name      | Type   | Required | Description                                     |
+| --------- | ------ | -------- | ----------------------------------------------- |
+| workspace | string | true     | Workspace ID or name to leave                   |
+
+::: warning
+You cannot leave your current workspace. Switch to a different workspace first using `si workspace switch`.
+:::
+
+
+### workspace delete
+
+Delete a workspace (soft delete - can be recovered by contacting support).
+
+> Syntax
+
+```bash
+si workspace delete <workspace>
+```
+
+#### Parameters
+
+| Name      | Type   | Required | Description                                     |
+| --------- | ------ | -------- | ----------------------------------------------- |
+| workspace | string | true     | Workspace ID or name to delete                  |
+
+::: warning
+You cannot delete your current workspace. Switch to a different workspace first using `si workspace switch`.
+
+To recover a deleted workspace, contact customer service at support@systeminit.com. Note that this operation will leave any existing resources running.
+:::
+
+
 ## change-set
 
 Manage change sets.
