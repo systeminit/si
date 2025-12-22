@@ -1,10 +1,10 @@
 # Review
 
-Before applying a [change set](./change-sets.md) to your infrastructure, it is essential to review all changes to [components](./components.md) included and what [actions](./actions.md) which will run. System Initiative's review screen allows you to review all potential changes to ensure that you always feel confident applying them to the real world.
+Before applying a [change set](./change-sets.md) to your infrastructure, it is essential to review all changes to [components](./components.md) included and what [actions](./actions.md) will run. System Initiative's review screen lets you review all potential changes to ensure you're always confident applying them to the real world.
 
 :::tip
 
-If you are looking to audit changes instead, you may want to use the [Audit Logs](./audit-logs.md) feature.
+If you are looking to audit changes instead, you should use the [Audit Logs](./audit-logs.md) feature.
 
 :::
 
@@ -12,9 +12,9 @@ If you are looking to audit changes instead, you may want to use the [Audit Logs
 
 ![Review Screen](./review/review.png)
 
-The review screen within the web application offers the best way to see all changes within a change set and review them.
+The review screen in the web application is the best way to view all changes in a change set and review them.
 
-Within a change set, the review screen can be opened by clicking the eye icon in the center section of the top navigation bar, or it can be opened by pressing the hotkey `R`. The review screen can also be closed via the `Escape` key.
+Within a change set, the review screen can be opened by clicking the eye icon in the center section of the top navigation bar, or by pressing the hotkey `R`. The review screen can also be closed via the `Escape` key.
 
 ## Components Changed
 
@@ -26,9 +26,9 @@ The left Components Changed area shows a list of all changed components, broken 
 - **Updated Components**: Modified components are marked with a tilde ~
 - **Deleted/Erased Components**: Removed components are shown with a minus -
 
-After the change type icon on the left, each component entry in the list shows the [schema](./schema.md) name of the component, the individual component's name, and finally an icon for the [qualification](./qualification.md) status of the component.
+After the change type icon on the left, each component entry in the list shows the [schema](./schema.md) name of the component, the component's name, and finally an icon indicating the component's [qualification](./qualification.md) status.
 
-The currently selected component is highlighted, and you can either click a component in the list to select it or page between components in the list using the `arrow keys` or `tab` and `shift+tab`.
+The currently selected component is highlighted, and you can either click a component in the list to select it or page through components using the `arrow keys`, `tab`, and `shift+tab`.
 
 ## Component Change Details
 
@@ -36,7 +36,7 @@ The currently selected component is highlighted, and you can either click a comp
 
 The central area of the review screen shows the specific details of the changes made to one component. In the screenshot above, three changes have been made to an `AWS::EC2::VPC` component called "demo-vpc" - two boolean properties (`EnableDnsSupport` and `EnableDnsHostnames`) have been changed, and one new piece of data (`InstanceTenancy`) was set to a new value.
 
-Each change can be reverted back to what is on HEAD by clicking its `Revert` button.
+Each change can be reverted to the HEAD state by clicking its `Revert` button.
 
 You can navigate to the component details page for the component by clicking the text on the header of this section.
 
@@ -54,14 +54,14 @@ When a component is deleted or erased in a change set, no actions are available 
 
 ![Component History](./review/history.png)
 
-The component history section at the top of the right panel shows a detailed log of all edits made to the selected component, including edits which no longer result in a change.
+The component history section at the top of the right panel shows a detailed log of all edits made to the selected component, including edits that no longer result in a change.
 
-The screenshot above shows five edits done to demo-vpc, but since one of these edits reverted the other one, these changes only resulted in the three changes shown in the [component change details](#component-change-details) section.
+The screenshot above shows five edits to demo-vpc, but because one of them reverted the other, these changes resulted only in the three shown in the [component change details](#component-change-details) section.
 
 ## Diff
 
 ![Diff](./review/diff.png)
 
-The diff section at the bottom of the right panel shows the diff view for the component.
+The diff section at the bottom of the right panel shows the component's diff view.
 
 You can easily copy the diff by clicking the copy icon in the top right of the code area.
