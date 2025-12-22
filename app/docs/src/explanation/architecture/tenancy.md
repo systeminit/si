@@ -5,7 +5,7 @@ prev:
   text: 'Function Execution Framework'
   link: '/explanation/architecture/functions'
 next:
-  text: 'AI-Native Collaboration'
+  text: 'AI Native Collaboration'
   link: '/explanation/architecture/ai'
 ---
 

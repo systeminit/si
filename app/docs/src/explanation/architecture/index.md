@@ -6,7 +6,7 @@ next:
 
 # System Initiative Architecture
 
-System Initiative is an AI native infrastructure automation platform built on a distributed execution engine that manages the full lifecycle of the system state through an immutable directed acyclic graph (DAG).
+System Initiative is an AI Native Infrastructure Automation Platform built on a distributed execution engine that manages the full lifecycle of the system state through an immutable directed acyclic graph (DAG).
 
 This architecture addresses the fundamental fragmentation problem in traditional infrastructure tooling, where the complete system state is scattered across disconnected phases—separate data models, repositories, and workflows for definition, planning, execution, resource state tracking, and collaboration—creating consistency gaps and requiring complex synchronization mechanisms between lifecycle stages. The platform eliminates this fragmentation by applying operational transform algorithms to immutable snapshots that contain all system state—infrastructure components, relationships, definitions, functions, and metadata—within a single in-memory data model.
 
@@ -16,16 +16,16 @@ Infrastructure modifications flow through isolated change sets, providing simula
 
 Infrastructure resources are modeled as explicit digital twins containing both declared configuration intent and provider-reported reality. This dual representation surfaces configuration drift as first-class data rather than hiding it behind abstraction layers, enabling deterministic reconciliation workflows based on observable system state.
 
-The unified data model delivers real-time collaborative editing and AI-native interactions while facilitating extensibility and customization, maintaining data consistency guarantees, keeping changes isolated within simulations, and maintaining complete audit trails.
+The unified data model delivers real-time collaborative editing and AI Native interactions while facilitating extensibility and customization, maintaining data consistency guarantees, keeping changes isolated within simulations, and maintaining complete audit trails.
 
 ## Dive Deeper
 
 The following sections explore core aspects of the System Initiative architecture:
 
-- [The Distributed Execution Engine](./engine.md)
-- [The Data Model](./snapshot.md)
+- [AI Native Collaboration](./ai.md)
 - [Change Control: Change Sets](./change-control.md)
 - [Digital Twin](./digital-twin.md)
 - [Function Execution Framework](./functions.md)
 - [Tenancy and Access Control](./tenancy.md)
-- [AI Native Collaboration](./ai.md)
+- [The Data Model](./snapshot.md)
+- [The Distributed Execution Engine](./engine.md)
