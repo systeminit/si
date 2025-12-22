@@ -34,7 +34,7 @@ design), or as a part of automated workflows you define.
 
 ## Management Function Arguments
 
-Management functions receive an `Input` argument which is an object that
+Management functions receive an `Input` argument, which is an object that
 contains:
 
 - `currentView`: The view in which the function executes (defaults to "DEFAULT")
