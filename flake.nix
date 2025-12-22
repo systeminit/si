@@ -46,6 +46,15 @@
         (final: prev: {
           deno = pinnedDenoVersion.legacyPackages.${prev.system}.deno;
         })
+        # NOTE 2025-01-21: gjs-1.86.0 has a test failure (CommandLine test crashes)
+        # Skip GTK tests and disable doCheck to allow the build to complete
+        # See: https://github.com/NixOS/nixpkgs/pull/461666
+        (final: prev: {
+          gjs = prev.gjs.overrideAttrs (old: {
+            mesonFlags = (old.mesonFlags or []) ++ ["-Dskip_gtk_tests=true"];
+            doCheck = false;
+          });
+        })
       ];
 
       pkgs = import nixpkgs {inherit overlays system;};
