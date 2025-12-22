@@ -2,17 +2,17 @@
 
 Users in System Initiative map to people, and have access to multiple [workspaces](./workspaces.md)
 
-## Creating new Users
+## Creating New Users
 
 Follow the [setup tutorial](../tutorials/setup.md) to create a new user, or start the [sign up process directly](https://auth.systeminit.com/signup).
 
 :::info
-System Initiative supports SAML and SSO! Reach out to us at info@systeminit.com to learn more.
+System Initiative supports SAML and SSO! Contact us at help@systeminit.com to learn more.
 :::
 
-## Setting your Profile
+## Setting Your Profile
 
-From within a workspace in our Web Application, click on the circular avatar in the upper right-corner and select 'Profile':
+From within a workspace in our Web Application, click on the circular avatar in the upper right corner and select 'Profile':
 
 ![Change Profile](./users/find-profile.png)
 
