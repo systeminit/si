@@ -18,7 +18,7 @@ generated code:
 - Updates automatically when the component's properties change
 
 This provides transparency into exactly what configuration will be sent to
-external services and allows you to validate it before taking action.
+external services and allows you to validate them before taking action.
 
 ## When Code Generation Functions Run
 
@@ -59,7 +59,7 @@ contains the actual generated output.
 
 ## Accessing Generated Code
 
-Other functions can access generated code through the component's `code`
+Other functions can access the generated code through the component's `code`
 property. For example, an action function might use:
 
 ```typescript
