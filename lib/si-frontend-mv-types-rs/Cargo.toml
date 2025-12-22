@@ -13,7 +13,6 @@ chrono = { workspace = true }
 inventory = { workspace = true }
 json-patch = { workspace = true }
 lazy_static = { workspace = true }
-module-index-types = { path = "../../lib/module-index-types" }
 remain = { workspace = true }
 serde = { workspace = true }
 serde-tuple-vec-map = { workspace = true }

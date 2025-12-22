@@ -9,18 +9,14 @@ rust-version.workspace = true
 publish.workspace = true
 
 [dependencies]
-audit-database = { path = "../audit-database" }
 axum = { workspace = true }
-bytes = { workspace = true }
 dal = { path = "../dal" }
-edda-client = { path = "../edda-client" }
 frigg = { path = "../frigg" }
 futures = { workspace = true }
 futures-lite = { workspace = true }
 miniz_oxide = { workspace = true }
 nats-multiplexer-client = { path = "../nats-multiplexer-client" }
 nats-std = { path = "../nats-std" }
-nats-subscriber = { path = "../nats-subscriber" }
 remain = { workspace = true }
 sdf-core = { path = "../sdf-core" }
 sdf-extract = { path = "../sdf-extract" }
@@ -28,13 +24,10 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 si-data-nats = { path = "../si-data-nats" }
 si-data-pg = { path = "../si-data-pg" }
-si-data-spicedb = { path = "../si-data-spicedb" }
 si-events = { path = "../si-events-rs" }
 si-frontend-mv-types = { path = "../si-frontend-mv-types-rs" }
 si-frontend-types = { path = "../si-frontend-types-rs" }
-si-posthog = { path = "../si-posthog-rs" }
 telemetry = { path = "../telemetry-rs" }
-telemetry-nats = { path = "../telemetry-nats-rs" }
 telemetry-utils = { path = "../telemetry-utils-rs" }
 thiserror = { workspace = true }
 tokio = { workspace = true }

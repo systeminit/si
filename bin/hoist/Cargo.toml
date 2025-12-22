@@ -15,7 +15,6 @@ futures = { workspace = true }
 indicatif = { workspace = true }
 json-patch = { workspace = true }
 module-index-client = { path = "../../lib/module-index-client" }
-nix = { workspace = true }
 rand = { workspace = true }
 remain = { workspace = true }
 serde_json = { workspace = true }

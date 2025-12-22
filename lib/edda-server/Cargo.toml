@@ -13,7 +13,6 @@ buck2-resources = { path = "../../lib/buck2-resources" }
 bytes = { workspace = true }
 dal = { path = "../../lib/dal" }
 dal-materialized-views = { path = "../../lib/dal-materialized-views" }
-dal-materialized-views-macros = { path = "../../lib/dal-materialized-views-macros" }
 derive_builder = { workspace = true }
 edda-core = { path = "../../lib/edda-core" }
 frigg = { path = "../../lib/frigg" }

@@ -32,4 +32,3 @@ cyclone-server = { path = "../../lib/cyclone-server" }
 tempfile = { workspace = true }
 test-log = { workspace = true }
 tracing = { workspace = true }
-tracing-subscriber = { workspace = true }

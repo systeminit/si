@@ -15,4 +15,3 @@ remain = { workspace = true }
 serde = { workspace = true }
 si-data-nats = { path = "../../lib/si-data-nats" }
 si-events = { path = "../../lib/si-events-rs" }
-strum = { workspace = true }

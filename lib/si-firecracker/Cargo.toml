@@ -10,12 +10,10 @@ publish.workspace = true
 
 [dependencies]
 cyclone-core = { path = "../cyclone-core" }
-futures = { workspace = true }
 nix = { workspace = true }
 remain = { workspace = true }
 thiserror = { workspace = true }
 tokio = { workspace = true }
-tokio-util = { workspace = true }
 tracing = { workspace = true }
 
 [target.'cfg(target_os = "linux")'.dependencies]

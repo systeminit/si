@@ -10,24 +10,19 @@ publish.workspace = true
 
 [dependencies]
 audit-database = { path = "../../lib/audit-database" }
-auth-api-client = { path = "../../lib/auth-api-client" }
 axum = { workspace = true }
 dal = { path = "../../lib/dal" }
-derive_more = { workspace = true }
 edda-client = { path = "../../lib/edda-client" }
 edda-core = { path = "../../lib/edda-core" }
 frigg = { path = "../../lib/frigg" }
 futures-lite = { workspace = true }
 hyper = { workspace = true }
 nats-multiplexer-client = { path = "../../lib/nats-multiplexer-client" }
-once_cell = { workspace = true }
 permissions = { path = "../../lib/permissions" }
-regex = { workspace = true }
 remain = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 serde_with = { workspace = true }
-si-data-nats = { path = "../../lib/si-data-nats" }
 si-data-spicedb = { path = "../../lib/si-data-spicedb" }
 si-db = { path = "../../lib/si-db" }
 si-events = { path = "../../lib/si-events-rs" }

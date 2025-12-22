@@ -9,14 +9,11 @@ rust-version.workspace = true
 publish.workspace = true
 
 [dependencies]
-async-trait = { workspace = true }
 axum = { workspace = true }
 convert_case = { workspace = true }
 dal = { path = "../../lib/dal" }
-futures = { workspace = true }
 hyper = { workspace = true }
 module-index-client = { path = "../../lib/module-index-client" }
-permissions = { path = "../../lib/permissions" }
 remain = { workspace = true }
 reqwest = { workspace = true }
 sdf-core = { path = "../../lib/sdf-core" }
@@ -32,6 +29,5 @@ si-std = { path = "../../lib/si-std" }
 telemetry = { path = "../../lib/telemetry-rs" }
 thiserror = { workspace = true }
 tokio = { workspace = true }
-tokio-stream = { workspace = true }
 ulid = { workspace = true }
 url = { workspace = true }

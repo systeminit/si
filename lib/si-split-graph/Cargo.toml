@@ -9,7 +9,6 @@ rust-version.workspace = true
 publish.workspace = true
 
 [dependencies]
-async-trait = { workspace = true }
 blake3 = { workspace = true }
 dashmap = { workspace = true }
 petgraph = { workspace = true }
@@ -18,6 +17,4 @@ si-events = { path = "../../lib/si-events-rs" }
 si-id = { path = "../../lib/si-id" }
 strum = { workspace = true }
 telemetry = { path = "../../lib/telemetry-rs" }
-telemetry-nats = { path = "../../lib/telemetry-nats-rs" }
-telemetry-utils = { path = "../../lib/telemetry-utils-rs" }
 thiserror = { workspace = true }

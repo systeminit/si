@@ -13,12 +13,10 @@ axum = { workspace = true }
 buck2-resources = { path = "../../lib/buck2-resources" }
 dashmap = { workspace = true }
 derive_builder = { workspace = true }
-futures = { workspace = true }
 hyper = { workspace = true }
 innit-core = { path = "../../lib/innit-core" }
 remain = { workspace = true }
 rustls = { workspace = true }
-rustls-pemfile = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 si-data-acmpca = { path = "../../lib/si-data-acmpca" }
@@ -29,11 +27,8 @@ si-tls = { path = "../../lib/si-tls" }
 telemetry = { path = "../../lib/telemetry-rs" }
 thiserror = { workspace = true }
 tokio = { workspace = true }
-tokio-rustls = { workspace = true }
-tokio-stream = { workspace = true }
 tokio-util = { workspace = true }
 tower = { workspace = true }
 tower-http = { workspace = true }
 tracing-tunnel = { workspace = true }
 ulid = { workspace = true }
-url = { workspace = true }

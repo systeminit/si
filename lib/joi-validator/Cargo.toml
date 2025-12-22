@@ -10,13 +10,10 @@ publish.workspace = true
 
 [dependencies]
 chrono = { workspace = true }
-derive_more = { workspace = true }
 remain = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 serde_with = { workspace = true }
-si-std = { path = "../../lib/si-std" }
-telemetry = { path = "../../lib/telemetry-rs" }
 thiserror = { workspace = true }
 
 [dev-dependencies]
