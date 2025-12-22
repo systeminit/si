@@ -318,6 +318,11 @@
 
                   <div class="flex flex-row gap-sm">
                     <NewButton
+                      label="Restart Workspace Setup"
+                      tone="action"
+                      @click="ctx.reopenOnboarding"
+                    />
+                    <NewButton
                       label="How-to guide"
                       tone="neutral"
                       href="https://docs.systeminit.com/how-tos/"
