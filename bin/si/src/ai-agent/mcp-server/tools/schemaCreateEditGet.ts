@@ -5,6 +5,8 @@ import {
   SchemasApi,
   type SchemaVariantFunc,
 } from "@systeminit/api-client";
+import type { GetSchemaVariantV1Response } from "@systeminit/api-client";
+import { cache, generateCacheKey } from "../cache.ts";
 import { Context } from "../../../context.ts";
 import {
   errorResponse,
@@ -169,14 +171,32 @@ export function schemaCreateEditGetTool(server: McpServer) {
             const schemaVariantId = responseUnlock.data.unlockedVariantId;
 
             // then we need to get the info about that unlocked variant
-            const responseGetVariant = await siSchemasApi.getVariant({
-              workspaceId: workspaceId,
-              changeSetId,
+            // Try cache first
+            const variantCacheKey = generateCacheKey(
+              "schema-variant",
               schemaId,
               schemaVariantId,
-            });
+              changeSetId,
+            );
+            let variantData = cache.get<GetSchemaVariantV1Response>(
+              variantCacheKey,
+              changeSetId,
+            );
 
-            const assetFuncId = responseGetVariant.data.assetFuncId;
+            if (!variantData) {
+              // Cache miss - fetch from API
+              const responseGetVariant = await siSchemasApi.getVariant({
+                workspaceId: workspaceId,
+                changeSetId,
+                schemaId,
+                schemaVariantId,
+              });
+              variantData = responseGetVariant.data;
+              // Cache the result
+              cache.set(variantCacheKey, variantData, changeSetId);
+            }
+
+            const assetFuncId = variantData.assetFuncId;
 
             // then we need to get the current asset func code
             const responseGetFunc = await siFuncsApi.getFunc({
@@ -187,12 +207,11 @@ export function schemaCreateEditGetTool(server: McpServer) {
 
             // populate data to return from the tool
             touchedSchemaId = schemaId;
-            touchedDefinitionFunction =
-              definitionFunction ?? responseGetFunc.data.code;
-            touchedName =
-              createOrEditSchemaV1Request.name ??
-              responseGetVariant.data.displayName;
-            touchedFunctions = responseGetVariant.data.variantFuncs;
+            touchedDefinitionFunction = definitionFunction ??
+              responseGetFunc.data.code;
+            touchedName = createOrEditSchemaV1Request.name ??
+              variantData.displayName;
+            touchedFunctions = variantData.variantFuncs;
 
             // information gathering complete, now only move onto updating if we have new data
             if (
@@ -202,18 +221,18 @@ export function schemaCreateEditGetTool(server: McpServer) {
               )
             ) {
               // if this schema is a builtin, we need to warn the user accordingly
-              if (responseGetVariant.data.installedFromUpstream) {
+              if (variantData.installedFromUpstream) {
                 hints =
                   "Warn the user that because this schema was created by System Initiative that they will lose their customizations to it if they upgrade the schema. Repeat this warning every time the user edits any builtin schema.";
               }
 
               // so that we can build the final request with the current data as the default
               const updateSchemaVariantV1Request = {
-                name: responseGetVariant.data.displayName,
-                description: responseGetVariant.data.description,
-                category: responseGetVariant.data.category,
-                color: responseGetVariant.data.color,
-                link: responseGetVariant.data.link,
+                name: variantData.displayName,
+                description: variantData.description,
+                category: variantData.category,
+                color: variantData.color,
+                link: variantData.link,
                 code: responseGetFunc.data.code,
                 // then injecting our new data to overwrite any field we put a value for
                 ...createOrEditSchemaV1Request,
@@ -245,8 +264,8 @@ export function schemaCreateEditGetTool(server: McpServer) {
               });
             }
 
-            const code =
-              definitionFunction ?? DEFAULT_SCHEMA_DEFINITION_FUNCTION;
+            const code = definitionFunction ??
+              DEFAULT_SCHEMA_DEFINITION_FUNCTION;
 
             // next we call the endpoint to create a new schema
             const responseCreate = await siSchemasApi.createSchema({

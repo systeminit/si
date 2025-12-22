@@ -11,10 +11,12 @@ import {
   withAnalytics,
 } from "./commonBehavior.ts";
 import { isValid } from "ulid";
+import { cache, generateCacheKey } from "../cache.ts";
 
 const name = "schema-find";
 const title = "Find component schemas";
-const description = `<description>Finds component schemas by name or Schema ID. Returns the Schema ID, Name, Description, and external documentation Link. On failure, returns error details. When looking for AWS Schemas, you can use the AWS Cloudformation Resource name (examples: AWS::EC2::Instance, AWS::Bedrock::Agent, or AWS::ControlTower::EnabledBaseline). When looking for Azure Schemas, you can use the Azure ARM Resource name (examples: Microsoft.Compute/sshKeys, Microsoft.Compute/virtualMachineScaleSets,  Microsoft.Cdn/profiles or Microsoft.KeyVault/vaults)</description><usage>Use this tool to find if a schema exists in System Initiative, to look up the Schema Name or Schema ID if you need it, or to display high level information about the schema.</usage>`;
+const description =
+  `<description>Finds component schemas by name or Schema ID. Returns the Schema ID, Name, Description, and external documentation Link. On failure, returns error details. When looking for AWS Schemas, you can use the AWS Cloudformation Resource name (examples: AWS::EC2::Instance, AWS::Bedrock::Agent, or AWS::ControlTower::EnabledBaseline). When looking for Azure Schemas, you can use the Azure ARM Resource name (examples: Microsoft.Compute/sshKeys, Microsoft.Compute/virtualMachineScaleSets,  Microsoft.Cdn/profiles or Microsoft.KeyVault/vaults)</description><usage>Use this tool to find if a schema exists in System Initiative, to look up the Schema Name or Schema ID if you need it, or to display high level information about the schema.</usage>`;
 
 const FindSchemaInputSchemaRaw = {
   changeSetId: z
@@ -103,14 +105,30 @@ export function schemaFindTool(server: McpServer) {
               });
               schemaId = response.data.schemaId;
             } catch (error) {
-              const errorMessage =
-                error instanceof Error ? error.message : String(error);
+              const errorMessage = error instanceof Error
+                ? error.message
+                : String(error);
               return errorResponse({
-                message: `Unable to find the schema - check the name and try again. Tell the user we are sorry: ${errorMessage}`,
+                message:
+                  `Unable to find the schema - check the name and try again. Tell the user we are sorry: ${errorMessage}`,
               });
             }
           } else {
             schemaId = schemaNameOrId;
+          }
+
+          // Check cache first
+          const cacheKey = generateCacheKey(
+            "schema-find",
+            schemaId,
+            changeSetId!,
+          );
+          const cachedData = cache.get(cacheKey, changeSetId!);
+          if (cachedData) {
+            return successResponse(
+              cachedData,
+              "For AWS schemas, you can use a web search to find the cloudformation schema. If Azure (or Microsoft) schemas, you can use a web search to find the Azure resource manager specification",
+            );
           }
 
           const response = await siApi.getDefaultVariant({
@@ -136,9 +154,12 @@ export function schemaFindTool(server: McpServer) {
             responseData.link = response.data.link;
           }
 
+          // Cache the result
+          cache.set(cacheKey, responseData, changeSetId!);
+
           return successResponse(
             responseData,
-            "You can use a web search to find the cloudformation schema",
+            "For AWS schemas, you can use a web search to find the cloudformation schema. If Azure (or Microsoft) schemas, you can use a web search to find the Azure resource manager specification",
           );
         } catch (error) {
           return errorResponse(error);
