@@ -6,11 +6,11 @@ They are end-to-end encrypted, both within the application, on the wire, and at 
 
 ## Encryption Strategy
 
-System Initiative is a multi-tenant system, starting with an 'installation' of System Initiative. For most people, this means our SaaS platform - but it can also mean a local development instance, a BYOC instance, or a custom installation. Each installation of System Initiative generates an [Ed25519 Public Key Pair](https://en.wikipedia.org/wiki/EdDSA) for the installation. This is the *cluster key*.
+System Initiative is a multi-tenant system that starts with an 'installation' of System Initiative. For most people, this means our SaaS platform - but it can also mean a local development instance, a Bring Your Own Cloud (BYOC) instance, or a custom installation. Each installation of System Initiative generates an [Ed25519 Public Key Pair](https://en.wikipedia.org/wiki/EdDSA) for the installation. This is the *cluster key*.
 
-Each [workspace](./workspaces.md) generates an [Ed25519 Public Key Pair](https://en.wikipedia.org/wiki/EdDSA) specific to it. The private side of the key is encrypted with the *cluster key*, which ensures that is encrypted at rest (even if the database is compromised and dumped in plain text). It cannot be retrieved without the corresponding *cluster key*. This is the *workspace key*.
+Each [workspace](./workspaces.md) generates an [Ed25519 Public Key Pair](https://en.wikipedia.org/wiki/EdDSA) specific to it. The private side of the key is encrypted with the *cluster key*, which ensures that it is encrypted at rest (even if the database is compromised and dumped in plain text). It cannot be retrieved without the corresponding *cluster key*. This is the *workspace key*.
 
-When a secret is put into System Initiative, it is first encrypted with the *public workspace key* for the workspace it is destined for. This ensures that *your secret* is also encrypted at rest, and cannot be retrieved without the corresponding *cluster key* and *workspace key*.
+When a secret is put into System Initiative, it is first encrypted with the *public workspace key* for the workspace it is destined for. This ensures that *your secret* is also encrypted at rest and cannot be retrieved without the corresponding *cluster key* and *workspace key*.
 
 When one of your secrets is needed, we decrypt it and inject it into the micro-vm assigned to your function.
 
@@ -40,9 +40,9 @@ flowchart TD
 Should the secret appear in any logs or output, it will be automatically *redacted*. System Initiative will not leak your secrets.
 
 :::warning
-No programmable system is perfectly secure against secret ex-filtration. You must still trust the underlying function code that your secret is being used by.
+No programmable system is perfectly secure against secret exfiltration. You must still trust the underlying function code that your secret is being used by.
 
-All "built in" schemas provided by System Initiative have been vetted for ex-filtration risk.
+All "built-in" schemas provided by System Initiative have been vetted for exfiltration risk.
 :::
 
 ## Creating a Secret
@@ -71,13 +71,13 @@ $ si secret create "AWS Credential" --name "aws-credential-dev" --use-local-prof
 ✨ info    si            Change Set ID: 01KC7YBATRTKY603YKW5WAZXQ0
 ```
 
-By using `--use-local-profile` the CLI will read the credentials from your environment. You can also pass `--interactive` and it will prompt the user for the parameters. 
+By using `--use-local-profile`, the CLI will read the credentials from your environment. You can also pass `--interactive` and it will prompt the user for the parameters. 
 
 </TabPanel>
 <TabPanel value="Web Application">
 
 Creating a secret is identical to creating any other component.
-Press the `C` hotkey or click the 'Add Component' button, from the Grid or Map views. Search for the name of your secret, press enter, and add the secret information to the components attributes.
+Press the `C` hotkey or click the 'Add Component' button from the Grid or Map views. Search for the name of your secret, press enter, and add the secret information to the component's attributes.
 
 
 ![Creating a Secret](./secrets/creating-a-secret.png)
@@ -126,7 +126,7 @@ response = secrets_api.create_secret(
 Both examples use the [Public Create Secret API](./public-api#create-a-secret). See the [Public API](./public-api) documentation and the SDKs for more details on configuring the SDK to communicate with System Initiative.
 
 :::warning
-Unlike adding secrets through the Web Application, embedding secrets in your own programs using the Public API can expose leak those secrets. We recommend injecting the values through environment variables or other means, rather than hard-coding them in your API calls.
+Unlike adding secrets through the Web Application, embedding secrets in your programs using the Public API can expose them. We recommend injecting the values through environment variables or other means, rather than hard-coding them in your API calls.
 :::
 
 </TabPanel>
@@ -233,13 +233,13 @@ $ si secret update "aws-credential-dev" --use-local-profile
 ✨ info    si            Change Set ID: 01KC7YTW94K3BKRD91X7PRJ6PN
 ```
 
-By using `--use-local-profile` the CLI will read the credentials from your environment. You can also pass `--interactive` and it will prompt the user for the parameters. You can change the name of the secret by passing `--name` and / or the description by passing `--description`.
+By using `--use-local-profile`, the CLI will read the credentials from your environment. You can also pass `--interactive` and it will prompt the user for the parameters. You can change the name of the secret by passing `--name` and/or the description by passing `--description`.
 
 </TabPanel>
 <TabPanel value="Web Application">
 To update a secret, replace the secret data with the new information.
 
-First navigate to the component, and click on the secret you want to update:
+First, navigate to the component, and click on the secret you want to update:
 
 ![Update Secret by selecting it](./secrets/update-secret-first-click.png)
 
@@ -303,7 +303,7 @@ Unlike updating secrets through the Web Application, embedding secrets in your o
 
 ## Delete a Secret
 
-You can delete (or erase) secrets like like [components](./secrets/creating-a-secret.png).
+You can delete (or erase) secrets like [components](./secrets/creating-a-secret.png).
 
 :::tip
 When a secret is deleted, it cannot be recovered, even from within a change set.
@@ -322,11 +322,11 @@ Reference the name of the specific secret you want to delete or erase in the pro
 </TabPanel>
 <TabPanel value="Web Application">
 
-To delete a secret, either delete the component from the Grid screen by right clicking on the component and selecting 'Delete':
+To delete a secret, either delete the component from the Grid screen by right-clicking on the component and selecting 'Delete':
 
 ![Delete from Grid](./secrets/grid-delete.png)
 
-Or the map, by right clicking the component and selecting 'Delete':
+Or the map, by right-clicking the component and selecting 'Delete':
 
 ![Delete from Map](./secrets/map-delete.png)
 
@@ -358,7 +358,7 @@ delete_response = secrets_api.delete_secret(
 :::
 
 :::warning
-Unlike updating secrets through the Web Application, embedding secrets in your own programs using the Public API can expose leak those secrets. We recommend injecting the values through environment variables or other means, rather than hard-coding them in your API calls.
+Unlike updating secrets through the Web Application, embedding secrets in your own programs using the Public API can expose them. We recommend injecting the values through environment variables or other means, rather than hard-coding them in your API calls.
 :::
 
 </TabPanel>
