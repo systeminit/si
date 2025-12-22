@@ -14,15 +14,12 @@ import {
   matchSecretType,
   suggestSimilarSecretTypes,
 } from "./definitions.ts";
+import { promptForDescription, promptForSecretName } from "./prompts.ts";
 import {
-  promptForDescription,
-  promptForSecretName,
-} from "./prompts.ts";
-import {
-  getOrCreateChangeSet,
   collectFieldValues,
   displaySecretDryRun,
   displaySecretSuccess,
+  getOrCreateChangeSet,
 } from "./shared.ts";
 
 /**
@@ -114,7 +111,7 @@ export async function callSecretCreate(
 
     // Match the secret type
     let definition = matchSecretType(options.secretType, definitions, ctx);
-    
+
     let installedSecretType = false;
 
     if (!definition) {
@@ -167,6 +164,21 @@ export async function callSecretCreate(
             "No secret definitions available. The schema could not be found or installed.",
           );
         }
+
+        // Abandon the change set if we created it
+        if (wasCreated) {
+          ctx.logger.info("Abandoning change set due to error...");
+          try {
+            await changeSetsApi.abandonChangeSet({
+              workspaceId,
+              changeSetId,
+            });
+            ctx.logger.debug(`Abandoned change set: ${changeSetId}`);
+          } catch (abandonError) {
+            ctx.logger.warn(`Failed to abandon change set: ${abandonError}`);
+          }
+        }
+
         Deno.exit(1);
       }
     }
@@ -193,7 +205,12 @@ export async function callSecretCreate(
 
     // Collect field values
     // For creates, don't allow empty field values
-    const fieldValues = await collectFieldValues(ctx, definition, options, false);
+    const fieldValues = await collectFieldValues(
+      ctx,
+      definition,
+      options,
+      false,
+    );
 
     // Dry run mode - show what would be created
     if (options.dryRun) {
@@ -274,7 +291,7 @@ export async function callSecretCreate(
         "Other components can now use this credential",
       ],
     });
-    
+
     ctx.analytics.trackEvent("secret create", {
       secretType: definition.secretDefinition,
       secretName,
@@ -283,7 +300,6 @@ export async function callSecretCreate(
       installedSecretType,
       dryRun: options.dryRun ?? false,
     });
-    
   } catch (error) {
     ctx.logger.error(`Failed to create secret: ${error}`);
 
