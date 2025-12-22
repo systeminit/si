@@ -3,7 +3,7 @@ outline:
   level: [2, 3, 4]
 ---
 
-# How to Create and Manage an AWS VPC
+# How to Create and Manage an AWS VPC with the AI Agent
 
 This how-to assumes:
 
@@ -384,9 +384,3 @@ Delete all VPC components and apply the change set.
 ```
 
 All your new resources should be deleted from your AWS account.
-
-## Alternate Guide for the CLI or the UI
-
-If you want to dive into the nuts-and-bolts of driving System Initiative manually, you can
-follow an alternate version this same guide to [create a best practice AWS VPC using the CLI or
-the UI](aws-vpc-cli-ui).
