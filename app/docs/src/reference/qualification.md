@@ -27,7 +27,7 @@ Qualification functions execute automatically:
 - When component properties change
 - After code generation functions complete (if the qualification depends on
   generated code)
-- On HEAD when you explicitly run qualifications to check actual resource state
+- On HEAD, when you explicitly run qualifications to check the actual resource state
 
 Unlike most functions, qualifications can run on HEAD without going through a
 change set, since they only read state and don't modify resources.
@@ -43,7 +43,7 @@ Qualification functions take a `component` argument with these properties:
 - `deleted_at`: Timestamp string if the component has been deleted
 
 This gives qualifications access to all component and resource data, allowing
-them to validate configuration comprehensively, both for the model and the real
+them to validate the configuration comprehensively, both for the model and the real
 world.
 
 ## Qualification Function Return Value
