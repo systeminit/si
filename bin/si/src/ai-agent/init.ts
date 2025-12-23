@@ -18,12 +18,12 @@ import {
   createAgentsMd,
   createClaudeMd,
   createClaudeSettings,
+  createClaudeSkills,
   createCodexConfig,
   createCursorConfig,
   createCursorRules,
   createMcpConfig,
   createOpenCodeConfig,
-  createOpenCodeMd,
   DEFAULT_CONFIG,
   getConfigPath,
   loadConfig,
@@ -114,6 +114,10 @@ export async function callAiAgentInit(
       logger.info("📄 Creating CLAUDE.md context file...");
       const claudeMdPath = await createClaudeMd(targetDir);
       logger.info(`✅ Created CLAUDE.md: ${claudeMdPath}\n`);
+
+      logger.info("📄 Creating Claude Code skills for cloud providers...");
+      const skillPaths = await createClaudeSkills(targetDir);
+      logger.info(`✅ Created ${skillPaths.length} skills in .claude/skills/\n`);
       break;
     }
 
@@ -132,6 +136,7 @@ export async function callAiAgentInit(
       logger.info("📄 Creating AGENTS.md context file...");
       const agentsMdPath = await createAgentsMd(targetDir);
       logger.info(`✅ Created AGENTS.md: ${agentsMdPath}\n`);
+      logger.info(`✅ Created provider docs in docs/providers/ (loaded on-demand)\n`);
 
       logger.info("ℹ️  Codex uses global config at ~/.codex/config.toml");
       logger.info(
@@ -142,6 +147,10 @@ export async function callAiAgentInit(
     }
 
     case "opencode": {
+      logger.info("📄 Creating AGENTS.md context file...");
+      const agentsMdPath = await createAgentsMd(targetDir);
+      logger.info(`✅ Created AGENTS.md: ${agentsMdPath}\n`);
+
       logger.info("📄 Creating OpenCode.ai configuration...");
       const openCodeConfigPath = await createOpenCodeConfig(
         apiToken,
@@ -149,10 +158,7 @@ export async function callAiAgentInit(
         targetDir,
       );
       logger.info(`✅ Created OpenCode config: ${openCodeConfigPath}\n`);
-
-      logger.info("📄 Creating OPENCODE.md context file...");
-      const openCodeMdPath = await createOpenCodeMd(targetDir);
-      logger.info(`✅ Created OPENCODE.md: ${openCodeMdPath}\n`);
+      logger.info(`✅ Created provider docs in docs/providers/ (loaded on-demand)\n`);
       break;
     }
 
@@ -165,6 +171,7 @@ export async function callAiAgentInit(
       logger.info("📄 Creating .cursorrules context file...");
       const cursorRulesPath = await createCursorRules(targetDir);
       logger.info(`✅ Created .cursorrules: ${cursorRulesPath}\n`);
+      logger.info(`✅ Created provider docs in docs/providers/\n`);
       break;
     }
 

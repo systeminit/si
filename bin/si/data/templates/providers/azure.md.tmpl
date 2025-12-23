@@ -1,0 +1,300 @@
+# Microsoft Azure Components
+
+System Initiative supports Microsoft Azure infrastructure management using Azure
+Resource Manager (ARM) resource types.
+
+## IMPORTANT NOTE Regarding Azure/Microsoft
+
+Users may use the terms "Azure" and "Microsoft" interchangibly to refer to
+Microsoft Azure components, schemas, resources, etc. Respond to users
+accordingly.
+
+When looking up a schema by its name, the schema name will start with Microsoft,
+not Azure.
+
+## Key Microsoft Azure Schemas
+
+- **Microsoft Credential** - Authentication credentials for Azure - the secret
+  details must be provided by the user
+- **Microsoft.Resources/locations** - Azure region specification (e.g.,
+  "eastus", "westus2") - prefer using this component to just using a location
+  string
+- **Microsoft.Resources/subscription** - Azure subscription ID reference -
+  prefer using this component to just using a subscription ID string
+- **Microsoft.Resources/resourceGroups** - Container for related Azure resources
+  (required for most resources) - resource groups can be managed via CRUD by
+  System Initiative
+
+When creating any Microsoft Azure component that is not a Microsoft Credential,
+Microsoft.Resources/locations, or Microsoft.Resources/subscription those three
+components must exist to be subscribed to by the component. The only exception
+to this is the Microsoft.Resources/resourceGroups component, which only requires
+a Microsoft Credential and Microsoft.Resources/locations.
+
+If a resource group does not exist, create one for the user.
+
+## Creating Microsoft Azure Components
+
+**Important Schema Naming:**
+
+- Schema names use the **Microsoft ARM resource type format** (e.g.,
+  `Microsoft.Network/loadBalancers`)
+- This differs from AWS (AWS::Service::Resource) and Hetzner
+  (Hetzner::Cloud::Resources)
+
+**Required Foundation Components:**
+
+Before creating Microsoft Azure resources, you need:
+
+1. **Microsoft Credential** component for authentication
+2. **Microsoft.Resources/locations** component for the location
+3. **Microsoft.Resources/subscription** component with subscription ID
+4. **Microsoft.Resources/resourceGroups** component as a container
+
+**Standard Attribute Pattern:**
+
+Microsoft Azure resources typically use these subscriptions:
+
+```
+/domain/name: "resource-name" - this path may also include the slug at the end of the schema name (for example, "/domain/resourceGroupName")
+/domain/subscriptionId: {$source: {component: "subscription-id", path: "/domain/subscriptionId"}}
+/domain/location: {$source: {component: "location-id", path: "/domain/name"}}
+/domain/resourceGroup: {$source: {component: "rg-id", path: "/domain/name"}}
+```
+
+**If multiple Microsoft Credential or Microsoft.Resources/locations components
+are present, you should ask the user which ones they want to use.**
+
+**Array Attribute Paths:** When setting array attributes in Microsoft Azure
+resources:
+
+- Arrays use `[array]` placeholder with an item suffix:
+  `/domain/properties/subnets/[array]/name`
+- Replace `[array]` with zero-indexed numbers:
+  `/domain/properties/subnets/0/name`
+- Some arrays have item suffixes like `addressPrefixesItem`:
+  `/domain/properties/addressSpace/addressPrefixes/[array]/addressPrefixesItem`
+- Always check the schema attributes to see the exact path structure
+- Nested arrays follow the same pattern:
+  `/domain/properties/securityRules/[array]/properties/sourceAddressPrefixes/[array]/sourceAddressPrefixesItem`
+
+##### Using Microsoft ID Template for Azure Resource IDs
+
+Microsoft Azure resources often require full resource IDs for references. Favor
+getting this ID from the `/resource_value/id` of the subscribed component. If a
+resource is not available, you can also use **Microsoft ID Template** components
+(NOT generic String Templates) to build these dynamically:
+
+**Microsoft ID Template Attributes:**
+
+- `/domain/Template` - The full Azure resource ID pattern (optional, you can let
+  it auto-generate from the variables)
+- `/domain/Variables/subId` - Subscription ID (required) - subscribe to Azure
+  Subscription component
+- `/domain/Variables/group` - Resource group name (required) - subscribe to
+  Resource Group component
+- `/domain/Variables/type` - Azure resource type like
+  `Microsoft.Network/loadBalancers` (required)
+- `/domain/Variables/resourceSubPath` - Path to sub-resource like
+  `vnet1/subnets` (optional)
+- `/domain/Variables/value` - The resource name (required)
+- `/domain/Rendered/Value` - The final rendered ID (DO NOT SET - this is the
+  output you subscribe to)
+
+**Pattern for simple resource IDs:**
+
+```
+Component: lb-backend-pool-id (Microsoft ID Template)
+Attributes:
+  /domain/Variables/subId: {$source: {component: "subscription-id", path: "/domain/subscriptionId"}}
+  /domain/Variables/group: {$source: {component: "rg-id", path: "/domain/name"}}
+  /domain/Variables/type: "Microsoft.Network/loadBalancers"
+  /domain/Variables/resourceSubPath: {$source: {component: "lb-id", path: "/domain/name"}} + "/backendAddressPools"
+  /domain/Variables/value: {$source: {component: "lb-id", path: "/domain/properties/backendAddressPools/0/name"}}
+```
+
+**Pattern for nested sub-resources (e.g., subnet within VNet):**
+
+```
+Component: subnet-id (Microsoft ID Template)
+Attributes:
+  /domain/Variables/subId: {$source: {component: "subscription-id", path: "/domain/subscriptionId"}}
+  /domain/Variables/group: {$source: {component: "rg-id", path: "/domain/name"}}
+  /domain/Variables/type: "Microsoft.Network/virtualNetworks"
+  /domain/Variables/resourceSubPath: "vnet1/subnets"
+  /domain/Variables/value: "my-subnet"
+```
+
+**Or specify the full template explicitly:**
+
+```
+Component: resource-id (Microsoft ID Template)
+Attributes:
+  /domain/Template: "/subscriptions/MySubscriptionId/resourceGroups/MyResourceGroup/providers/Microsoft.Network/virtualNetworks/vnet1/subnets/Subnet"
+  /domain/Variables/subId: {$source: {component: "subscription-id", path: "/domain/subscriptionId"}}
+  /domain/Variables/group: {$source: {component: "rg-id", path: "/domain/name"}}
+  /domain/Variables/type: "Microsoft.Network/virtualNetworks"
+  /domain/Variables/value: "Subnet"
+```
+
+**Access the rendered output by subscribing to:**
+
+```
+/domain/Rendered/Value
+```
+
+## Common Azure Resource Examples
+
+**Example: Creating a Virtual Network**
+
+```
+Component: my-vnet (Microsoft.Network/virtualNetworks)
+Attributes:
+  /domain/name: "my-vnet"
+  /domain/subscriptionId: {$source: {component: "subscription-id", path: "/domain/subscriptionId"}}
+  /domain/location: {$source: {component: "location-id", path: "/domain/name"}}
+  /domain/resourceGroup: {$source: {component: "rg-id", path: "/domain/name"}}
+  /domain/properties/addressSpace/addressPrefixes/0/addressPrefixesItem: "10.0.0.0/16"
+  /domain/properties/subnets/0/name: "default"
+  /domain/properties/subnets/0/properties/addressPrefix: "10.0.0.0/24"
+```
+
+**Example: Creating a Network Security Group**
+
+```
+Component: my-nsg (Microsoft.Network/networkSecurityGroups)
+Attributes:
+  /domain/name: "my-nsg"
+  /domain/subscriptionId: {$source: {component: "subscription-id", path: "/domain/subscriptionId"}}
+  /domain/location: {$source: {component: "location-id", path: "/domain/name"}}
+  /domain/resourceGroup: {$source: {component: "rg-id", path: "/domain/name"}}
+  /domain/properties/securityRules/0/name: "AllowHTTP"
+  /domain/properties/securityRules/0/properties/protocol: "*"
+  /domain/properties/securityRules/0/properties/sourcePortRange: "*"
+  /domain/properties/securityRules/0/properties/destinationPortRange: "80"
+  /domain/properties/securityRules/0/properties/sourceAddressPrefix: "Internet"
+  /domain/properties/securityRules/0/properties/destinationAddressPrefix: "*"
+  /domain/properties/securityRules/0/properties/access: "Allow"
+  /domain/properties/securityRules/0/properties/priority: 100
+  /domain/properties/securityRules/0/properties/direction: "Inbound"
+
+Note: Use schema-attributes-list to verify the exact paths. Some NSG attributes may use item suffixes.
+```
+
+**Example: Creating a Virtual Machine**
+
+```
+Component: my-vm (Microsoft.Compute/virtualMachines)
+Attributes:
+  /domain/name: "my-vm"
+  /domain/subscriptionId: {$source: {component: "subscription-id", path: "/domain/subscriptionId"}}
+  /domain/location: {$source: {component: "location-id", path: "/domain/name"}}
+  /domain/resourceGroup: {$source: {component: "rg-id", path: "/domain/name"}}
+  /domain/properties/hardwareProfile/vmSize: "Standard_B2s"
+  /domain/properties/storageProfile/imageReference/publisher: "Canonical"
+  /domain/properties/storageProfile/imageReference/offer: "0001-com-ubuntu-server-jammy"
+  /domain/properties/storageProfile/imageReference/sku: "22_04-lts-gen2"
+  /domain/properties/storageProfile/imageReference/version: "latest"
+  /domain/properties/storageProfile/osDisk/createOption: "FromImage"
+  /domain/properties/storageProfile/osDisk/managedDisk/storageAccountType: "Standard_LRS"
+  /domain/properties/osProfile/computerName: "my-vm"
+  /domain/properties/osProfile/adminUsername: "azureuser"
+  /domain/properties/osProfile/adminPassword: "P@ssw0rd1234!"
+  /domain/properties/osProfile/linuxConfiguration/disablePasswordAuthentication: false
+  /domain/properties/networkProfile/networkInterfaces/0/id: {$source: {component: "nic-id", path: "/resource_value/id"}}
+
+Note: Use schema-attributes-list to verify array attribute paths - some may require item suffixes.
+```
+
+**Example: Creating a Load Balancer with Microsoft ID Templates**
+
+```
+# 1. Create Microsoft ID Templates for Load Balancer sub-resources
+Component: lb-frontend-ip-id (Microsoft ID Template)
+Attributes:
+  /domain/Variables/subId: {$source: {component: "subscription-id", path: "/domain/subscriptionId"}}
+  /domain/Variables/group: {$source: {component: "rg-id", path: "/domain/name"}}
+  /domain/Variables/type: "Microsoft.Network/loadBalancers"
+  /domain/Variables/resourceSubPath: "my-lb/frontendIPConfigurations"
+  /domain/Variables/value: "LoadBalancerFrontEnd"
+
+Component: lb-backend-pool-id (Microsoft ID Template)
+Attributes:
+  /domain/Variables/subId: {$source: {component: "subscription-id", path: "/domain/subscriptionId"}}
+  /domain/Variables/group: {$source: {component: "rg-id", path: "/domain/name"}}
+  /domain/Variables/type: "Microsoft.Network/loadBalancers"
+  /domain/Variables/resourceSubPath: "my-lb/backendAddressPools"
+  /domain/Variables/value: "BackendPool"
+
+Component: lb-probe-id (Microsoft ID Template)
+Attributes:
+  /domain/Variables/subId: {$source: {component: "subscription-id", path: "/domain/subscriptionId"}}
+  /domain/Variables/group: {$source: {component: "rg-id", path: "/domain/name"}}
+  /domain/Variables/type: "Microsoft.Network/loadBalancers"
+  /domain/Variables/resourceSubPath: "my-lb/probes"
+  /domain/Variables/value: "HealthProbe"
+
+# 2. Create Load Balancer
+Component: my-lb (Microsoft.Network/loadBalancers)
+Attributes:
+  /domain/name: "my-lb"
+  /domain/subscriptionId: {$source: {component: "subscription-id", path: "/domain/subscriptionId"}}
+  /domain/location: {$source: {component: "location-id", path: "/domain/name"}}
+  /domain/resourceGroup: {$source: {component: "rg-id", path: "/domain/name"}}
+  /domain/sku/name: "Standard"
+  /domain/sku/tier: "Regional"
+  /domain/properties/frontendIPConfigurations/0/name: "LoadBalancerFrontEnd"
+  /domain/properties/frontendIPConfigurations/0/id: {$source: {component: "lb-frontend-ip-id", path: "/domain/Rendered/Value"}}
+  /domain/properties/frontendIPConfigurations/0/properties/publicIPAddress/id: {$source: {component: "public-ip-id", path: "/resource_value/id"}}
+  /domain/properties/backendAddressPools/0/name: "BackendPool"
+  /domain/properties/backendAddressPools/0/id: {$source: {component: "lb-backend-pool-id", path: "/domain/Rendered/Value"}}
+  /domain/properties/probes/0/name: "HealthProbe"
+  /domain/properties/probes/0/id: {$source: {component: "lb-probe-id", path: "/domain/Rendered/Value"}}
+  /domain/properties/probes/0/properties/protocol: "Tcp"
+  /domain/properties/probes/0/properties/port: 80
+  /domain/properties/probes/0/properties/intervalInSeconds: 5
+  /domain/properties/probes/0/properties/numberOfProbes: 2
+```
+
+## Azure Resource Actions
+
+Most Azure resources support these actions:
+
+- **Create Asset** - Create the resource in Azure
+- **Update Asset** - Update existing resource
+- **Refresh Asset** - Sync state from Azure
+- **Delete Asset** - Remove the resource from Azure
+
+And these management functions:
+
+- **Import from Azure** - Import an existing resource by ID
+- **Discover on Azure** - Discover all resources of this type
+
+##### Azure Resource ID Format
+
+Azure resource IDs follow this predictable pattern:
+
+```
+/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceType}/{resourceName}
+```
+
+For nested resources (like subnets within a VNet):
+
+```
+/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.Network/virtualNetworks/{vnetName}/subnets/{subnetName}
+```
+
+Use Microsoft ID Template components to build these IDs dynamically and
+subscribe other resources to the rendered output.
+
+## Planning Azure Infrastructure
+
+Before creating Azure components:
+
+1. Create foundation components (Credential, Location, Subscription)
+2. Create Resource Group(s) to organize resources
+3. Plan network topology (VNet, subnets, NSGs)
+4. Create network resources before compute resources
+5. Use **Microsoft ID Template** components for complex resource ID references
+6. Check qualifications after each component creation
+7. Apply change set and monitor actions for deployment status

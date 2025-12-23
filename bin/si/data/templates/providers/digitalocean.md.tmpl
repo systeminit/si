@@ -1,0 +1,29 @@
+# DigitalOcean Components
+
+System Initiative supports DigitalOcean infrastructure management through
+dedicated schemas.
+
+## Creating DigitalOcean Components
+
+**Important Naming Convention:**
+
+- Schema names have spaces between words, not colons, slashes, or hyphens.
+
+**Credential Requirements:** When creating DigitalOcean components, always set:
+
+- `/secrets/DigitalOcean Credential`: should subscribe to a DigitalOcean
+  Credential component's `/secrets/DigitalOcean Credential`
+
+## DigitalOcean Resource Actions
+
+Most DigitalOcean resources support these actions:
+
+- **Create Asset** - Create the resource in DigitalOcean
+- **Update Asset** - Update existing resource
+- **Refresh Asset** - Sync state from DigitalOcean
+- **Delete Asset** - Remove the resource from DigitalOcean
+
+And these management functions:
+
+- **Import from DigitalOcean** - Import an existing resource by ID
+- **Discover on DigitalOcean** - Discover all resources of this type
