@@ -284,10 +284,46 @@ export const GCP_PROP_OVERRIDES: Record<
   },
 };
 
+// GKE asset name constant
+const GCP_GKE = "Google Cloud Kubernetes Engine";
+
 export const GCP_SCHEMA_OVERRIDES: Map<
   string,
   SchemaOverrideFn | SchemaOverrideFn[]
 > = new Map([
+  // GKE Clusters - add location prop for URL construction and exclude deprecated fields
+  [
+    `${GCP_GKE} Projects.Locations.Clusters`,
+    (spec: ExpandedPkgSpec) => {
+      const variant = spec.schemas[0].variants[0];
+      const domainPath = variant.domain.metadata.propPath;
+
+      // Add a writable "location" prop with ComboBox for regions
+      // This is used by the action functions to auto-construct the `parent` URL parameter
+      const locationProp = createScalarProp("location", "string", domainPath, true);
+      locationProp.data.widgetKind = "ComboBox";
+      locationProp.data.widgetOptions = GCP_REGIONS.map(r => ({ label: r.label, value: r.value }));
+      locationProp.data.documentation = "The region or zone where the cluster will be created (e.g., us-central1 for regional, us-central1-a for zonal).";
+      // Mark as required - needed to construct the parent URL parameter
+      locationProp.data.validationFormat = JSON.stringify({ type: "string", flags: { presence: "required" } });
+      variant.domain.entries.push(locationProp);
+
+      // Mark "location" as excluded from codegen (not sent in request body, only used for URL)
+      // Also mark deprecated loggingService/monitoringService as excluded (conflict with loggingConfig/monitoringConfig)
+      const extraProp = objectPropForOverride(variant.domain, "extra");
+      const propUsageMapProp = propForOverride(extraProp, "PropUsageMap");
+      if (propUsageMapProp.data?.defaultValue) {
+        const propUsageMap = JSON.parse(
+          propUsageMapProp.data.defaultValue as string,
+        );
+        propUsageMap.excluded = propUsageMap.excluded || [];
+        propUsageMap.excluded.push("location"); // Only for URL, not request body
+        propUsageMap.excluded.push("loggingService"); // Deprecated, conflicts with loggingConfig
+        propUsageMap.excluded.push("monitoringService"); // Deprecated, conflicts with monitoringConfig
+        propUsageMapProp.data.defaultValue = JSON.stringify(propUsageMap);
+      }
+    },
+  ],
   [
     "Google Cloud Compute Engine InstanceGroups",
     (spec: ExpandedPkgSpec) => {
