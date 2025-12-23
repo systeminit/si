@@ -220,6 +220,106 @@ You cannot delete your current workspace. Switch to a different workspace first 
 To recover a deleted workspace, contact customer service at support@systeminit.com. Note that this operation will leave any existing resources running.
 :::
 
+---
+
+### workspace members
+
+Manage workspace members (view and invite/update).
+
+#### workspace members list
+
+List all members of the current workspace.
+
+> Syntax
+
+```bash
+si workspace members list
+```
+
+##### Parameters
+
+None
+
+##### Output
+
+Displays a table showing:
+- Email address
+- Nickname
+- Role (OWNER, APPROVER, or COLLABORATOR)
+
+Members are sorted by role (Owner first, then Approvers, then Collaborators).
+
+##### Example
+
+```bash
+$ si workspace members list
+
+Members of workspace "Production":
+
+Email                    Nickname  Role
+alice@example.com        Alice     OWNER
+bob@example.com          Bob       APPROVER
+charlie@example.com      Charlie   COLLABORATOR
+
+Total members: 3
+```
+
+---
+
+#### workspace members manage
+
+Invite new members or update existing member roles in the current workspace.
+
+> Syntax
+
+```bash
+si workspace members manage [email] [OPTIONS]
+```
+
+##### Parameters
+
+| Name         | Type   | Required | Description                                                     |
+| ------------ | ------ | -------- | --------------------------------------------------------------- |
+| email        | string | false    | Single email to invite as collaborator                          |
+| --approvers  | string | false    | Comma-separated list of emails to invite/update as approvers    |
+
+##### Behavior
+
+**For new members:**
+- Members are invited to the workspace
+- Default role is collaborator
+- Members invited with `--approvers` are promoted to approver role after invitation
+
+**For existing members:**
+- Detects if the user is already a member
+- Updates their role if different from the requested role
+- Supports both role upgrades (collaborator → approver) and downgrades (approver → collaborator)
+- Skips invitation if user already has the correct role
+
+##### Examples
+
+```bash
+# Invite a single collaborator
+si workspace members manage alice@example.com
+
+# Invite multiple collaborators
+si workspace members manage alice@example.com,bob@example.com
+
+# Invite/promote users to approvers
+si workspace members manage --approvers charlie@example.com,dave@example.com
+
+# Promote existing collaborator to approver
+si workspace members manage --approvers alice@example.com
+
+# Demote existing approver to collaborator
+si workspace members manage bob@example.com
+```
+
+::: tip
+All members are invited as collaborators by default. Use `--approvers` to invite or promote members to the approver role, which allows them to approve change sets and invite other members.
+:::
+
+---
 
 ## change-set
 
