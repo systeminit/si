@@ -17,7 +17,7 @@ required per workspace. The notifications that are supported are:
 - Approval rejected
 - Change Set applied
 
-## Creating the integration
+## Creating the Integration
 
 A Slack webhook integration can be created by following the steps below:
 
@@ -28,8 +28,8 @@ A Slack webhook integration can be created by following the steps below:
 
 ![Workspace Integrations](./enable-slack-webhook/workspace-integrations.png)
 
-Please Note: The Slack webhook URL is available for all users of the workspace to
-see but changing a Slack webhook is limited to
+Please note: The Slack webhook URL is available for all users of the workspace to
+see, but changing a Slack webhook is limited to
 [workspace owners and approvers](https://docs.systeminit.com/reference/authorization-roles).
 
 All changes to the Slack webhook will be logged in the workspace audit log.
