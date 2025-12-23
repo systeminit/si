@@ -5,7 +5,6 @@ rust_library(
     deps = [
         "//lib/dal:dal",
         "//lib/module-index-client:module-index-client",
-        "//lib/permissions:permissions",
         "//lib/sdf-core:sdf-core",
         "//lib/sdf-extract:sdf-extract",
         "//lib/si-data-pg:si-data-pg",
@@ -24,7 +23,6 @@ rust_library(
         "//third-party/rust:serde_json",
         "//third-party/rust:thiserror",
         "//third-party/rust:tokio",
-        "//third-party/rust:tokio-stream",
         "//third-party/rust:ulid",
         "//third-party/rust:url",
     ],

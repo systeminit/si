@@ -19,4 +19,3 @@ si-data-nats = { path = "../../lib/si-data-nats" }
 telemetry = { path = "../../lib/telemetry-rs" }
 telemetry-nats = { path = "../../lib/telemetry-nats-rs" }
 thiserror = { workspace = true }
-tokio = { workspace = true }

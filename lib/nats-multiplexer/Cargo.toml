@@ -13,7 +13,6 @@ futures = { workspace = true }
 nats-multiplexer-client = { path = "../../lib/nats-multiplexer-client" }
 nats-multiplexer-core = { path = "../../lib/nats-multiplexer-core" }
 remain = { workspace = true }
-serde_json = { workspace = true }
 si-data-nats = { path = "../../lib/si-data-nats" }
 telemetry = { path = "../../lib/telemetry-rs" }
 telemetry-nats = { path = "../../lib/telemetry-nats-rs" }

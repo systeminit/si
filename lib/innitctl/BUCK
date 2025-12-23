@@ -3,26 +3,17 @@ load("@prelude-si//:macros.bzl", "rust_library")
 rust_library(
     name = "innitctl-backend",
     deps = [
-        "//lib/config-file:config-file",
         "//lib/buck2-resources:buck2-resources",
-        "//lib/innit-core:innit-core",
-        "//lib/si-data-acmpca:si-data-acmpca",
         "//lib/si-settings:si-settings",
         "//lib/si-std:si-std",
-        "//lib/si-tls:si-tls",
         "//lib/telemetry-rs:telemetry",
 
-        "//third-party/rust:async-trait",
-        "//third-party/rust:base64",
         "//third-party/rust:derive_builder",
         "//third-party/rust:handlebars",
         "//third-party/rust:remain",
-        "//third-party/rust:reqwest",
         "//third-party/rust:serde",
-        "//third-party/rust:serde_json",
         "//third-party/rust:tokio",
         "//third-party/rust:thiserror",
-        "//third-party/rust:url",
     ],
     srcs = glob([
         "src/**/*.rs",

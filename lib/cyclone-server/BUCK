@@ -12,7 +12,6 @@ rust_library(
         "//lib/telemetry-utils-rs:telemetry-utils",
         "//third-party/rust:async-trait",
         "//third-party/rust:axum",
-        "//third-party/rust:base64",
         "//third-party/rust:chrono",
         "//third-party/rust:derive_builder",
         "//third-party/rust:futures",

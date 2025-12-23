@@ -129,7 +129,6 @@ rust-version = "1.86"
 publish = false
 
 [workspace.dependencies]
-askama = { version = "0.14.0", features = ["default", "serde_json"] }
 async-nats = { version = "0.39.0", features = ["service"] }
 async-recursion = "1.1.1"
 async-trait = "0.1.83"
@@ -140,13 +139,8 @@ aws-sdk-firehose = "=1.68.0" # pinned because very next version (1.69.0) starts 
 aws-sdk-s3 = { version = "=1.50.0" }
 aws-sdk-ssm = { version = "1.71.0", default-features = false, features = ["rt-tokio"] }
 aws-sdk-sts = { version = "1.68.0", default-features = false, features = ["rt-tokio"] }
-# setting smithy like so to avoid pulling in aws-lc-rs for aws-sdk-ssm
-aws-smithy-http-client = { version = "1.0.0", features = ["rustls-ring"] }
-aws-smithy-runtime = { version = "1.8.1", features = ["client", "tls-rustls"] }
 aws-smithy-runtime-api = { version = "=1.8.0" }
-aws-smithy-types = { version = "=1.3.1" }
 axum = { version = "0.6.20", features = ["macros", "multipart", "ws"] } # todo: upgrade this alongside hyper/http/tokio-tungstenite
-backtrace = "0.3.71"
 base64 = "0.22.1"
 blake3 = "1.5.5"
 bollard = "0.18.1"
@@ -170,12 +164,8 @@ devicemapper = { version = "=0.34.1" }
 diff = "0.1.13"
 directories = "5.0.1"
 dyn-clone = "1.0.17"
-env_logger = "0.11.6"
-fastrace = "0.7.4"
-flate2 = "1.0.35"
 foyer = { version = "0.14.1", features = ["tracing"] }
 fs4 = "0.12.0"
-fuser = { version = "0.16.0", default-features = false }
 futures = "0.3.31"
 futures-lite = "2.5.0"
 glob = "0.3.1"
@@ -196,23 +186,19 @@ jsonptr = "0.7.1"
 jwt-simple = { version = "0.12.11", default-features = false, features = ["pure-rust"] }
 krata-loopdev = "0.0.21"
 lazy_static = "1.5.0"
-log = "0.4"
 logroller = "0.1.9"
 manyhow = { version = "0.11.4", features = ["darling"] }
-mime_guess = { version = "=2.0.4" } # TODO(fnichol): 2.0.5 sets an env var in build.rs which needs to be tracked, required by reqwest
 miniz_oxide = { version = "0.8.0", features = ["simd"] }
 mixtrics = { version = "0.0.3", features = ["opentelemetry_0_26"] }
 monostate = "0.1.13"
 names = { version = "0.14.0", default-features = false }
 nix = { version = "0.29.0", features = ["fs", "ioctl", "mount", "poll", "process", "signal", "user"] }
-nkeys = "0.4.0"
 num_cpus = "1.16.0"
 once_cell = "1.20.2"
 opentelemetry = { version = "0.26.0", features = ["trace"] }
 opentelemetry-otlp = { version = "0.26.0", features = ["metrics", "trace"] }
 opentelemetry-semantic-conventions = "0.14.0"
 opentelemetry_sdk = { version = "0.26.0", features = ["rt-tokio"] }
-ordered-float = { version = "4.5.0", features = ["serde"] }
 ouroboros = "0.18.4"
 parking_lot = "0.12.3"
 paste = "1.0.15"
@@ -231,11 +217,9 @@ refinery = { version = "0.8.14", features = ["tokio-postgres"] }
 regex = "1.11.1"
 remain = "0.2.14"
 reqwest = { version = "0.12.9", default-features = false, features = ["json", "multipart", "rustls-tls"] }
-ring = "=0.17.5" # Upgrading this is possible, but a pain, so we don't want to pick up every new minor version (see: https://github.com/facebook/buck2/commit/91af40b66960d003067c3d241595fb53d1e636c8)
 ringmap = "0.1.3"
 rust-s3 = { version = "0.34.0-rc4", default-features = false, features = ["fail-on-err", "tokio-rustls-tls"] }
 rustls = { version = "0.23.19", default-features = false } # NOTE(nick,fletcher): rustls switched to "aws-lc-rs" as its default crypto provider, but we want ring (i.e. we disable the default feature for "aws-lc-rs")
-rustls-native-certs = "0.8.1"
 rustls-pemfile = { version = "2.2.0" }
 sea-orm = { version = "1.1.2", features = ["debug-print", "macros", "runtime-tokio-rustls", "sqlx-postgres", "with-chrono"] }
 serde = { version = "1.0.216", features = ["derive", "rc"] }
@@ -276,17 +260,14 @@ tracing-opentelemetry = { version = "0.27.0", features = ["metrics_gauge_unstabl
 tracing-subscriber = { version = "0.3.20", features = ["env-filter", "json", "std"] }
 tracing-tunnel = "0.1.0"
 trybuild = { version = "1.0.101", features = ["diff"] }
-tryhard = "0.5.1"
 ulid = { version = "1.1.3", features = ["serde"] }
 url = { version = "2.5.4", features = ["serde"] }
 utoipa = { version = "5.3.1", features = ["axum_extras"] }
 uuid = { version = "1.11.0", features = ["serde", "v4"] }
-version_check = "0.9.5"
 webpki-roots = { version = "0.25.4" }
 x509-parser = { version = "0.17.0" }
 xxhash-rust = { version = "0.8.12", features = ["const_xxh3", "xxh3"] }
 y-sync = { version = "0.4.0", features = ["net"] }
-yrs = { version = "0.17.4" }
 
 [profile.release]
 debug = true

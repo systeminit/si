@@ -17,9 +17,3 @@ si-id = { path = "../../lib/si-id" }
 si-pkg = { path = "../../lib/si-pkg" }
 telemetry = { path = "../../lib/telemetry-rs" }
 thiserror = { workspace = true }
-
-[dev-dependencies]
-dal-test = { path = "../../lib/dal-test" }
-pretty_assertions_sorted = { workspace = true }
-tokio = { workspace = true }
-tokio-util = { workspace = true }

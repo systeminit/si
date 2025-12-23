@@ -9,7 +9,6 @@ rust-version.workspace = true
 publish.workspace = true
 
 [dependencies]
-async-trait = { workspace = true }
 axum = { workspace = true }
 dal = { path = "../../lib/dal" }
 hyper = { workspace = true }
@@ -24,4 +23,3 @@ si-frontend-types = { path = "../../lib/si-frontend-types-rs" }
 si-pkg = { path = "../../lib/si-pkg" }
 telemetry = { path = "../../lib/telemetry-rs" }
 thiserror = { workspace = true }
-tokio = { workspace = true }

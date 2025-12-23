@@ -11,7 +11,6 @@ publish.workspace = true
 [dependencies]
 async-trait = { workspace = true }
 axum = { workspace = true }
-base64 = { workspace = true }
 bytes-lines-codec = { path = "../bytes-lines-codec" }
 chrono = { workspace = true }
 cyclone-core = { path = "../../lib/cyclone-core" }

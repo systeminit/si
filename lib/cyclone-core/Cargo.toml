@@ -9,13 +9,11 @@ rust-version.workspace = true
 publish.workspace = true
 
 [dependencies]
-base64 = { workspace = true }
 nix = { workspace = true }
 remain = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 si-crypto = { path = "../../lib/si-crypto" }
-si-hash = { path = "../../lib/si-hash" }
 si-std = { path = "../../lib/si-std" }
 strum = { workspace = true }
 telemetry = { path = "../../lib/telemetry-rs" }

@@ -4,11 +4,9 @@ rust_library(
     name = "cyclone-core",
     deps = [
         "//lib/si-crypto:si-crypto",
-        "//lib/si-hash:si-hash",
         "//lib/si-std:si-std",
         "//lib/telemetry-rs:telemetry",
         "//lib/telemetry-utils-rs:telemetry-utils",
-        "//third-party/rust:base64",
         "//third-party/rust:nix",
         "//third-party/rust:remain",
         "//third-party/rust:serde",

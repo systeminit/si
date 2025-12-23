@@ -4,12 +4,10 @@ rust_library(
     name = "si-firecracker",
     deps = [
         "//lib/cyclone-core:cyclone-core",
-        "//third-party/rust:futures",
         "//third-party/rust:remain",
         "//third-party/rust:nix",
         "//third-party/rust:thiserror",
         "//third-party/rust:tokio",
-        "//third-party/rust:tokio-util",
         "//third-party/rust:tracing",
     ] + select({
         "DEFAULT": [],

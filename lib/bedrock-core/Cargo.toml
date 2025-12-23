@@ -10,10 +10,6 @@ publish.workspace = true
 
 [dependencies]
 async-trait = { workspace = true }
-aws-sdk-ssm = { workspace = true }
-chrono = { workspace = true }
-config-file = { path = "../../lib/config-file" }
 serde = { workspace = true }
 serde_json = { workspace = true }
 si-data-nats = { path = "../../lib/si-data-nats" }
-ulid = { workspace = true }

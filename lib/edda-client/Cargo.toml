@@ -11,7 +11,6 @@ publish.workspace = true
 [dependencies]
 bytes = { workspace = true }
 edda-core = { path = "../../lib/edda-core" }
-futures = { workspace = true }
 remain = { workspace = true }
 si-data-nats = { path = "../../lib/si-data-nats" }
 si-events = { path = "../../lib/si-events-rs" }

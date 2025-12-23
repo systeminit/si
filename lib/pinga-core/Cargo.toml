@@ -11,14 +11,12 @@ publish.workspace = true
 [dependencies]
 acceptable = { path = "../../lib/acceptable" }
 nats-std = { path = "../../lib/nats-std" }
-rand = { workspace = true }
 remain = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 si-data-nats = { path = "../../lib/si-data-nats" }
 si-id = { path = "../../lib/si-id" }
 strum = { workspace = true }
-thiserror = { workspace = true }
 ulid = { workspace = true }
 
 [dev-dependencies]

@@ -4,6 +4,7 @@ rust_library(
     name = "sdf-v1-routes-session",
     deps = [
         "//lib/dal:dal",
+        "//lib/permissions:permissions",
         "//lib/sdf-core:sdf-core",
         "//lib/sdf-extract:sdf-extract",
         "//lib/si-data-nats:si-data-nats",
@@ -12,8 +13,6 @@ rust_library(
         "//lib/si-db:si-db",
         "//lib/si-events-rs:si-events",
         "//lib/telemetry-rs:telemetry",
-        "//lib/permissions:permissions",
-
         "//third-party/rust:axum",
         "//third-party/rust:hyper",
         "//third-party/rust:remain",
@@ -22,8 +21,6 @@ rust_library(
         "//third-party/rust:serde_json",
         "//third-party/rust:strum",
         "//third-party/rust:thiserror",
-        "//third-party/rust:tokio",
-        "//third-party/rust:y-sync",
     ],
     srcs = glob([
         "src/**/*.rs",

@@ -10,7 +10,6 @@ publish.workspace = true
 
 [dependencies]
 aws-sdk-firehose = { workspace = true }
-base64 = { workspace = true }
 remain = { workspace = true }
 si-aws-config = { path = "../../lib/si-aws-config" }
 telemetry = { path = "../../lib/telemetry-rs" }

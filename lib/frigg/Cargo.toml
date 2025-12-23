@@ -16,7 +16,6 @@ remain = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 si-data-nats = { path = "../../lib/si-data-nats" }
-si-events = { path = "../../lib/si-events-rs" }
 si-frontend-mv-types = { path = "../../lib/si-frontend-mv-types-rs" }
 si-id = { path = "../../lib/si-id" }
 strum = { workspace = true }

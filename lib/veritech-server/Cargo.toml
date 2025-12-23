@@ -15,7 +15,6 @@ derive_builder = { workspace = true }
 futures = { workspace = true }
 nats-std = { path = "../../lib/nats-std" }
 naxum = { path = "../../lib/naxum" }
-once_cell = { workspace = true }
 remain = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }

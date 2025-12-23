@@ -28,6 +28,5 @@ veritech-core = { path = "../../lib/veritech-core" }
 base64 = { workspace = true }
 test-log = { workspace = true }
 tracing = { workspace = true }
-tracing-subscriber = { workspace = true }
 uuid = { workspace = true }
 veritech-server = { path = "../../lib/veritech-server" }

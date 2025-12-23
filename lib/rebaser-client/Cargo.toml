@@ -14,8 +14,6 @@ nats-std = { path = "../../lib/nats-std" }
 pending-events = { path = "../../lib/pending-events" }
 rebaser-core = { path = "../../lib/rebaser-core" }
 remain = { workspace = true }
-serde = { workspace = true }
-serde_json = { workspace = true }
 si-data-nats = { path = "../../lib/si-data-nats" }
 si-events = { path = "../../lib/si-events-rs" }
 telemetry = { path = "../../lib/telemetry-rs" }

@@ -10,7 +10,6 @@ publish.workspace = true
 
 [dependencies]
 remain = { workspace = true }
-serde = { workspace = true }
 si-data-spicedb = { path = "../../lib/si-data-spicedb" }
 si-events = { path = "../../lib/si-events-rs" }
 strum = { workspace = true }

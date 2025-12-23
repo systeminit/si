@@ -12,7 +12,5 @@ publish.workspace = true
 aws-config = { workspace = true }
 aws-sdk-sts = { workspace = true }
 remain = { workspace = true }
-si-tls = { path = "../../lib/si-tls" }
 telemetry = { path = "../../lib/telemetry-rs" }
 thiserror = { workspace = true }
-tokio = { workspace = true }

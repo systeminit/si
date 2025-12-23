@@ -27,5 +27,3 @@ si-events = { path = "../../lib/si-events-rs" }
 strum = { workspace = true }
 telemetry = { path = "../../lib/telemetry-rs" }
 thiserror = { workspace = true }
-tokio = { workspace = true }
-y-sync = { workspace = true }

@@ -11,7 +11,6 @@ publish.workspace = true
 [dependencies]
 async-recursion = { workspace = true }
 audit-database = { path = "../../lib/audit-database" }
-base64 = { workspace = true }
 buck2-resources = { path = "../../lib/buck2-resources" }
 color-eyre = { workspace = true }
 dal = { path = "../../lib/dal" }
@@ -34,7 +33,6 @@ si-crypto = { path = "../../lib/si-crypto" }
 si-data-nats = { path = "../../lib/si-data-nats" }
 si-data-pg = { path = "../../lib/si-data-pg" }
 si-db = { path = "../../lib/si-db" }
-si-events = { path = "../../lib/si-events-rs" }
 si-id = { path = "../../lib/si-id" }
 si-jwt-public-key = { path = "../../lib/si-jwt-public-key" }
 si-layer-cache = { path = "../../lib/si-layer-cache" }
@@ -45,11 +43,8 @@ si-test-macros = { path = "../../lib/si-test-macros" }
 si-tls = { path = "../../lib/si-tls" }
 sodiumoxide = { workspace = true }
 telemetry = { path = "../../lib/telemetry-rs" }
-tempfile = { workspace = true }
-thiserror = { workspace = true }
 tokio = { workspace = true }
 tokio-util = { workspace = true }
-tracing-opentelemetry = { workspace = true }
 tracing-subscriber = { workspace = true }
 ulid = { workspace = true }
 uuid = { workspace = true }

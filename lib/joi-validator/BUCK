@@ -3,10 +3,7 @@ load("@prelude-si//:macros.bzl", "rust_library")
 rust_library(
     name = "joi-validator",
     deps = [
-        "//lib/si-std:si-std",
-        "//lib/telemetry-rs:telemetry",
         "//third-party/rust:chrono",
-        "//third-party/rust:derive_more",
         "//third-party/rust:remain",
         "//third-party/rust:serde",
         "//third-party/rust:serde_json",
