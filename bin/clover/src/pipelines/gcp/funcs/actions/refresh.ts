@@ -37,6 +37,7 @@ async function main(component: Input): Promise<Output> {
   let url = `${baseUrl}${getApiPath.path}`;
 
   // Replace path parameters with values from resource_value or domain
+  // GCP APIs use RFC 6570 URI templates: {param} and {+param} (reserved expansion)
   if (getApiPath.parameterOrder) {
     for (const paramName of getApiPath.parameterOrder) {
       let paramValue;
@@ -47,6 +48,19 @@ async function main(component: Input): Promise<Output> {
       } else if (paramName === "project") {
         // Use extracted project_id for project parameter
         paramValue = projectId;
+      } else if (paramName === "parent") {
+        // "parent" is a common GCP pattern: projects/{project}/locations/{location}
+        paramValue = _.get(component.properties, ["resource", "payload", "parent"]) ||
+                     _.get(component.properties, ["domain", "parent"]);
+        if (!paramValue && projectId) {
+          const location = _.get(component.properties, ["resource", "payload", "location"]) ||
+                          _.get(component.properties, ["domain", "location"]) ||
+                          _.get(component.properties, ["domain", "zone"]) ||
+                          _.get(component.properties, ["domain", "region"]);
+          if (location) {
+            paramValue = `projects/${projectId}/locations/${location}`;
+          }
+        }
       } else {
         paramValue = _.get(component.properties, ["resource", "payload", paramName]) ||
                      _.get(component.properties, ["domain", paramName]);
@@ -60,7 +74,13 @@ async function main(component: Input): Promise<Output> {
       }
 
       if (paramValue) {
-        url = url.replace(`{${paramName}}`, encodeURIComponent(paramValue));
+        // Handle {+param} (reserved expansion - don't encode, allows slashes)
+        if (url.includes(`{+${paramName}}`)) {
+          url = url.replace(`{+${paramName}}`, paramValue);
+        } else {
+          // Handle {param} (simple expansion - encode)
+          url = url.replace(`{${paramName}}`, encodeURIComponent(paramValue));
+        }
       }
     }
   }

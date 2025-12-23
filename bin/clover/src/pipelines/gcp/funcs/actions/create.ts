@@ -47,6 +47,7 @@ async function main(component: Input): Promise<Output> {
   let url = `${baseUrl}${insertApiPath.path}`;
 
   // Replace path parameters with values from resource_value or domain
+  // GCP APIs use RFC 6570 URI templates: {param} and {+param} (reserved expansion)
   if (insertApiPath.parameterOrder) {
     for (const paramName of insertApiPath.parameterOrder) {
       let paramValue;
@@ -54,12 +55,31 @@ async function main(component: Input): Promise<Output> {
       // Use extracted project_id for project parameter
       if (paramName === "project") {
         paramValue = projectId;
+      } else if (paramName === "parent") {
+        // "parent" is a common GCP pattern: projects/{project}/locations/{location}
+        // Try to get explicit parent first, otherwise construct from projectId + location
+        paramValue = _.get(component.properties, ["domain", "parent"]);
+        if (!paramValue && projectId) {
+          // Try location, zone, or region to construct parent
+          const location = _.get(component.properties, ["domain", "location"]) ||
+                          _.get(component.properties, ["domain", "zone"]) ||
+                          _.get(component.properties, ["domain", "region"]);
+          if (location) {
+            paramValue = `projects/${projectId}/locations/${location}`;
+          }
+        }
       } else {
         paramValue = _.get(component.properties, ["domain", paramName]);
       }
 
       if (paramValue) {
-        url = url.replace(`{${paramName}}`, encodeURIComponent(paramValue));
+        // Handle {+param} (reserved expansion - don't encode, allows slashes)
+        if (url.includes(`{+${paramName}}`)) {
+          url = url.replace(`{+${paramName}}`, paramValue);
+        } else {
+          // Handle {param} (simple expansion - encode)
+          url = url.replace(`{${paramName}}`, encodeURIComponent(paramValue));
+        }
       }
     }
   }
