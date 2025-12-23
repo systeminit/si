@@ -1,0 +1,52 @@
+# Hetzner Cloud Components
+
+System Initiative supports Hetzner Cloud infrastructure management through
+dedicated schemas.
+
+## Creating Hetzner Components
+
+**Important Naming Convention:**
+
+- Schema names use **plural** form (e.g., `Hetzner::Cloud::Servers`, not
+  `Server`)
+
+**Credential Requirements:** When creating Hetzner components, always set:
+
+- `/secrets/Hetzner Api Token`: should subscribe to a
+  Hetzner::Credential::ApiToken component's
+  `/secrets/Hetzner::Credential::ApiToken`
+
+**Free Resources:** These resources are free to create and maintain:
+
+- SSH Keys
+- Networks (private network definitions)
+- Firewalls (firewall rule definitions)
+- Placement Groups
+
+**Array Attribute Paths:** When setting array attributes, the schema uses
+specific patterns:
+
+- For simple arrays like `source_ips`, use indexed path:
+  `/domain/rules/0/source_ips/0`
+- Do NOT append field names like `source_ipsItem` to indexed arrays
+
+**Example: Creating a Network**
+
+```
+/domain/name: "my-network"
+/domain/ip_range: "10.0.0.0/16"
+/domain/expose_routes_to_vswitch: false
+/secrets/Hetzner Api Token: {$source: {component: "credential-id", path: "/secrets/Hetzner::Credential::ApiToken"}}
+```
+
+**Example: Creating a Firewall**
+
+```
+/domain/name: "my-firewall"
+/domain/rules/0/direction: "in"
+/domain/rules/0/protocol: "tcp"
+/domain/rules/0/port: "22"
+/domain/rules/0/source_ips/0: "0.0.0.0/0"
+/domain/rules/0/description: "Allow SSH"
+/secrets/Hetzner Api Token: {$source: {component: "credential-id", path: "/secrets/Hetzner::Credential::ApiToken"}}
+```
