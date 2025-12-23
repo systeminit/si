@@ -5,12 +5,12 @@ outline: [2, 3]
 # Workspaces
 
 A workspace in System Initiative is the isolation boundary for a set of models.
-They are a hard boundary between data. Workspaces have multiple 'members', that
+They are a hard boundary between data. Workspaces have multiple 'members' that
 map to [users](./users.md) in System Initiative.
 
 ## Interacting with Workspaces
 
-### Creating new Workspaces
+### Creating New Workspaces
 
 <DocTabs tabs="Web Application,Public API">
 <TabPanel value="Web Application">
@@ -77,7 +77,7 @@ Click on the 'Gear' icon on an existing workspace and choose 'Settings'.
 
 ![Workspace Settings Link](./workspaces/workspace-settings.png)
 
-From here you can change your workspaces _Display Name_ or _Description_, access
+From here, you can change your workspaces' _Display Name_ or _Description_, access
 the _API tokens_ screen, invite _users to the workspace_, and configure the
 _role_ of a user within your workspace.
 
@@ -155,11 +155,11 @@ response = api.invite_member(
 </TabPanel>
 </DocTabs>
 
-### Set a Users Role in a Workspace
+### Set a User's Role in a Workspace
 
 <DocTabs tabs="Web Application,Public API">
 <TabPanel value="Web Application">
-You can set a users Role in a workspace:
+You can set a user's Role in a workspace:
 
 ![Set a Role](./workspaces/set-role.png)
 
@@ -269,11 +269,11 @@ Click on the 'Gear' icon on an existing workspace and choose 'Settings'.
 
 ![Workspace Settings Link](./workspaces/workspace-settings.png)
 
-From here you can change leave your workspace.
+From here, you can change or leave your workspace.
 
 :::info
 
-Workspace owners are not permitted to leave their workspace
+Workspace owners are not permitted to leave their workspace.
 
 :::
 
@@ -321,7 +321,7 @@ Click on the 'Gear' icon on an existing workspace and choose 'Settings'.
 
 ![Workspace Settings Link](./workspaces/workspace-settings.png)
 
-From here you can change delete your workspace. 
+From here, you can change or delete your workspace. 
 
 :::info
 
@@ -387,8 +387,8 @@ such as '1y' or '48h'.
 ![API Token Generation](./workspaces/api-token.png)
 
 Then click the 'Generate API Token' button. The token will then be shown _only
-one time in a modal_. Copy the token and store it someplace safe - it provides
-access to your System Initiative workspace on your behalf!
+one time in a modal_. Copy the token and store it somewhere safe - it gives you
+access to your System Initiative workspace!
 
 It will then appear in the 'Active Tokens' list.
 
