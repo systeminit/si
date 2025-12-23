@@ -35,6 +35,16 @@ async function main(component: Input): Promise<Output> {
   const insertApiPath = JSON.parse(insertApiPathJson);
   const baseUrl = _.get(component.properties, ["domain", "extra", "baseUrl"], "");
 
+  // Get the get API path to determine how to extract resourceId later
+  // APIs using {+name} need the full path; APIs using {name} need short name
+  const getApiPathJson = _.get(
+    component.properties,
+    ["domain", "extra", "getApiPath"],
+    "",
+  );
+  const getApiPath = getApiPathJson ? JSON.parse(getApiPathJson) : null;
+  const usesFullResourcePath = getApiPath?.path?.includes("{+");
+
   // Get authentication token
   const serviceAccountJson = requestStorage.getEnv("GOOGLE_APPLICATION_CREDENTIALS_JSON");
   if (!serviceAccountJson) {
@@ -47,6 +57,7 @@ async function main(component: Input): Promise<Output> {
   let url = `${baseUrl}${insertApiPath.path}`;
 
   // Replace path parameters with values from resource_value or domain
+  // GCP APIs use RFC 6570 URI templates: {param} and {+param} (reserved expansion)
   if (insertApiPath.parameterOrder) {
     for (const paramName of insertApiPath.parameterOrder) {
       let paramValue;
@@ -54,12 +65,31 @@ async function main(component: Input): Promise<Output> {
       // Use extracted project_id for project parameter
       if (paramName === "project") {
         paramValue = projectId;
+      } else if (paramName === "parent") {
+        // "parent" is a common GCP pattern: projects/{project}/locations/{location}
+        // Try to get explicit parent first, otherwise construct from projectId + location
+        paramValue = _.get(component.properties, ["domain", "parent"]);
+        if (!paramValue && projectId) {
+          // Try location, zone, or region to construct parent
+          const location = _.get(component.properties, ["domain", "location"]) ||
+                          _.get(component.properties, ["domain", "zone"]) ||
+                          _.get(component.properties, ["domain", "region"]);
+          if (location) {
+            paramValue = `projects/${projectId}/locations/${location}`;
+          }
+        }
       } else {
         paramValue = _.get(component.properties, ["domain", paramName]);
       }
 
       if (paramValue) {
-        url = url.replace(`{${paramName}}`, encodeURIComponent(paramValue));
+        // Handle {+param} (reserved expansion - don't encode, allows slashes)
+        if (url.includes(`{+${paramName}}`)) {
+          url = url.replace(`{+${paramName}}`, paramValue);
+        } else {
+          // Handle {param} (simple expansion - encode)
+          url = url.replace(`{${paramName}}`, encodeURIComponent(paramValue));
+        }
       }
     }
   }
@@ -91,8 +121,12 @@ async function main(component: Input): Promise<Output> {
   const responseJson = await response.json();
 
   // Handle Google Cloud Long-Running Operations (LRO)
-  // Check if this is an operation response (has kind with "operation")
-  if (responseJson.kind && responseJson.kind.includes("operation")) {
+  // Check if this is an operation response:
+  // - Compute Engine uses "kind" containing "operation"
+  // - GKE/Container API uses "operationType" field
+  const isLRO = (responseJson.kind && responseJson.kind.includes("operation")) ||
+                responseJson.operationType;
+  if (isLRO) {
     console.log(`[CREATE] LRO detected, polling for completion...`);
 
     // Use selfLink or construct URL from operation name
@@ -140,7 +174,9 @@ async function main(component: Input): Promise<Output> {
     });
 
     // Extract resource ID from the final resource
-    const resourceId = finalResource.name || finalResource.id;
+    // For GKE and similar APIs using {+name}, we need the full resource path
+    // For Compute Engine style APIs using {name}, we need just the short name
+    const resourceId = extractResourceId(finalResource, usesFullResourcePath);
 
     console.log(`[CREATE] Operation complete, resourceId: ${resourceId}`);
     return {
@@ -151,7 +187,7 @@ async function main(component: Input): Promise<Output> {
   }
 
   // Handle synchronous response
-  const resourceId = responseJson.name || responseJson.id;
+  const resourceId = extractResourceId(responseJson, usesFullResourcePath);
 
   if (resourceId) {
     return {
@@ -165,6 +201,34 @@ async function main(component: Input): Promise<Output> {
       payload: normalizeGcpResourceValues(responseJson),
     };
   }
+}
+
+// Extract the resource ID from a GCP resource response
+// For APIs using {+name} (like GKE), we need the full resource path from selfLink
+// For APIs using {name} (like Compute Engine), we use the simple name/id
+function extractResourceId(resource: any, useFullPath: boolean): string | undefined {
+  // For APIs using {+name}, extract the full path from selfLink
+  if (useFullPath && resource.selfLink && typeof resource.selfLink === "string") {
+    try {
+      const url = new URL(resource.selfLink);
+      const pathParts = url.pathname.split("/").filter(Boolean);
+      // Find "projects" and take everything from there
+      const projectsIdx = pathParts.indexOf("projects");
+      if (projectsIdx !== -1) {
+        return pathParts.slice(projectsIdx).join("/");
+      }
+      // Fallback: skip the version (v1, v1beta1, etc.) and return the rest
+      const versionIdx = pathParts.findIndex(p => /^v\d/.test(p));
+      if (versionIdx !== -1 && versionIdx + 1 < pathParts.length) {
+        return pathParts.slice(versionIdx + 1).join("/");
+      }
+    } catch {
+      // If URL parsing fails, fall through to name/id
+    }
+  }
+
+  // For Compute Engine style APIs or fallback, use simple name/id
+  return resource.name || resource.id;
 }
 
 async function getAccessToken(serviceAccountJson: string): Promise<{ token: string; projectId: string | undefined }> {

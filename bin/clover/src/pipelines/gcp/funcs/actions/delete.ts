@@ -37,6 +37,7 @@ async function main(component: Input): Promise<Output> {
   let url = `${baseUrl}${deleteApiPath.path}`;
 
   // Replace path parameters with values from resource_value or domain
+  // GCP APIs use RFC 6570 URI templates: {param} and {+param} (reserved expansion)
   if (deleteApiPath.parameterOrder) {
     for (const paramName of deleteApiPath.parameterOrder) {
       let paramValue;
@@ -47,6 +48,19 @@ async function main(component: Input): Promise<Output> {
       } else if (paramName === "project") {
         // Use extracted project_id for project parameter
         paramValue = projectId;
+      } else if (paramName === "parent") {
+        // "parent" is a common GCP pattern: projects/{project}/locations/{location}
+        paramValue = _.get(component.properties, ["resource", "payload", "parent"]) ||
+                     _.get(component.properties, ["domain", "parent"]);
+        if (!paramValue && projectId) {
+          const location = _.get(component.properties, ["resource", "payload", "location"]) ||
+                          _.get(component.properties, ["domain", "location"]) ||
+                          _.get(component.properties, ["domain", "zone"]) ||
+                          _.get(component.properties, ["domain", "region"]);
+          if (location) {
+            paramValue = `projects/${projectId}/locations/${location}`;
+          }
+        }
       } else {
         paramValue = _.get(component.properties, ["resource", "payload", paramName]) ||
                      _.get(component.properties, ["domain", paramName]);
@@ -63,7 +77,13 @@ async function main(component: Input): Promise<Output> {
       }
 
       if (paramValue) {
-        url = url.replace(`{${paramName}}`, encodeURIComponent(paramValue));
+        // Handle {+param} (reserved expansion - don't encode, allows slashes)
+        if (url.includes(`{+${paramName}}`)) {
+          url = url.replace(`{+${paramName}}`, paramValue);
+        } else {
+          // Handle {param} (simple expansion - encode)
+          url = url.replace(`{${paramName}}`, encodeURIComponent(paramValue));
+        }
       }
     }
   }
@@ -100,6 +120,41 @@ async function main(component: Input): Promise<Output> {
     return {
       status: "ok",
     };
+  }
+
+  const responseJson = await response.json();
+
+  // Handle Google Cloud Long-Running Operations (LRO)
+  // Check if this is an operation response:
+  // - Compute Engine uses "kind" containing "operation"
+  // - GKE/Container API uses "operationType" field
+  const isLRO = (responseJson.kind && responseJson.kind.includes("operation")) ||
+                responseJson.operationType;
+  if (isLRO) {
+    console.log(`[DELETE] LRO detected, polling for completion...`);
+
+    // Use selfLink or construct URL from operation name
+    const pollingUrl = responseJson.selfLink || `${baseUrl}${responseJson.name}`;
+
+    // Poll the operation until it completes
+    await siExec.pollLRO({
+      url: pollingUrl,
+      headers: { "Authorization": `Bearer ${token}` },
+      maxAttempts: 20,
+      baseDelay: 2000,
+      maxDelay: 30000,
+      isCompleteFn: (response, body) => body.status === "DONE",
+      isErrorFn: (response, body) => !!body.error,
+      extractResultFn: async (response, body) => {
+        // If operation has error, throw it
+        if (body.error) {
+          throw new Error(`Delete operation failed: ${JSON.stringify(body.error)}`);
+        }
+        return body;
+      }
+    });
+
+    console.log(`[DELETE] Operation complete`);
   }
 
   return {

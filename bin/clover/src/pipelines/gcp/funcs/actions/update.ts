@@ -111,6 +111,7 @@ async function main(component: Input): Promise<Output> {
   let url = `${baseUrl}${updateApiPath.path}`;
 
   // Replace path parameters with values from resource_value or domain
+  // GCP APIs use RFC 6570 URI templates: {param} and {+param} (reserved expansion)
   if (updateApiPath.parameterOrder) {
     for (const paramName of updateApiPath.parameterOrder) {
       let paramValue;
@@ -121,6 +122,19 @@ async function main(component: Input): Promise<Output> {
       } else if (paramName === "project") {
         // Use extracted project_id for project parameter
         paramValue = projectId;
+      } else if (paramName === "parent") {
+        // "parent" is a common GCP pattern: projects/{project}/locations/{location}
+        paramValue = _.get(component.properties, ["resource", "payload", "parent"]) ||
+                     _.get(component.properties, ["domain", "parent"]);
+        if (!paramValue && projectId) {
+          const location = _.get(component.properties, ["resource", "payload", "location"]) ||
+                          _.get(component.properties, ["domain", "location"]) ||
+                          _.get(component.properties, ["domain", "zone"]) ||
+                          _.get(component.properties, ["domain", "region"]);
+          if (location) {
+            paramValue = `projects/${projectId}/locations/${location}`;
+          }
+        }
       } else {
         paramValue = _.get(component.properties, ["resource", "payload", paramName]) ||
                      _.get(component.properties, ["domain", paramName]);
@@ -134,7 +148,13 @@ async function main(component: Input): Promise<Output> {
       }
 
       if (paramValue) {
-        url = url.replace(`{${paramName}}`, encodeURIComponent(paramValue));
+        // Handle {+param} (reserved expansion - don't encode, allows slashes)
+        if (url.includes(`{+${paramName}}`)) {
+          url = url.replace(`{+${paramName}}`, paramValue);
+        } else {
+          // Handle {param} (simple expansion - encode)
+          url = url.replace(`{${paramName}}`, encodeURIComponent(paramValue));
+        }
       }
     }
   }
@@ -166,7 +186,12 @@ async function main(component: Input): Promise<Output> {
   const responseJson = await response.json();
 
   // Handle Google Cloud Long-Running Operations (LRO)
-  if (responseJson.kind && responseJson.kind.includes("operation")) {
+  // Check if this is an operation response:
+  // - Compute Engine uses "kind" containing "operation"
+  // - GKE/Container API uses "operationType" field
+  const isLRO = (responseJson.kind && responseJson.kind.includes("operation")) ||
+                responseJson.operationType;
+  if (isLRO) {
     console.log(`[UPDATE] LRO detected, polling for completion...`);
 
     // Use selfLink or construct URL from operation name
