@@ -5,7 +5,7 @@ outline:
 
 # System Initiative Public API
 
-This is the API spec for the System Initiative Public API. All endpoints require a workspace scoped API token for the workspace to interact with.
+This is the API spec for the System Initiative Public API. All endpoints require a workspace-scoped API token to interact with the workspace.
 
 # [root](#system-initiative-api-root)
 
@@ -187,7 +187,7 @@ Change Set management endpoints
 |401|[Unauthorized](https://tools.ietf.org/html/rfc7235#section-3.1)|Unauthorized - Invalid or missing token|None|
 |500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
 
-## Get a Change Set by Change Set Id
+## Get a Change Set by Change Set ID
 
 <a id="opIdget_change_set"></a>
 
@@ -259,7 +259,7 @@ Change Set management endpoints
 |401|[Unauthorized](https://tools.ietf.org/html/rfc7235#section-3.1)|Unauthorized - Invalid or missing token|None|
 |500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
 
-## Merge Change Set without approval
+## Merge Change Set Without Approval
 
 <a id="opIdforce_apply"></a>
 
@@ -293,7 +293,7 @@ Change Set management endpoints
 |428|[Precondition Required](https://tools.ietf.org/html/rfc6585#section-3)|DVU Roots still exist, apply must be tried again later.|None|
 |500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
 
-## Get Change Set post merge status
+## Get Change Set Post-Merge Status
 
 <a id="opIdmerge_status"></a>
 
@@ -342,7 +342,7 @@ Change Set management endpoints
 |401|[Unauthorized](https://tools.ietf.org/html/rfc7235#section-3.1)|Unauthorized - Invalid or missing token|None|
 |500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
 
-## Request Change Set merge approval
+## Request Change Set Merge Approval
 
 <a id="opIdrequest_approval"></a>
 
@@ -379,7 +379,7 @@ Change Set management endpoints
 
 Components management endpoints
 
-## List all components
+## List All Components
 
 <a id="opIdlist_components"></a>
 
@@ -555,7 +555,7 @@ Components management endpoints
 |422|[Unprocessable Entity](https://tools.ietf.org/html/rfc2518#section-10.3)|Validation error - Invalid request data|[ApiError](#schemaapierror)|
 |500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
 
-## Add components to a view
+## Add Components to a View
 
 <a id="opIdadd_to_view"></a>
 
@@ -606,7 +606,7 @@ Adds multiple components to a view by name. If the view doesn't exist, it will b
 |422|[Unprocessable Entity](https://tools.ietf.org/html/rfc2518#section-10.3)|Validation error - Invalid request data|[ApiError](#schemaapierror)|
 |500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
 
-## Duplicate a list of components
+## Duplicate a List of Components
 
 <a id="opIdduplicate_components"></a>
 
@@ -658,7 +658,7 @@ Adds multiple components to a view by name. If the view doesn't exist, it will b
 |401|[Unauthorized](https://tools.ietf.org/html/rfc7235#section-3.1)|Unauthorized - Invalid or missing token|None|
 |500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
 
-## Find a component by name or component Id
+## Find a Component by Name or Component ID
 
 <a id="opIdfind_component"></a>
 
@@ -755,7 +755,7 @@ Adds multiple components to a view by name. If the view doesn't exist, it will b
 |404|[Not Found](https://tools.ietf.org/html/rfc7231#section-6.5.4)|Component not found|None|
 |500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
 
-## Complex search for components
+## Complex Search for Components
 
 <a id="opIdsearch_components"></a>
 
@@ -806,7 +806,7 @@ Adds multiple components to a view by name. If the view doesn't exist, it will b
 |424|[Failed Dependency](https://tools.ietf.org/html/rfc2518#section-10.5)|Failed Dependency - missing or invalid change set index|None|
 |500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
 
-## Get a component by component Id
+## Get a Component by Component ID
 
 <a id="opIdget_component"></a>
 
@@ -902,7 +902,7 @@ Adds multiple components to a view by name. If the view doesn't exist, it will b
 |404|[Not Found](https://tools.ietf.org/html/rfc7231#section-6.5.4)|Component not found|None|
 |500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
 
-## Update a component
+## Update a Component
 
 <a id="opIdupdate_component"></a>
 
@@ -1018,7 +1018,7 @@ Adds multiple components to a view by name. If the view doesn't exist, it will b
 |422|[Unprocessable Entity](https://tools.ietf.org/html/rfc2518#section-10.3)|Validation error - Invalid request data|[ApiError](#schemaapierror)|
 |500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
 
-## Delete a component
+## Delete a Component
 
 <a id="opIddelete_component"></a>
 
@@ -1053,7 +1053,7 @@ Adds multiple components to a view by name. If the view doesn't exist, it will b
 |404|[Not Found](https://tools.ietf.org/html/rfc7231#section-6.5.4)|Component not found|None|
 |500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
 
-## Queue action for a component
+## Queue Action for a Component
 
 <a id="opIdadd_action"></a>
 
@@ -1102,7 +1102,7 @@ Adds multiple components to a view by name. If the view doesn't exist, it will b
 |422|[Unprocessable Entity](https://tools.ietf.org/html/rfc2518#section-10.3)|Validation error - Invalid request data|[ApiError](#schemaapierror)|
 |500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
 
-## Erase a component without queuing a delete action
+## Erase a Component Without Queuing a Delete Action
 
 <a id="opIderase_component"></a>
 
@@ -1137,7 +1137,7 @@ Adds multiple components to a view by name. If the view doesn't exist, it will b
 |404|[Not Found](https://tools.ietf.org/html/rfc7231#section-6.5.4)|Component not found|None|
 |500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
 
-## Execute a component's management function
+## Execute a Component's Management Function
 
 <a id="opIdexecute_management_function"></a>
 
@@ -1189,7 +1189,7 @@ Adds multiple components to a view by name. If the view doesn't exist, it will b
 |422|[Unprocessable Entity](https://tools.ietf.org/html/rfc2518#section-10.3)|Validation error - Invalid request data|[ApiError](#schemaapierror)|
 |500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
 
-## Putting a component under the management of another component
+## Putting a Component Under the Management of Another Component
 
 <a id="opIdmanage_component"></a>
 
@@ -1282,7 +1282,7 @@ Adds multiple components to a view by name. If the view doesn't exist, it will b
 |404|[Not Found](https://tools.ietf.org/html/rfc7231#section-6.5.4)|Component not found|None|
 |500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
 
-## Get a component resource by component Id
+## Get a Component Resource by Component ID
 
 <a id="opIdget_component_resource"></a>
 
@@ -1319,7 +1319,7 @@ Adds multiple components to a view by name. If the view doesn't exist, it will b
 |412|[Precondition Failed](https://tools.ietf.org/html/rfc7232#section-4.2)|Component has no associated resource|None|
 |500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
 
-## Restore a component that is marked for deletion
+## Restore a Component That is Marked for Deletion
 
 <a id="opIdrestore_component"></a>
 
@@ -1355,7 +1355,7 @@ Adds multiple components to a view by name. If the view doesn't exist, it will b
 |412|[Precondition Failed](https://tools.ietf.org/html/rfc7232#section-4.2)|Component not marked for deletion|None|
 |500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
 
-## Upgrade a component to the latest schema variant
+## Upgrade a Component to the Katest Schema Variant
 
 <a id="opIdupgrade_component"></a>
 
@@ -1443,7 +1443,7 @@ Adds multiple components to a view by name. If the view doesn't exist, it will b
 
 Schemas management endpoints
 
-## List all schemas (paginated endpoint)
+## List All Schemas (paginated endpoint)
 
 <a id="opIdlist_schemas"></a>
 
@@ -1486,7 +1486,7 @@ Schemas management endpoints
 |401|[Unauthorized](https://tools.ietf.org/html/rfc7235#section-3.1)|Unauthorized - Invalid or missing token|None|
 |500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
 
-## Create a schema and it's default variant
+## Create a Schema, and its Default Variant
 
 <a id="opIdcreate_schema"></a>
 
@@ -1540,7 +1540,7 @@ Schemas management endpoints
 |422|[Unprocessable Entity](https://tools.ietf.org/html/rfc2518#section-10.3)|Validation error - Invalid request data|[ApiError](#schemaapierror)|
 |500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
 
-## Find schema by name or schema id
+## Find Schema by name or Schema ID
 
 <a id="opIdfind_schema"></a>
 
@@ -1579,7 +1579,7 @@ Schemas management endpoints
 |404|[Not Found](https://tools.ietf.org/html/rfc7231#section-6.5.4)|Schema not found|None|
 |500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
 
-## Complex search for schemas
+## Complex Search for Schemas
 
 <a id="opIdsearch_schemas"></a>
 
@@ -1629,7 +1629,7 @@ Schemas management endpoints
 |404|[Not Found](https://tools.ietf.org/html/rfc7231#section-6.5.4)|Schema not found|None|
 |500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
 
-## Get a schema by schema id
+## Get a Schema by Schema ID
 
 <a id="opIdget_schema"></a>
 
@@ -1671,7 +1671,7 @@ Schemas management endpoints
 |404|[Not Found](https://tools.ietf.org/html/rfc7231#section-6.5.4)|Schema not found|None|
 |500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
 
-## Contribute the default variant of a schema to the module index
+## Contribute the Default Variant of a Schema to the Module Index
 
 <a id="opIdcontribute"></a>
 
@@ -1709,7 +1709,7 @@ Schemas management endpoints
 |404|[Not Found](https://tools.ietf.org/html/rfc7231#section-6.5.4)|Schema not found|None|
 |500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
 
-## Installs a schema - if there's an installed schema, it will return that schema detail
+## Installs a Schema - if There's an Installed Schema, it will Return that Schema Detail
 
 <a id="opIdinstall_schema"></a>
 
@@ -1750,7 +1750,7 @@ Schemas management endpoints
 |422|[Unprocessable Entity](https://tools.ietf.org/html/rfc2518#section-10.3)|Validation error - Invalid request data|[ApiError](#schemaapierror)|
 |500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
 
-## Unlocks a schema - if there's already an unlocked variant, then we return that
+## Unlocks a Schema - if there's Already an Unlocked Variant, then we Return That
 
 <a id="opIdunlock_schema"></a>
 
@@ -1813,7 +1813,7 @@ Schemas management endpoints
 |422|[Unprocessable Entity](https://tools.ietf.org/html/rfc2518#section-10.3)|Validation error - Invalid request data|[ApiError](#schemaapierror)|
 |500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
 
-## Get the default variant for a schema id
+## Get the Default Variant for a Schema ID
 
 <a id="opIdget_default_variant"></a>
 
@@ -1873,7 +1873,7 @@ Schemas management endpoints
 |404|[Not Found](https://tools.ietf.org/html/rfc7231#section-6.5.4)|Schema variant not found|None|
 |500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
 
-## Get a schema variant by schema id and schema variant id
+## Get a Schema Variant by Schema ID and Schema Variant ID
 
 <a id="opIdget_variant"></a>
 
@@ -1935,7 +1935,7 @@ Schemas management endpoints
 |412|[Precondition Failed](https://tools.ietf.org/html/rfc7232#section-4.2)|Schema variant not found for schema|None|
 |500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
 
-## Update the schema variant and regenerate
+## Update the Schema Variant and Regenerate
 
 <a id="opIdupdate_schema_variant"></a>
 
@@ -2010,7 +2010,7 @@ Schemas management endpoints
 |412|[Precondition Failed](https://tools.ietf.org/html/rfc7232#section-4.2)|Schema variant not found for schema|None|
 |500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
 
-## Create an action function and attach to a schema variant
+## Create an Action Function and Attach to a Schema Variant
 
 <a id="opIdcreate_variant_action"></a>
 
@@ -2061,7 +2061,7 @@ Schemas management endpoints
 |412|[Precondition Failed](https://tools.ietf.org/html/rfc7232#section-4.2)|Schema variant not found for schema|None|
 |500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
 
-## Delete the binding between an action func and the schema variant
+## Delete the Binding Between an Action Func and the Schema Variant
 
 <a id="opIddetach_action_func_binding"></a>
 
@@ -2099,7 +2099,7 @@ Schemas management endpoints
 |412|[Precondition Failed](https://tools.ietf.org/html/rfc7232#section-4.2)|Schema variant not found for schema|None|
 |500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
 
-## Create an attribute function and attach to a schema variant
+## Create an Attribute Function and Attach to a Schema Variant
 
 <a id="opIdcreate_variant_attribute"></a>
 
@@ -2161,7 +2161,7 @@ Schemas management endpoints
 |412|[Precondition Failed](https://tools.ietf.org/html/rfc7232#section-4.2)|Schema variant not found for schema|None|
 |500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
 
-## Delete the binding between an attribute func and the schema variant
+## Delete the Binding Between an Attribute Func and the Schema Variant
 
 <a id="opIddetach_attribute_func_binding"></a>
 
@@ -2199,7 +2199,7 @@ Schemas management endpoints
 |412|[Precondition Failed](https://tools.ietf.org/html/rfc7232#section-4.2)|Schema variant not found for schema|None|
 |500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
 
-## Create an authentication function and attach to a schema variant
+## Create an Authentication Function and Attach it to a Schema Variant
 
 <a id="opIdcreate_variant_authentication"></a>
 
@@ -2248,7 +2248,7 @@ Schemas management endpoints
 |412|[Precondition Failed](https://tools.ietf.org/html/rfc7232#section-4.2)|Schema variant not found for schema|None|
 |500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
 
-## Delete the binding between an authentication func and the schema variant
+## Delete the Binding Between an Authentication Func and the Schema Variant
 
 <a id="opIddetach_authentication_func_binding"></a>
 
@@ -2286,7 +2286,7 @@ Schemas management endpoints
 |412|[Precondition Failed](https://tools.ietf.org/html/rfc7232#section-4.2)|Schema variant not found for schema|None|
 |500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
 
-## Create a codegen function and attach to a schema variant
+## Create a Codegen Function and Attach to a Schema Variant
 
 <a id="opIdcreate_variant_codegen"></a>
 
@@ -2336,7 +2336,7 @@ Schemas management endpoints
 |412|[Precondition Failed](https://tools.ietf.org/html/rfc7232#section-4.2)|Schema variant not found for schema|None|
 |500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
 
-## Delete the binding between a codegen func and the schema variant
+## Delete the Binding Between a codegen func and the schema variant
 
 <a id="opIddetach_codegen_func_binding"></a>
 
@@ -2374,7 +2374,7 @@ Schemas management endpoints
 |412|[Precondition Failed](https://tools.ietf.org/html/rfc7232#section-4.2)|Schema variant not found for schema|None|
 |500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
 
-## Create a management function and attach to a schema variant
+## Create a Management Function and Attach to a Schema Variant
 
 <a id="opIdcreate_variant_management"></a>
 
@@ -2424,7 +2424,7 @@ Schemas management endpoints
 |412|[Precondition Failed](https://tools.ietf.org/html/rfc7232#section-4.2)|Schema variant not found for schema|None|
 |500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
 
-## Delete the binding between a management func and the schema variant
+## Delete the Binding Between a Management Func and the Schema Variant
 
 <a id="opIddetach_management_func_binding"></a>
 
@@ -2462,7 +2462,7 @@ Schemas management endpoints
 |412|[Precondition Failed](https://tools.ietf.org/html/rfc7232#section-4.2)|Schema variant not found for schema|None|
 |500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
 
-## Create a qualification and attach to a schema variant
+## Create a Qualification and Attach to a Schema Variant
 
 <a id="opIdcreate_variant_qualification"></a>
 
@@ -2512,7 +2512,7 @@ Schemas management endpoints
 |412|[Precondition Failed](https://tools.ietf.org/html/rfc7232#section-4.2)|Schema variant not found for schema|None|
 |500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
 
-## Delete the binding between a qualification func and the schema variant
+## Delete the Binding Between a Qualification Func and the Schema Variant
 
 <a id="opIddetach_qualification_func_binding"></a>
 
@@ -2554,7 +2554,7 @@ Schemas management endpoints
 
 Actions management endpoints
 
-## List queued actions
+## List Queued Actions
 
 <a id="opIdget_actions"></a>
 
@@ -2599,7 +2599,7 @@ Actions management endpoints
 |401|[Unauthorized](https://tools.ietf.org/html/rfc7235#section-3.1)|Unauthorized - Invalid or missing token|None|
 |500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
 
-## Remove queued action
+## Remove Queued Action
 
 <a id="opIdcancel_action"></a>
 
@@ -2634,7 +2634,7 @@ Actions management endpoints
 |404|[Not Found](https://tools.ietf.org/html/rfc7231#section-6.5.4)|Action not found|None|
 |500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
 
-## Put action on-hold
+## Put Action On-Hold
 
 <a id="opIdput_on_hold"></a>
 
@@ -2669,7 +2669,7 @@ Actions management endpoints
 |404|[Not Found](https://tools.ietf.org/html/rfc7231#section-6.5.4)|Action not found|None|
 |500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
 
-## Retry action
+## Retry Action
 
 <a id="opIdretry_action"></a>
 
@@ -2708,7 +2708,7 @@ Actions management endpoints
 
 Secrets management endpoints
 
-## List all secrets
+## List All Secrets
 
 <a id="opIdget_secrets"></a>
 
@@ -2814,7 +2814,7 @@ Secrets management endpoints
 |401|[Unauthorized](https://tools.ietf.org/html/rfc7235#section-3.1)|Unauthorized - Invalid or missing token|None|
 |500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
 
-## Create a secret
+## Create a Secret
 
 <a id="opIdcreate_secret"></a>
 
@@ -2870,7 +2870,7 @@ Secrets management endpoints
 |422|[Unprocessable Entity](https://tools.ietf.org/html/rfc2518#section-10.3)|Validation error - Invalid request data|[ApiError](#schemaapierror)|
 |500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
 
-## Update a secret
+## Update a Secret
 
 <a id="opIdupdate_secret"></a>
 
@@ -2927,7 +2927,7 @@ Secrets management endpoints
 |404|[Not Found](https://tools.ietf.org/html/rfc7231#section-6.5.4)|Secret not found|None|
 |500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
 
-## Delete a secret
+## Delete a Secret
 
 <a id="opIddelete_secret"></a>
 
@@ -2966,7 +2966,7 @@ Secrets management endpoints
 
 Functions management endpoints
 
-## Get func execution run logs
+## Get Func Execution Run Logs
 
 <a id="opIdget_func_run"></a>
 
@@ -3087,7 +3087,7 @@ Functions management endpoints
 |404|[Not Found](https://tools.ietf.org/html/rfc7231#section-6.5.4)|Func run not found|None|
 |500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
 
-## Create a transformation function
+## Create a Transformation Function
 
 <a id="opIdcreate_transformation"></a>
 
@@ -3132,7 +3132,7 @@ Functions management endpoints
 |401|[Unauthorized](https://tools.ietf.org/html/rfc7235#section-3.1)|Unauthorized - Invalid or missing token|None|
 |500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
 
-## Get function details
+## Get Function Details
 
 <a id="opIdget_func"></a>
 
@@ -3186,7 +3186,7 @@ Functions management endpoints
 |404|[Not Found](https://tools.ietf.org/html/rfc7231#section-6.5.4)|Func not found|None|
 |500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
 
-## Update a func
+## Update a Func
 
 <a id="opIdupdate_func"></a>
 
@@ -3232,7 +3232,7 @@ Functions management endpoints
 |404|[Not Found](https://tools.ietf.org/html/rfc7231#section-6.5.4)|Function not found|None|
 |500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
 
-## Unlocks a func - if there's already an unlocked function, then we return that
+## Unlocks a Func - if There's Already an Unlocked Function, Then we Return That
 
 <a id="opIdunlock_func"></a>
 
@@ -3280,7 +3280,7 @@ Functions management endpoints
 
 Management functions endpoints
 
-## Get management funcs job state details
+## Get Management Funcs Job State Details
 
 <a id="opIdget_management_func_run_state"></a>
 
@@ -3320,7 +3320,7 @@ Management functions endpoints
 
 Debug function endpoints
 
-## Execute a debug function in the context of a component
+## Execute a Debug Function in the Context of a Component
 
 <a id="opIdexec_debug_func"></a>
 
@@ -3368,7 +3368,7 @@ Debug function endpoints
 |404|[Not Found](https://tools.ietf.org/html/rfc7231#section-6.5.4)|Component not found|None|
 |500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
 
-## Get debug funcs job state details
+## Get Debug Funcs Job State Details
 
 <a id="opIdget_debug_func_state"></a>
 
@@ -3411,7 +3411,7 @@ Debug function endpoints
 
 Workspace management endpoints
 
-## List workspaces
+## List Workspaces
 
 <a id="opIdlist_workspaces"></a>
 
@@ -3510,7 +3510,7 @@ Status Code **200**
 |» quarantinedAt|string,null|false|none|none|
 |» role|string,null|false|none|none|
 
-## Create a new workspace
+## Create a New Workspace
 
 <a id="opIdcreate_workspace"></a>
 
@@ -3566,7 +3566,7 @@ Status Code **200**
 |401|[Unauthorized](https://tools.ietf.org/html/rfc7235#section-3.1)|Unauthorized - Invalid or missing token|None|
 |500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
 
-## Get the details of a workspace
+## Get the Details of a Workspace
 
 <a id="opIdget_workspace"></a>
 
@@ -3612,7 +3612,7 @@ Status Code **200**
 |404|[Not Found](https://tools.ietf.org/html/rfc7231#section-6.5.4)|Workspace not found or has been deleted|None|
 |500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
 
-## Delete a workspace - please note, this is a soft delete and workspaces can be recovered
+## Delete a Workspace - Please note, this is a soft delete and workspaces can be recovered
 
 <a id="opIddelete_workspace"></a>
 
@@ -3648,7 +3648,7 @@ Status Code **200**
 |404|[Not Found](https://tools.ietf.org/html/rfc7231#section-6.5.4)|Workspace not found|None|
 |500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
 
-## Update the details of a workspace
+## Update the Details of a Workspace
 
 <a id="opIdupdate_workspace"></a>
 
@@ -3706,7 +3706,7 @@ Status Code **200**
 |404|[Not Found](https://tools.ietf.org/html/rfc7231#section-6.5.4)|Workspace not found|None|
 |500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
 
-## Leave a workspace (remove yourself)
+## Leave a Workspace (remove yourself)
 
 <a id="opIdleave_workspace"></a>
 
@@ -3759,7 +3759,7 @@ Status Code **200**
 |» signupAt|string,null|false|none|none|
 |» userId|string|true|none|none|
 
-## List all members of a workspace
+## List All Members of a Workspace
 
 <a id="opIdlist_members"></a>
 
@@ -3812,7 +3812,7 @@ Status Code **200**
 |» signupAt|string,null|false|none|none|
 |» userId|string|true|none|none|
 
-## Invite a new member to the workspace
+## Invite a New Member to the Workspace
 
 <a id="opIdinvite_member"></a>
 
@@ -3876,7 +3876,7 @@ Status Code **200**
 |» signupAt|string,null|false|none|none|
 |» userId|string|true|none|none|
 
-## Remove a member from the workspace
+## Remove a Member from the Workspace
 
 <a id="opIdremove_member"></a>
 
@@ -3939,7 +3939,7 @@ Status Code **200**
 |» signupAt|string,null|false|none|none|
 |» userId|string|true|none|none|
 
-## Update a member's role in the workspace
+## Update a Member's Role in the Workspace
 
 <a id="opIdupdate_member_role"></a>
 
@@ -4005,7 +4005,7 @@ Status Code **200**
 
 # [search](#system-initiative-api-search)
 
-## Complex search for components
+## Complex Search for Components
 
 <a id="opIdsearch"></a>
 
