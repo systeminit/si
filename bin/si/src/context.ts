@@ -317,6 +317,80 @@ export class Context {
   }
 }
 
+/**
+ * Pretty-print API request/response payloads for debugging
+ * @internal Exported for testing
+ */
+export function printPayload(
+  response: AxiosResponse | AxiosRequestConfig,
+  logger: { trace: (msg: string) => void },
+) {
+    if (!response.data) {
+      return;
+    }
+
+    // Handle arrays directly
+    if (Array.isArray(response.data)) {
+      logger.trace(`    [Array with ${response.data.length} items]`);
+      response.data.slice(0, 3).forEach((item, idx) => {
+        if (typeof item === "object" && item !== null) {
+          try {
+            const itemEntries = Object.entries(item);
+            const itemStr = itemEntries
+              .slice(0, 5) // Limit fields shown
+              .map(([ik, iv]) => {
+                if (typeof iv === "string" || typeof iv === "number" || typeof iv === "boolean") {
+                  return `${ik}=${iv}`;
+                } else if (iv === null) {
+                  return `${ik}=null`;
+                } else {
+                  return `${ik}=[${typeof iv}]`;
+                }
+              })
+              .join(", ");
+            logger.trace(`      [${idx}]: ${itemStr}${itemEntries.length > 5 ? ", ..." : ""}`);
+          } catch {
+            logger.trace(`      [${idx}]: [object]`);
+          }
+        } else {
+          logger.trace(`      [${idx}]: ${JSON.stringify(item)}`);
+        }
+      });
+      if (response.data.length > 3) {
+        logger.trace(`      ... ${response.data.length - 3} more items`);
+      }
+      return;
+    }
+
+    // Handle objects
+    if (typeof response.data === "object") {
+      const dataEntries = Object.entries(response.data);
+      for (const [k, v] of dataEntries) {
+        if (Array.isArray(v)) {
+          logger.trace(`    ${k}: [${v.length} items]`);
+        } else if (v === null) {
+          logger.trace(`    ${k}: null`);
+        } else if (typeof v === "object") {
+          logger.trace(`    ${k}: [object]`);
+        } else {
+          logger.trace(`    ${k}: ${v}`);
+        }
+      }
+      return;
+    }
+
+    // Handle strings
+    if (typeof response.data === "string") {
+      for (const line of response.data.split("\n")) {
+        logger.trace(`    ${line}`);
+      }
+      return;
+    }
+
+    // Handle primitives
+    logger.trace(`    [${typeof response.data}] ${response.data}`);
+}
+
 /// Global flag to ensure interceptors are only added once
 let INTERCEPTORS_ADDED = false;
 
@@ -339,7 +413,7 @@ function addInterceptors() {
     }
 
     // Log request body
-    printPayload(config);
+    printPayload(config, logger);
 
     return config;
   });
@@ -359,7 +433,7 @@ function addInterceptors() {
         }`,
       );
 
-      printPayload(response);
+      printPayload(response, logger);
 
       return response;
     },
@@ -379,57 +453,11 @@ function addInterceptors() {
         }`,
       );
 
-      printPayload(error.response);
+      printPayload(error.response, logger);
 
       return Promise.reject(error);
     },
   );
-
-  function printPayload(response: AxiosResponse | AxiosRequestConfig) {
-    if (response.data) {
-      switch (typeof response.data) {
-        case "object": {
-          const dataEntries = Object.entries(response.data);
-          for (const [k, v] of dataEntries) {
-            if (Array.isArray(v)) {
-              logger.trace(`    ${k}: [${v.length} items]`);
-              // Show first few items of array
-              v.slice(0, 3).forEach((item, idx) => {
-                if (typeof item === "object") {
-                  const itemEntries = Object.entries(item);
-                  const itemStr = itemEntries
-                    .map(([ik, iv]) => `${ik}=${JSON.stringify(iv)}`)
-                    .join(", ");
-                  logger.trace(`      [${idx}]: ${itemStr}`);
-                } else {
-                  logger.trace(`      [${idx}]: ${JSON.stringify(item)}`);
-                }
-              });
-              if (v.length > 3) {
-                logger.trace(`      ... ${v.length - 3} more items`);
-              }
-            } else {
-              try {
-                logger.trace(`    ${k}: ${JSON.stringify(v)}`);
-              } catch {
-                logger.trace(`    ${k}: [object]`);
-              }
-            }
-          }
-          break;
-        }
-        case "string": {
-          for (const line of response.data.split("\n")) {
-            logger.trace(`    ${line}`);
-          }
-          break;
-        }
-        default: {
-          logger.trace(`    [${typeof response.data} ${response.data}]`);
-        }
-      }
-    }
-  }
 }
 
 /**
