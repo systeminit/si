@@ -12,7 +12,7 @@ Templates allow you to use the components in a workspace as a pattern for creati
 Templates are written in a declarative internal TypeScript DSL. You build up the behavior you want, and then the template engine executes it on your behalf.
 :::
 
-When a template is run it will:
+When a template is run, it will:
 
 - Build the set of "baseline" components, either by searching a workspace or reading a cached YAML file
 - Load any input variables you define
@@ -23,10 +23,10 @@ When a template is run it will:
 - Compare the "working set" to the "existing set", determining what components need to be created, updated, or deleted
 - Perform the create, update, or delete operations in the Change Set
 
-Each invocation of a template uses a supplied "invocation key", which is used to both name the change set and determine which components should be in the existing set.
+Each invocation of a template uses a supplied "invocation key" to both name the change set and determine which components should be included in the existing set.
 
 :::info
-Templates are idempotent (they only make changes they need to make) and convergent (they will move from an incorrect state to a correct state) when run repeatedly in a workspace with the same invocation key. For example: if you applied a "Standard VPC" template to a workspace with the invocation key "default-vpc", ran it, then updated the template to remove NAT Gateways, the NAT Gateways created in the initial run would be deleted.
+Templates are idempotent (they only make the changes they need to) and convergent (they move from an incorrect state to a correct state) when run repeatedly in a workspace with the same invocation key. For example, if you applied a "Standard VPC" template to a workspace with the invocation key "default-vpc", ran it, and then updated the template to remove NAT Gateways, the NAT Gateways created in the initial run would be deleted.
 
 This makes templates easy to iterate on, and useful as a tool for ongoing evolution of the components they create (even after they are applied).
 :::
@@ -71,10 +71,10 @@ export default async function (ctx: TemplateContext) {
 }
 ```
 
-With no changes, this template will make an exact replica of the workspace it is run against.
+With no changes, this template will make a replica of the workspace it is run against.
 
 :::info
-This is because templates use the baseline as the source of components to create. Since `schema:*` matches all components, this template will create a copy of every component in the workspace in a new change set. This assumes the baseline components themselves were not created by a previous execution of this template with the same invocation key; if they were, then it would do nothing at all (because the components are already identical, and templates are idempotent).
+This is because templates use the baseline as the source of components to create. Since `schema:*` matches all components, this template will create a copy of every component in the workspace in a new change set. This assumes the baseline components were not created by a previous execution of this template with the same invocation key; if they were, it would do nothing (because the components are already identical and templates are idempotent).
 :::
 
 ## Running templates
@@ -134,10 +134,10 @@ $ si template run rebuild.ts --key recreate
 </TabPanel>
 </DocTabs>
 
-Running this template will create a 'rebuild-recreate' change set with 17 new components in it, each an exact copy of the existing components, with any subscriptions between them updated to point to the new components.
+Running this template will create a 'rebuild-recreate' change set with 17 new components, each an exact copy of the existing components, and any subscriptions between them will be updated to point to the new components.
 
 :::info
-If a component has a subscription to another component that also has an entry in the working set, its subscription will be updated to point to its peer in the working set. If it has a subscription to a component that is not in the working set, it will remain subscribed to the existing subscription. For example, if all the components subscribe to an AWS Credential, and the AWS Credential is not in the working set, they will remain subscribed to the original AWS Credential.
+If a component has a subscription to another component that also has an entry in the working set, its subscription will be updated to point to its peer in the working set. If it has a subscription to a component that is not in the working set, it will remain subscribed to the existing subscription. For example, if all components subscribe to an AWS Credential and that Credential is not in the working set, they will remain subscribed to the original AWS Credential.
 :::
 
 ### Dry Run Mode
@@ -224,18 +224,18 @@ $ si template run vpc-pattern.ts --key test --dry-run
 ~/templates (sibook)
 ```
 
-Dry-run mode executes the template logic including search, input validation, name patterns, and transformations, but stops before creating the change set or making any modifications to the workspace.
+Dry-run mode executes the template logic, including search, input validation, name patterns, and transformations, but stops before creating the change set or making any modifications to the workspace.
 
 </TabPanel>
 </DocTabs>
 
 ### Invocation Key
 
-Each template run requires an invocation key to be passed with the `--key` parameter. This value is used to correlate a particular invocation of the template to the components it creates or updates. This is how we enable idempotency over subsequent invocations of the template. By allowing you to specify the key, we also enable you to run the same template more than once against the same workspace.
+Each template run requires an invocation key to be passed with the `--key` parameter. This value is used to correlate a particular invocation of the template to the components it creates or updates. This is how we enable idempotency over subsequent invocations of the template. By allowing you to specify the key, we also enable you to run the same template multiple times against the same workspace.
 
 ## Baseline Components
 
-Baseline components can be defined in two ways: via dynamic searching or as static YAML.
+Baseline components can be defined in two ways: either through dynamic search or as static YAML.
 
 ### Dynamic Search
 
@@ -253,12 +253,12 @@ export default async function (ctx: TemplateContext) {
 ```
 
 :::tip
-The search syntax in System Initiative can express very complex boolean logic - you most likely only need one search query for almost all use cases. Supporting multiple search strings is there for convenience in composing complex templates by breaking up the search logic as needed.
+The search syntax in System Initiative can express very complex boolean logic - you most likely only need one search query for almost all use cases. Supporting multiple search strings is provided for convenience when composing complex templates, breaking up the search logic as needed.
 :::
 
 ### YAML Cache
 
-In order to make templates re-usable even without access to the workspaces the baseline components exist in, you can create a "baseline cache" file. This stores the results of your baseline search (and some information about the schemas they use) as YAML.
+To make templates re-usable even without access to the workspaces the baseline components exist in, you can create a "baseline cache" file. This stores the results of your baseline search (and some information about the schemas they use) as YAML.
 
 Given a template like the one we defined above for Dynamic Search, we would cache all the VPC and Subnet components in our workspace.
 
@@ -347,13 +347,13 @@ export default async function (ctx: TemplateContext) {
 }
 ```
 
-This code defines an input schema that is a object with 3 keys: environment, region, and vpcAttributes. The environment value is a string that defaults to "dev", the region is either us-east-1 or us-east-2, and vpcAttributes is itself an object with a single vpcCount key, whose value is a number.
+This code defines an input schema that is an object with 3 keys: environment, region, and vpcAttributes. The environment value is a string that defaults to "dev", the region is either us-east-1 or us-east-2, and vpcAttributes is itself an object with a single vpcCount key, whose value is a number.
 
 :::tip
 Wondering what the `type Inputs = z.infer<typeof inputSchema>` line is all about? It's a little bit of TypeScript magic that creates a TypeScript type from the schema you defined, so that we can use it later to have your editor provide intellisense on your input data!
 :::
 
-There is a helper export you can use if you want to specify the details of a subscription as an input, to later be consumed by the [ensure attribute helpers](#setting-subscriptions) named `SubscriptionInput`. To use it:
+There is a helper export you can use if you want to specify the details of a subscription as an input, to be later consumed by the [ensure attribute helpers](#setting-subscriptions) named `SubscriptionInput`. To use it:
 
 
 ```typescript [vpc-and-subnet.ts]
@@ -381,7 +381,7 @@ export default async function (ctx: TemplateContext) {
 
 ### YAML Input Files
 
-To specify the inputs to the template, write a yaml file that matches your schema. The best practice is to have the file end with '-input.yaml', such as 'vpc-and-subnet-input.yaml'.
+To specify the inputs to the template, write a YAML file that matches your schema. The best practice is to have the file end with '-input.yaml', such as 'vpc-and-subnet-input.yaml'.
 
 :::code-group
 
@@ -429,7 +429,7 @@ $ si template run ./vpc-and-subnet.ts --key rebuild --input ./vpc-and-subnet-inp
 
 ### Referencing Inputs
 
-You can reference the input data as the second argument to the transformation function, or through the second argument to the rename function. Both are demonstrated in the next section.
+You can reference the input data either as the second argument to the transformation function or as the second argument to the rename function. Both are demonstrated in the next section.
 
 :::tip
 You specify the input schema in your template file, but the inputs themselves are not evaluated until your template is executed. That is why the input data is not available outside the transformation function or replacement patterns.
@@ -469,7 +469,7 @@ The initial pattern is a [JavaScript regular expression](https://developer.mozil
 
 In the above example, it will rename all components from "demo-whatever" to "prod-whatever".
 
-Each name pattern you provide will be evalauted against the entire working set, in order. This means you can have multiple patterns that rename the came component.
+Each name pattern you provide will be evaluated against the entire working set, in order. This means you can have multiple patterns that rename the same component.
 
 #### Using Input Variables in Replacement Patterns
 
@@ -500,10 +500,10 @@ export default async function (ctx: TemplateContext) {
 ```
 
 :::tip
-While you can write complex expressions with EJS, typically all you will need is the syntax above - which inserts a variable into the string.
+While you can write complex expressions with EJS, typically all you will need is the syntax above, which inserts a variable into the string.
 :::
 
-With the following input yaml:
+With the following input YAML:
 
 ```yaml [vpc-and-subnet-input.yaml]
 environment: prod
@@ -540,7 +540,7 @@ The components have all been renamed according to the 'environment' input variab
 
 ## Transforming the Working Set
 
-Transforming the working set allows you to manipulate the attributes of the components, create new components, make clones of existing components, or remove components from the set. This is done through adding a transformation function:
+Transforming the working set lets you manipulate component attributes, create new components, clone existing components, or remove components from the set. This is done through adding a transformation function:
 
 ```typescript
 import { TemplateContext } from "jsr:@systeminit/si";
@@ -578,7 +578,7 @@ export default async function (ctx: TemplateContext) {
 The function takes an async callback function, whose arguments are the `workingSet` and your `inputs`. The function must return a `workingSet` (if you do not, your transformation function may not work as expected.)
 
 :::info
-The `inputs = inputs as Inputs` line is bit of TypeScript magic that enables intellisense for your input variables.
+The `inputs = inputs as Inputs` line is a bit of TypeScript magic that enables intellisense for your input variables.
 :::
 
 ### Finding components in the working set
@@ -624,15 +624,15 @@ if (subnet) {
 }
 ```
 
-You can set the attribute to any value that fits the schema - boolean, string, number, objects, maps, arrays, etc.
+You can set the attribute to any value that fits the schema: boolean, string, number, object, map, array, etc.
 
 :::tip
-The attribute path syntax will automatically create nested objects and map entries as needed. You can either set the whole object as a value, or set individual properties.
+The attribute path syntax automatically creates nested objects and maps entries as needed. You can either set the whole object as a value or set individual properties.
 :::
 
 ##### Setting Subscriptions
 
-You can set a subscription to another components attribute through searching for the component to subscribe to or by referencing it directly by name or id.
+You can set a subscription to another component's attribute through searching for the component to subscribe to or by referencing it directly by name or ID.
 
 :::code-group
 
@@ -674,7 +674,7 @@ await ctx.ensureAttribute(
 
 :::
 
-The [public API](./public-api.md) supports a low level API for setting subscriptions using `$source` sytnax, which can also be used.
+The [public API](./public-api.md) supports a low-level API for setting subscriptions using `$source` syntax, which can also be used.
 
 ```typescript
 await ctx.ensureAttribute(
@@ -689,12 +689,12 @@ await ctx.ensureAttribute(
 ```
 
 :::tip
-The entire ensure* family of helper functions support the same subscription syntax for values.
+The entire ensure* family of helper functions supports the same subscription syntax for values.
 :::
 
 ##### skipIfMissing
 
-The `ensureAttribute` helper will only set the value on the component if needed (it is idempotent), and will throw an error if the attribute you are trying to set does not exist in the components schema. For convenience, you can disable this check with an optional `skipIfMissing` argument:
+The `ensureAttribute` helper will only set the value on the component if needed (it is idempotent), and will throw an error if the attribute you are trying to set does not exist in the component's schema. For convenience, you can disable this check with an optional `skipIfMissing` argument:
 
 ```typescript
 for (const component of workingSet) {
@@ -707,7 +707,7 @@ for (const component of workingSet) {
 }
 ```
 
-In this example, we iterate over every component in the working set, and set the "/domain/EnableDns64" attribute to true *only if that attribute exists on the components schema*, otherwise we do nothing.
+In this example, we iterate over every component in the working set, and set the "/domain/EnableDns64" attribute to true *only if that attribute exists on the component's schema*, otherwise we do nothing.
 
 :::tip
 All the `ensure*` family of helpers support the `skipIfMissing` option.
@@ -730,7 +730,7 @@ It takes 3 arguments:
 1. The attribute path to ensure is missing
 1. The optional object to modify the behavior of the helper
 
-Ensuring an attribute is missing will delete the values entirely from the components attributes. It is idempotent - if the attribute is already missing, nothing is done.
+Ensuring an attribute is missing will delete the values entirely from the component's attributes. It is idempotent - if the attribute is already missing, nothing is done.
 
 #### ensureArrayAttribute
 
@@ -813,7 +813,7 @@ await c.ensureArrayAttribute(
 
 ##### The match function
 
-The match function is gets each element of the array (by convention the variable 'e'), and if it returns true, will update that element.
+The match function gets each element of the array (by convention, the variable 'e'), and if it returns true, it will update that element.
 
 The element object has the following properties:
 
@@ -921,7 +921,7 @@ You must always push the variable containing your new component on to the workin
 
 ### Copying existing components
 
-A common use case in templating is wanting to create a variable number of components based on an example. Do that with the `copyComponent` helper:
+A common use case in templating is creating a variable number of components based on an example. Do that with the `copyComponent` helper:
 
 ```typescript
 ctx.transform(async (workingSet, inputs) => {
@@ -941,10 +941,10 @@ There are 2 arguments:
 1. The component to copy
 1. The name of the new component
 
-A typical pattern would then be to use the `ensure` helper functions to configure your newly cloned component appropriately.
+A typical pattern is to use the `ensure` helper functions to configure your newly cloned component appropriately.
 
 :::warning
-You must always push the variable containing your new component on to the workingSet if you want it to be created!
+You must always push the variable containing your new component onto the workingSet if you want it to be created!
 :::
 
 ## Specifying the Template Name
@@ -973,7 +973,7 @@ export default async function (ctx: TemplateContext) {
 
 ## Specifying the Change Set
 
-By default, the template will create a change set that is the combination of the templates name and its invocation key (the --key argument).
+By default, the template will create a change set that is the combination of the template's name and its invocation key (the --key argument).
 
 For example, if the template file is named 'new-vpc.ts' and `--key rebuild` is passed to `template run`, the change set would be *new-vpc-rebuild*.
 
@@ -1028,7 +1028,7 @@ The second line imports the [zod](https://jsr.io/@systeminit/si) schema validati
 You can see the [full syntax and range of options in the Deno documentation](https://docs.deno.com/runtime/fundamentals/modules/#importing-third-party-modules-and-libraries).
 
 :::tip
-This means you can use the entirety of the JavaScript ecosystem to create truly dynamic template solutions. Call out to third party APIs, do complex network address math, or integrate with your internal systems.
+This means you can use the entirety of the JavaScript ecosystem to create truly dynamic template solutions. Call out to third-party APIs, do complex network address math, or integrate with your internal systems.
 :::
 
 ## LSP Support
