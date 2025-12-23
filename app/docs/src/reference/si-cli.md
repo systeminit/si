@@ -55,11 +55,11 @@ si whoami
 None
 
 
-## completion
+## Completion
 
 Generate shell completions.
 
-### completion bash
+### Completion Bash
 
 Generate shell completions for bash.
 
@@ -75,7 +75,7 @@ None
 
 ---
 
-### completion fish
+### Completion Fish
 
 Generate shell completions for fish.
 
@@ -91,7 +91,7 @@ None
 
 ---
 
-### completion zsh
+### Completion ZSH
 
 Generate shell completions for zsh.
 
@@ -107,7 +107,7 @@ None
 
 ---
 
-## login
+## Login
 
 Login to System Initiative.
 
@@ -122,7 +122,7 @@ si login
 None
 
 
-## logout
+## Logout
 
 Logout from System Initiative.
 
@@ -139,11 +139,11 @@ si logout [OPTIONS]
 | --clear  | flag | false    | Also delete stored tokens for the current user from disk | false |
 
 
-## workspace
+## Workspace
 
 Manage workspaces you have access to.
 
-### workspace switch
+### Workspace Switch
 
 Switch to a different workspace.
 
@@ -160,7 +160,7 @@ si workspace switch [workspace]
 | workspace | string | false    | Workspace to switch to  |
 
 
-### workspace create
+### Workspace Create
 
 Create a new workspace.
 
@@ -177,7 +177,7 @@ si workspace create <name>
 | name | string | true     | Name of workspace   |
 
 
-### workspace leave
+### Workspace Leave
 
 Leave a workspace (remove yourself as a member).
 
@@ -198,7 +198,7 @@ You cannot leave your current workspace. Switch to a different workspace first u
 :::
 
 
-### workspace delete
+### Workspace Delete
 
 Delete a workspace (soft delete - can be recovered by contacting support).
 
@@ -221,11 +221,11 @@ To recover a deleted workspace, contact customer service at support@systeminit.c
 :::
 
 
-## change-set
+## Change Set
 
 Manage change sets.
 
-### change-set create
+### Change Set Create
 
 Create a new change set.
 
@@ -242,7 +242,7 @@ si change-set create <name>
 | name | string | true     | Name of change set   |
 
 
-### change-set abandon
+### Change Set Abandon
 
 Abandon (delete) a change set.
 
@@ -259,7 +259,7 @@ si change-set abandon <change-set-id-or-name>
 | change-set-id-or-name | string | true     | Change set ID or name     |
 
 
-### change-set open
+### Change Set Open
 
 Open a change set in the browser.
 
@@ -276,7 +276,7 @@ si change-set open <change-set-id-or-name>
 | change-set-id-or-name | string | true     | Change set ID or name     |
 
 
-### change-set apply
+### Change Set Apply
 
 Apply a change set to HEAD.
 
@@ -293,7 +293,7 @@ si change-set apply <change-set-id-or-name>
 | change-set-id-or-name | string | true     | Change set ID or name     |
 
 
-### change-set list
+### Change Set List
 
 List all change sets.
 
@@ -308,11 +308,11 @@ si change-set list
 None
 
 
-## ai-agent
+## AI Agent
 
 Manages the SI AI Agent (MCP server).
 
-### ai-agent init
+### AI Agent Init
 
 Initialize AI agent (one-time setup: configure token and create MCP files).
 
@@ -330,7 +330,7 @@ si ai-agent init [OPTIONS]
 | --tool       | string | false    | AI tool to use: `claude`, `codex`, `opencode`, `cursor`  | -                 |
 
 
-### ai-agent start
+### AI Agent Start
 
 Launch Claude Code (MCP server starts automatically).
 
@@ -347,7 +347,7 @@ si ai-agent start [OPTIONS]
 | --tool | string | false    | AI tool to launch                | `claude` |
 
 
-### ai-agent config
+### AI Agent Config
 
 View or update AI agent configuration.
 
@@ -366,7 +366,7 @@ si ai-agent config [OPTIONS]
 | --tool         | string | false    | Update the AI tool: `claude`, `cursor`, `windsurf`, `none` | -    |
 
 
-### ai-agent stdio
+### AI Agent Stdio
 
 Run MCP server in stdio mode (for external AI tools to connect).
 
@@ -381,11 +381,11 @@ si ai-agent stdio
 None
 
 
-## schema
+## Schema
 
 Manage schemas: initialize project, generate functions locally, pull from and push to remote workspaces.
 
-### schema init
+### Schema Init
 
 Initialize a new System Initiative project in the current or specified directory.
 
@@ -402,7 +402,7 @@ si schema init [ROOT_PATH]
 | ROOT_PATH | string | false    | Directory to initialize | Current directory |
 
 
-### schema action generate
+### Schema Action Generate
 
 Generate action functions for schemas.
 
@@ -420,7 +420,7 @@ si schema action generate [SCHEMA_NAME] [ACTION_NAME]
 | ACTION_NAME | string | false    | Action name: `create`, `destroy`, `refresh`, `update`  |
 
 
-### schema authentication generate
+### Schema Authentication Generate
 
 Generate authentication functions for schemas.
 
@@ -438,7 +438,7 @@ si schema authentication generate [SCHEMA_NAME] [AUTH_NAME]
 | AUTH_NAME   | string | false    | Name of the authentication function |
 
 
-### schema codegen generate
+### Schema Codegen Generate
 
 Generate code generator functions for schemas.
 
@@ -456,7 +456,7 @@ si schema codegen generate [SCHEMA_NAME] [CODEGEN_NAME]
 | CODEGEN_NAME | string | false    | Name of the code generator |
 
 
-### schema management generate
+### Schema Management Generate
 
 Generate management functions for schemas.
 
@@ -474,7 +474,7 @@ si schema management generate [SCHEMA_NAME] [MANAGEMENT_NAME]
 | MANAGEMENT_NAME | string | false    | Name of the management function |
 
 
-### schema qualification generate
+### Schema Qualification Generate
 
 Generate qualification functions for schemas.
 
@@ -492,7 +492,7 @@ si schema qualification generate [SCHEMA_NAME] [QUALIFICATION_NAME]
 | QUALIFICATION_NAME | string | false    | Name of the qualification function |
 
 
-### schema scaffold generate
+### Schema Scaffold Generate
 
 Generate a complete schema scaffold with all default functions.
 
@@ -509,7 +509,7 @@ si schema scaffold generate [SCHEMA_NAME]
 | SCHEMA_NAME | string | false    | Name of the schema to scaffold |
 
 
-### schema pull
+### Schema Pull
 
 Pulls schemas from your remote System Initiative workspace. Supports wildcard patterns like `Fastly::*` to pull all schemas in a category, or `*` to pull all schemas.
 
@@ -527,7 +527,7 @@ si schema pull [SCHEMA_NAME...]
 | --builtins  | flag     | false    | Include builtin schemas (schemas you don't own) |
 
 
-### schema push
+### Schema Push
 
 Pushes schemas to your remote System Initiative workspace.
 
@@ -547,9 +547,9 @@ si schema push [SCHEMA_NAME...]
 
 ---
 
-### schema contribute
+### Schema Contribute
 
-Contribute a schema to the module index (works on HEAD change set only).
+Contribute a schema to the module index (only works on the HEAD change set).
 
 > Syntax
 
@@ -565,11 +565,11 @@ si schema contribute <SCHEMA>
 
 ---
 
-### schema overlay
+### Schema Overlay
 
 Manage schema overlays: generate overlay functions and push them to remote workspaces.
 
-#### schema overlay action generate
+#### Schema Overlay Action Generate
 
 Generate action overlay functions.
 
@@ -587,7 +587,7 @@ si schema overlay action generate [SCHEMA_NAME] [OVERLAY_NAME]
 | OVERLAY_NAME | string | false    | Name of the action overlay    |
 
 
-#### schema overlay authentication generate
+#### Schema Overlay Authentication Generate
 
 Generate authentication overlay functions.
 
@@ -605,7 +605,7 @@ si schema overlay authentication generate [SCHEMA_NAME] [OVERLAY_NAME]
 | OVERLAY_NAME | string | false    | Name of the authentication overlay   |
 
 
-#### schema overlay codegen generate
+#### Schema Overlay Codegen Generate
 
 Generate code generator overlay functions.
 
@@ -623,7 +623,7 @@ si schema overlay codegen generate [SCHEMA_NAME] [OVERLAY_NAME]
 | OVERLAY_NAME | string | false    | Name of the codegen overlay   |
 
 
-#### schema overlay management generate
+#### Schema Overlay Management Generate
 
 Generate management overlay functions.
 
@@ -641,7 +641,7 @@ si schema overlay management generate [SCHEMA_NAME] [OVERLAY_NAME]
 | OVERLAY_NAME | string | false    | Name of the management overlay  |
 
 
-#### schema overlay qualification generate
+#### Schema Overlay Qualification Generate
 
 Generate qualification overlay functions.
 
@@ -659,7 +659,7 @@ si schema overlay qualification generate [SCHEMA_NAME] [OVERLAY_NAME]
 | OVERLAY_NAME | string | false    | Name of the qualification overlay  |
 
 
-#### schema overlay push
+#### Schema Overlay Push
 
 Pushes overlay funcs to your remote System Initiative workspace.
 
@@ -676,11 +676,11 @@ si schema overlay push [SCHEMA_NAME...]
 | SCHEMA_NAME | string[] | false    | Schema names (overlays) to push |
 
 
-## component
+## Component
 
 Component-related operations.
 
-### component get
+### Component Get
 
 Get component data by name or ID.
 
@@ -701,7 +701,7 @@ si component get <component> [OPTIONS]
 | --raw            | flag   | false    | Output raw API response as JSON and exit         | false   |
 
 
-### component create
+### Component Create
 
 Create component from JSON/YAML file (idempotent).
 
@@ -722,9 +722,9 @@ si component create <input-file> [OPTIONS]
 | --raw            | flag   | false    | Output raw API response as JSON and exit         | false   |
 
 
-### component update
+### Component Update
 
-Update a component from JSON/YAML file (idempotent).
+Update a component from a JSON/YAML file (idempotent).
 
 > Syntax
 
@@ -742,7 +742,7 @@ si component update <input-file> --change-set <id-or-name> [OPTIONS]
 | --dry-run        | flag   | false    | Show diff without applying changes                    |
 
 
-### component delete
+### Component Delete
 
 Delete a component by name or ID.
 
@@ -761,7 +761,7 @@ si component delete <component> --change-set <id-or-name> [OPTIONS]
 | --dry-run        | flag   | false    | Preview deletion without applying changes |
 
 
-### component erase
+### Component Erase
 
 Erase a component by name or ID.
 
@@ -780,7 +780,7 @@ si component erase <component> --change-set <id-or-name> [OPTIONS]
 | --dry-run        | flag   | false    | Preview deletion without applying changes |
 
 
-### component search
+### Component Search
 
 Search for components using a search query.
 
@@ -801,7 +801,7 @@ si component search <query> [OPTIONS]
 | --full-component  | flag     | false    | Show full component details for each result           | false   |
 
 
-### component upgrade
+### Component Upgrade
 
 Upgrade component(s) to the latest schema version.
 
@@ -849,7 +849,7 @@ si component upgrade --all --dry-run
 #### Behavior
 
 - Checks if components can be upgraded in HEAD **before** creating a change set
-- If nothing can be upgraded, exits cleanly without creating a change set
+- If nothing can be upgraded, it exits cleanly without creating a change set
 - For bulk upgrades (`--all`), processes components one at a time
 - Individual component failures don't stop bulk upgrades
 - Auto-created change sets are abandoned on error
@@ -863,11 +863,11 @@ si component upgrade --all --dry-run
 - Schema category filters use the format `Provider::Service` (e.g., `Microsoft.Network` won't work, use `Microsoft`)
 
 
-## secret
+## Secret
 
 Manage secrets and credentials.
 
-### secret create
+### Secret Create
 
 Create a new secret.
 
@@ -890,7 +890,7 @@ si secret create <secret-type> [OPTIONS]
 | --dry-run           | flag   | false    | Show what would be created without making changes        | false   |
 
 
-### secret update
+### Secret Update
 
 Update an existing secret by component name or ID.
 
@@ -913,11 +913,11 @@ si secret update <component-name-or-id> [OPTIONS]
 | --dry-run           | flag   | false    | Show what would be updated without making changes        | false   |
 
 
-## template
+## Template
 
 Manages System Initiative templates.
 
-### template generate
+### Template Generate
 
 Generate a new template structure file.
 
@@ -935,7 +935,7 @@ si template generate <name> [OPTIONS]
 | -o, --output-dir| string | false    | Output directory for the template file           | Current directory |
 
 
-### template run
+### Template Run
 
 Run a SI template file (local path or remote URL).
 
