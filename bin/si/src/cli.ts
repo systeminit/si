@@ -112,6 +112,14 @@ import {
   callWorkspaceDelete,
   type WorkspaceDeleteOptions,
 } from "./workspace/delete.ts";
+import {
+  callWorkspaceInvite,
+  type WorkspaceInviteOptions,
+} from "./workspace/manage-members.ts";
+import {
+  callWorkspaceMemberList,
+  type WorkspaceMemberListOptions,
+} from "./workspace/member-list.ts";
 
 /**
  * Global options available to all commands
@@ -492,6 +500,7 @@ function buildWorkspaceCommand() {
     })
     .command("switch", buildWorkspaceSwitchCommand())
     .command("create", buildWorkspaceCreateCommand())
+    .command("members", buildWorkspaceMembersCommand())
     .command("leave", buildWorkspaceLeaveCommand())
     .command("delete", buildWorkspaceDeleteCommand());
 }
@@ -632,6 +641,54 @@ function buildWorkspaceCreateCommand() {
         ...options,
         name: name as string,
       } as WorkspaceCreateOptions);
+    });
+}
+
+/**
+ * Builds the workspace members command group with subcommands.
+ *
+ * @returns A SubCommand configured for workspace member operations
+ * @internal
+ */
+function buildWorkspaceMembersCommand() {
+  return createSubCommand(true)
+    .description("Manage workspace members")
+    .command("list", buildWorkspaceMembersListCommand())
+    .command("manage", buildWorkspaceMembersManageCommand());
+}
+
+/**
+ * Builds the members list subcommand.
+ *
+ * @returns A SubCommand configured for listing workspace members
+ * @internal
+ */
+function buildWorkspaceMembersListCommand() {
+  return createSubCommand(true)
+    .description("List all members of the current workspace")
+    .action(async (options) => {
+      await callWorkspaceMemberList({
+        ...options,
+      } as WorkspaceMemberListOptions);
+    });
+}
+
+/**
+ * Builds the members manage subcommand.
+ *
+ * @returns A SubCommand configured for inviting/updating workspace members
+ * @internal
+ */
+function buildWorkspaceMembersManageCommand() {
+  return createSubCommand(true)
+    .description("Invite or update workspace members (collaborators by default, or approvers with --approvers)")
+    .option("--approvers <emails:string>", "Comma-separated list of emails to invite/update as approvers")
+    .arguments("[email:string]")
+    .action(async (options, email) => {
+      await callWorkspaceInvite({
+        ...options,
+        email: email as string | undefined,
+      } as WorkspaceInviteOptions);
     });
 }
 
