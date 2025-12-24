@@ -8241,6 +8241,9 @@
   "Subnet must be in the AZ of the Flow": {
     "enum": null
   },
+  "Supported HTTP Methods for the request to the Ad Decision Server URL.": {
+    "enum": null
+  },
   "Supported only for HTTP API AWS_PROXY integrations. Specifies the AWS service action to invoke.": {
     "enum": null
   },
@@ -11568,6 +11571,9 @@
   "The body of the policy document you want to use for this topic.\n\nYou can only add one policy per PolicyType.\n\nThe policy must be in JSON string format.\n\nLength Constraints: Maximum length of 30720": {
     "enum": null
   },
+  "The body of the request to the Ad Decision Server URL. The maximum length is 100,000 characters.": {
+    "enum": null
+  },
   "The bootstrap servers string of the Apache Kafka cluster.": {
     "enum": null
   },
@@ -11715,6 +11721,9 @@
   "The compression format that AWS uses for the report.": {
     "enum": null
   },
+  "The compression type of the request sent to the Ad Decision Server URL. Only the POST HTTP Method permits compression other than NONE.": {
+    "enum": null
+  },
   "The compute and memory capacity of each DB instance in the Multi-AZ DB cluster, for example ``db.m6gd.xlarge``. Not all DB instance classes are available in all AWS-Regions, or for all database engines.\n For the full list of DB instance classes and availability for your engine, see [DB instance class](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Concepts.DBInstanceClass.html) in the *Amazon RDS User Guide*.\n This setting is required to create a Multi-AZ DB cluster.\n Valid for Cluster Type: Multi-AZ DB clusters only": {
     "enum": null
   },
@@ -11785,6 +11794,9 @@
     "enum": null
   },
   "The contact info of the package group.": {
+    "enum": null
+  },
+  "The contact interaction type for this evaluation form.": {
     "enum": null
   },
   "The container image to be run by the monitoring job.": {
@@ -13393,6 +13405,9 @@
     "enum": null
   },
   "The language code.": {
+    "enum": null
+  },
+  "The language for the evaluation form.": {
     "enum": null
   },
   "The language of the form": {
