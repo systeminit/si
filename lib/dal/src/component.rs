@@ -188,6 +188,7 @@ pub mod properties;
 pub mod qualification;
 pub mod resource;
 pub mod socket;
+pub mod subscription_graph;
 pub mod suggestion;
 
 #[remain::sorted]

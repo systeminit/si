@@ -126,10 +126,7 @@ async fn test_set_as_default_subscription_source(ctx: &DalContext) -> Result<()>
     assert_eq!(expected_defaults, possible_defaults);
 
     for default_sub in possible_defaults {
-        default_sub
-            .subscribe(ctx)
-            .await
-            .unwrap_or_else(|_| panic!("should be able to subscribe: {default_sub:?}"));
+        default_sub.subscribe(ctx).await?;
     }
 
     let conflicting_av_id = Component::attribute_values_for_prop_by_id(
