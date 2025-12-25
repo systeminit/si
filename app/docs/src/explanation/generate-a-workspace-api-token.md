@@ -3,7 +3,7 @@ outline:
   level: [2, 3, 4]
 ---
 
-# Create an API token for your workspace
+# Create an API Token for your Workspace
 
 Click the Cog icon in the top right corner of the workspace, then select `Manage Workspace Tokens`.
 
@@ -13,7 +13,7 @@ Enter a `Token Name` and a value in the `Expiration` field, and click `Generate 
 
 ![Generate API Token](./generate-a-workspace-api-token/generate-api-token.png)
 
-Copy the generated token and save it somewhere safe. You will not be able to see it again.
+Then, copy the generated token and save it in a safe place. You will not be able to see it again.
 
 ![Copy API Token](./generate-a-workspace-api-token/api-token-generated.png)
 
