@@ -7,6 +7,7 @@ use dal::{
     attribute::value::AttributeValue,
     action::{Action, dependency_graph::ActionDependencyGraph},
 };
+use si_id::ManagementPrototypeId;
 use si_events::ActionState;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
@@ -35,6 +36,7 @@ pub struct ComponentRelationshipsParams {
     pub include_qualification_functions: Option<bool>,
     pub include_resource_info: Option<bool>,
     pub include_diff_status: Option<bool>,
+    pub include_execution_history: Option<bool>,
     pub show_only_immediate_dependencies: Option<bool>,
     // Convenience options
     pub include_functions: Option<bool>,  // All function types
@@ -105,6 +107,8 @@ pub struct FunctionRelationshipV1 {
     #[serde(skip_serializing_if = "Vec::is_empty")]
     #[schema(value_type = Vec<String>)]
     pub depends_on: Vec<si_id::ActionId>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub execution_history: Vec<ExecutionHistoryEntry>,
 }
 
 #[derive(Serialize, Debug, Clone, ToSchema)]
@@ -120,6 +124,16 @@ pub struct FunctionExecutionStatusV1 {
     pub action_id: Option<si_id::ActionId>,
 }
 
+#[derive(Serialize, Debug, Clone, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct ExecutionHistoryEntry {
+    #[schema(value_type = String)]
+    pub func_run_id: si_id::FuncRunId,
+    pub state: String,
+    #[schema(value_type = String, format = DateTime)]
+    pub started_at: chrono::DateTime<chrono::Utc>,
+}
+
 async fn build_graph_summary(
     ctx: &dal::DalContext,
     include_subscriptions: bool,
@@ -129,6 +143,7 @@ async fn build_graph_summary(
     include_qualification_functions: bool,
     include_resource_info: bool,
     include_diff_status: bool,
+    include_execution_history: bool,
 ) -> Result<std::collections::BTreeMap<String, ComponentSummaryV1>, ComponentsError> {
     let start_time = Instant::now();
     info!("🚀 [PERF] Starting graph summary generation...");
@@ -255,6 +270,112 @@ async fn build_graph_summary(
         info!("👑 [PERF] Management relationships processed");
     }
     
+    // Build execution history lookup maps if requested
+    let mut action_history_map: HashMap<(ComponentId, dal::ActionPrototypeId), Vec<ExecutionHistoryEntry>> = HashMap::new();
+    let mut management_history_map: HashMap<(ComponentId, ManagementPrototypeId), Vec<ExecutionHistoryEntry>> = HashMap::new();
+    let mut qualification_history_map: HashMap<ComponentId, Vec<ExecutionHistoryEntry>> = HashMap::new();
+    
+    if include_execution_history {
+        let history_start = Instant::now();
+        let workspace_pk = ctx.tenancy().workspace_pk().unwrap_or_default();
+        
+        // Build action execution history using workspace func runs (more reliable)
+        if include_action_functions {
+            info!("📊 [DEBUG] Building action execution history...");
+            // Use the same approach as qualifications - get all func runs and filter
+            if let Ok(Some(all_func_runs)) = ctx.layer_db().func_run().read_many_for_workspace(workspace_pk).await {
+                let action_func_runs: Vec<_> = all_func_runs
+                    .into_iter()
+                    .filter(|fr| fr.function_kind() == si_events::FuncKind::Action)
+                    .take(1000)
+                    .collect();
+                    
+                info!("📊 [DEBUG] Found {} action func runs after filtering", action_func_runs.len());
+                
+                let mut successful_mappings = 0;
+                let mut failed_mappings = 0;
+                
+                for func_run in action_func_runs {
+                    if let Some(action_id) = func_run.action_id() {
+                        match (Action::component_id(ctx, action_id).await, Action::prototype_id(ctx, action_id).await) {
+                            (Ok(Some(comp_id)), Ok(proto_id)) => {
+                                let entry = ExecutionHistoryEntry {
+                                    func_run_id: func_run.id(),
+                                    state: format!("{:?}", func_run.state()),
+                                    started_at: func_run.created_at(),
+                                };
+                                
+                                action_history_map
+                                    .entry((comp_id, proto_id))
+                                    .or_insert_with(Vec::new)
+                                    .push(entry);
+                                    
+                                successful_mappings += 1;
+                            }
+                            (comp_result, proto_result) => {
+                                failed_mappings += 1;
+                                info!("📊 [DEBUG] Failed to map action {} - comp_id: {:?}, proto_id: {:?}", 
+                                    action_id, comp_result, proto_result);
+                            }
+                        }
+                    }
+                }
+                
+                info!("📊 [DEBUG] Action mapping: {} successful, {} failed", successful_mappings, failed_mappings);
+                
+                // Sort and limit each function's history to last 10
+                for history in action_history_map.values_mut() {
+                    history.sort_by(|a, b| b.started_at.cmp(&a.started_at)); // Newest first
+                    history.truncate(10);
+                }
+                info!("📊 [DEBUG] Built action history map with {} entries", action_history_map.len());
+            } else {
+                info!("📊 [DEBUG] No action func runs found or error querying");
+            }
+        }
+        
+        // Build management execution history (use direct job state lookup approach)
+        if include_management_functions {
+            info!("📊 [DEBUG] Building management execution history using job states...");
+            // Instead of using layer cache func runs, build history directly when processing functions
+            // This avoids the complex prototype ID mapping issue
+        }
+        
+        // Build qualification execution history
+        if include_qualification_functions {
+            if let Ok(Some(all_func_runs)) = ctx.layer_db().func_run().read_many_for_workspace(workspace_pk).await {
+                let qual_func_runs: Vec<_> = all_func_runs
+                    .into_iter()
+                    .filter(|fr| fr.function_kind() == si_events::FuncKind::Qualification)
+                    .take(500)
+                    .collect();
+                    
+                for func_run in qual_func_runs {
+                    if let Some(comp_id) = func_run.component_id() {
+                        let entry = ExecutionHistoryEntry {
+                            func_run_id: func_run.id(),
+                            state: format!("{:?}", func_run.state()),
+                            started_at: func_run.created_at(),
+                        };
+                        
+                        qualification_history_map
+                            .entry(comp_id)
+                            .or_insert_with(Vec::new)
+                            .push(entry);
+                    }
+                }
+            }
+            
+            // Sort and limit qualification history
+            for history in qualification_history_map.values_mut() {
+                history.sort_by(|a, b| b.started_at.cmp(&a.started_at));
+                history.truncate(10);
+            }
+        }
+        
+        info!("📊 [PERF] Execution history built in {}ms", history_start.elapsed().as_millis());
+    }
+
     // Add function relationships based on specific parameters
     let need_any_functions = include_action_functions || include_management_functions || include_qualification_functions;
     if need_any_functions {
@@ -350,27 +471,141 @@ async fn build_graph_summary(
                             (execution_status, Vec::new())
                         };
                         
+                        // Get execution history for this action function
+                        let execution_history = if include_execution_history {
+                            let history = action_history_map.get(&(*component_id, action_func.prototype_id))
+                                .cloned()
+                                .unwrap_or_else(Vec::new);
+                            if !history.is_empty() {
+                                info!("📊 [DEBUG] Found {} history entries for action function {} on component {}", 
+                                    history.len(), action_func.func_name, component_id);
+                            }
+                            history
+                        } else {
+                            Vec::new()
+                        };
+                        
                         summary.action_functions.push(FunctionRelationshipV1 {
                             function_name: action_func.func_name,
                             execution_status,
                             depends_on,
+                            execution_history,
                         });
                     }
                 }
                 
-                // Add management functions if requested  
+                // Add management functions with REAL execution state
                 if include_management_functions {
                     for mgmt_func in management_functions {
-                    summary.management_functions.push(FunctionRelationshipV1 {
-                        function_name: mgmt_func.func_name,
-                        execution_status: Some(FunctionExecutionStatusV1 {
-                            state: "Available".to_string(),
-                            has_active_run: false,
-                            func_run_id: None,
-                            action_id: None,
-                        }),
-                        depends_on: Vec::new(), // Management functions don't have dependencies
-                    });
+                        // Check for pending/executing management function
+                        let mgmt_execution = si_db::ManagementFuncJobState::get_latest_by_keys(
+                            ctx,
+                            *component_id,
+                            mgmt_func.management_prototype_id,
+                        ).await;
+                        
+                        let execution_status = match mgmt_execution {
+                            Ok(Some(job_state)) => {
+                                let func_run_id = job_state.func_run_id();
+                                match job_state.state() {
+                                    si_db::ManagementState::Pending => {
+                                        Some(FunctionExecutionStatusV1 {
+                                            state: "Pending".to_string(),
+                                            has_active_run: true,
+                                            func_run_id,
+                                            action_id: None,
+                                        })
+                                    }
+                                    si_db::ManagementState::Executing => {
+                                        Some(FunctionExecutionStatusV1 {
+                                            state: "Running".to_string(),
+                                            has_active_run: true,
+                                            func_run_id,
+                                            action_id: None,
+                                        })
+                                    }
+                                    si_db::ManagementState::Success => {
+                                        Some(FunctionExecutionStatusV1 {
+                                            state: "Succeeded".to_string(),
+                                            has_active_run: false,
+                                            func_run_id,
+                                            action_id: None,
+                                        })
+                                    }
+                                    si_db::ManagementState::Failure => {
+                                        Some(FunctionExecutionStatusV1 {
+                                            state: "Failed".to_string(),
+                                            has_active_run: false,
+                                            func_run_id,
+                                            action_id: None,
+                                        })
+                                    }
+                                    si_db::ManagementState::Operating => {
+                                        Some(FunctionExecutionStatusV1 {
+                                            state: "Operating".to_string(),
+                                            has_active_run: true,
+                                            func_run_id,
+                                            action_id: None,
+                                        })
+                                    }
+                                }
+                            }
+                            _ => {
+                                Some(FunctionExecutionStatusV1 {
+                                    state: "Available".to_string(),
+                                    has_active_run: false,
+                                    func_run_id: None,
+                                    action_id: None,
+                                })
+                            }
+                        };
+                        
+                        // Get execution history for this specific management function
+                        let execution_history = if include_execution_history {
+                            // Get ALL management job states for this component + prototype combination
+                            let mut mgmt_history = Vec::new();
+                            
+                            // Query all job states for this component and prototype
+                            let workspace_pk = ctx.tenancy().workspace_pk().unwrap_or_default();
+                            let change_set_id = ctx.change_set_id();
+                            
+                            // Get management job states from database directly for this specific function
+                            if let Ok(all_job_states) = ctx.txns().await?.pg().query(
+                                "SELECT * FROM management_func_job_states WHERE workspace_id = $1 AND component_id = $2 AND prototype_id = $3 ORDER BY created_at DESC LIMIT 10",
+                                &[&workspace_pk, component_id, &mgmt_func.management_prototype_id]
+                            ).await {
+                                for row in all_job_states {
+                                    if let (Ok(func_run_id), Ok(state_str), Ok(created_at)) = (
+                                        row.try_get::<_, Option<si_id::FuncRunId>>("func_run_id"),
+                                        row.try_get::<_, String>("state"),
+                                        row.try_get::<_, chrono::DateTime<chrono::Utc>>("created_at")
+                                    ) {
+                                        if let Some(func_run_id) = func_run_id {
+                                            mgmt_history.push(ExecutionHistoryEntry {
+                                                func_run_id,
+                                                state: state_str,
+                                                started_at: created_at,
+                                            });
+                                        }
+                                    }
+                                }
+                            }
+                            
+                            if !mgmt_history.is_empty() {
+                                info!("📊 [DEBUG] Found {} history entries for management function {} on component {}", 
+                                    mgmt_history.len(), mgmt_func.func_name, component_id);
+                            }
+                            mgmt_history
+                        } else {
+                            Vec::new()
+                        };
+                        
+                        summary.management_functions.push(FunctionRelationshipV1 {
+                            function_name: mgmt_func.func_name,
+                            execution_status,
+                            depends_on: Vec::new(), // Management functions don't have action dependencies
+                            execution_history,
+                        });
                     }
                 }
                 
@@ -444,10 +679,20 @@ async fn build_graph_summary(
                                 })
                             };
                             
+                            // Get execution history for this qualification function
+                            let execution_history = if include_execution_history {
+                                qualification_history_map.get(component_id)
+                                    .cloned()
+                                    .unwrap_or_else(Vec::new)
+                            } else {
+                                Vec::new()
+                            };
+                            
                             summary.qualification_functions.push(FunctionRelationshipV1 {
                                 function_name: qualification.qualification_name,
                                 execution_status,
                                 depends_on: Vec::new(), // Qualification functions don't have action dependencies
+                                execution_history,
                             });
                         }
                     }
@@ -477,6 +722,7 @@ async fn build_graph_summary(
         ("includeQualificationFunctions" = Option<bool>, Query, description = "Include qualification function relationships"),
         ("includeResourceInfo" = Option<bool>, Query, description = "Include resource information (resource ID and status)"),
         ("includeDiffStatus" = Option<bool>, Query, description = "Include component diff status vs HEAD (Added/Modified/None)"),
+        ("includeExecutionHistory" = Option<bool>, Query, description = "Include last 10 execution history entries for each function"),
         ("includeFunctions" = Option<bool>, Query, description = "Include all function types (convenience parameter)"),
         ("includeAll" = Option<bool>, Query, description = "Include everything (convenience parameter)"),
     ),
@@ -519,7 +765,19 @@ async fn build_graph_summary(
                                         "hasActiveRun": true,
                                         "actionId": "01H9ZQD35JPMBGHH69BT0Q79GG"
                                     },
-                                    "dependsOn": ["01H9ZQD35JPMBGHH69BT0Q79FF"]
+                                    "dependsOn": ["01H9ZQD35JPMBGHH69BT0Q79FF"],
+                                    "executionHistory": [
+                                        {
+                                            "funcRunId": "01H9ZQD35JPMBGHH69BT0Q79HH",
+                                            "state": "Failed",
+                                            "startedAt": "2025-12-27T17:30:15Z"
+                                        },
+                                        {
+                                            "funcRunId": "01H9ZQD35JPMBGHH69BT0Q79II",
+                                            "state": "Succeeded",
+                                            "startedAt": "2025-12-27T16:15:22Z"
+                                        }
+                                    ]
                                 }
                             ]
                         }
@@ -549,6 +807,7 @@ pub async fn graph_summary(
     let include_qualification_functions = include_all || include_functions || params.include_qualification_functions.unwrap_or(false);
     let include_resource_info = include_all || params.include_resource_info.unwrap_or(false);
     let include_diff_status = include_all || params.include_diff_status.unwrap_or(false);
+    let include_execution_history = include_all || params.include_execution_history.unwrap_or(false);
     
     // Get component summaries
     let component_summaries = build_graph_summary(
@@ -560,6 +819,7 @@ pub async fn graph_summary(
         include_qualification_functions,
         include_resource_info,
         include_diff_status,
+        include_execution_history,
     ).await?;
 
     // Handle pagination
