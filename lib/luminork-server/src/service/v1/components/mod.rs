@@ -66,18 +66,23 @@ use crate::AppState;
 pub mod add_action;
 pub mod add_to_view;
 pub mod create_component;
+pub mod create_many_components;
 pub mod delete_component;
+pub mod delete_many_components;
 pub mod duplicate_components;
 pub mod erase_component;
+pub mod erase_many_components;
 pub mod execute_management_function;
 pub mod find_component;
 pub mod get_component;
 pub mod get_component_resource;
 pub mod list_components;
 pub mod manage_component;
+pub mod operations;
 pub mod restore_component;
 pub mod search_components;
 pub mod update_component;
+pub mod update_many_components;
 pub mod upgrade_component;
 
 #[remain::sorted]
@@ -101,6 +106,12 @@ pub enum ComponentsError {
     AttributeValue(#[from] dal::attribute::value::AttributeValueError),
     #[error("attribute value {0} not from component {1}")]
     AttributeValueNotFromComponent(AttributeValueId, ComponentId),
+    #[error("bulk operation failed at index {index}")]
+    BulkOperationFailed {
+        index: usize,
+        #[source]
+        source: Box<ComponentsError>,
+    },
     #[error("cached module error: {0}")]
     CachedModule(#[from] dal::cached_module::CachedModuleError),
     #[error("component error: {0}")]
@@ -220,6 +231,14 @@ impl From<JsonRejection> for ComponentsError {
 impl crate::service::v1::common::ErrorIntoResponse for ComponentsError {
     fn status_and_message(&self) -> (StatusCode, String) {
         match self {
+            // Handle bulk error by delegating to inner error's status
+            ComponentsError::BulkOperationFailed { index, source } => {
+                let (status, msg) = source.status_and_message();
+                (
+                    status,
+                    format!("Bulk operation failed at index {}: {}", index, msg),
+                )
+            }
             ComponentsError::Attribute(
                 dal::attribute::attributes::AttributesError::CannotUpdateCreateOnlyProperty(_),
             ) => (StatusCode::PRECONDITION_FAILED, self.to_string()),
@@ -701,6 +720,22 @@ pub fn routes() -> Router<AppState> {
     Router::new()
         .route("/", post(create_component::create_component))
         .route("/", get(list_components::list_components))
+        .route(
+            "/create_many",
+            post(create_many_components::create_many_components),
+        )
+        .route(
+            "/update_many",
+            put(update_many_components::update_many_components),
+        )
+        .route(
+            "/delete_many",
+            delete(delete_many_components::delete_many_components),
+        )
+        .route(
+            "/erase_many",
+            post(erase_many_components::erase_many_components),
+        )
         .route("/find", get(find_component::find_component))
         .route("/search", post(search_components::search_components))
         .route(
