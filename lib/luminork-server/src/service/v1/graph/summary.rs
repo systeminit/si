@@ -5,7 +5,7 @@ use dal::{
     ComponentId,
     diagram::Diagram,
     attribute::value::AttributeValue,
-    action::Action,
+    action::{Action, dependency_graph::ActionDependencyGraph},
 };
 use si_events::ActionState;
 use serde::{Deserialize, Serialize};
@@ -35,6 +35,7 @@ pub struct ComponentRelationshipsParams {
     pub include_qualification_functions: Option<bool>,
     pub include_resource_info: Option<bool>,
     pub include_diff_status: Option<bool>,
+    pub show_only_immediate_dependencies: Option<bool>,
     // Convenience options
     pub include_functions: Option<bool>,  // All function types
     pub include_all: Option<bool>,        // Everything
@@ -101,6 +102,9 @@ pub struct FunctionRelationshipV1 {
     pub function_name: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub execution_status: Option<FunctionExecutionStatusV1>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    #[schema(value_type = Vec<String>)]
+    pub depends_on: Vec<si_id::ActionId>,
 }
 
 #[derive(Serialize, Debug, Clone, ToSchema)]
@@ -256,10 +260,15 @@ async fn build_graph_summary(
     if need_any_functions {
         let functions_start = Instant::now();
         
-        // Get action lookup for real-time states (optimized with change set filtering)
+        // Get action lookup for real-time states AND dependencies
         let all_action_ids = Action::list_topologically(ctx).await?;
         let mut action_lookup: HashMap<(ComponentId, dal::ActionPrototypeId), (ActionState, Option<si_id::FuncRunId>, si_id::ActionId)> = HashMap::new();
         let current_change_set_id = ctx.change_set_id();
+        let head_change_set_id = ctx.get_workspace_default_change_set_id().await?;
+        let is_head_context = current_change_set_id == head_change_set_id;
+        
+        // Build action dependency graph to get dependencies
+        let action_dependency_graph = ActionDependencyGraph::for_workspace(ctx).await?;
         
         for action_id in all_action_ids {
             if let (Ok(Some(comp_id)), Ok(proto_id), Ok(action)) = (
@@ -267,7 +276,16 @@ async fn build_graph_summary(
                 Action::prototype_id(ctx, action_id).await,
                 Action::get_by_id(ctx, action_id).await
             ) {
-                if action.originating_changeset_id() == current_change_set_id {
+                let should_include = if is_head_context {
+                    // On HEAD: include ALL actions regardless of originating changeset
+                    true
+                } else {
+                    // On changeset: include actions from current changeset OR from HEAD
+                    action.originating_changeset_id() == current_change_set_id 
+                        || action.originating_changeset_id() == head_change_set_id
+                };
+                
+                if should_include {
                     let func_run_id = Action::last_func_run_id_for_id_opt(ctx, action_id).await?;
                     action_lookup.insert((comp_id, proto_id), (action.state(), func_run_id, action_id));
                 }
@@ -282,54 +300,61 @@ async fn build_graph_summary(
                 // Add action functions with real-time states if requested
                 if include_action_functions {
                     for action_func in action_functions {
-                    let execution_status = if let Some((state, func_run_id, action_id)) = action_lookup.get(&(*component_id, action_func.prototype_id)) {
-                        match state {
-                            ActionState::Running | ActionState::Dispatched => {
-                                Some(FunctionExecutionStatusV1 {
-                                    state: "Running".to_string(),
-                                    has_active_run: true,
-                                    func_run_id: *func_run_id,
-                                    action_id: Some(*action_id),
-                                })
-                            }
-                            ActionState::Queued => {
-                                Some(FunctionExecutionStatusV1 {
-                                    state: "Queued".to_string(),
-                                    has_active_run: true,
-                                    func_run_id: *func_run_id,
-                                    action_id: Some(*action_id),
-                                })
-                            }
-                            ActionState::OnHold => {
-                                Some(FunctionExecutionStatusV1 {
-                                    state: "OnHold".to_string(),
-                                    has_active_run: true,
-                                    func_run_id: *func_run_id,
-                                    action_id: Some(*action_id),
-                                })
-                            }
-                            ActionState::Failed => {
-                                Some(FunctionExecutionStatusV1 {
-                                    state: "Failed".to_string(),
-                                    has_active_run: false,
-                                    func_run_id: *func_run_id,
-                                    action_id: Some(*action_id),
-                                })
-                            }
-                        }
-                    } else {
-                        Some(FunctionExecutionStatusV1 {
-                            state: "Idle".to_string(),
-                            has_active_run: false,
-                            func_run_id: None,
-                            action_id: None,
-                        })
-                    };
-                    
-                    summary.action_functions.push(FunctionRelationshipV1 {
-                        function_name: action_func.func_name,
-                        execution_status,
-                    });
+                        let (execution_status, depends_on) = if let Some((state, func_run_id, action_id)) = action_lookup.get(&(*component_id, action_func.prototype_id)) {
+                            // Get dependencies for this action
+                            let dependencies = action_dependency_graph.direct_dependencies_of(*action_id);
+                            
+                            let execution_status = match state {
+                                ActionState::Running | ActionState::Dispatched => {
+                                    Some(FunctionExecutionStatusV1 {
+                                        state: "Running".to_string(),
+                                        has_active_run: true,
+                                        func_run_id: *func_run_id,
+                                        action_id: Some(*action_id),
+                                    })
+                                }
+                                ActionState::Queued => {
+                                    Some(FunctionExecutionStatusV1 {
+                                        state: "Queued".to_string(),
+                                        has_active_run: true,
+                                        func_run_id: *func_run_id,
+                                        action_id: Some(*action_id),
+                                    })
+                                }
+                                ActionState::OnHold => {
+                                    Some(FunctionExecutionStatusV1 {
+                                        state: "OnHold".to_string(),
+                                        has_active_run: true,
+                                        func_run_id: *func_run_id,
+                                        action_id: Some(*action_id),
+                                    })
+                                }
+                                ActionState::Failed => {
+                                    Some(FunctionExecutionStatusV1 {
+                                        state: "Failed".to_string(),
+                                        has_active_run: false,
+                                        func_run_id: *func_run_id,
+                                        action_id: Some(*action_id),
+                                    })
+                                }
+                            };
+                            
+                            (execution_status, dependencies)
+                        } else {
+                            let execution_status = Some(FunctionExecutionStatusV1 {
+                                state: "Idle".to_string(),
+                                has_active_run: false,
+                                func_run_id: None,
+                                action_id: None,
+                            });
+                            (execution_status, Vec::new())
+                        };
+                        
+                        summary.action_functions.push(FunctionRelationshipV1 {
+                            function_name: action_func.func_name,
+                            execution_status,
+                            depends_on,
+                        });
                     }
                 }
                 
@@ -344,6 +369,7 @@ async fn build_graph_summary(
                             func_run_id: None,
                             action_id: None,
                         }),
+                        depends_on: Vec::new(), // Management functions don't have dependencies
                     });
                     }
                 }
@@ -421,6 +447,7 @@ async fn build_graph_summary(
                             summary.qualification_functions.push(FunctionRelationshipV1 {
                                 function_name: qualification.qualification_name,
                                 execution_status,
+                                depends_on: Vec::new(), // Qualification functions don't have action dependencies
                             });
                         }
                     }
@@ -482,7 +509,17 @@ async fn build_graph_summary(
                                         "state": "Queued",
                                         "hasActiveRun": true,
                                         "actionId": "01H9ZQD35JPMBGHH69BT0Q79FF"
-                                    }
+                                    },
+                                    "dependsOn": []
+                                },
+                                {
+                                    "functionName": "Update Asset",
+                                    "executionStatus": {
+                                        "state": "OnHold",
+                                        "hasActiveRun": true,
+                                        "actionId": "01H9ZQD35JPMBGHH69BT0Q79GG"
+                                    },
+                                    "dependsOn": ["01H9ZQD35JPMBGHH69BT0Q79FF"]
                                 }
                             ]
                         }
