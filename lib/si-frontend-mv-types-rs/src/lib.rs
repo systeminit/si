@@ -34,6 +34,7 @@ pub mod definition_checksum;
 pub mod dependent_values;
 pub mod incoming_connections;
 pub mod index;
+pub mod luminork_change_set_review;
 pub mod luminork_default_variant;
 pub mod luminork_schema_variant;
 pub mod luminork_schema_variant_func;
