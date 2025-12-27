@@ -8484,6 +8484,9 @@
   "The ARN of the IAM Identity Center instance.": {
     "enum": null
   },
+  "The ARN of the IAM principal to remove from the pull time update exclusion list.": {
+    "enum": null
+  },
   "The ARN of the IAM role associated with the pull through cache rule.": {
     "enum": null
   },
