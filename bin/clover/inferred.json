@@ -2390,6 +2390,18 @@
       "MANY_TO_MANY"
     ]
   },
+  "The default value is `NONE`. A value of `STANDARD` means that Slurm Rest is enabled.": {
+    "enum": [
+      "NONE",
+      "STANDARD"
+    ]
+  },
+  "The default value is `NONE`. A value of `STANDARD` means that Slurm accounting is enabled.": {
+    "enum": [
+      "NONE",
+      "STANDARD"
+    ]
+  },
   "This attribute lets you choose the filtering scope by using one of the following string value types: MessageAttributes (default) and MessageBody.": {
     "enum": [
       "MessageAttributes",
