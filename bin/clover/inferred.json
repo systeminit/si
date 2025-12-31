@@ -17694,6 +17694,9 @@
   "The time before an idle node is scaled down.": {
     "enum": null
   },
+  "The time in ISO 8601 format, UTC time (YYYY-MM-DDTHH:MM:SSZ).": {
+    "enum": null
+  },
   "The time in minutes between each traffic shifting increment.": {
     "enum": null
   },
