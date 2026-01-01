@@ -1622,6 +1622,12 @@
       "unlimited"
     ]
   },
+  "The desired bandwidth specification for the VPN tunnel, used when creating or modifying VPN connection options to set the tunnel's throughput capacity. ``standard`` supports up to 1.25 Gbps per tunnel, while ``large`` supports up to 5 Gbps per tunnel. The default value is ``standard``. Existing VPN connections without a bandwidth setting will automatically default to ``standard``.": {
+    "enum": [
+      "standard",
+      "large"
+    ]
+  },
   "The method used to distribute log data to the destination, which can be either random or grouped by log stream.": {
     "enum": [
       "random",
@@ -10704,6 +10710,9 @@
   "The ID of the transit gateway": {
     "enum": null
   },
+  "The ID of the transit gateway associated with the VPN concentrator.": {
+    "enum": null
+  },
   "The ID of the transit gateway associated with the VPN connection.\n You must specify either ``TransitGatewayId`` or ``VpnGatewayId``, but not both.": {
     "enum": null
   },
@@ -17830,6 +17839,9 @@
     "enum": null
   },
   "The type of VPN concentrator": {
+    "enum": null
+  },
+  "The type of VPN concentrator.": {
     "enum": null
   },
   "The type of VPN connection the virtual private gateway supports.": {
