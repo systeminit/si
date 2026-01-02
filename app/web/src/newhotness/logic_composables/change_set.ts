@@ -47,15 +47,24 @@ export const useChangeSets = (
 
   const openChangeSets = computed(() => {
     const changeSets = _.keyBy(changeSetQuery.data.value?.changeSets, "id");
-    return Object.values(changeSets).filter((cs) =>
-      [
-        ChangeSetStatus.Open,
-        ChangeSetStatus.NeedsApproval,
-        ChangeSetStatus.NeedsAbandonApproval,
-        ChangeSetStatus.Rejected,
-        ChangeSetStatus.Approved,
-      ].includes(cs.status),
-    );
+    return Object.values(changeSets)
+      .filter((cs) =>
+        [
+          ChangeSetStatus.Open,
+          ChangeSetStatus.NeedsApproval,
+          ChangeSetStatus.NeedsAbandonApproval,
+          ChangeSetStatus.Rejected,
+          ChangeSetStatus.Approved,
+        ].includes(cs.status),
+      )
+      .sort((a, b) => {
+        if (a.id === headChangeSetId.value) return -1;
+        if (b.id === headChangeSetId.value) return 1;
+
+        const ad = new Date(a.createdAt).getTime();
+        const bd = new Date(b.createdAt).getTime();
+        return ad - bd;
+      });
   });
 
   const changeSet = computed(() => {
