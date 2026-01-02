@@ -1649,6 +1649,7 @@ impl AttributeValue {
         Self::key_for_id(ctx, self.id()).await
     }
 
+    // avs that have keys are children of maps. Don't use this to get object child name.
     pub async fn key_for_id(
         ctx: &DalContext,
         attribute_value_id: AttributeValueId,

@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use dal::{
     AttributePrototype,
     AttributeValue,
@@ -89,20 +91,21 @@ pub async fn assemble(new_ctx: DalContext, id: ComponentId) -> crate::Result<Com
         _ => DeletionDiff::NoChange,
     };
 
-    // Figure out diff status
-    let (diff_status, resource_diff) = if new_root_av_id.is_some() {
-        let resource_diff = {
-            let dal_component_diff = Component::get_diff(new_ctx, id).await?;
-            let diff = match dal_component_diff.diff {
-                Some(code_view) => code_view.code,
-                None => None,
-            };
-            ComponentTextDiff {
-                current: dal_component_diff.current.code,
-                diff,
-            }
+    let resource_diff = {
+        let dal_component_diff = Component::get_diff(new_ctx, id).await?;
+        let diff = match dal_component_diff.diff {
+            Some(code_view) => code_view.code,
+            None => None,
         };
-        let diff_status = if old_root_av_id.is_none() {
+        ComponentTextDiff {
+            current: dal_component_diff.current.code,
+            diff,
+        }
+    };
+
+    // Figure out diff status
+    let diff_status = if new_root_av_id.is_some() {
+        if old_root_av_id.is_none() {
             ComponentDiffStatus::Added
         } else if !attribute_diffs.is_empty()
             || matches!(is_set_to_delete_diff, DeletionDiff::Restored)
@@ -112,21 +115,9 @@ pub async fn assemble(new_ctx: DalContext, id: ComponentId) -> crate::Result<Com
             ComponentDiffStatus::Removed
         } else {
             ComponentDiffStatus::None
-        };
-        (diff_status, resource_diff)
+        }
     } else {
-        let resource_diff = {
-            let dal_component_diff = Component::get_diff(old_ctx, id).await?;
-            let diff = match dal_component_diff.diff {
-                Some(code_view) => code_view.code,
-                None => None,
-            };
-            ComponentTextDiff {
-                current: dal_component_diff.current.code,
-                diff,
-            }
-        };
-        (ComponentDiffStatus::Removed, resource_diff)
+        ComponentDiffStatus::Removed
     };
 
     Ok(ComponentDiff {
@@ -170,8 +161,10 @@ async fn diff_attributes(
 
                 // Check if any children are different (whether this particular AV was different
                 // or not!)
+                let new_prop_id = AttributeValue::prop_id(new_ctx, new_av_id).await?;
+                let new_prop = Prop::get_by_id(new_ctx, new_prop_id).await?;
                 for (old_av_id, new_av_id) in
-                    child_av_pairs(old_ctx, old_av_id, new_ctx, new_av_id).await?
+                    child_av_pairs(old_ctx, old_av_id, new_ctx, new_av_id, new_prop.kind).await?
                 {
                     work_queue.push((old_av_id, new_av_id));
                 }
@@ -539,37 +532,100 @@ async fn child_av_pairs(
     old_parent_av_id: AttributeValueId,
     new_ctx: &DalContext,
     new_parent_av_id: AttributeValueId,
+    parent_prop_kind: dal::PropKind,
 ) -> crate::Result<Vec<(Option<AttributeValueId>, Option<AttributeValueId>)>> {
     let new_children = AttributeValue::get_child_av_ids_in_order(new_ctx, new_parent_av_id).await?;
     let old_children = AttributeValue::get_child_av_ids_in_order(old_ctx, old_parent_av_id).await?;
 
     let mut result = Vec::with_capacity(new_children.len().max(old_children.len()));
-    let new_children = new_children.into_iter().rev();
-    let mut old_children = old_children.into_iter().rev().peekable();
-    for new_av_id in new_children {
-        // Check if the old attribute value had this field.
-        //
-        // TODO match field name for objects and maps. If old and new maps are in a different
-        // order, or if the type or field order changes during a schema upgrade, then this may
-        // not detect whether two fields are the same.
-        let old_av_id = match old_children.peek() {
-            Some(&old_av_id) => {
-                let old_key = AttributeValue::key_for_id(old_ctx, old_av_id).await?;
-                let new_key = AttributeValue::key_for_id(new_ctx, new_av_id).await?;
-                match (old_key, new_key) {
-                    (Some(old_key), Some(new_key)) if old_key == new_key => old_children.next(),
-                    (None, None) => old_children.next(),
-                    _ => None,
+
+    match parent_prop_kind {
+        // For objects: match children by their prop names
+        dal::PropKind::Object => {
+            // Build a map of old children by prop name
+            let mut old_children_by_name: HashMap<String, AttributeValueId> = HashMap::new();
+            for old_av_id in &old_children {
+                let old_prop_id = AttributeValue::prop_id(old_ctx, *old_av_id).await?;
+                let old_prop = Prop::get_by_id(old_ctx, old_prop_id).await?;
+                old_children_by_name.insert(old_prop.name, *old_av_id);
+            }
+
+            // Match new children to old children by prop name
+            for new_av_id in new_children.into_iter().rev() {
+                let new_prop_id = AttributeValue::prop_id(new_ctx, new_av_id).await?;
+                let new_prop = Prop::get_by_id(new_ctx, new_prop_id).await?;
+                let old_av_id = old_children_by_name.remove(&new_prop.name);
+                result.push((old_av_id, Some(new_av_id)));
+            }
+
+            // Add any remaining old children that weren't matched
+            for old_av_id in old_children_by_name.into_values() {
+                result.push((Some(old_av_id), None));
+            }
+        }
+
+        // For maps: match children by their dynamic keys
+        dal::PropKind::Map => {
+            // Build a map of old children by key
+            let mut old_children_by_key: HashMap<String, AttributeValueId> = HashMap::new();
+            for old_av_id in &old_children {
+                if let Some(key) = AttributeValue::key_for_id(old_ctx, *old_av_id).await? {
+                    old_children_by_key.insert(key, *old_av_id);
                 }
             }
-            None => None,
-        };
-        result.push((old_av_id, Some(new_av_id)));
-    }
 
-    // Go through any remaining old children we haven't consumed, and add them at the end
-    for old_av_id in old_children {
-        result.push((Some(old_av_id), None));
+            // Match new children to old children by key
+            for new_av_id in new_children.into_iter().rev() {
+                let old_av_id =
+                    if let Some(new_key) = AttributeValue::key_for_id(new_ctx, new_av_id).await? {
+                        old_children_by_key.remove(&new_key)
+                    } else {
+                        None
+                    };
+                result.push((old_av_id, Some(new_av_id)));
+            }
+
+            // Add any remaining old children that weren't matched
+            for old_av_id in old_children_by_key.into_values() {
+                result.push((Some(old_av_id), None));
+            }
+        }
+
+        // For arrays: match children by position
+        dal::PropKind::Array => {
+            let new_children = new_children.into_iter().rev();
+            let mut old_children = old_children.into_iter().rev();
+
+            for new_av_id in new_children {
+                let old_av_id = old_children.next();
+                result.push((old_av_id, Some(new_av_id)));
+            }
+
+            // Go through any remaining old children we haven't consumed, and add them at the end
+            for old_av_id in old_children {
+                result.push((Some(old_av_id), None));
+            }
+        }
+
+        // Scalar types (String, Integer, Boolean, Float, Json) shouldn't have children
+        // but handle them gracefully by treating like arrays
+        dal::PropKind::String
+        | dal::PropKind::Integer
+        | dal::PropKind::Boolean
+        | dal::PropKind::Float
+        | dal::PropKind::Json => {
+            let new_children = new_children.into_iter().rev();
+            let mut old_children = old_children.into_iter().rev();
+
+            for new_av_id in new_children {
+                let old_av_id = old_children.next();
+                result.push((old_av_id, Some(new_av_id)));
+            }
+
+            for old_av_id in old_children {
+                result.push((Some(old_av_id), None));
+            }
+        }
     }
 
     Ok(result)
