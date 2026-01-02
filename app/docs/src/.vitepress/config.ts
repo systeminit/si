@@ -119,6 +119,10 @@ export default withMermaid(defineConfig({
             ],
           },
           {
+            text: "AWS Service Control Policy for Cost Control",
+            link: "/how-tos/aws-scp-policy",
+          },
+          {
             text: "Create a Qualification",
             link: "/how-tos/create-a-qualification",
           },
