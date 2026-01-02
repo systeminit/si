@@ -119,7 +119,11 @@ const actionChildren = computed(() => {
       if (myDeps.find((a) => a.id === id)) continue;
 
       const parentA = actionsById.value.get(id);
-      if (parentA && parentA.state === ActionState.Running) continue;
+      if (
+        parentA &&
+        [ActionState.Running, ActionState.Failed].includes(parentA.state)
+      )
+        continue;
 
       deps.push(action);
     }
