@@ -1,4 +1,56 @@
-<!-- eslint-disable vue/no-multiple-template-root -->
+<!-- eslint-disable vue/component-tags-order,import/first -->
+<script lang="ts">
+// set this boolean to true to enable dev debugging features
+// should ALWAYS be set to false before merging code!
+export const DEBUG_MODE = false;
+
+export type node = {
+  id: string;
+  width: number;
+  height: number;
+  component: ComponentInList;
+  icons: [string | null];
+};
+
+export type xy = {
+  x: number;
+  y: number;
+};
+
+export type h = {
+  $H: number;
+};
+
+export type edge = {
+  id: string;
+  sources: string[];
+  targets: string[];
+};
+
+export type line = {
+  sections: {
+    id: string;
+    startPoint: xy;
+    endPoint: xy;
+    bendPoints?: xy[];
+    incomingShape: string;
+    outgoingShape: string;
+  }[];
+  container: string;
+};
+
+export type layoutNode = node & xy & h;
+export type layoutLine = line & edge;
+
+// Type for ELK layout result - simplified to match actual usage
+export type GraphData = {
+  children: layoutNode[];
+  edges: unknown[]; // ELK transforms edges in complex ways
+  [key: string]: unknown; // Allow other ELK properties
+};
+</script>
+
+<!-- eslint-disable vue/no-multiple-template-root,vue/component-tags-order,import/first -->
 <template>
   <ExploreMapSkeleton v-if="showSkeleton" />
   <section
@@ -113,6 +165,7 @@
       </div>
     </div>
 
+    <!-- This SVG tag holds the whole map, not including the minimap and controls -->
     <svg
       :class="mouseDown ? 'cursor-grabbing' : 'cursor-grab'"
       height="100%"
@@ -124,6 +177,7 @@
       @mouseup.left="mouseup"
       @mousemove="mousemove"
     >
+      <!-- Provider logo icon defs -->
       <defs v-for="logo in logos" :key="logo">
         <pattern
           :id="`${logo}`"
@@ -135,24 +189,31 @@
             :name="logo"
             :class="themeClasses('text-black', 'text-white')"
             :fillColor="theme === 'light' ? 'black' : 'white'"
-            :forcedSizeNumbers="getLogoForcedSizeNumbers(logo)"
+            :forcedSizeNumbers="getIconForcedSizeNumbers(logo)"
           />
         </pattern>
       </defs>
+
+      <!-- Other icons needed for the map defs -->
       <template v-for="icon in icons" :key="icon">
         <defs v-for="tone in tones" :key="tone">
           <pattern
             :id="`${icon}-${tone}`"
-            width="30"
-            height="30"
+            width="1"
+            height="1"
             patternUnits="objectBoundingBox"
           >
-            <IconNoWrapper :name="icon" :tone="tone" size="sm" />
+            <IconNoWrapper
+              :name="icon"
+              :tone="tone"
+              size="sm"
+              :forcedSizeNumbers="getIconForcedSizeNumbers(icon)"
+            />
           </pattern>
         </defs>
       </template>
 
-      <!-- Arrow markers for connection directions -->
+      <!-- Arrow markers for connection directions defs -->
       <defs>
         <marker
           id="arrowhead"
@@ -204,6 +265,8 @@
           />
         </marker>
       </defs>
+
+      <!-- The main group which holds the actual, visible map data! -->
       <g id="mapRootGroup" :transform="`matrix(${transformMatrix})`"></g>
     </svg>
 
@@ -217,6 +280,7 @@
   </section>
 </template>
 
+<!-- eslint-disable vue/component-tags-order,import/first -->
 <script lang="ts" setup>
 import { useQuery } from "@tanstack/vue-query";
 import {
@@ -227,7 +291,7 @@ import {
   themeClasses,
   LOGO_ICONS,
   useTheme,
-  LOGO_FORCED_SIZE_NUMBERS,
+  ICON_FORCED_SIZE_NUMBERS,
 } from "@si/vue-lib/design-system";
 import {
   computed,
@@ -535,6 +599,7 @@ const restoreViewportCenter = (
 // Helper functions for creating node elements and edges
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const addNodeElements = (group: any, d: layoutNode) => {
+  // main rect for the whole node, it is clickable
   group
     .append("rect")
     .attr("width", d.width)
@@ -565,6 +630,7 @@ const addNodeElements = (group: any, d: layoutNode) => {
       componentNavigate(d.component.id);
     });
 
+  // left edge colored stripe
   group
     .append("path")
     .attr("d", () => {
@@ -578,7 +644,7 @@ const addNodeElements = (group: any, d: layoutNode) => {
     .attr("stroke-width", 3)
     .attr("pointer-events", "none");
 
-  // logos
+  // provider logo
   group
     .append("path")
     .attr("d", d3.symbol().size(1000).type(d3.symbolSquare))
@@ -589,6 +655,7 @@ const addNodeElements = (group: any, d: layoutNode) => {
       return `url(#${icon})`;
     });
 
+  // core text
   group
     .append("text")
     .text(truncateString(d.component.name, MAX_STRING_LENGTH))
@@ -608,24 +675,34 @@ const addNodeElements = (group: any, d: layoutNode) => {
     .attr("color", "white")
     .attr("pointer-events", "none");
 
+  const ICON_SIZE_FACTOR = 32;
+  const ICON_PADDING = 2;
+  const ICON_EDGE_DISTANCE = ICON_PADDING + ICON_SIZE_FACTOR / 2;
+
   // qual & resource icons
   d.icons.forEach((icon: string | null, idx: number) => {
+    const x =
+      WIDTH - ICON_EDGE_DISTANCE - (ICON_PADDING + ICON_SIZE_FACTOR) * idx;
+    const y = HEIGHT - ICON_EDGE_DISTANCE;
+
     group
       .append("path")
       .attr("d", d3.symbol().size(1000).type(d3.symbolSquare))
-      .attr("transform", `translate(${WIDTH - 13 - 23 * idx}, ${HEIGHT - 9})`)
+      .attr("transform", `translate(${x}, ${y})`)
       .attr("pointer-events", "none")
       .style("fill", icon ? `url(#${icon})` : "none");
   });
 
   // Socket connections alert icon
-  if (d.component.hasSocketConnections) {
+  if (d.component.hasSocketConnections || DEBUG_MODE) {
     group
       .append("path")
       .attr("d", d3.symbol().size(1000).type(d3.symbolSquare))
       .attr("transform", () => {
-        const iconOffset = d.icons.length * 23;
-        return `translate(${WIDTH - 13 - iconOffset - 23}, ${HEIGHT - 9})`;
+        const iconOffset = d.icons.length * (ICON_PADDING + ICON_SIZE_FACTOR);
+        return `translate(${WIDTH - iconOffset - ICON_EDGE_DISTANCE}, ${
+          HEIGHT - ICON_EDGE_DISTANCE
+        })`;
       })
       .attr("pointer-events", "none")
       .style("fill", "url(#alert-triangle-filled-warning)");
@@ -1094,8 +1171,8 @@ const queryKey = key(EntityKind.IncomingConnectionsList);
 
 const logos = reactive<IconNames[]>(Object.keys(LOGO_ICONS) as IconNames[]);
 
-const getLogoForcedSizeNumbers = (logoName: IconNames) => {
-  return LOGO_FORCED_SIZE_NUMBERS[logoName] ?? undefined;
+const getIconForcedSizeNumbers = (iconName: IconNames) => {
+  return ICON_FORCED_SIZE_NUMBERS[iconName] ?? undefined;
 };
 
 const icons = reactive<IconNames[]>([
@@ -1220,51 +1297,6 @@ const mapData = computed(() => {
 
   return { nodes, edges, components };
 });
-
-export type node = {
-  id: string;
-  width: number;
-  height: number;
-  component: ComponentInList;
-  icons: [string | null];
-};
-
-export type xy = {
-  x: number;
-  y: number;
-};
-
-export type h = {
-  $H: number;
-};
-
-export type edge = {
-  id: string;
-  sources: string[];
-  targets: string[];
-};
-
-export type line = {
-  sections: {
-    id: string;
-    startPoint: xy;
-    endPoint: xy;
-    bendPoints?: xy[];
-    incomingShape: string;
-    outgoingShape: string;
-  }[];
-  container: string;
-};
-
-export type layoutNode = node & xy & h;
-export type layoutLine = line & edge;
-
-// Type for ELK layout result - simplified to match actual usage
-export type GraphData = {
-  children: layoutNode[];
-  edges: unknown[]; // ELK transforms edges in complex ways
-  [key: string]: unknown; // Allow other ELK properties
-};
 
 const dataAsGraph = ref<GraphData | null>(null);
 const previousLayout = ref<GraphData | null>(null);

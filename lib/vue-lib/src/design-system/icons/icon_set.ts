@@ -477,9 +477,11 @@ export type IconSizeNumbers = {
   viewBoxY: number;
 };
 
+const VIEWBOX16 = { viewBoxX: 16, viewBoxY: 16 };
 const VIEWBOX24 = { viewBoxX: 24, viewBoxY: 24 };
 const VIEWBOX32 = { viewBoxX: 32, viewBoxY: 32 };
-export const LOGO_FORCED_SIZE_NUMBERS = {
+export const ICON_FORCED_SIZE_NUMBERS = {
+  // logos
   "logo-aws": VIEWBOX32,
   "logo-azure": VIEWBOX24,
   "logo-google-cloud": VIEWBOX24,
@@ -499,6 +501,12 @@ export const LOGO_FORCED_SIZE_NUMBERS = {
   "logo-discord": VIEWBOX32,
   "logo-github": VIEWBOX32,
   "logo-vim": VIEWBOX32,
+
+  // other icons
+  "check-hex-outline": VIEWBOX16,
+  "check-hex": VIEWBOX16,
+  "x-hex-outline": VIEWBOX16,
+  "alert-triangle-filled": VIEWBOX32,
 } as Record<IconNames, IconSizeNumbers>;
 
 export const COMPONENT_TYPE_ICONS = {
