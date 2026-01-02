@@ -26,6 +26,7 @@ export interface ChangeSet {
   reviewedByUserId?: UserId;
   reviewedByUser?: string;
   reviewedAt?: IsoDateString;
+  createdAt: IsoDateString;
   updatedAt?: IsoDateString;
   abandonRequestedAt?: IsoDateString;
   abandonRequestedByUserId?: UserId;
