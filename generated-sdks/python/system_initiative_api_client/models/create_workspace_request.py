@@ -26,11 +26,12 @@ class CreateWorkspaceRequest(BaseModel):
     """
     CreateWorkspaceRequest
     """ # noqa: E501
+    create_setup_token: Optional[StrictBool] = Field(default=None, alias="createSetupToken")
     description: StrictStr
     display_name: StrictStr = Field(alias="displayName")
     instance_url: StrictStr = Field(alias="instanceUrl")
     is_default: Optional[StrictBool] = Field(default=False, alias="isDefault")
-    __properties: ClassVar[List[str]] = ["description", "displayName", "instanceUrl", "isDefault"]
+    __properties: ClassVar[List[str]] = ["createSetupToken", "description", "displayName", "instanceUrl", "isDefault"]
 
     model_config = ConfigDict(
         populate_by_name=True,
@@ -71,6 +72,11 @@ class CreateWorkspaceRequest(BaseModel):
             exclude=excluded_fields,
             exclude_none=True,
         )
+        # set to None if create_setup_token (nullable) is None
+        # and model_fields_set contains the field
+        if self.create_setup_token is None and "create_setup_token" in self.model_fields_set:
+            _dict['createSetupToken'] = None
+
         return _dict
 
     @classmethod
@@ -83,6 +89,7 @@ class CreateWorkspaceRequest(BaseModel):
             return cls.model_validate(obj)
 
         _obj = cls.model_validate({
+            "createSetupToken": obj.get("createSetupToken"),
             "description": obj.get("description"),
             "displayName": obj.get("displayName"),
             "instanceUrl": obj.get("instanceUrl"),

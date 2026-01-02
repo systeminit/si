@@ -113,24 +113,39 @@ pub async fn create_workspace(
         expiration: "1h".to_string(),
     };
 
-    let auth_token_response = client
-        .post(format!(
-            "{}/workspaces/{}/authTokens",
-            state.auth_api_url(),
-            new_workspace.id
-        ))
-        .bearer_auth(&token)
-        .json(&auth_token_request)
-        .send()
-        .await?;
+    // Build the workspace response
+    let mut workspace: Workspace = new_workspace.clone().into();
 
-    if auth_token_response.status() != reqwest::StatusCode::OK {
-        return Err(handle_auth_api_error(auth_token_response).await);
+    if let Some(create_token) = payload.create_setup_token {
+        if create_token {
+            let auth_token_response = client
+                .post(format!(
+                    "{}/workspaces/{}/authTokens",
+                    state.auth_api_url(),
+                    new_workspace.id
+                ))
+                .bearer_auth(&token)
+                .json(&auth_token_request)
+                .send()
+                .await?;
+
+            if auth_token_response.status() != reqwest::StatusCode::OK {
+                return Err(handle_auth_api_error(auth_token_response).await);
+            }
+
+            let auth_token_data = auth_token_response
+                .json::<AuthApiCreateAuthTokenResponse>()
+                .await?;
+
+            // Add the initial workspace token if the user requested one!
+            workspace.initial_api_token = Some(InitialApiToken {
+                token: auth_token_data.token,
+                expires_at: auth_token_data.auth_token.expires_at,
+            });
+        } else {
+            workspace.initial_api_token = None
+        }
     }
-
-    let auth_token_data = auth_token_response
-        .json::<AuthApiCreateAuthTokenResponse>()
-        .await?;
 
     // Sync user and workspace to DAL
     sync_user_and_workspace(
@@ -145,13 +160,6 @@ pub async fn create_workspace(
         &tracker,
     )
     .await?;
-
-    // Build the workspace response with the initial API token
-    let mut workspace: Workspace = new_workspace.into();
-    workspace.initial_api_token = Some(InitialApiToken {
-        token: auth_token_data.token,
-        expires_at: auth_token_data.auth_token.expires_at,
-    });
 
     Ok(Json(workspace))
 }
@@ -290,6 +298,8 @@ pub struct CreateWorkspaceRequest {
     #[serde(default)]
     #[schema(example = false, default = false)]
     pub is_default: bool,
+    #[schema(example = false)]
+    pub create_setup_token: Option<bool>,
 }
 
 // Auth API authTokens request type

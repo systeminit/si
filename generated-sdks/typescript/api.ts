@@ -1144,6 +1144,12 @@ export interface CreateVariantQualificationFuncV1Response {
 export interface CreateWorkspaceRequest {
     /**
      * 
+     * @type {boolean}
+     * @memberof CreateWorkspaceRequest
+     */
+    'createSetupToken'?: boolean | null;
+    /**
+     * 
      * @type {string}
      * @memberof CreateWorkspaceRequest
      */

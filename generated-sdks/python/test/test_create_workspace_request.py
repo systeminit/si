@@ -35,6 +35,7 @@ class TestCreateWorkspaceRequest(unittest.TestCase):
         model = CreateWorkspaceRequest()
         if include_optional:
             return CreateWorkspaceRequest(
+                create_setup_token = False,
                 description = 'Production environment for customer deployments',
                 display_name = 'My Production Workspace',
                 instance_url = 'https://app.systeminit.com',
