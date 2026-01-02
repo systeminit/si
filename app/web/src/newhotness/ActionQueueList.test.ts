@@ -272,6 +272,62 @@ describe("ActionQueueList - hasDisplayedParent logic preventing duplicates", () 
     expect(actionIds).toContain("child-4");
   });
 
+  test("child action appears at top level when parent is Failed (not Queued/OnHold)", () => {
+    // Given: A parent action that is Running and a child action that is Queued
+    const parentAction: ActionProposedView = {
+      id: "parent-4",
+      prototypeId: "proto-7",
+      componentId: "comp-7",
+      name: "Parent Create Action",
+      description: "Create parent resource",
+      kind: ActionKind.Create,
+      originatingChangeSetId: "cs-4",
+      state: ActionState.Failed, // Running parents don't render children
+      myDependencies: ["child-4"],
+      dependentOn: [],
+      holdStatusInfluencedBy: [],
+      componentSchemaName: "ParentSchema",
+      componentName: "parent-component",
+    };
+
+    const childAction: ActionProposedView = {
+      id: "child-4",
+      prototypeId: "proto-8",
+      componentId: "comp-8",
+      name: "Child Create Action",
+      description: "Create child resource",
+      kind: ActionKind.Create,
+      originatingChangeSetId: "cs-4",
+      state: ActionState.Queued,
+      myDependencies: [],
+      dependentOn: ["parent-4"],
+      holdStatusInfluencedBy: [],
+      componentSchemaName: "ChildSchema",
+      componentName: "child-component",
+    };
+
+    const actionViewList = ref([parentAction, childAction]);
+    const highlightedActionIds = ref(new Set<string>());
+
+    // When: Rendering the ActionQueueList
+    const wrapper = mount(ActionQueueList, {
+      props: {
+        actionViewList: actionViewList.value,
+        highlightedActionIds: highlightedActionIds.value,
+      },
+    });
+
+    // Then: Both parent and child should appear at top level
+    const actionItems = wrapper.findAllComponents({
+      name: "ActionQueueListItem",
+    });
+
+    expect(actionItems.length).toBe(2);
+    const actionIds = actionItems.map((item) => item.props("action").id);
+    expect(actionIds).toContain("parent-4");
+    expect(actionIds).toContain("child-4");
+  });
+
   test("deeply nested actions with transitive dependencies only show root at top level", () => {
     // Given: A three-level dependency chain where myDependencies contains ALL descendants
     // This simulates the actual backend behavior that caused the bug
