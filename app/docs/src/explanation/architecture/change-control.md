@@ -33,7 +33,7 @@ The Head change set operates under three unique constraints:
 
 ### Action Exclusivity
 
-Actions intended to mutate upstream resources are only ever dispatched from the Head change set. This ensures that all infrastructure changes flow through the change control process, preventing unauthorized modifications without appropriate review.  
+Actions intended to mutate upstream resources are dispatched only from the Head change set. This ensures that all infrastructure changes flow through the change control process, preventing unauthorized modifications without appropriate review.  
 
 ### Restricted Mutation
 
