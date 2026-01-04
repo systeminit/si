@@ -1,6 +1,6 @@
 # Cloud Providers
 
-System Initiative connects to cloud providers to manage your infrastructure. Each provider integrates differently based on their APIs and authentication methods.
+System Initiative connects to cloud providers to manage your infrastructure. Each provider integrates differently, depending on its APIs and authentication methods.
 
 ## Supported Providers
 
