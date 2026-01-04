@@ -9,23 +9,23 @@ Everything that can be accomplished with traditional Infrastructure as Code (IaC
 
 ### Programmable data model, not declarative code
 
-Traditional IaC tools work by having you write declarative code in a [Domain Specific Language](https://en.wikipedia.org/wiki/Domain-specific_language), which goes through an interpreter (or a compiler) to generate a list of resources to configure called the *desired state*. This desired state is then compared to the *last known state* of the resources in the cloud provider - this is usually maintained in a *state file* or *remote state store*. If the state doesn't match, then the tool will update the *resource* in the cloud. If the resource is updated outside the IaC tool, then the state won't match, and it will usually require manual intervention.
+Traditional IaC tools work by having you write declarative code in a [Domain Specific Language](https://en.wikipedia.org/wiki/Domain-specific_language), which goes through an interpreter (or a compiler) to generate a list of resources to configure called the *desired state*. This desired state is then compared to the *last known state* of the resources in the cloud provider - this is usually maintained in a *state file* or *remote state store*. If the state doesn't match, the tool will update the *resource* in the cloud. If the resource is updated outside the IaC tool, then the state won't match, and it will usually require manual intervention.
 
 In this model, what you program are the *declarations* that represent the desired state of the system.
 
-In System Initiative, you program the transitions to a [data model](./architecture/snapshot.md) rather than to a source code declaration. We make a 1:1 model, called a [digital twin](./architecture/digital-twin.md), with built in [change control](./architecture/change-control.md). For any given set of changes, we track your *intended* configuration in a *component*, which we then compare to the real-world state, which we call a *resource* (we call the component and the resource together a *model*.) At any given moment in time, the *resource* is authoritative for the actual configuration of the underlying provider, and the *component* is authoritative for your intent. You can make changes to the model through various *interfaces*, including our Web Application, our [Public API](../reference/public-api.md), and our AI Agent. The information can flow *bidirectionally* - you can create components first, and then have them create the resources, or you can discover the resources and build the components from reality.
+In System Initiative, you program the transitions to a [data model](./architecture/snapshot.md) rather than to a source code declaration. We make a 1:1 model, called a [digital twin](./architecture/digital-twin.md), with built-in [change control](./architecture/change-control.md). For any given set of changes, we track your *intended* configuration in a *component*, which we then compare to the real-world state, which we call a *resource* (we call the component and the resource together a *model*). At any given moment in time, the *resource* is authoritative for the actual configuration of the underlying provider, and the *component* is authoritative for your intent. You can make changes to the model through various *interfaces*, including our Web Application, our [Public API](../reference/public-api.md), and our AI Agent. The information can flow *bidirectionally* - you can create components first, and then have them create the resources, or you can discover the resources and build the components from reality.
 
 :::tip
-A good analogy here is the difference between programming a change to a database, and changing application code. With Infrastructure as Code, you're writing the desired state as application code. With System Initiative, you're programming changes to a reactive database.
+A good analogy here is the difference between programming a change to a database and changing application code. With Infrastructure as Code, you're writing the desired state as application code. With System Initiative, you're programming changes to a reactive database.
 :::
 
-The result is a platform that is much more flexible, requires less custom code, never gets out of sync in ways you cannot resolve easily.
+The result is a platform that is much more flexible, requires less custom code, and never gets out of sync in ways you cannot resolve easily.
 
 ### Reactive subscriptions, not static variables
 
-With Infrastructure as Code, you create relationships between resources by declaring them explicitly with features like Terraforms *depends_on*, or through using a *variable* reference to an existing resource.
+With Infrastructure as Code, you create relationships between resources by declaring them explicitly with features like Terraform's *depends_on*, or through using a *variable* reference to an existing resource.
 
-In System Initiative, you create *subscriptions* between models. For example, an AWS Subnet requires the ID of an AWS VPC to be created. In System Initiative, this happens through the Subnet *subscribing* to the VpcId from the underlying *resource*. So when the VPC is created and AWS assigns the VpcId, the Subnet will automatically be updated to reflect the correct value.
+In System Initiative, you create *subscriptions* between models. For example, an AWS Subnet requires an AWS VPC ID to be created. In System Initiative, this happens through the Subnet *subscribing* to the VpcId of the underlying *resource*. So when the VPC is created, and AWS assigns the VpcId, the Subnet will automatically be updated to reflect the correct value.
 
 This mechanism makes every value explicit, enabling us to build comprehensive maps of your infrastructure. The subscriptions can be set like any other value, meaning they can be updated at any time by simply setting the value to a subscription.
 
@@ -35,15 +35,15 @@ Web Frameworks like [React](https://react.dev) or [Vue](https://vuejs.org/) have
 And like the analogy of a database, they make more sense when you understand that you are programming a *data model*, rather than writing source code. You subscribe to the data you need, and the system keeps it up to date as it changes (however it changes!), rather than declaring it statically.
 :::
 
-### Working systems, not re-writing automation
+### Working systems, not rewriting automation
 
 System Initiative does not care how a resource was created - we only need to *discover* the underlying resource, at which point we have all the data the model needs to automate it. That means rather than starting your automation project by "rebuilding" all of your code in a new platform, you only need to import the information about what you already have.
 
-Infrastructure as Code struggles greatly with pre-existing infrastructure. While you can generate a declaration from a resource, and even patch the state to associate it, the process is fragile and difficult to do at scale. It's fragile because the code it generates won't follow any convention in your code-base - by definition it will be a static declaration, with no variables or relationships.
+Infrastructure as Code struggles greatly with pre-existing infrastructure. While you can generate a declaration from a resource and even patch the state to associate it, the process is fragile and difficult to do at scale. It's fragile because the code it generates won't follow any convention in your codebase - by definition, it will be a static declaration, with no variables or relationships.
 
 ### Real-time updates, not sequential application
 
-Most Infrastructure as Code tools follow a 'model-plan-apply' cycle. You write the code in the model, then request a 'plan' that outlines the changes the system identifiies as necessary, and finally, you 'apply' the model to the underlying provider. Due to the need to track state and keep it free from conflicts, this necessarily means that a given *repository* can only have one update happening to its resources at a time.
+Most Infrastructure as Code tools follow a 'model-plan-apply' cycle. You write the code in the model, then request a 'plan' that outlines the changes the system identifies as necessary, and finally, you 'apply' the model to the underlying provider. Due to the need to track state and keep it free of conflicts, a given *repository* can have only one update to its resources at a time.
 
 :::tip
 Think of this like a global, distributed lockfile - because that's what it is, much of the time.
@@ -55,7 +55,7 @@ The result is that we do not need a global lock, because state cannot conflict. 
 
 ### Flexible actions, not pre-determined states
 
-Infrastructure as Code tools work by taking a static declaration of a resources desired state and applying it. Those states are themselves pre-determined by the tool, and they typically are limited to things like 'created' or 'deleted'.
+Infrastructure as Code tools work by taking a static declaration of a resource's desired state and applying it. Those states are themselves pre-determined by the tool and typically limited to 'created' or 'deleted'.
 
 In System Initiative, we track your *intent* to take an *action* against a resource. That action may update the *resource data* as a result. For example, System Initiative allows you to stop, start, restart, and reboot an EC2 Instance. That's because we decouple the configuration of your instance in our *component* from the real-world *resource*. That action can run, the instance will stop, and the new status is reflected in the *resource data*.
 
@@ -63,19 +63,19 @@ This is a huge boon, in particular when you are writing more complex automation 
 
 ### Unified workflow, not choose your own adventure
 
-Nobody uses just an Infrastructure as Code tool. To make things work in production, you need to make choices about multiple external tools: state management, secrets, CI/CD, policy enforcement, visualization, code review, etc. Each of these choices needs to be considered in the context of the others, be explained to your users, and has pros and cons.
+Nobody uses just an Infrastructure as Code tool. To make things work in production, you need to make choices about multiple external tools: state management, secrets, CI/CD, policy enforcement, visualization, code review, etc. Each of these choices needs to be considered in the context of the others, explained to your users, and has pros and cons.
 
 System Initiative is a single, unified workflow that streamlines the entire life cycle of Infrastructure Automation. Change control is built in. There is no need for bespoke infrastructure pipelines. Policy and validation are built in through our qualifications. Visualization comes for free. Dynamic change set review is built in. Authorization is ubiquitous. Secret storage is built in. We do this not because you can't get those things from other vendors, but because the user experience of having to get them, manage them, automate them, and understand them is too high. By making a unified experience, we have the freedom to improve the status quo.
 
 ### AI Native, not an AI afterthought
 
-AI Native platforms were designed to work well with AI, putting those interactions at the center of the workflow and experience. System Initiative's [digital twins](./architecture/digital-twin.md), which map 1:1 to how the upstream provider works, are the foundation of that. By building 1:1 models, we can leverage the training data already in the LLM; we don't need to add context for it to understand how to configure infrastructure correctly. (You might still need to, but that will likely be more about specificity than understanding). Through allowing the Agent to explore and propose changes in [simulated change sets](./architecture/change-control.md), we can give immediate feedback when they make a mistake (like inventing an attribute that might not exist, or setting an inappropriate value), rather than waiting for a long (and likely non-existent) test cycle. Our subscription model enables the Agent to create the correct relationships between configuration values and utilize our comprehensive schema, which includes upstream documentation, to make informed choices. Setting it up is as easy as [cloning our git repository and running a setup script](https://github.com/systeminit/si-ai-agent).
+AI Native platforms were designed to work well with AI, putting those interactions at the center of the workflow and experience. System Initiative's [digital twins](./architecture/digital-twin.md), which map 1:1 to how the upstream provider works, are the foundation of that. By building 1:1 models, we can leverage the training data already in the LLM; we don't need to add context for it to understand how to configure infrastructure correctly. (You might still need to, but that will likely be more about specificity than understanding.) Through allowing the Agent to explore and propose changes in [simulated change sets](./architecture/change-control.md), we can give immediate feedback when they make a mistake (like inventing an attribute that might not exist, or setting an inappropriate value), rather than waiting for a long (and likely non-existent) test cycle. Our subscription model enables the Agent to create the correct relationships between configuration values and to use our comprehensive schema, which includes upstream documentation, to make informed choices. Setting it up is as easy as [cloning our git repository and running a setup script](https://github.com/systeminit/si-ai-agent).
 
-With Infrastructure as Code, AI integration works similarly to application code. The Agent has been trained on how to write Terraform code, but struggles to write code that conforms to an existing standard or structure. You must provide all the necessary context for every task - context that, if you're in a large organization, is often scattered across multiple repositories and state files. When it makes a mistake, you will learn about it only much later - when you plan, or when you apply. Because the infrastructure code is, by nature, an abstraction of the underlying provider (and even more so when it is well factored with variables, modules, etc.), the context necessary to make good decisions is much larger. We've seen folks who have put in a lot of time and effort have OK outcomes using agents to help write their IaC - but System Initiative eliminates the need for that effort through intentional design.
+With Infrastructure as Code, AI integration works similarly to application code. The Agent has been trained to write Terraform code but struggles to conform to an existing standard or structure. You must provide all the necessary context for every task - context that, if you're in a large organization, is often scattered across multiple repositories and state files. When it makes a mistake, you will learn about it only much later - when you plan, or when you apply. Because the infrastructure code, by nature, is an abstraction of the underlying provider (and even more so when it is well factored with variables, modules, etc.), the context necessary to make good decisions is much larger. We've seen folks who have put in a lot of time and effort achieve OK outcomes using agents to help write their IaC - but System Initiative eliminates the need for that effort through intentional design.
 
 ## Terraform
 
-This section provides guidance for mapping your expertise in Terraform to System Initiative.
+This section provides guidance on mapping your Terraform expertise to System Initiative.
 
 :::info
 This section is obviously written from the perspective of System Initiative. That said, our goal here is never to misrepresent how Terraform works. Our examples are taken from HashiCorp's own documentation:
@@ -95,7 +95,7 @@ This section is obviously written from the perspective of System Initiative. Tha
 - [Create a Terraform plan](https://developer.hashicorp.com/terraform/tutorials/cli/plan)
 - [Apply Terraform configuration](https://developer.hashicorp.com/terraform/tutorials/cli/apply)
 
-If you find a bug, or think we've misrepresented anything, let us know.
+If you find a bug or think we've misrepresented anything, let us know.
 :::
 
 ### Comparison
@@ -104,7 +104,7 @@ Below is a quick translation between various aspects of Terraform and System Ini
 
 | Aspect | Traditional IaC (Terraform) | System Initiative |
 |--------|----------------------------|-------------------|
-| **Initialization** | `terraform init` - Initialize working directory with provider plugins and backend configuration | Creating a workspace and adding credentials through the visual interface, API or AI integration |
+| **Initialization** | `terraform init` - Initialize working directory with provider plugins and backend configuration | Creating a workspace and adding credentials through the visual interface, API, or AI integration |
 | **State Management** | External state storage (local files, S3/DynamoDB, GCS, Terraform Cloud) with manual configuration | Centralized state store embedded in the system with bi-directional data model and automatic synchronization |
 | **State Locking** | External locking mechanisms (DynamoDB, Terraform Enterprise) to prevent concurrent modifications | Built-in Change Sets with automatic rebasing of merges to HEAD, eliminating traditional locking concerns |
 | **Secrets Management** | Integration with external secret stores (Vault, AWS SSM, Secrets Manager) using data sources | Fully encrypted secrets management built into the platform with end-to-end encryption in transit and at rest. Highly extensible code-first platform allowing any interfacing secret backend to be supported |
@@ -116,7 +116,7 @@ Below is a quick translation between various aspects of Terraform and System Ini
 | **Branching Strategy** | Git branches for parallel development with manual merge | Change Sets as automatically rebasing branches with conflict-free merges |
 | **Change Review** | Pull requests with external CI/CD integration for plan/apply workflows | Built-in change review system with granular approvals and real-time collaboration |
 | **Resource Import** | `terraform import` with manual state file manipulation and code generation | Full-fidelity discovery and import with automatic relationship detection and visual integration |
-| **Selective Apply** | `terraform apply -target` for applying subset of Changes | Action queuing system allowing selective execution of specific actions or action groups |
+| **Selective Apply** | `terraform apply -target` for applying a subset of Changes | Action queuing system allowing selective execution of specific actions or action groups |
 | **Environment Management** | Terraform workspaces or directory/repository cloning per environment | Templates and duplication functions with workspace, view, or RBAC level environment separation |
 | **Policy as Code** | External tools (Sentinel, OPA, Checkov) integrated via CI/CD or pre-commit hooks | Native qualifications system integrated directly into Change Sets with real-time validation |
 | **Visualization** | Static `terraform graph` output requiring external tools for visualization | Native dynamic graph visualization with interactive Map view and real-time updates |
@@ -127,7 +127,7 @@ Below is a quick translation between various aspects of Terraform and System Ini
 
 In Terraform, a *repository* maps to a source code repository that contains your Terraform code. This includes providers, modules, resource declarations, variables, etc. In large-scale use, there are typically multiple repositories for a given organization, split up according to rate of change, size, authorization, and speed to plan and apply. There are many different possible shapes of repository, each with pros and cons depending on your use case.
 
-In System Initiative, we have [workspaces](./architecture/tenancy.md) which provide data separation, secret isolation, and access isolation. Workspaces contain data about each component (roughly corresponding to a single resource declaration in Terraform), its schema, your policy, and more. Rather than thinking of it like organizing application source code, think of a workspace like a uniquely isolated database instance with change control built in. We then provide tools for viewing and analyzing the information in your workspace, including grid views for quick searching and taking action, and map views for understanding relationships. You can partition the workspace into smaller pieces called *views*, which become logical slices of infrastructure that focus on related components - for example, you might have a Core Network view, an Application-specific view, and an IAM view.
+In System Initiative, we have [workspaces](./architecture/tenancy.md) which provide data separation, secret isolation, and access isolation. Workspaces contain data about each component (roughly corresponding to a single resource declaration in Terraform), its schema, your policy, and more. Rather than thinking of it as organizing application source code, think of a workspace as a uniquely isolated database instance with built-in change control. We then provide tools for viewing and analyzing the information in your workspace, including grid views for quick searching and taking action, and map views for understanding relationships. You can partition the workspace into smaller pieces called *views*, which become logical slices of infrastructure that focus on related components - for example, you might have a Core Network view, an Application-specific view, and an IAM view.
 
 ![Workspace Grid](./iac-comparison/workspace-grid.png)
 
@@ -168,9 +168,9 @@ provider "random" {}
 ```
 :::
 
-These blocks define what version of the underlying provider code will be used, and the options that will apply globally to all the resources that the provider exposes. The providers themselves define how the resource declarations map to API calls in the underlying cloud API.
+These blocks define which version of the underlying provider code will be used and the options that will apply globally to all resources the provider exposes. The providers themselves determine how the resource declarations map to API calls in the underlying cloud API.
 
-System Initiative does not have an equivalent provider layer. Instead, it works in terms of *schemas* and *functions*. The *functions* define its behavior - for example, *action functions* that define operations such as *create*, *update*, or *delete*. These functions can be shared across multiple schema - for example, all of our AWS schemas share the same fundamental CRUD action functions. One valuable side effect of our approach is that you can view the specifics directly on the schema.
+System Initiative does not have an equivalent provider layer. Instead, it works in terms of *schemas* and *functions*. The *functions* define their behavior - for example, *action functions* that define operations such as *create*, *update*, or *delete*. These functions can be shared across multiple schemas - for example, all of our AWS schemas share the same fundamental CRUD action functions. One valuable side effect of our approach is that you can view the specifics directly on the schema.
 
 ![Action Function](./iac-comparison/action-function.png)
 
@@ -178,7 +178,7 @@ System Initiative does not have an equivalent provider layer. Instead, it works 
 This is a good example of how removing the provider layer simplifies the architecture. System Initiative schemas are *fully programmable* from within System Initiative - no need to switch programming languages, move outside the DSL, etc. The underlying data model is designed to track changes and improvements over time. Also, this is the kind of action that doesn't exist in Terraform - it knows how to create and destroy resources, but it cannot understand how to 'restart' an instance at a point in time.
 :::
 
-When it comes to specifying "provider options", those are modeled as *schemas* directly. For example, the AWS Region is itself a schema with an attribute of the region. If you want the region to be set by default, you make that region the *default subscription*, which would cause all new components created to have that region set automatically. An upside of this approach is a dramatic increase in flexibility - having multiple regions, credentials, etc. in the same *workspace* is trivial.
+When it comes to specifying "provider options", those are modeled directly as *schemas*. For example, the AWS Region is itself a schema with a region attribute. If you want the region to be set by default, make that region the *default subscription*, which will automatically set the region for all new components. An upside of this approach is a dramatic increase in flexibility - having multiple regions, credentials, etc. in the same *workspace* is trivial.
 
 ```mermaid
 graph TB
@@ -198,11 +198,11 @@ graph TB
     end
 ```
 
-By eliminating the concept of providers entirely, and focusing instead on how *schemas* compose, we eliminate the complexity of determining which underlying versions should run (you can have multiple versions installed at the level of a single resource, if that's what you need), the pain of trying to override those options on a per-resource basis, and make the underlying system easier to understand, extend, and debug.
+By eliminating the concept of providers, and focusing instead on how *schemas* compose, we eliminate the complexity of determining which underlying versions should run (you can have multiple versions installed at the level of a single resource, if that's what you need), the pain of trying to override those options on a per-resource basis, and make the underlying system easier to understand, extend, and debug.
 
 ### Resources
 
-Terraform providers define resources, which represent the declarative syntax that maps to an underlying concept within the provider, as declarative code in text files. They have arguments (configuration options for the resource), attributes (values exposed by the resource; typically assigned by the underlying provider), and meta-arguments (Terraform-specific behavior like 'count').
+Terraform providers define resources, which represent the declarative syntax that maps to an underlying concept within the provider, as declarative code in text files. They have arguments (configuration options for the resource), attributes (values exposed by the resource; typically assigned by the underlying provider), and meta-arguments (Terraform-specific behavior, such as 'count').
 
 ```terraform:line-numbers {4,6,11}
 # Copyright (c) HashiCorp, Inc.
@@ -220,9 +220,9 @@ resource "aws_instance" "web" {
 }
 ```
 
-In the example above, two resources have been declared. The first is a "random pet" name (line 4). The second is an AWS EC2 Instance (line 6), which uses the `id` attribute of the random pet resource to set the Name tag of the instance.
+In the example above, two resources have been declared. The first is a "random pet" name (line 4). The second is an AWS EC2 Instance (line 6), which uses the `id` attribute of the random pet resource to set the instance's Name tag.
 
-In System Initiative, we would create two *components* in a new *change set* - a Random Pet component and an AWS::EC2::Instance component, with a *subscription* to the random pet components id. We could create these in multiple ways - through our Web Interface, through the Public API as code, or from an AI Agent - all of which have the same end result: our underlying data model is updated to have these two components.
+In System Initiative, we would create two *components* in a new *change set* - a Random Pet component and an AWS::EC2::Instance component, with a *subscription* to the random pet component's ID. We could create these in multiple ways - through our Web Interface, through the Public API as code, or from an AI Agent - all of which have the same end result: our underlying data model is updated to have these two components.
 
 Here are examples for all 3 different mechanisms:
 
@@ -234,7 +234,7 @@ Create an ec2 instance named web that uses ami-a0cfeed8 and is a t2.micro.
 It should have a Name tag that subscribes to the id of a Random Pet named
 'ec2 web random name'.
 ```
-It will then make a plan, inspect the schema for the relevant schemas, and create the components in a new change set. After a few seconds of work, it will respond with something like this:
+It will then make a plan, inspect the relevant schemas, and create the components in a new change set. After a few seconds of work, it will respond with something like this:
 
 ```
 ● Excellent! I've successfully created:
@@ -340,7 +340,7 @@ if __name__ == "__main__":
     main()
 ```
 
-Programming the data model shines in moments where you need to drive more complex behavior, or integrate into things like CD pipelines. In a typical CD pipeline, you would have a code change get merged, then an artifact built, and then promote that artifact into a development environment. This can be tricky with Infrastructure as Code - you need to model the artifact version as a variable input to your Terraform module, which is likely in a separate repository altogether, then trigger the run (which may or may not be able to complete, depending on the actual deployment infrastructure).
+Programming the data model shines in moments when you need to drive more complex behavior or integrate with things like CD pipelines. In a typical CD pipeline, you would have a code change merged, then an artifact built, and then the artifact promoted to a development environment. This can be tricky with Infrastructure as Code - you need to model the artifact version as a variable input to your Terraform module, which is likely in a separate repository altogether, then trigger the run (which may or may not be able to complete, depending on the actual deployment infrastructure).
 
 Here is an example of updating a service running in AWS ECS using System Initiative:
 
@@ -360,7 +360,7 @@ First, we create a new Change Set called "Randomly Named Web App" by using the `
 
 ![Create Change Set](./iac-comparison/web-app-step-1.png)
 
-Second, add the Random Pet component to generate our random string by pressing `N`, typing 'Random Pet', and hitting enter. Then we name our component. Notice the 'id' field says "presidential_horse" - that's an *attribute function* populating that field. Notice that this is not opaque, like the Terraform variable reference is. This is a feature of *subscriptions* - you can easily inspect their values.
+Second, add the Random Pet component to generate our random string by pressing `N`, typing 'Random Pet', and hitting enter. Then we name our component. Notice the 'id' field says "presidential_horse" - that's an *attribute function* populating that field. Notice that this is not opaque, unlike the Terraform variable reference. This is a feature of *subscriptions* - you can easily inspect their values.
 
 ![Random Component](./iac-comparison/web-app-step-2.png)
 
@@ -368,16 +368,16 @@ Third, create our AWS::EC2::Instance the same way, populating the fields appropr
 
 ![EC2 Component](./iac-comparison/web-app-step-3.png)
 
-Again, notice that we see the value will be 'presidential_horse', directly inline.
+Again, notice that we see the value will be 'presidential_horse' directly inline.
 
 When working directly in the Web Application, you get full completion of the fields, documentation, automatic recommendations for appropriate subscriptions, fast feedback on invalid configurations, and more. It's a great way to build when you know precisely what you want.
 :::
 
-What is important to understand about this is that all 3 ways work on the same underlying data model. This is the most fundamental difference between a resource declaration in Terraform and a component in System Initiative: in Terraform, the declaration is static code; in System Initiative, it is a dynamic data model. In System Initiative, you can then update your model any way you like. We can populate the model from the underlying provider, with no loss of fidelity (a task that would require careful importing of the underlying resource into your state file, and matching it to a declaration) with ease.
+What is essential to understand about this is that all 3 ways work on the same underlying data model. This is the most fundamental difference between a resource declaration in Terraform and a component in System Initiative: in Terraform, the declaration is static code; in System Initiative, it is a dynamic data model. In System Initiative, you can then update your model any way you like. We can populate the model from the underlying provider, with no loss of fidelity (a task that would require careful importing of the underlying resource into your state file, and matching it to a declaration), with ease.
 
 
 :::details Random Pet Component Source Code - Why Providers Aren't Necessary
-The 'Random Pet' component did not exist when this page was written. We created it specifically for this tutorial in a few minutes. Here is the complete source code for it, illustrating why it's far more powerful to have a programmable schema and functions within the data model than separate providers.
+The 'Random Pet' component did not exist when this page was written. We created it specifically for this tutorial in a few minutes. Here is the complete source code for it, illustrating why it's far more powerful to have programmable schema and functions within the data model than to rely on separate providers.
 
 :::code-group
 ```typescript [Schema Definition]
@@ -417,18 +417,18 @@ async function main(input: Input): Promise<Output> {
 ```
 The schema definition defines our *id* attribute, which will hold the generated name.
 
-We then attach an *attribute* function, which will set the value to whatever is returned, to that attribute.
+We then attach an *attribute* function that sets the value to whatever is returned to that attribute.
 
-When you create a Random Pet component, the attribute function will run by default and populate the id field.
+When you create a Random Pet component, the attribute function runs by default and populates the ID field.
 
-You can compare this to the [source code for the Random Pet provider](https://github.com/hashicorp/terraform-provider-random/blob/main/internal/provider/resource_pet.go), which, while it supports more options, illustrates the difference in extensibility between the platforms. System Initiative's approach creates a more extensible and easy-to-follow way to build automation, even if the provider never existed before.
+You can compare this to the [source code for the Random Pet provider](https://github.com/hashicorp/terraform-provider-random/blob/main/internal/provider/resource_pet.go), which, while it supports more options, illustrates the difference in extensibility between the platforms. System Initiative's approach creates a more extensible, easy-to-follow way to build automation, even if the provider has never existed before.
 :::
 
-System Initiative's approach provides better clarity through rich schemas, multiple ways of creating and updating the model, and transparent variables through subscriptions. Being able to build up a component in whatever way works, and then use it for your automation, is a fundamentally more powerful way of building automation than static declarations. As you move from basic infrastructure automation to the more complex day two operations, you'll be shocked at how much easier things are.
+System Initiative's approach provides greater clarity through rich schemas, multiple ways to create and update the model, and transparent variables via subscriptions. Being able to build up a component in whatever way works, and then use it for your automation, is a fundamentally more powerful way to build automation than static declarations. As you move from basic infrastructure automation to the more complex day two operations, you'll be shocked at how much easier things are.
 
 ### Sensitive Variables
 
-Terraform handles the need to use sensitive or secret information, such as usernames, passwords, API tokens, or Personally Identifiable Information (PII) through a feature called 'Sensitive Variables'. If you hard-code those values into your resource declarations, they will then appear not only in the plain text code, but also in the output of Terraform - in logs and console output in particular. To solve this problem, you mark variables as 'sensitive', and then use those variables in your code rather than the raw values. To inject the actual value, you store it in a separate *tfvars* file, or set environment variables, and pass them in when you plan or apply:
+Terraform handles the need to use sensitive or secret information, such as usernames, passwords, API tokens, or Personally Identifiable Information (PII), through a feature called 'Sensitive Variables'. If you hard-code those values into your resource declarations, they will then appear not only in the plain text code, but also in the output of Terraform - in logs and console output in particular. To solve this problem, you mark variables as 'sensitive', and then use those variables in your code rather than the raw values. To inject the actual value, you store it in a separate *tfvars* file, or set environment variables, and pass them in when you plan or apply:
 
 ::: code-group
 ```terraform [variables.tf]
@@ -465,7 +465,7 @@ db_password = "insecurepassword"
 ```
 :::
 
-Once this is done, the sensitive secrets will be redacted from Terraform's output. Significantly, they will *not* be redacted from state files or plan files - both of which are frequently stored and referenced. The issue with this approach is that Terraform deals only with *redacting* sensitive values. Because the secret data itself needs to be injected into the declarationnfor it to be used, they don't really have an alternative. To make matters worse, it means that if your state data or a plan is compromised, all of the secrets used in your infrastructure will be leaked - there is no protection by default. Regardless of how you solve those problems, it is still up to you to determine how to store and inject your secret values into Terraform securely.
+Once this is done, the sensitive secrets will be redacted from Terraform's output. Significantly, they will *not* be redacted from state files or plan files - both of which are frequently stored and referenced. The issue with this approach is that Terraform only handles the *redaction* of sensitive values. Because the secret data itself needs to be injected into the declaration for it to be used, they don't really have an alternative. To make matters worse, it means that if your state data or a plan is compromised, all of the secrets used in your infrastructure will be leaked - there is no protection by default. Regardless of how you solve those problems, it is still up to you to determine how to securely store and inject your secret values into Terraform.
 
 :::info
 The OpenTofu project, which is an open-source fork of Terraform, supports [state and plan encryption](https://opentofu.org/docs/language/state/encryption/). This will provide [encryption at rest](https://en.wikipedia.org/wiki/Data_at_rest) for state and plan files.
@@ -476,10 +476,10 @@ You can also use [AWS Server-Side Encryption](https://docs.aws.amazon.com/Amazon
 
 Terraform also allows you to define 'ephemeral' resources and variables, which are never stored in state or plan files.
 
-You may be wondering about [HashiCorp Vault](https://registry.terraform.io/providers/hashicorp/vault/latest/docs). Vault is integrated with Terraform through the 'Vault Provider', which exposes resources that you can use to consume secret data as attributes. The same underlying challenges apply - this solves the problem of connecting to vault, getting the data from secure storage, and then injecting it as a variable - but the variables themselves are no different than when they were injected through tfvars or credentials.
+You may be wondering about [HashiCorp Vault](https://registry.terraform.io/providers/hashicorp/vault/latest/docs). Vault is integrated with Terraform through the 'Vault Provider', which exposes resources that you can use to consume secret data as attributes. The same underlying challenges apply - this solves the problem of connecting to vault, getting the data from secure storage, and then injecting it as a variable - but the variables themselves are no different from when they were injected through tfvars or credentials.
 :::
 
-System Initiative provides secrets as a first-class part of the data model. They are defined as a *schema* that sets the shape of the secret data that needs to be stored, and an *authentication* function that handles configuring the execution environment for when a secret is required. When you want to pass a secret value into System Initiative, you create a new component, then set the values. They are encrypted first by your browser, using the public half of a workspace level [Ed25519 public keypair](https://en.wikipedia.org/wiki/EdDSA). This keypair is itself encrypted at rest with a cluster level key-pair inside our infrastructure (this ensures that, in the event of data compromise, your keys cannot be read without externally stored key material.) Then our database itself is encrypted at rest by [AWS](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Overview.Encryption.html). The data is then sent to System Initiative over HTTPS. This model ensures that your secrets are not transmitted across the wire unencrypted, even when you set them, and are encrypted at rest (even if the database were to be dumped in plain text.)
+System Initiative provides secrets as a first-class part of the data model. They are defined as a *schema* that sets the shape of the secret data to be stored, and an *authentication* function that configures the execution environment for when a secret is required. When you want to pass a secret value to System Initiative, you create a new component and then set its values. They are encrypted first by your browser, using the public half of a workspace-level [Ed25519 public keypair](https://en.wikipedia.org/wiki/EdDSA). This keypair is itself encrypted at rest with a cluster level key-pair inside our infrastructure (this ensures that, in the event of data compromise, your keys cannot be read without externally stored key material.) Then our database itself is encrypted at rest by [AWS](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Overview.Encryption.html). The data is then sent to System Initiative over HTTPS. This model ensures that your secrets are not transmitted across the wire unencrypted, even when you set them, and are encrypted at rest (even if the database were to be dumped in plain text).
 
 Here is the full source code for our AWS Credential schema as an example of how easy it is to build even a complex secret:
 
@@ -610,13 +610,13 @@ async function main(secret: Input): Promise < Output > {
 ```
 :::
 
-When you need to reference a secret from another component (for example, all our AWS schemas require an AWS Credential to perform operations with AWS), you use a *secret subscription*. Rather than dynamically passing their underlying values like a regular subscription, secret subscriptions trigger the *authentication* function to run before any functionality that requires the secret. When those functions execute, we decrypt your secret, pass it into the secure micro-vm that is running the function, and then run the authentication function, which can set up the data necessary for the final behavior that needs the secret data. We then track the secrets used across every function invocation and redact any occurrence of the secret value from our logs, function output, etc. We do not allow secret values to be consumed by regular attributes - so you cannot leak them by subscribing to the value itself. They must be consumed *by the underlying functions*.
+When you need to reference a secret from another component (for example, all our AWS schemas require an AWS Credential to perform operations with AWS), you use a *secret subscription*. Rather than dynamically passing their underlying values like a regular subscription, secret subscriptions trigger the *authentication* function to run before any functionality that requires the secret. When those functions execute, we decrypt your secret, pass it to the secure micro-VM running the function, and then run the authentication function, which sets up the data needed for the final behavior that requires the secret. We then track the secrets used across every function invocation and redact any occurrence of the secret value from our logs, function output, etc. We do not allow secret values to be consumed by regular attributes - so you cannot leak them by subscribing to the value itself. They must be consumed *by the underlying functions*.
 
-This is a place where our fundamental design truly shines. We not only redact your secret information, but we make sure its stored safely *end to end* - from the moment you give us the secret material to the moment it's used in a function. We prevent you from accidental leakage, provide defense in depth, and allow you to define and consume your own secret components just like any other schema in System Initiative. Everything is redacted, we go out of our way to ensure you cannot leak the data, and you cannot consume it as a plain text value subscription. System Initiative is secure by default.
+This is a place where our fundamental design truly shines. We not only redact your secret information, but we make sure it's stored safely *end to end* - from the moment you give us the secret material to the moment it's used in a function. We prevent accidental leakage, provide defense-in-depth, and allow you to define and consume your own secret components, just like any other schema in System Initiative. Everything is redacted; we go out of our way to ensure you cannot leak the data, and you cannot consume it as a plain text value subscription. System Initiative is secure by default.
 
 ### Data Sources
 
-Data Sources in Terraform allow you to dynamically fetch data from APIs or other Terraform state backends, so that you can reference those values in resource attributes. They're used to make your configuration more dynamic, and to feed external information through to your resource declarations.
+Data Sources in Terraform allow you to dynamically fetch data from APIs or other Terraform state backends, so that you can reference those values in resource attributes. They're used to make your configuration more dynamic and to feed external information into your resource declarations.
 
 Data sources are used similarly to resource declarations - you provide arguments that then produce attributes for you to consume:
 
@@ -638,7 +638,7 @@ resource "aws_instance" "app" {
 }
 ```
 
-The role of Data Sources for fetching data from external APIs in System Initiative is filled through creating components whose attributes are populated dynamically, and whose resulting values are subscribed to in the consuming component. First, for the AMI lookup:
+The role of Data Sources for fetching data from external APIs in System Initiative is fulfilled by creating components whose attributes are populated dynamically and whose resulting values are subscribed to by the consuming component. First, for the AMI lookup:
 
 ![AMI Component](./iac-comparison/data-source-ami.png)
 
@@ -646,23 +646,23 @@ Then, consuming it in an AWS::EC2::Instance:
 
 ![EC2 Instance Component](./iac-comparison/data-source-ec2.png)
 
-This approach highlights the programability of System Initiative's underlying model. Rather than needing to switch to another language (go, in this case), write the data source in a provider, then ship that provider - you re-use your existing expertise about the underlying platform that has the data you need, your pre-existing knowledge of how to write *schema* and *attribute functions*, and build the component that fetches the data you need.
+This approach highlights the programmability of System Initiative's underlying model. Rather than needing to switch to another language (go, in this case), write the data source in a provider, then ship that provider - you re-use your existing expertise about the underlying platform that has the data you need, your pre-existing knowledge of how to write *schema* and *attribute functions*, and build the component that fetches the data you need.
 
 :::tip
-Functions in System Initiative are written in TypeScript using the [Deno](https://deno.com/) runtime. Your functions can use dependencies from the entire NPM, JSR, and GitHub ecosystems, and TypeScript is one of the most supported languages in the world. If you need a library for something, it probably exists.
+Functions in System Initiative are written in TypeScript using the [Deno](https://deno.com/) runtime. Your functions can use dependencies from the entire NPM, JSR, and GitHub ecosystems, and TypeScript is among the most widely supported languages in the world. If you need a library for something, it probably exists.
 
-If you aren't familiar with TypeScript, no problem. You can also ask the AI Agent to write the schema and function for you, and assist in troubleshooting any issues you might encounter. Alternatively, you can always fetch code from external sources and execute it directly within the micro-vm that executes functions. System Initiative will flex to meet you where you are.
+If you aren't familiar with TypeScript, no problem at all. You can also ask the AI Agent to write the schema and function for you, and help you troubleshoot any issues you might encounter. Alternatively, you can always fetch code from external sources and execute it directly within the micro-VM that executes functions. System Initiative will flex to meet you where you are.
 :::
 
-There is no analog of fetching data from "other Terraform state backends" in System Initiative. Our underlying data model, granular action execution, and integrated authorization mean that there is far less reason to break up repositories according to things like rate of change, blast radius, or performance. In cases where you might need the same resource in two workspaces, you can import it in both.
+There is no analog of fetching data from "other Terraform state backends" in System Initiative. Our underlying data model, granular action execution, and integrated authorization mean there is far less reason to break up repositories based on factors like rate of change, blast radius, or performance. In cases where you need the same resource in two workspaces, you can import it into both.
 
 :::info
-This is an area of active exploration with System Initiative. We think there might be real value in having 'read only' replicas of components across workspaces without having to configure authorization rules. If you have thoughts, we'd love to hear them!
+This is an area of active exploration with System Initiative. There might be real value in having 'read only' replicas of components across workspaces without having to configure authorization rules. If you have thoughts, we'd love to hear them!
 :::
 
 ### Modules
 
-Terraform modules are used to organize configuration in a repository, encapsulate configurations into higher-level abstractions, enable re-use of a configuration, and provide consistency through that abstraction. Technically, every Terraform configuration is in a module - the 'top' of your repository is considered the 'root module'. You can have modules that are local, which are defined in your repository; or remote, where they are coming from sources like the Terraform Registry. They are a fundamental element of designing your Terraform workflow.
+Terraform modules are used to organize configuration in a repository, encapsulate configurations into higher-level abstractions, enable reuse of configurations, and provide consistency through those abstractions. Technically, every Terraform configuration is in a module - the 'top' of your repository is considered the 'root module'. You can have local modules, defined in your repository, or remote modules, sourced from sources like the Terraform Registry. They are a fundamental element of designing your Terraform workflow.
 
 Modules are invoked with a syntax that is similar to a resource declaration, with their arguments specified as *input variables*, and their attributes specified as *output values*:
 
@@ -746,13 +746,13 @@ output "ec2_instance_public_ips" {
 ```
 :::
 
-Modules are effectively "black box" abstractions - you specify the input variables, use that to dynamically create resources within the module, and then expose the specific output data you need for other modules to consume. When the modules are local (defined by you or your team), this can be fine - you are in control of the inputs and outputs. When using community modules, it can be a source of pain if the community module doesn't expose an input you need to specify or an output you need to consume, as you will be stuck either keeping a local copy of the community module with your edits, trying to merge a change upstream, or refactoring your own code to meet the module's requirements.
+Modules are effectively "black box" abstractions: you specify the input variables, use them to dynamically create resources within the module, and then expose the specific output data that other modules need to consume. When the modules are local (defined by you or your team), this can be fine - you are in control of the inputs and outputs. When using community modules, it can be a source of pain if the community module doesn't expose an input you need to specify or an output you need to consume, as you will be stuck either keeping a local copy of the community module with your edits, trying to merge a change upstream, or refactoring your own code to meet the module's requirements.
 
-This design leads to the 200% rule of automation abstractions: any sufficiently generic abstraction over an infrastructure concept will grow to encompass all of the functionality it abstracts, but with a slightly different syntax. A practical example here is the (honestly amazing) [AWS VPC Terraform module](https://registry.terraform.io/modules/terraform-aws-modules/vpc/aws/latest) - it has [236 inputs](https://registry.terraform.io/modules/terraform-aws-modules/vpc/aws/latest?tab=inputs) and [119 outputs](https://registry.terraform.io/modules/terraform-aws-modules/vpc/aws/latest?tab=outputs), and might create [82 different types of resources](https://registry.terraform.io/modules/terraform-aws-modules/vpc/aws/latest?tab=resources). It's hard to imagine a module that does a better job of abstracting over the complexities of AWS networking. But as a consumer of this module, I get stuck in a trap: an 'easy' default configuration is easy, but to make a complex environment, I need to understand both the underlying resources I need and how this module abstracts their configuration through variables in order to produce the desired output.
+This design leads to the 200% rule of automation abstractions: any sufficiently generic abstraction over an infrastructure concept will grow to encompass all of the functionality it abstracts, but with a slightly different syntax. A practical example here is the (honestly amazing) [AWS VPC Terraform module](https://registry.terraform.io/modules/terraform-aws-modules/vpc/aws/latest) - it has [236 inputs](https://registry.terraform.io/modules/terraform-aws-modules/vpc/aws/latest?tab=inputs) and [119 outputs](https://registry.terraform.io/modules/terraform-aws-modules/vpc/aws/latest?tab=outputs), and might create [82 different types of resources](https://registry.terraform.io/modules/terraform-aws-modules/vpc/aws/latest?tab=resources). It's hard to imagine a module that does a better job of abstracting over the complexities of AWS networking. But as a consumer of this module, I get stuck in a trap: an 'easy' default configuration is easy, but to build a complex environment, I need to understand both the underlying resources I need and how this module abstracts their configuration through variables to produce the desired output.
 
-Another issue to contend with is how this module composes with other resource declarations. Each resource within the module exposes its own attributes, but to access those attributes outside the module, they need to be exposed as output variables. In order to understand which attribute you should use, you again likely need to map from your own knowledge of the underlying resources to the module design. If the output has not been specified by the module author, you'll need to either fork it (and now own it), wait for an upstream change, or somehow work around the issue (usually be duplicating data, hard-coding it, etc).
+Another issue to contend with is how this module composes with other resource declarations. Each resource within the module exposes its own attributes, but to access them outside the module, they must be exposed as output variables. To understand which attribute to use, you need to map your knowledge of the underlying resources to the module design. If the output has not been specified by the module author, you'll need to either fork it (and now own it), wait for an upstream change, or somehow work around the issue (usually by duplicating data, hard-coding it, etc).
 
-System Initiative solves these problems by leveraging our core programmable [data model](./architecture/engine.md) to solve for the use cases of modules without introducing their complexity, or the 200% problem. We do this by creating specific patterns that address each of the value propositions of modules in the first place.
+System Initiative solves these problems by leveraging our core programmable [data model](./architecture/engine.md) to solve for the use cases of modules without introducing their complexity, or the 200% problem. We do this by creating specific patterns that address each module's value proposition in the first place.
 
 Organizing configuration happens *logically*, on top of the underlying data, through *views* of the data. This allows you to create semantically relevant perspectives within a workspace - for example, 'Network Layer', 'Application', or 'Database'. When full isolation is necessary, *workspaces* can be used to provide it, even across the same information if required. Rather than forcing you to use modules and on-disk structure, you start by importing all the data, and then slice it into the perspectives that make sense for your organization. How or where a component is defined has no bearing on how the resulting information is organized. This makes it much easier to evolve the organization over time - you aren't stuck with the choices you made because of how things were encapsulated or laid out on disk.
 
@@ -760,7 +760,7 @@ Organizing configuration happens *logically*, on top of the underlying data, thr
 This is another place where the database analogy can be helpful. You might have your data laid out in one way, and then create a "view" across that data to ease querying or optimize performance. The same is true in System Initiative! Organization is decoupled from how the resources are defined.
 :::
 
-Encapsulating configuration into higher-level abstractions or enabling re-use is done by creating new *template components*, and embracing an iterative approach to complexity. To use the AWS VPC concept as an example, we have an 'AWS VPC Template' component. The attributes of that component are defined by its schema, and are similar to specifying your input variables for a module - they are things like the initial CidrBlock, Tenancy, Number of Availability Zones, etc. The schema includes more than simply variable names and basic types - embedded documentation, validation, and how to render the field in the UI are all part of the definition. We then have a *management function* defined for the component, which is a function that can create, update, or delete components, views, and more programmatically. This function takes as one of its inputs the attributes of the component, and returns the infrastructure you want to configure. Here's a small sample:
+Encapsulating configuration into higher-level abstractions or enabling reuse is achieved by creating new *template components*, and embracing an iterative approach to complexity. To use the AWS VPC concept as an example, we have an 'AWS VPC Template' component. The attributes of that component are defined by its schema, and are similar to specifying your input variables for a module - they are things like the initial CidrBlock, Tenancy, Number of Availability Zones, etc. The schema includes more than simply variable names and basic types - embedded documentation, validation, and how to render the field in the UI are all part of the definition. We then have a *management function* defined for the component, which is a function that can create, update, or delete components, views, and more programmatically. This function takes as one of its inputs the attributes of the component and returns the infrastructure you want to configure. Here's a small sample:
 
 :::code-group
 ```typescript [Schema Definition]
@@ -837,9 +837,9 @@ The resulting full component looks like this in our web application:
 
 When the template is run, the components defined in the management function will be created in the workspace. The clever among you will be considering that our Standard VPC Template is quite a bit smaller than the example we gave for Terraform - and that's a feature, not a bug. In System Initiative, you build templates that handle the *most common* repeatable cases - because the template itself expands into components within the workspace. They are fully present - they are not hidden behind a "black box". Rather than forcing those details up into an ever more complex component (and thus re-creating the 200% problem!), users *iterate* on the output of the template to adapt it to their circumstances.
 
-As an example, the AWS VPC Terraform Module supports configuring [Amazon Redshift Subnet Groups](https://docs.aws.amazon.com/redshift/latest/mgmt/working-with-cluster-subnet-groups.html). This functionality exists within the AWS VPC Terraform Module because declaring those resources from outside the module requires too much knowledge of the outputs of the module. To fully understand how this functionality works in the module, you will need to have a deep understanding of the module, Redshift, and AWS networking.
+As an example, the AWS VPC Terraform Module supports configuring [Amazon Redshift Subnet Groups](https://docs.aws.amazon.com/redshift/latest/mgmt/working-with-cluster-subnet-groups.html). This functionality exists within the AWS VPC Terraform Module because declaring those resources outside the module requires too much knowledge of the module's outputs. To fully understand how this functionality works in the module, you will need to have a deep understanding of the module, Redshift, and AWS networking.
 
-With System Initiative, the two would be treated as *separate things* - which they are within AWS. Create the VPC and Subnets first, then add them to a Redshift Subnet Group. Or you could create them all at once. Either way, the most likely thing a user would do is use our AI Agent with a prompt like this:
+With System Initiative, the two would be treated as *separate things* - which they are within AWS. Create the VPC and Subnets first, then add them to a Redshift Subnet Group. Or, you could create them all at once. Either way, the most likely thing a user would do is use our AI Agent with a prompt like this:
 
 ```prompt [Create a Redshift Subnet Group]
 > Create a VPC with two availability zones using the AWS VPC Template. Then
@@ -878,14 +878,14 @@ By having templates *expand*, rather than being black boxes like a module, we ca
 If this task happens regularly (for example, you deploy Redshift clusters into new VPCs on demand), you would automate it by creating a new component, such as 'Redshift Cluster'. You would do that by telling System Initiative to create a template based on a sample, working Redshift deployment. Create the schema that defines the variables, customize the function, and then call that template on demand. You can do these tasks through the Web Application, or let the AI Agent do them for you and review the results.
 
 :::tip
-Our approach to modules reflects one of the fundamental differences between IaC and System Initiative: that you can iterate easily toward working infrastructure, and *then* automate what you need. Combine doing things manually through the web interface, writing code with the public API, or using our AI Agent - it's all just a means to an end, and no matter how you got there, you can easily repeat it, audit it, and evolve it. It's radically simpler and more effective.
+Our approach to modules reflects one of the fundamental differences between IaC and System Initiative: you can iterate easily toward working infrastructure, and *then* automate what you need. Combine doing things manually through the web interface, writing code with the public API, or using our AI Agent - it's all just a means to an end, and no matter how you got there, you can easily repeat it, audit it, and evolve it. It's radically more straightforward and more effective.
 :::
 
 ### Count and For Each
 
-Meta-Arguments like *count* and *for each* allow you to replicate resources a given number of times. Both are good examples of the difficulty that comes from expressing complex configurations in static declarations.
+Meta-Arguments like *count* and *for each* allow you to replicate resources a given number of times. Both are good examples of the difficulty of expressing complex configurations in static declarations.
 
-In the case of count, it makes an identical (or nearly identical) copy of a resource declaration. It's also frequently used to decide if a resource should exist or not (by setting count to zero, even if the resource is declared). Here's an example:
+In the case of count, it makes an identical (or nearly identical) copy of a resource declaration. It's also frequently used to determine whether a resource should exist (by setting the count to zero, even if the resource is declared). Here's an example:
 
 :::code-group
 ```terraform [main.tf]
@@ -913,7 +913,7 @@ variable "instances_per_subnet" {
 ```
 :::
 
-In this example, the total number of EC2 Instances that will be deployed is equal to the total number of private subnets multiplied by the `instances_per_subnet` variable. Which subnet a given instance is configured for will be decided by the 'modulo' (the remainder after division) of the total number of subnets. The goal here is to have an even distribution of instances per subnet. While this code works, it's a good example of the kind of complexity inherent in writing HCL. As your needs grow more complex, the language itself can become a barrier for people.
+In this example, the total number of EC2 Instances that will be deployed is equal to the total number of private subnets multiplied by the `instances_per_subnet` variable. Which subnet a given instance is configured for will be decided by the 'modulo' (the remainder after division) of the total number of subnets. The goal here is to achieve an even distribution of instances across subnets. While this code works, it's a good example of the inherent complexity of writing HCL. As your needs grow more complex, the language itself can become a barrier for people.
 
 With For Each, things tend to get even more complex:
 
@@ -972,7 +972,7 @@ variable "project" {
 ```
 :::
 
-In this example, a 'project' variable is defined, with names for each project and settings for each. Then the "vpc" and "app_security_group" modules are called, once for each entry in the project variable. Functions like `slice` and `each_key` are used to extract data from the underlying data structure and configure the attributes of the module. While this syntax can be effective for DRY-ing up a configuration, it is also very difficult to understand without quite a bit of context - you can't tell at a glance how many VPCs or Security groups will be created, nor what a particular attribute will resolve to at a glance. They may be effective in reducing lines of code, but they have a drastic downside in terms of the ability to reason about the underlying infrastructure.
+In this example, a 'project' variable is defined, with names for each project and settings for each. Then the "vpc" and "app_security_group" modules are called, once for each entry in the project variable. Functions such as `slice` and `each_key` are used to extract data from the underlying data structure and configure the attributes of the module. While this syntax can be effective for DRY-ing up a configuration, it is also very difficult to understand without quite a bit of context - you can't tell at a glance how many VPCs or Security groups will be created, nor what a particular attribute will resolve to at a glance. They may be effective in reducing lines of code, but they have a drastic downside in terms of the ability to reason about the underlying infrastructure.
 
 System Initiative solves this problem in two different ways, depending on what you're trying to accomplish. In the case where you want '2 instances in each private subnet', you make the change with an AI agent:
 
@@ -1018,11 +1018,11 @@ In this example, there were no app servers in the subnets to begin with, so it c
     - Private Subnet 3: app-5, app-6
 ```
 
-There are several advantages to this approach: clarity, simplicity, and flexibility. It's clearer because, regardless of the starting state of the infrastructure, the change set will show you precisely what needs to be done. In Terraform, you will need to map that mentally or rely on the plan output. It's simpler because you can express your intent in many different ways to achieve the same end result. This is particularly true when you have teams working on your Terraform code - all of your team members can likely type "make sure there are 2 ec2 instances in each private subnet" - but how many can write the correct declaration, especially as the complexity in the repository increases? Finally, it's more flexible - because each individual instance is itself directly configurable, if you need to have more variation (for example, mixes of CPU, Memory, or Disk configuration) it's straightforward to do.
+There are several advantages to this approach: clarity, simplicity, and flexibility. It's clearer because, regardless of the infrastructure's starting state, the change set shows you precisely what needs to be done. In Terraform, you will need to map that in your head or rely on the plan output. It's simpler because you can express your intent in many different ways to achieve the same result. This is particularly true when you have teams working on your Terraform code - all of your team members can likely type "make sure there are 2 ec2 instances in each private subnet" - but how many can write the correct declaration, especially as the complexity in the repository increases? Finally, it's more flexible - because each instance is itself directly configurable, if you need to have more variation (for example, mixes of CPU, Memory, or Disk configuration), it's straightforward to do.
 
-Another way we help solve this problem is by separating the *intent* behind a change and, if it's a common change that needs to be made regularly, doing so with a *template* component instead. This would be the equivalent of the for each example above. You would create a working baseline, turn that into a template, and then use that to create the underlying infrastructure.
+Another way we help solve this problem is by separating the *intent* behind a change and, if it's a common change that needs to be made regularly, using a *template* component instead. This would be the equivalent of the for each example above. You would create a working baseline, turn it into a template, and then use that to create the underlying infrastructure.
 
-This approach is also useful for *day two* operations - for example, regularly 'scaling up' a complex application. You would create a *management component*, which can then encapsulate the details of the underlying transformation. For example, 'Scale Up' or 'Scale Down' can be implemented as a management function that makes the required changes to the underlying infrastructure model (perhaps changing an existing component, or creating new ones, or a mix of both).
+This approach is also helpful for *day two* operations - for example, regularly 'scaling up' a complex application. You would create a *management component*, that can then encapsulate the details of the underlying transformation. For example, 'Scale Up' or 'Scale Down' can be implemented as a management function that makes the required changes to the underlying infrastructure model (perhaps changing an existing component, creating new ones, or a mix of both).
 
 System Initiative's approach is to leverage the underlying clarity and programmability of the data model to solve the use cases without introducing the cognitive overhead of 'count' and 'for each'.
 
@@ -1037,11 +1037,11 @@ Terraform stores information about your infrastructure in *state files*. State s
 
 State is tracked by default in the same working directory where Terraform is run. Typically, a 'remote state' solution will be introduced that makes for easier delegation of authority across teams and locking to ensure things do not conflict. Possible solutions here range from an S3 Bucket with a DynamoDB locking table to HCP Terraform or other cloud offerings integrated state management solution.
 
-Regardless of how you choose to store state, there are several issues with the approach: it is single-threaded, it is prone to drift, refactoring is dangerous, it gets slower at scale, and partial applications can corrupt state.
+Regardless of how you choose to store state, there are several issues with the approach: it is single-threaded, prone to drift, refactoring is dangerous, it gets slower at scale, and partial applications can corrupt state.
 
-There is always a lock around any state transitions, ensuring that only one batch of change can happen at a time. This causes real problems with the pace of change inside an infrastructure. For example, if a regularly scheduled deployment is being performed with Terraform, while simultaneously some unrelated work needs to happen, if they are being tracked in the same state file, the unrelated work will *block*. This leads to a design where Terraform repositories are broken down into smaller pieces, not because the relationships dictate it should be so, but to eliminate these risky bottlenecks.
+There is always a lock around any state transitions, ensuring that only one batch of change can happen at a time. This causes real problems with the pace of change inside an infrastructure. For example, if a regularly scheduled deployment is being performed with Terraform, while simultaneously some unrelated work needs to happen, if they are being tracked in the same state file, the unrelated work will *block*. This leads to a design where Terraform repositories are broken down into smaller pieces, not because the relationships dictate it, but to eliminate these risky bottlenecks.
 
-With state files, any changes that happen outside of Terraform are considered *resource drift*. A classic example of drift is an AWS EC2 instance that has a tag added to it from the AWS Console. Drift gets dealt with through `terraform (plan|apply) -refresh-only` to update the changed resource, and with a separate update to your local configuration to bring the resource declaration inline with the changed resource. If the change was a new relationship or configuration, you'll need to use careful application of `terraform import` to ensure your new declaration gets assigned to the previously created infrastructure. In Terraform, drift is only ever solved in one direction - by having the declared code be the 'source of truth'.
+With state files, any changes that happen outside of Terraform are considered *resource drift*. A classic example of drift is an AWS EC2 instance that has a tag added via the AWS Console. Drift gets dealt with through `terraform (plan|apply) -refresh-only` to update the changed resource, and with a separate update to your local configuration to bring the resource declaration inline with the changed resource. If the change was a new relationship or configuration, you'll need to use careful application of `terraform import` to ensure your new declaration gets assigned to the previously created infrastructure. In Terraform, drift is only ever solved in one direction - by having the declared code be the 'source of truth'.
 
 When working with Terraform code, you must be aware of the execution and state file boundaries. This becomes a problem in particular as you spread your code across multiple repositories, frequently to deal with issues of speed or safety. If you have a declaration present in one spot and move across that boundary, the state will be lost - in the worst case, it can lead to accidental deletion of the working cloud resource. This is mitigated with commands like `terraform state mv`, but often requires deep knowledge of both Terraform internals, your repository layouts, and the code in question.
 
