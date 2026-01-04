@@ -38,7 +38,7 @@
     flake-utils.lib.eachDefaultSystem (system: let
       overlays = [
         (self: super: {
-          nodejs = super.nodejs_20;
+          nodejs = super.nodejs_22;
         })
         (import rust-overlay)
         # NOTE 2025-07-17: see inputs for explanation. When input is deleted,
@@ -57,7 +57,7 @@
       rustfmt-nightly = pkgs.rust-bin.nightly."2025-04-17".rustfmt;
 
       nodePkgs = pkgs.nodePackages.override {
-        nodejs = pkgs.nodejs_20;
+        nodejs = pkgs.nodejs_22;
       };
 
 
