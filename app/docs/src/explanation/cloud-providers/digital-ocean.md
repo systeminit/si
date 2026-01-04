@@ -20,7 +20,7 @@ or send an email to <help@systeminit.com> so we can extend support as needed.
 
 ## Connecting System Initiative to your DigitalOcean Account
 
-In order to use DigitalOcean from within System Initiative, you need to use a
+To use DigitalOcean from within System Initiative, you need to use a
 `DigitalOcean Credential` component. Creating that component will then prompt
 you for an API Token that you can use to create or discover your existing
 infrastructure.
