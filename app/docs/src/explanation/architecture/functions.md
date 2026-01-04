@@ -12,7 +12,7 @@ next:
 
 # Function Execution Framework
 
-Functions are one of the most important primitives within the System Initiative architecture and are similarly represented by a subgraph of the snapshot. As mutations flow, the engine is responsible for resolving dependencies and dispatching functions as soon as they are eligible to run.
+Functions are one of the most critical primitives within the System Initiative architecture and are similarly represented by a subgraph of the snapshot. As mutations flow, the engine resolves dependencies and dispatches functions as soon as they are eligible to run.
 
 ## Function Categories and Dispatch Behavior
 
@@ -20,15 +20,15 @@ Function categories determine their triggering behavior.
 
 ### Reactive Functions
 
- Automatically dispatched when their input dependencies change. These functions maintain derived state, validate configurations, and compute dependent values. Reactive functions execute within the same change set context where their dependencies were modified and include code generation functions, qualifications, transformation functions, authentication functions, and attribute functions.
+Automatically dispatched when their input dependencies change. These functions maintain derived state, validate configurations, and compute dependent values. Reactive functions execute within the same change set context in which their dependencies were modified and include code generation functions, qualifications, transformation functions, authentication functions, and attribute functions.
 
 ### Ad Hoc Functions
 
- Explicitly invoked by users, AI agents, or integrations. These include management operations as well as qualifications (in addition to being reactive). Ad hoc functions can modify state within the context of the change set where the function was invoked.
+Explicitly invoked by users, AI agents, or integrations. These include management operations and qualifications (in addition to being reactive). Ad hoc functions can modify state within the context of the change set in which they were invoked.
 
 ### Queued Functions (Actions)
 
-Execute only against the Head change set and interact with external APIs to modify or interrogate external infrastructure, resulting in updates to the given component's resource (the reality side of the [digital twin](./digital-twin.md)). This includes resource creation, modification, and deletion operations, as well as reading external state and updating the model accordingly. Intent to run an action is recorded on the snapshot, queued within a change set, and reviewed through the change control process. When applied, the engine calculates the correct ordering for actions based on the dependencies of the component being acted on and dispatches it accordingly.
+Execute only against the Head change set and interact with external APIs to modify or interrogate external infrastructure, resulting in updates to the given component's resource (the reality side of the [digital twin](./digital-twin.md)). This includes resource creation, modification, and deletion operations, as well as reading external state and updating the model accordingly. Intent to run an action is recorded on the snapshot, queued within a change set, and reviewed through the change control process. When applied, the engine calculates the correct ordering for actions based on the dependencies of the component being acted on and dispatches them accordingly.
 
 ## Dependency Resolution
 
