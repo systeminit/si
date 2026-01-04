@@ -15,7 +15,7 @@ The workspace snapshot, an immutable directed acyclic graph ([DAG](https://en.wi
 
 ## Snapshot Structure
 
-The structure begins with a single root node and a collection of direct neighbors that each represent a different category of primitives within System Initiative. Every node in the snapshot is connected indirectly to the root through the categories.
+The structure begins with a single root node and a collection of direct neighbors, each representing a different category of primitives within System Initiative. Every node in the snapshot is connected indirectly to the root through the categories.
 
 ### Nodes
 
