@@ -4,7 +4,7 @@ outline: [2, 3]
 
 # Policy Layers in System Initiative
 
-System Initiative is an AI Native Infrastructure Automation Platform that builds digital twins of your infrastructure. It enables you to define and enforce policy across three distinct layers, each serving different governance needs.
+System Initiative is an AI Native Infrastructure Automation Platform that builds [digital twins](https://docs.systeminit.com/explanation/architecture/digital-twin) of your infrastructure. It enables you to define and enforce policy across three distinct layers, each serving different governance needs.
 
 ## Overview
 
@@ -23,7 +23,7 @@ System Initiative allows you to write policy in three complementary ways, from p
 - **Preventive**: Blocks non-compliant resources from being created
 - **Hard enforcement**: Resources cannot be deployed if they violate policy
 - **Provider-native**: Uses the cloud provider's built-in policy engine
-- **Centralized control**: Typically applied at organization or account level
+- **Centralized control**: Typically applied at the organization or account level
 
 **Use case**: When you need to prevent specific actions or resource configurations from ever being created (e.g., "no S3 buckets in eu-west-1" or "all EC2 instances must use approved AMIs").
 
