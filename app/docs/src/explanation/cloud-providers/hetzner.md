@@ -20,7 +20,7 @@ or send an email to <help@systeminit.com> so we can extend support as needed.
 
 ## Connecting System Initiative to your Hetzner Cloud Account
 
-In order to use Hetzner Cloud from within System Initiative, you need to use a
+To use Hetzner Cloud from within System Initiative, you need to use a
 `Hetzner::Credential::ApiToken` component. Creating that component will then
 prompt you for an API Token that you can use to create or discover your existing
 infrastructure.
