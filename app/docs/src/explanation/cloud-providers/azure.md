@@ -21,6 +21,6 @@ or send an email to <help@systeminit.com> so we can extend support as needed.
 
 ## Connecting System Initiative to your Azure Account
 
-In order to use Azure from within System Initiative, you need to use a
-`Microsoft Credential` component. Creating that component will then prompt you
+To use Azure from within System Initiative, you need to use a
+`Microsoft Credential` component. If you create that component, it will then prompt you
 for the credential setup supported above.
