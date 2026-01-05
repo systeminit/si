@@ -72,14 +72,16 @@
                 label="First Name"
                 autocomplete="given-name"
                 placeholder="Your first name"
-                :regex="ALLOWED_INPUT_REGEX"
+                :regex="NAME_REGEX"
+                regexMessage="First name contains invalid characters or URLs"
               />
               <VormInput
                 v-model="draftUser.lastName"
                 label="Last Name"
                 autocomplete="last-name"
                 placeholder="Your last name"
-                :regex="ALLOWED_INPUT_REGEX"
+                :regex="NAME_REGEX"
+                regexMessage="Last name contains invalid characters or URLs"
               />
             </Tiles>
             <VormInput
@@ -88,7 +90,8 @@
               autocomplete="username"
               required
               placeholder="This name will be shown in the application"
-              :regex="ALLOWED_INPUT_REGEX"
+              :regex="NAME_REGEX"
+              regexMessage="Nickname contains invalid characters or URLs"
             />
             <VormInput
               v-model="draftUser.email"
@@ -164,11 +167,11 @@ import { useHead } from "@vueuse/head";
 import { useAuthStore, User } from "@/store/auth.store";
 import { tracker } from "@/lib/posthog";
 import { useWorkspacesStore } from "@/store/workspaces.store";
-import { ALLOWED_INPUT_REGEX } from "@/lib/validations";
-
-const GITHUB_USERNAME_REGEX = /^[a-z\d](?:[a-z\d]|-(?=[a-z\d])){0,38}$/i;
-const DISCORD_TAG_REGEX =
-  /^(?!(discord|here|everyone))(((?!.*\.\.)(([\w.]{2,32})))|[^@#:]{2,32}#[\d]{4})$/i;
+import {
+  NAME_REGEX,
+  GITHUB_USERNAME_REGEX,
+  DISCORD_TAG_REGEX,
+} from "@/lib/validations";
 
 const { validationState, validationMethods } = useValidatedInputGroup();
 const authStore = useAuthStore();
