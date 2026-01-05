@@ -129,9 +129,10 @@ pub struct ComponentIdParam {
 
 #[derive(Debug, Deserialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
-pub struct PaginationParams {
-    #[schema(example = "50", nullable = true, value_type = Option<u32>)]
-    pub limit: Option<u32>,
+pub struct QueryStringPaginationParams {
+    // NOTE(victor,john): These is a string because of some weirdness with serde(flatten) and query strings
+    #[schema(example = "50", nullable = true, value_type = Option<String>)]
+    pub limit: Option<String>,
     #[schema(example = "01H9ZQD35JPMBGHH69BT0Q79VY", nullable = true, value_type = Option<String>)]
     pub cursor: Option<String>,
     #[schema(value_type = Option<bool>)]

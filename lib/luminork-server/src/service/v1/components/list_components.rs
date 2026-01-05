@@ -46,14 +46,14 @@ use crate::{
         PosthogEventTracker,
         change_set::ChangeSetDalContext,
     },
-    service::v1::common::PaginationParams,
+    service::v1::common::QueryStringPaginationParams,
 };
 
 #[derive(serde::Deserialize, Debug, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct ListComponentsParams {
     #[serde(flatten)]
-    pub pagination: PaginationParams,
+    pub pagination: QueryStringPaginationParams,
 
     // Existing option
     pub include_codegen: Option<bool>,
@@ -1090,7 +1090,12 @@ pub async fn list_components(
     tracker: PosthogEventTracker,
 ) -> Result<Json<ListComponentsV1Response>, ComponentsError> {
     // Set default limit and enforce a max limit
-    let limit = params.pagination.limit.unwrap_or(50).min(300) as usize;
+    let limit = params
+        .pagination
+        .limit
+        .and_then(|s| s.parse::<u32>().ok())
+        .unwrap_or(50)
+        .min(300) as usize;
     let cursor = params.pagination.cursor;
 
     let mut comp_details = Vec::with_capacity(limit);
