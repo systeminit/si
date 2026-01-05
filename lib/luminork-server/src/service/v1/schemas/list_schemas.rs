@@ -22,7 +22,7 @@ use crate::{
         PosthogEventTracker,
         change_set::ChangeSetDalContext,
     },
-    service::v1::common::PaginationParams,
+    service::v1::common::QueryStringPaginationParams,
 };
 
 #[utoipa::path(
@@ -44,12 +44,15 @@ use crate::{
 )]
 pub async fn list_schemas(
     ChangeSetDalContext(ref ctx): ChangeSetDalContext,
-    Query(params): Query<PaginationParams>,
+    Query(params): Query<QueryStringPaginationParams>,
     tracker: PosthogEventTracker,
 ) -> Result<Json<ListSchemaV1Response>, SchemaError> {
     // Set default limit and enforce a max limit
-    let min = params.limit.unwrap_or(50).min(300) as usize;
-    let limit = min;
+    let limit = params
+        .limit
+        .and_then(|s| s.parse::<u32>().ok())
+        .unwrap_or(50)
+        .min(300) as usize;
     let cursor = params.cursor;
 
     let mut all_schemas = get_full_schema_list(ctx).await?;
