@@ -131,6 +131,8 @@ pub enum ComponentsError {
     InputSocket(#[from] dal::socket::input::InputSocketError),
     #[error("invalid secret value: {0}")]
     InvalidSecretValue(String),
+    #[error("layer db error: {0}")]
+    LayerDb(#[from] si_layer_cache::LayerDbError),
     #[error("management func error: {0}")]
     ManagementFuncExecution(#[from] si_db::ManagementFuncExecutionError),
     #[error("management function already running for this component")]
@@ -153,6 +155,8 @@ pub enum ComponentsError {
     OutputSocket(#[from] dal::socket::output::OutputSocketError),
     #[error("prop error: {0}")]
     Prop(#[from] dal::prop::PropError),
+    #[error("qualification error: {0}")]
+    Qualification(#[from] dal::qualification::QualificationError),
     #[error("schema error: {0}")]
     Schema(#[from] dal::SchemaError),
     #[error("schema not found by name error: {0}")]
