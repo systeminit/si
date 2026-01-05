@@ -270,6 +270,8 @@ function buildCommand() {
       .command("logout", buildLogoutCommand() as any)
       // deno-lint-ignore no-explicit-any
       .command("workspace", buildWorkspaceCommand() as any)
+      // deno-lint-ignore no-explicit-any
+      .command("policy", buildPolicyCommand() as any)
   );
 }
 
@@ -1584,6 +1586,135 @@ function buildChangeSetCommand() {
           await callChangeSetList(options as ChangeSetListOptions);
         }),
     );
+}
+
+/**
+ * Builds the policy command group with all subcommands.
+ *
+ * @returns A SubCommand configured for policy operations
+ * @internal
+ */
+function buildPolicyCommand() {
+  return createSubCommand(true)
+    .description("Policy management operations")
+    .action(function () {
+      this.showHelp();
+    })
+    .command(
+      "evaluate",
+      createSubCommand(true)
+        .description("Evaluate policies against infrastructure components")
+        .arguments("<file-path:string>")
+        .option(
+          "-o, --output <path:string>",
+          "Output directory for evaluation results (defaults to current directory)",
+        )
+        .action(async (options, filePath) => {
+          await callPolicyEvaluate(filePath as string, options);
+        }),
+    ).hidden();
+}
+
+/**
+ * Evaluates a policy file through the four-stage process.
+ *
+ * @param policyFilePath - Path to the policy markdown file
+ * @param options - Command options including output directory
+ */
+async function callPolicyEvaluate(
+  policyFilePath: string,
+  options: { output?: string },
+) {
+  const ctx = Context.instance();
+  const workspaceId = Context.workspaceId();
+
+  try {
+    ctx.logger.info("Starting policy evaluation for: {path}", {
+      path: policyFilePath,
+    });
+
+    // Determine output directory
+    const outputDir = options.output || Deno.cwd();
+    const baseName = policyFilePath.split("/").pop()?.replace(/\.md$/, "") ||
+      "policy";
+
+    // Create output paths
+    const extractedPolicyPath = `${outputDir}/${baseName}-extracted.json`;
+    const sourceDataPath = `${outputDir}/${baseName}-source-data.json`;
+    const evaluationPath = `${outputDir}/${baseName}-evaluation.json`;
+    const reportPath = `${outputDir}/${baseName}-report.md`;
+
+    // Read policy file
+    ctx.logger.debug("Reading policy file...");
+    const policyContent = await Deno.readTextFile(policyFilePath);
+
+    // Stage 1: Extract policy structure
+    const { extractPolicy } = await import("./policy/extract_policy.ts");
+    const extractedPolicy = await extractPolicy(
+      policyContent,
+      extractedPolicyPath,
+    );
+    ctx.logger.info("Policy extracted: {title}", {
+      title: extractedPolicy.policyTitle,
+    });
+
+    // Stage 2: Collect source data
+    const { collectSourceData } = await import(
+      "./policy/collect_source_data.ts"
+    );
+    const sourceData = await collectSourceData(
+      extractedPolicy.sourceDataQueries,
+      sourceDataPath,
+    );
+
+    // Get HEAD change set ID for evaluation
+    const { getHeadChangeSetId } = await import("./cli/helpers.ts");
+    const changeSetId = await getHeadChangeSetId();
+
+    // Stage 3: Evaluate policy
+    const { evaluatePolicy } = await import("./policy/evaluate_policy.ts");
+    const evaluation = await evaluatePolicy(
+      extractedPolicy.policyText,
+      sourceData,
+      workspaceId,
+      changeSetId,
+      sourceDataPath,
+      evaluationPath,
+    );
+
+    // Stage 4: Generate report
+    const { generateReport } = await import("./policy/generate_report.ts");
+    const reportName = await generateReport(
+      extractedPolicy,
+      sourceData,
+      evaluation,
+      workspaceId,
+      changeSetId,
+      reportPath,
+    );
+
+    // Display summary
+    ctx.logger.info("\nPolicy Evaluation Complete");
+    ctx.logger.info("Result: {result}", { result: evaluation.result });
+    if (evaluation.failingComponents.length > 0) {
+      ctx.logger.warn("Failing components: {count}", {
+        count: evaluation.failingComponents.length,
+      });
+    }
+    ctx.logger.info("Report: {path}", { path: reportName });
+
+    // // Track analytics
+    // ctx.analytics.trackEvent("policy evaluate", {
+    //   policyTitle: extractedPolicy.policyTitle,
+    //   result: evaluation.result,
+    //   failingComponentsCount: evaluation.failingComponents.length,
+    // });
+  } catch (error) {
+    ctx.logger.error("Policy evaluation failed: {error}", {
+      error: error instanceof Error ? error.message : String(error),
+    });
+    throw error;
+  }
 }
 
 async function ensureApiConfig(options: GlobalOptions): Promise<void> {

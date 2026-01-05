@@ -30,6 +30,7 @@
     "generate-templates": "deno run --allow-read --allow-write scripts/generate-embedded-templates.ts"
   },
   "imports": {
+    "@anthropic-ai/claude-agent-sdk": "npm:@anthropic-ai/claude-agent-sdk@^0.1.76",
     "@cliffy/command": "jsr:@cliffy/command@^1.0.0-rc.7",
     "@cliffy/command/completions": "jsr:@cliffy/command@^1.0.0-rc.7/completions",
     "@cliffy/prompt": "jsr:@cliffy/prompt@^1.0.0-rc.7",
@@ -57,6 +58,7 @@
     "lodash": "npm:lodash@^4.17.21",
     "posthog-node": "npm:posthog-node@^4.2.1",
     "ulid": "npm:ulid@^3.0.1",
+    "which": "npm:which@^6.0.0",
     "zod": "npm:zod@^4.0.0",
     "zod-to-json-schema": "npm:zod-to-json-schema@^3.24.6",
     "zod-v3": "npm:zod@^3.21.4"
