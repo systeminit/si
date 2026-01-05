@@ -1,0 +1,77 @@
+name: PR Luminork API Tests
+
+on:
+  pull_request:
+    paths:
+      - 'bin/si-luminork-api-tests/**'
+      - 'lib/luminork-server/**'
+      - '.github/workflows/luminork-pr-tests.yml'
+  workflow_dispatch:
+
+jobs:
+  luminork-api-tests:
+    name: Luminork API Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Ensure endpoint changes include tests
+        if: ${{ github.event_name == 'pull_request' }}
+        id: luminork-test-check
+        run: |
+          BASE_REF="${{ github.base_ref }}"
+          if [ -z "$BASE_REF" ]; then
+            echo "No base ref detected; skipping enforcement."
+            exit 0
+          fi
+
+          git fetch origin "$BASE_REF" --depth=1
+
+          CHANGED_ENDPOINTS=$(git diff --name-only origin/"$BASE_REF"...HEAD -- 'lib/luminork-server/src/service/**' 'lib/luminork-server/src/routes.rs' 'lib/luminork-server/src/api_types/**')
+
+          if [ -z "$CHANGED_ENDPOINTS" ]; then
+            echo "No Luminork endpoint changes detected."
+            exit 0
+          fi
+
+          echo "Endpoint-related files changed:"
+          echo "$CHANGED_ENDPOINTS"
+
+          CHANGED_TESTS=$(git diff --name-only origin/"$BASE_REF"...HEAD -- 'bin/si-luminork-api-tests/tests/**')
+
+          if [ -z "$CHANGED_TESTS" ]; then
+            echo "::warning ::Endpoint changes detected without accompanying Luminork API tests."
+            echo "Add or update tests under bin/si-luminork-api-tests/tests/."
+            echo "needs_comment=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "Associated test updates detected:"
+          echo "$CHANGED_TESTS"
+
+      - name: Comment on PR about missing Luminork tests
+        if: steps.luminork-test-check.outputs.needs_comment == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const tag = '<!-- luminork-test-reminder -->';
+            const { owner, repo } = context.repo;
+            const issue_number = context.issue.number;
+            const message = `${tag}\nThere are luminork endpoint changes on this branch that do not appear to have associated tests. Please ensure you add or update tests under \`bin/si-luminork-api-tests/tests/\` to satisfy this warning.`;
+
+            const comments = await github.paginate(github.rest.issues.listComments, { owner, repo, issue_number });
+            const existing = comments.find((comment) => comment.body && comment.body.includes(tag));
+
+            if (existing) {
+              await github.rest.issues.updateComment({ owner, repo, comment_id: existing.id, body: message });
+            } else {
+              await github.rest.issues.createComment({ owner, repo, issue_number, body: message });
+            }
