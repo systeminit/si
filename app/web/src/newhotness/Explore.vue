@@ -2612,6 +2612,7 @@ const onScrollEnd = async () => {
   }
 };
 const onResize = () => {
+  if (bulkEditing.value) return;
   clearSelection();
 };
 
