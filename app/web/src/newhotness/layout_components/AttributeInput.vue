@@ -1197,7 +1197,10 @@ const selectDefault = () => {
       return;
     }
     emit("add", mapKey.value);
-  } else if (newValue !== attrData.value.value) {
+  } else if (
+    newValue !== attrData.value.value ||
+    attributeInputContext?.blankInput
+  ) {
     valueForm.handleSubmit();
   }
   closeInput();
