@@ -322,7 +322,7 @@ export default withMermaid(defineConfig({
         link: "/changelog/",
       },
       {
-        text: "Road map",
+        text: "Roadmap",
         link: "/roadmap/",
       },
       {
