@@ -65,8 +65,7 @@ interface McpConfig {
 /**
  * Check if an MCP config is using the old Docker-based format
  */
-function isOldDockerFormat(config: McpConfig): boolean {
-  const serverConfig = config.mcpServers["system-initiative"];
+function isOldDockerFormat(serverConfig: McpServerConfig): boolean {
   return (
     serverConfig.command === "docker" &&
     Array.isArray(serverConfig.args) &&
@@ -78,11 +77,9 @@ function isOldDockerFormat(config: McpConfig): boolean {
  * Migrate an old Docker-based MCP config to the new bundled format
  */
 function migrateDockerConfig(
-  oldConfig: McpConfig,
+  oldServerConfig: McpServerConfig,
   newCommand: string,
 ): McpConfig {
-  const oldServerConfig = oldConfig.mcpServers["system-initiative"];
-
   // Preserve the API token from the old config
   const apiToken = oldServerConfig.env.SI_API_TOKEN;
 
@@ -188,13 +185,14 @@ export async function createMcpConfig(
   try {
     const existingContent = await Deno.readTextFile(mcpPath);
     const existingConfig = JSON.parse(existingContent) as McpConfig;
+    const existingSiMcpServer = existingConfig.mcpServers["system-initiative"];
 
     // Check if it's using the old Docker format
-    if (isOldDockerFormat(existingConfig)) {
+    if (existingSiMcpServer && isOldDockerFormat(existingSiMcpServer)) {
       // Migrate to new format, preserving the API token
-      mcpConfig = migrateDockerConfig(existingConfig, siBinaryPath);
+      mcpConfig = migrateDockerConfig(existingSiMcpServer, siBinaryPath);
     } else {
-      // Already in new format, just update the API token
+      // Already in new format, or doesn't exist yet. Just update the API token
       mcpConfig = {
         mcpServers: {
           "system-initiative": {
