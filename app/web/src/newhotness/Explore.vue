@@ -2349,13 +2349,18 @@ const shortcuts: { [Key in string]: (e: KeyDetails[Key]) => void } = {
     e.preventDefault();
     if (e.metaKey || e.ctrlKey) {
       const components = allVisibleComponents.value;
+      let lastIndex = -1;
       [...components.keys()].forEach((index) => {
         const component = componentList.value[index];
         if (component) {
           selectComponent(index);
-          setFocusedComponentIdx(index); // Set focus for programmatic selection
+          lastIndex = index;
         }
       });
+      // Only set focus once after selecting all components to avoid race conditions
+      if (lastIndex !== -1) {
+        setFocusedComponentIdx(lastIndex);
+      }
     }
   },
   b: (e) => {
