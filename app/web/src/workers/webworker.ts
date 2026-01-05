@@ -2664,27 +2664,42 @@ const vanaheim = async (
 };
 
 const writeDeploymentAtoms = async (db: Database, atoms: AtomWithData[]) => {
-  const bind: Array<string | Uint8Array> = [];
-  const placeholders: string[] = [];
+  const writeOneBatchOfDeploymentAtoms = async (batch: AtomWithData[]) => {
+    const bind: Array<string | Uint8Array> = [];
+    const placeholders: string[] = [];
+    batch.forEach((atom) => {
+      bind.push(
+        atom.kind,
+        atom.checksum,
+        atom.id,
+        encodeDocumentForDB(atom.data),
+      );
+      placeholders.push("(?, ?, ?, ?)");
+    });
+
+    const sql = `insert into global_atoms
+      (kind, checksum, args, data)
+        VALUES
+      ${placeholders.join(",")}
+      ON CONFLICT (kind, args)
+      DO UPDATE SET checksum=excluded.checksum, data=excluded.data;
+    `;
+
+    await dbWrite(db, { sql, bind });
+  };
+
+  // This determines the maximum amount of atoms per write batch
+  const CHUNK_SIZE = 2000;
+
+  for (let i = 0; i < atoms.length; i += CHUNK_SIZE) {
+    const chunk = atoms.slice(i, i + CHUNK_SIZE);
+    await writeOneBatchOfDeploymentAtoms(chunk);
+  }
+
+  // After writing the given atoms, bust the deployment cache for each of them
   atoms.forEach((atom) => {
-    bind.push(
-      atom.kind,
-      atom.checksum,
-      atom.id,
-      encodeDocumentForDB(atom.data),
-    );
-    placeholders.push("(?, ?, ?, ?)");
+    bustDeployment(atom.kind as GlobalEntity, atom.id);
   });
-
-  const sql = `insert into global_atoms
-    (kind, checksum, args, data)
-      VALUES
-    ${placeholders.join(",")}
-    ON CONFLICT (kind, args)
-    DO UPDATE SET checksum=excluded.checksum, data=excluded.data;
-  `;
-
-  await dbWrite(db, { sql, bind });
 };
 
 const _niflheim = async (
