@@ -2,7 +2,14 @@ import _ from "lodash";
 import { z } from "zod";
 import { TosVersion } from "@si/ts-lib/src/terms-of-service";
 import { ApiError } from "../lib/api-error";
-import { validate, ALLOWED_INPUT_REGEX } from "../lib/validation-helpers";
+import {
+  ALLOWED_INPUT_REGEX,
+  DISCORD_TAG_REGEX,
+  GITHUB_USERNAME_REGEX,
+  NAME_REGEX,
+  URL_DETECTION_REGEX,
+  validate,
+} from "../lib/validation-helpers";
 import {
   findLatestTosForUser,
   saveTosAgreement,
@@ -273,15 +280,44 @@ router.patch("/users/:userId", async (ctx) => {
     ctx.request.body,
     z
       .object({
-        // TODO: add checks on usernames looking right
-        // TODO: figure out way to avoid marking everything as nullable
-        firstName: z.string().regex(ALLOWED_INPUT_REGEX).nullable(),
-        lastName: z.string().regex(ALLOWED_INPUT_REGEX).nullable(),
-        nickname: z.string().regex(ALLOWED_INPUT_REGEX),
+        // Name fields use NAME_REGEX to prevent URLs and domain names
+        firstName: z.string()
+          .regex(NAME_REGEX, "First name contains invalid characters or URLs")
+          .refine((val) => !URL_DETECTION_REGEX.test(val), {
+            message: "URLs are not allowed in first name",
+          })
+          .nullable(),
+        lastName: z.string()
+          .regex(NAME_REGEX, "Last name contains invalid characters or URLs")
+          .refine((val) => !URL_DETECTION_REGEX.test(val), {
+            message: "URLs are not allowed in last name",
+          })
+          .nullable(),
+        nickname: z.string()
+          .regex(NAME_REGEX, "Nickname contains invalid characters or URLs")
+          .refine((val) => !URL_DETECTION_REGEX.test(val), {
+            message: "URLs are not allowed in nickname",
+          }),
         email: z.string().email(),
-        pictureUrl: z.string().url().nullable(),
-        discordUsername: z.string().nullable(),
-        githubUsername: z.string().nullable(),
+        pictureUrl: z.string()
+          .url()
+          .refine((url) => {
+            try {
+              const parsed = new URL(url);
+              return ['http:', 'https:'].includes(parsed.protocol);
+            } catch {
+              return false;
+            }
+          }, { message: "Only HTTP/HTTPS URLs are allowed for profile pictures" })
+          .nullable(),
+        // Discord username - supports both new format and old discriminator format
+        discordUsername: z.string()
+          .regex(DISCORD_TAG_REGEX, "Invalid Discord username format")
+          .nullable(),
+        // GitHub username - follows official GitHub username rules
+        githubUsername: z.string()
+          .regex(GITHUB_USERNAME_REGEX, "Invalid GitHub username format")
+          .nullable(),
       })
       .partial(),
   );
@@ -455,15 +491,26 @@ router.patch("/users/:userId/billingDetails", async (ctx) => {
     ctx.request.body,
     z
       .object({
-        firstName: z.string().regex(ALLOWED_INPUT_REGEX),
-        lastName: z.string().regex(ALLOWED_INPUT_REGEX),
+        // Billing names use NAME_REGEX to prevent URLs
+        firstName: z.string()
+          .regex(NAME_REGEX, "First name contains invalid characters")
+          .refine((val) => !URL_DETECTION_REGEX.test(val), {
+            message: "URLs are not allowed in first name",
+          }),
+        lastName: z.string()
+          .regex(NAME_REGEX, "Last name contains invalid characters")
+          .refine((val) => !URL_DETECTION_REGEX.test(val), {
+            message: "URLs are not allowed in last name",
+          }),
         companyInformation: z.object({
+          // Company information uses ALLOWED_INPUT_REGEX (allows some punctuation)
           legalName: z.string().regex(ALLOWED_INPUT_REGEX).nullable(),
           legalNumber: z.string().regex(ALLOWED_INPUT_REGEX).nullable(),
           taxIdentificationNumber: z.string().regex(ALLOWED_INPUT_REGEX).nullable(),
           phoneNumber: z.string().regex(ALLOWED_INPUT_REGEX).nullable(),
         }),
         billingInformation: z.object({
+          // Address fields use ALLOWED_INPUT_REGEX
           addressLine1: z.string().regex(ALLOWED_INPUT_REGEX).nullable(),
           addressLine2: z.string().regex(ALLOWED_INPUT_REGEX).nullable(),
           zipCode: z.string().regex(ALLOWED_INPUT_REGEX).nullable(),
