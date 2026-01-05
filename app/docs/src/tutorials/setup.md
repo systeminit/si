@@ -128,9 +128,9 @@ System Initiative is an AI Native Infrastructure Automation platform. Using the 
 
 Our [AI Agent](../reference/ai-agent.md) is built on a customized version of [Claude Code](https://www.claude.com/product/claude-code). Follow these steps to configure it:
 
-#### Install NodeJS 18+
+#### Install NodeJS 20 or 22
 
-Ensure you have [NodeJS 18+ installed](https://nodejs.org/en/download).
+Ensure you have [NodeJS installed](https://nodejs.org/en/download). We recommend using the latest LTS version.
 
 #### Open a terminal window
 
