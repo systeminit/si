@@ -14,6 +14,78 @@ import {
 } from "../../spec/props.ts";
 import { ulid } from "https://deno.land/x/ulid@v0.3.0/mod.ts";
 
+// GCS bucket locations - includes multi-regions, dual-regions, and regions
+// Based on official GCS documentation: https://cloud.google.com/storage/docs/locations
+// Note: GCS uses UPPERCASE location codes unlike Compute Engine's lowercase regions
+const GCS_LOCATIONS = [
+  // Multi-regions
+  { value: "US", label: "US (Multi-region - United States)" },
+  { value: "EU", label: "EU (Multi-region - European Union)" },
+  { value: "ASIA", label: "ASIA (Multi-region - Asia Pacific)" },
+
+  // Predefined Dual-regions
+  { value: "ASIA1", label: "ASIA1 (Dual-region - Tokyo + Osaka)" },
+  { value: "EUR4", label: "EUR4 (Dual-region - Finland + Netherlands)" },
+  { value: "EUR5", label: "EUR5 (Dual-region - Belgium + London)" },
+  { value: "EUR7", label: "EUR7 (Dual-region - London + Frankfurt)" },
+  { value: "EUR8", label: "EUR8 (Dual-region - Frankfurt + Zürich)" },
+  { value: "NAM4", label: "NAM4 (Dual-region - Iowa + South Carolina)" },
+
+  // Africa
+  { value: "AFRICA-SOUTH1", label: "AFRICA-SOUTH1 (Johannesburg)" },
+
+  // Asia Pacific
+  { value: "ASIA-EAST1", label: "ASIA-EAST1 (Taiwan)" },
+  { value: "ASIA-EAST2", label: "ASIA-EAST2 (Hong Kong)" },
+  { value: "ASIA-NORTHEAST1", label: "ASIA-NORTHEAST1 (Tokyo)" },
+  { value: "ASIA-NORTHEAST2", label: "ASIA-NORTHEAST2 (Osaka)" },
+  { value: "ASIA-NORTHEAST3", label: "ASIA-NORTHEAST3 (Seoul)" },
+  { value: "ASIA-SOUTH1", label: "ASIA-SOUTH1 (Mumbai)" },
+  { value: "ASIA-SOUTH2", label: "ASIA-SOUTH2 (Delhi)" },
+  { value: "ASIA-SOUTHEAST1", label: "ASIA-SOUTHEAST1 (Singapore)" },
+  { value: "ASIA-SOUTHEAST2", label: "ASIA-SOUTHEAST2 (Jakarta)" },
+  { value: "AUSTRALIA-SOUTHEAST1", label: "AUSTRALIA-SOUTHEAST1 (Sydney)" },
+  { value: "AUSTRALIA-SOUTHEAST2", label: "AUSTRALIA-SOUTHEAST2 (Melbourne)" },
+
+  // Europe
+  { value: "EUROPE-CENTRAL2", label: "EUROPE-CENTRAL2 (Warsaw)" },
+  { value: "EUROPE-NORTH1", label: "EUROPE-NORTH1 (Finland)" },
+  { value: "EUROPE-NORTH2", label: "EUROPE-NORTH2 (Stockholm)" },
+  { value: "EUROPE-SOUTHWEST1", label: "EUROPE-SOUTHWEST1 (Madrid)" },
+  { value: "EUROPE-WEST1", label: "EUROPE-WEST1 (Belgium)" },
+  { value: "EUROPE-WEST2", label: "EUROPE-WEST2 (London)" },
+  { value: "EUROPE-WEST3", label: "EUROPE-WEST3 (Frankfurt)" },
+  { value: "EUROPE-WEST4", label: "EUROPE-WEST4 (Netherlands)" },
+  { value: "EUROPE-WEST6", label: "EUROPE-WEST6 (Zurich)" },
+  { value: "EUROPE-WEST8", label: "EUROPE-WEST8 (Milan)" },
+  { value: "EUROPE-WEST9", label: "EUROPE-WEST9 (Paris)" },
+  { value: "EUROPE-WEST10", label: "EUROPE-WEST10 (Berlin)" },
+  { value: "EUROPE-WEST12", label: "EUROPE-WEST12 (Turin)" },
+
+  // Middle East
+  { value: "ME-CENTRAL1", label: "ME-CENTRAL1 (Doha)" },
+  { value: "ME-CENTRAL2", label: "ME-CENTRAL2 (Dammam)" },
+  { value: "ME-WEST1", label: "ME-WEST1 (Tel Aviv)" },
+
+  // North America
+  { value: "NORTHAMERICA-NORTHEAST1", label: "NORTHAMERICA-NORTHEAST1 (Montréal)" },
+  { value: "NORTHAMERICA-NORTHEAST2", label: "NORTHAMERICA-NORTHEAST2 (Toronto)" },
+  { value: "NORTHAMERICA-SOUTH1", label: "NORTHAMERICA-SOUTH1 (Mexico)" },
+  { value: "US-CENTRAL1", label: "US-CENTRAL1 (Iowa)" },
+  { value: "US-EAST1", label: "US-EAST1 (South Carolina)" },
+  { value: "US-EAST4", label: "US-EAST4 (N. Virginia)" },
+  { value: "US-EAST5", label: "US-EAST5 (Columbus)" },
+  { value: "US-SOUTH1", label: "US-SOUTH1 (Dallas)" },
+  { value: "US-WEST1", label: "US-WEST1 (Oregon)" },
+  { value: "US-WEST2", label: "US-WEST2 (Los Angeles)" },
+  { value: "US-WEST3", label: "US-WEST3 (Salt Lake City)" },
+  { value: "US-WEST4", label: "US-WEST4 (Las Vegas)" },
+
+  // South America
+  { value: "SOUTHAMERICA-EAST1", label: "SOUTHAMERICA-EAST1 (São Paulo)" },
+  { value: "SOUTHAMERICA-WEST1", label: "SOUTHAMERICA-WEST1 (Santiago)" },
+];
+
 // Common GCP regions as of 2025
 // Based on official GCP documentation: https://cloud.google.com/about/locations
 // Note: Region list retrieved from compute.googleapis.com/compute/v1/projects/{project}/regions API
@@ -281,6 +353,16 @@ export const GCP_PROP_OVERRIDES: Record<
 
     // SSL certificate references
     sslCertificate: suggest(`${GCP_COMPUTE} SslCertificates`, "selfLink"),
+  },
+
+  // GCS Buckets - location uses GCS-style uppercase regions including multi/dual regions
+  "Google Cloud Storage JSON Buckets": {
+    location: widget("ComboBox", GCS_LOCATIONS),
+  },
+
+  // BigQuery Datasets - location uses GCS-style uppercase regions
+  "Google Cloud BigQuery Datasets": {
+    location: widget("ComboBox", GCS_LOCATIONS),
   },
 };
 
