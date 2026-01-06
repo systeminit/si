@@ -3,6 +3,7 @@
  * Uses Claude agent to evaluate policy compliance against source data
  */
 
+import which from "which";
 import { query } from '@anthropic-ai/claude-agent-sdk';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
@@ -117,6 +118,8 @@ export async function evaluatePolicy(
     return result;
   }
 
+  const pathToClaudeCodeExecutable = await which("claude");
+
   const queryInstance = query({
     prompt: `Please evaluate the infrastructure against the compliance policy.
 
@@ -136,7 +139,8 @@ After evaluating each component against the policy, write your findings as a JSO
       systemPrompt: EVALUATION_SYSTEM_PROMPT,
       allowedTools: ['Write', 'Read'],
       permissionMode: 'bypassPermissions',
-      cwd: path.dirname(outputPath)
+      cwd: path.dirname(outputPath),
+      pathToClaudeCodeExecutable
     }
   });
 
