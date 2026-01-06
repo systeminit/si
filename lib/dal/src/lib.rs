@@ -278,6 +278,7 @@ pub fn generate_name() -> String {
 )]
 #[strum(serialize_all = "camelCase")]
 pub enum MigrationMode {
+    BackfillLayerCache,
     GarbageCollectSnapshots,
     Run,
     RunAndQuit,
@@ -306,6 +307,10 @@ impl MigrationMode {
 
     pub fn is_garbage_collect_snapshots(&self) -> bool {
         matches!(self, Self::GarbageCollectSnapshots)
+    }
+
+    pub fn is_backfill_layer_cache(&self) -> bool {
+        matches!(self, Self::BackfillLayerCache)
     }
 }
 
