@@ -9,6 +9,7 @@ mod history_event;
 pub mod key_pair;
 mod management_func_execution;
 pub mod migrate;
+mod policy_report;
 // TODO remove pub once we move users out of dal
 pub mod standard_accessors;
 mod tenancy;
@@ -28,6 +29,11 @@ pub use management_func_execution::{
     ManagementFuncExecutionError,
     ManagementFuncJobState,
     ManagementState,
+};
+pub use policy_report::{
+    PolicyReport,
+    PolicyReportError,
+    PolicyReportResult,
 };
 pub use tenancy::Tenancy;
 pub use transactions::{

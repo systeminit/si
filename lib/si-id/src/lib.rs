@@ -76,6 +76,7 @@ id_with_pg_types!(FuncId);
 id_with_pg_types!(FuncRunId);
 id_with_pg_types!(ManagementFuncJobStateId);
 id_with_pg_types!(ManagementPrototypeId);
+id_with_pg_types!(PolicyReportId);
 id_with_pg_types!(UserPk);
 id_with_pg_types!(WorkspaceIntegrationId);
 
