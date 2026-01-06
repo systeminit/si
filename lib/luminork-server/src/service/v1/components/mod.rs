@@ -281,6 +281,12 @@ impl crate::service::v1::common::ErrorIntoResponse for ComponentsError {
             ComponentsError::Search(crate::search::Error::ChangeSetIndexNotFound { .. }) => {
                 (StatusCode::FAILED_DEPENDENCY, self.to_string())
             }
+            ComponentsError::Transactions(dal::TransactionsError::RebaseFailed(_, _, message))
+                // Nick and Paul spoke about this being the most simple way to stop this bubbling up for a user!
+                if message.contains("attempted to rebase for an abandoned change set") =>
+            {
+                (StatusCode::FAILED_DEPENDENCY, self.to_string())
+            }
             _ => (StatusCode::INTERNAL_SERVER_ERROR, self.to_string()),
         }
     }
