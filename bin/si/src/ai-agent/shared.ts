@@ -10,19 +10,7 @@
 import { ensureDir } from "@std/fs";
 import { join } from "@std/path";
 import type { Logger } from "../logger.ts";
-import { loadAgentContextTemplate } from "../template-loader.ts";
-
-/** SI Agent Context template - lazy loaded to avoid top-level await in tests */
-let _cachedTemplate: string | null = null;
-
-async function getAgentContextTemplate(): Promise<string> {
-  if (_cachedTemplate) {
-    return _cachedTemplate;
-  }
-
-  _cachedTemplate = await loadAgentContextTemplate();
-  return _cachedTemplate;
-}
+import { loadAllProviderTemplates } from "../template-loader.ts";
 
 /** Supported AI coding tools */
 export type AiTool = "claude" | "codex" | "opencode" | "cursor";
@@ -47,6 +35,34 @@ export const TOOL_COMMANDS: Record<AiTool, string> = {
   opencode: "opencode",
   cursor: "cursor-agent",
 };
+
+/** Allowed System Initiative MCP tools */
+export const ALLOWED_SI_MCP_TOOLS = [
+  "mcp__system-initiative__schema-find",
+  "mcp__system-initiative__schema-attributes-list",
+  "mcp__system-initiative__schema-attributes-documentation",
+  "mcp__system-initiative__schema-create-edit-get",
+  "mcp__system-initiative__validate-credentials",
+  "mcp__system-initiative__change-set-list",
+  "mcp__system-initiative__change-set-create",
+  "mcp__system-initiative__action-list",
+  "mcp__system-initiative__action-update-status",
+  "mcp__system-initiative__func-run-get",
+  "mcp__system-initiative__func-create-edit-get",
+  "mcp__system-initiative__component-list",
+  "mcp__system-initiative__component-get",
+  "mcp__system-initiative__component-create",
+  "mcp__system-initiative__component-update",
+  "mcp__system-initiative__component-enqueue-action",
+  "mcp__system-initiative__component-discover",
+  "mcp__system-initiative__component-restore",
+  "mcp__system-initiative__component-import",
+  "mcp__system-initiative__generate-si-url",
+  "mcp__system-initiative__upgrade-components",
+  "mcp__system-initiative__template-generate",
+  "mcp__system-initiative__template-list",
+  "mcp__system-initiative__template-run",
+];
 
 /** MCP server configuration structure */
 interface McpServerConfig {
@@ -244,32 +260,7 @@ export async function createClaudeSettings(targetDir: string): Promise<string> {
   const settings: ClaudeSettings = {
     enabledMcpjsonServers: ["system-initiative"],
     permissions: {
-      allow: [
-        "mcp__system-initiative__schema-find",
-        "mcp__system-initiative__schema-attributes-list",
-        "mcp__system-initiative__schema-attributes-documentation",
-        "mcp__system-initiative__schema-create-edit-get",
-        "mcp__system-initiative__validate-credentials",
-        "mcp__system-initiative__change-set-list",
-        "mcp__system-initiative__change-set-create",
-        "mcp__system-initiative__action-list",
-        "mcp__system-initiative__action-update-status",
-        "mcp__system-initiative__func-run-get",
-        "mcp__system-initiative__func-create-edit-get",
-        "mcp__system-initiative__component-list",
-        "mcp__system-initiative__component-get",
-        "mcp__system-initiative__component-create",
-        "mcp__system-initiative__component-update",
-        "mcp__system-initiative__component-enqueue-action",
-        "mcp__system-initiative__component-discover",
-        "mcp__system-initiative__component-restore",
-        "mcp__system-initiative__component-import",
-        "mcp__system-initiative__generate-si-url",
-        "mcp__system-initiative__upgrade-components",
-        "mcp__system-initiative__template-generate",
-        "mcp__system-initiative__template-list",
-        "mcp__system-initiative__template-run",
-      ],
+      allow: ALLOWED_SI_MCP_TOOLS,
       deny: [],
     },
   };
@@ -280,25 +271,109 @@ export async function createClaudeSettings(targetDir: string): Promise<string> {
 }
 
 /**
- * Create a context markdown file for an AI tool
- * This provides the AI tool with context about working with SI infrastructure
+ * Create shared provider documentation files
+ * Used by tools that reference files (Cursor, OpenCode)
+ * @param includeCommon - Whether to include common.md (false for tools that have dedicated entry files)
  */
-async function createContextFile(
+async function createProviderDocs(
   targetDir: string,
-  filename: string,
-): Promise<string> {
-  const filePath = join(targetDir, filename);
-  const content = await getAgentContextTemplate();
+  includeCommon = false,
+): Promise<string[]> {
+  const docsDir = join(targetDir, "docs", "providers");
+  await ensureDir(docsDir);
+
+  const templates = await loadAllProviderTemplates();
+  const providers = includeCommon
+    ? ["common", "aws", "azure", "hetzner", "digitalocean"] //, "google"
+    : ["aws", "azure", "hetzner", "digitalocean"]; // , "google"
+
+  const createdFiles: string[] = [];
+
+  for (const provider of providers) {
+    const filePath = join(docsDir, `${provider}.md`);
+    await Deno.writeTextFile(filePath, templates[provider]);
+    createdFiles.push(filePath);
+  }
+
+  return createdFiles;
+}
+
+/**
+ * Create the CLAUDE.md file with System Initiative context (base only)
+ * This provides Claude Code with context about working with SI infrastructure
+ * Provider-specific content is in skills
+ */
+export async function createClaudeMd(targetDir: string): Promise<string> {
+  const filePath = join(targetDir, "CLAUDE.md");
+  const templates = await loadAllProviderTemplates();
+
+  // Claude Code gets just the common content + skill usage instructions
+  const content = `${templates.common}
+
+## Cloud Provider Documentation
+
+For detailed provider-specific documentation, use the following skills.
+
+Use these skills before creating any components or modifying any values of components.
+
+- \`/skill aws-infrastructure\` - AWS components and configuration
+- \`/skill azure-infrastructure\` - Microsoft Azure components and configuration
+- \`/skill hetzner-infrastructure\` - Hetzner Cloud components and configuration
+- \`/skill digitalocean-infrastructure\` - DigitalOcean components and configuration
+`;
+
+  //- \`/skill google-infrastructure\` - Google Cloud components and configuration
+
   await Deno.writeTextFile(filePath, content);
   return filePath;
 }
 
 /**
- * Create the CLAUDE.md file with System Initiative context
- * This provides Claude Code with context about working with SI infrastructure
+ * Create Claude Code skills for each cloud provider
+ * Skills are automatically discovered and invoked by Claude
  */
-export const createClaudeMd = (targetDir: string): Promise<string> =>
-  createContextFile(targetDir, "CLAUDE.md");
+export async function createClaudeSkills(targetDir: string): Promise<string[]> {
+  const skillsDir = join(targetDir, ".claude", "skills");
+  await ensureDir(skillsDir);
+
+  const templates = await loadAllProviderTemplates();
+  const providers = [
+    { name: "aws", displayName: "AWS Infrastructure" },
+    { name: "azure", displayName: "Azure Infrastructure" },
+    { name: "hetzner", displayName: "Hetzner Infrastructure" },
+    { name: "digitalocean", displayName: "DigitalOcean Infrastructure" },
+    // { name: "google", displayName: "Google Cloud Infrastructure" },
+  ];
+
+  const createdFiles: string[] = [];
+
+  for (const provider of providers) {
+    const skillDir = join(skillsDir, `${provider.name}-infrastructure`);
+    await ensureDir(skillDir);
+
+    const skillPath = join(skillDir, "SKILL.md");
+
+    // Format allowed-tools as YAML array with proper indentation
+    const allowedToolsYaml = ALLOWED_SI_MCP_TOOLS
+      .map((tool) => `  - "${tool}"`)
+      .join("\n");
+
+    const skillContent = `---
+name: ${provider.displayName}
+description: Use this skill when working with ${provider.displayName} components, infrastructure, or ${provider.name.toUpperCase()}-specific configuration tasks
+allowed-tools:
+${allowedToolsYaml}
+---
+
+${templates[provider.name]}
+`;
+
+    await Deno.writeTextFile(skillPath, skillContent);
+    createdFiles.push(skillPath);
+  }
+
+  return createdFiles;
+}
 
 /**
  * Get the Codex config directory
@@ -430,7 +505,7 @@ export async function createCodexConfig(
   // 1. Create a project-level .env file with SI_API_TOKEN
   // 2. Users source it before running codex: `source .codex-env && codex`
   // 3. env_vars tells Codex to pass through SI_API_TOKEN from shell environment
-  const siMcpConfig = generateMcpServerToml(
+  const config = generateMcpServerToml(
     "system-initiative",
     siBinaryPath,
     ["ai-agent", "stdio"], // Correct command: ai-agent stdio, not mcp-server stdio
@@ -442,7 +517,7 @@ export async function createCodexConfig(
   );
 
   // Write the TOML configuration to the config file
-  await Deno.writeTextFile(configPath, siMcpConfig);
+  await Deno.writeTextFile(configPath, config);
 
   // Create project-level .env file for workspace-specific token
   if (targetDir) {
@@ -464,28 +539,79 @@ export SI_BASE_URL="${baseUrl}"
 }
 
 /**
- * Create the AGENTS.md file with System Initiative context for Codex
- * This provides Codex with context about working with SI infrastructure
- * Codex reads AGENTS.md from the project root for project-specific instructions
+ * Create AGENTS.md file for Codex with instructions to read provider docs
+ * Codex only loads one file per directory, but it can use the Read tool
+ * to load additional documentation files on-demand
  */
-export const createAgentsMd = (targetDir: string): Promise<string> =>
-  createContextFile(targetDir, "AGENTS.md");
+export async function createAgentsMd(targetDir: string): Promise<string> {
+  const templates = await loadAllProviderTemplates();
 
-/**
- * Create the OPENCODE.md file with System Initiative context for OpenCode.ai
- * This provides OpenCode with context about working with SI infrastructure
- * OpenCode reads context files from the project root
- */
-export const createOpenCodeMd = (targetDir: string): Promise<string> =>
-  createContextFile(targetDir, "OPENCODE.md");
+  // Create provider documentation files
+  const docsDir = join(targetDir, "docs", "providers");
+  await ensureDir(docsDir);
+
+  const providers = ["aws", "azure", "hetzner", "digitalocean", "google"];
+  for (const provider of providers) {
+    const providerPath = join(docsDir, `${provider}.md`);
+    await Deno.writeTextFile(providerPath, templates[provider]);
+  }
+
+  // Create AGENTS.md with common content + instructions to read provider docs
+  const rootAgentsPath = join(targetDir, "AGENTS.md");
+  let content = templates.common;
+
+  content += `
+
+## Cloud Provider Documentation
+
+IMPORTANT: Before answering questions about a specific cloud provider, you MUST first read the relevant provider documentation file using the Read tool:
+
+- For AWS questions: Read \`docs/providers/aws.md\`
+- For Azure/Microsoft questions: Read \`docs/providers/azure.md\`
+- For Hetzner questions: Read \`docs/providers/hetzner.md\`
+- For DigitalOcean questions: Read \`docs/providers/digitalocean.md\`
+
+Always read the provider documentation BEFORE attempting to answer provider-specific questions or create provider components.
+`;
+
+  //- For Google Cloud questions: Read \`docs/providers/google.md\`
+
+  await Deno.writeTextFile(rootAgentsPath, content);
+  return rootAgentsPath;
+}
 
 /**
  * Create the .cursorrules file with System Initiative context for Cursor
  * This provides Cursor with context about working with SI infrastructure
- * Cursor reads .cursorrules from the project root for project-specific instructions
+ * Uses on-demand Read tool instructions for lazy loading of provider docs
  */
-export const createCursorRules = (targetDir: string): Promise<string> =>
-  createContextFile(targetDir, ".cursorrules");
+export async function createCursorRules(targetDir: string): Promise<string> {
+  // Create the shared provider docs
+  await createProviderDocs(targetDir, false);
+
+  const templates = await loadAllProviderTemplates();
+
+  // Create .cursorrules with common content + Read instructions
+  const cursorRulesPath = join(targetDir, ".cursorrules");
+  const content = `${templates.common}
+
+## Cloud Provider Documentation
+
+IMPORTANT: Before answering questions about a specific cloud provider, you MUST first read the relevant provider documentation file using the Read tool:
+
+- For AWS questions: Read \`docs/providers/aws.md\`
+- For Azure/Microsoft questions: Read \`docs/providers/azure.md\`
+- For Hetzner questions: Read \`docs/providers/hetzner.md\`
+- For DigitalOcean questions: Read \`docs/providers/digitalocean.md\`
+
+Always read the provider documentation BEFORE attempting to answer provider-specific questions or create provider components.
+`;
+
+  //- For Google Cloud questions: Read \`docs/providers/google.md\`
+
+  await Deno.writeTextFile(cursorRulesPath, content);
+  return cursorRulesPath;
+}
 
 /**
  * Create the .cursor/mcp.json configuration file for Cursor
@@ -532,8 +658,14 @@ export async function createOpenCodeConfig(
   baseUrl: string,
   targetDir: string,
 ): Promise<string> {
+  // Create the shared provider docs
+  await createProviderDocs(targetDir, false);
+
   const siBinaryPath = Deno.execPath();
   const configPath = join(targetDir, "opencode.jsonc");
+
+  // OpenCode automatically loads AGENTS.md (shared with Codex)
+  // AGENTS.md will have common content + on-demand Read instructions
 
   // OpenCode uses a nested structure under "mcp" key
   // Note: OpenCode uses "environment" not "env" for environment variables
@@ -585,8 +717,9 @@ export function getMcpServerInstallDir(): string {
  */
 export function getMcpServerInstallPath(): string {
   const binDir = getMcpServerInstallDir();
-  const binaryName =
-    Deno.build.os === "windows" ? "si-mcp-server.exe" : "si-mcp-server";
+  const binaryName = Deno.build.os === "windows"
+    ? "si-mcp-server.exe"
+    : "si-mcp-server";
   return join(binDir, binaryName);
 }
 
@@ -717,7 +850,8 @@ export async function downloadMcpServer(
     );
   }
 
-  const downloadUrl = `https://github.com/systeminit/si/releases/download/${version}/${assetName}`;
+  const downloadUrl =
+    `https://github.com/systeminit/si/releases/download/${version}/${assetName}`;
 
   logger.debug(`Downloading from: ${downloadUrl}`);
 
@@ -859,8 +993,9 @@ export async function findMcpServerBinary(): Promise<string | null> {
   try {
     const siPath = Deno.execPath();
     const siDir = siPath.substring(0, siPath.lastIndexOf("/") + 1);
-    const binaryName =
-      Deno.build.os === "windows" ? "si-mcp-server.exe" : "si-mcp-server";
+    const binaryName = Deno.build.os === "windows"
+      ? "si-mcp-server.exe"
+      : "si-mcp-server";
     const colocatedBinary = join(siDir, binaryName);
 
     const stat = await Deno.stat(colocatedBinary);
