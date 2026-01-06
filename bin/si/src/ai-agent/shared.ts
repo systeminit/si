@@ -64,6 +64,20 @@ export const ALLOWED_SI_MCP_TOOLS = [
   "mcp__system-initiative__template-run",
 ];
 
+/** List of cloud providers supported by System Initiative */
+const CLOUD_PROVIDERS = [
+  { name: "aws", displayName: "AWS" },
+  { name: "azure", displayName: "Azure" },
+  { name: "hetzner", displayName: "Hetzner Cloud" },
+  { name: "digitalocean", displayName: "DigitalOcean" },
+  // { name: "google", displayName: "Google Cloud" },
+];
+
+// type of CLOUD_PROVIDERS entry
+type CloudProvider = typeof CLOUD_PROVIDERS[number];
+
+const cloudProviderToSkillName = (p: CloudProvider) => `${p.name}-infrastructure`;
+
 /** MCP server configuration structure */
 interface McpServerConfig {
   type: string;
@@ -257,10 +271,15 @@ export async function createClaudeSettings(targetDir: string): Promise<string> {
   const claudeDir = join(targetDir, ".claude");
   await ensureDir(claudeDir);
 
+  const skillPermissions = CLOUD_PROVIDERS.map((provider) => `Skill(${cloudProviderToSkillName(provider)})`)
+
   const settings: ClaudeSettings = {
     enabledMcpjsonServers: ["system-initiative"],
     permissions: {
-      allow: ALLOWED_SI_MCP_TOOLS,
+      allow: [
+        ...ALLOWED_SI_MCP_TOOLS,
+        ...skillPermissions,
+      ],
       deny: [],
     },
   };
@@ -307,6 +326,10 @@ export async function createClaudeMd(targetDir: string): Promise<string> {
   const filePath = join(targetDir, "CLAUDE.md");
   const templates = await loadAllProviderTemplates();
 
+  const skillStrings = CLOUD_PROVIDERS
+    .map((provider) => `- \`/skill ${cloudProviderToSkillName(provider)}\` - ${provider.displayName} components and configuration`)
+    .join("\n")
+
   // Claude Code gets just the common content + skill usage instructions
   const content = `${templates.common}
 
@@ -316,10 +339,7 @@ For detailed provider-specific documentation, use the following skills.
 
 Use these skills before creating any components or modifying any values of components.
 
-- \`/skill aws-infrastructure\` - AWS components and configuration
-- \`/skill azure-infrastructure\` - Microsoft Azure components and configuration
-- \`/skill hetzner-infrastructure\` - Hetzner Cloud components and configuration
-- \`/skill digitalocean-infrastructure\` - DigitalOcean components and configuration
+${skillStrings}
 `;
 
   //- \`/skill google-infrastructure\` - Google Cloud components and configuration
@@ -337,17 +357,11 @@ export async function createClaudeSkills(targetDir: string): Promise<string[]> {
   await ensureDir(skillsDir);
 
   const templates = await loadAllProviderTemplates();
-  const providers = [
-    { name: "aws", displayName: "AWS Infrastructure" },
-    { name: "azure", displayName: "Azure Infrastructure" },
-    { name: "hetzner", displayName: "Hetzner Infrastructure" },
-    { name: "digitalocean", displayName: "DigitalOcean Infrastructure" },
-    // { name: "google", displayName: "Google Cloud Infrastructure" },
-  ];
 
   const createdFiles: string[] = [];
 
-  for (const provider of providers) {
+  for (const provider of CLOUD_PROVIDERS) {
+    const displayName = `${provider.displayName} Infrastructure`;
     const skillDir = join(skillsDir, `${provider.name}-infrastructure`);
     await ensureDir(skillDir);
 
@@ -359,8 +373,8 @@ export async function createClaudeSkills(targetDir: string): Promise<string[]> {
       .join("\n");
 
     const skillContent = `---
-name: ${provider.displayName}
-description: Use this skill when working with ${provider.displayName} components, infrastructure, or ${provider.name.toUpperCase()}-specific configuration tasks
+name: ${displayName}
+description: Use this skill when working with ${displayName} components, infrastructure, or ${provider.name.toUpperCase()}-specific configuration tasks
 allowed-tools:
 ${allowedToolsYaml}
 ---
@@ -564,7 +578,7 @@ export async function createAgentsMd(targetDir: string): Promise<string> {
 
 ## Cloud Provider Documentation
 
-IMPORTANT: Before answering questions about a specific cloud provider, you MUST first read the relevant provider documentation file using the Read tool:
+IMPORTANT: Before answering questions about or executing any operations on a specific cloud provider, you MUST first read the relevant provider documentation file using the Read tool:
 
 - For AWS questions: Read \`docs/providers/aws.md\`
 - For Azure/Microsoft questions: Read \`docs/providers/azure.md\`
@@ -597,7 +611,7 @@ export async function createCursorRules(targetDir: string): Promise<string> {
 
 ## Cloud Provider Documentation
 
-IMPORTANT: Before answering questions about a specific cloud provider, you MUST first read the relevant provider documentation file using the Read tool:
+IMPORTANT: Before answering questions about or executing any operations on a specific cloud provider, you MUST first read the relevant provider documentation file using the Read tool:
 
 - For AWS questions: Read \`docs/providers/aws.md\`
 - For Azure/Microsoft questions: Read \`docs/providers/azure.md\`
