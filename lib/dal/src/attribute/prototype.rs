@@ -571,6 +571,13 @@ impl AttributePrototype {
         ctx: &DalContext,
         prototype_id: AttributePrototypeId,
     ) -> AttributePrototypeResult<()> {
+        // Also remove all apas that use this prototype, to prevent hanging APAs
+        // during subscription creation
+        let apa_ids = AttributePrototypeArgument::list_ids_for_prototype(ctx, prototype_id).await?;
+        for apa_id in apa_ids {
+            AttributePrototypeArgument::remove(ctx, apa_id).await?;
+        }
+
         ctx.workspace_snapshot()?
             .remove_node_by_id(prototype_id)
             .await?;

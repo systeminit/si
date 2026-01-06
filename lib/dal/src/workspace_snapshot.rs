@@ -641,6 +641,12 @@ impl WorkspaceSnapshot {
         Ok(si_layer_cache::db::serialize::to_vec(&WorkspaceSnapshotGraph::V4(graph))?.0)
     }
 
+    /// Returns a clone of the current working copy of the graph.
+    /// This is primarily intended for testing purposes.
+    pub async fn working_copy_cloned(&self) -> WorkspaceSnapshotGraphVCurrent {
+        self.working_copy().await.clone()
+    }
+
     pub fn from_bytes(bytes: &[u8]) -> WorkspaceSnapshotResult<Self> {
         let graph: Arc<WorkspaceSnapshotGraph> = si_layer_cache::db::serialize::from_bytes(bytes)?;
 

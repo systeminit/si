@@ -90,6 +90,7 @@ async fn fix_issue(ctx: &DalContext, issue: &ValidationIssue) -> AdminAPIResult<
             true
         }
         ValidationIssue::ChildOrderingMismatch { .. }
+        | ValidationIssue::CyclicSubscriptions
         | ValidationIssue::MissingChildAttributeValues { .. }
         | ValidationIssue::MissingOrderingNode { .. }
         | ValidationIssue::MultipleValues { .. }

@@ -140,4 +140,8 @@ impl<T: Copy + std::cmp::Ord + std::cmp::Eq + std::cmp::PartialEq> DependencyGra
     pub fn all_ids(&self) -> impl Iterator<Item = T> {
         self.graph.node_weights().copied()
     }
+
+    pub fn is_cyclic(&self) -> bool {
+        petgraph::algo::is_cyclic_directed(&self.graph)
+    }
 }

@@ -23,6 +23,7 @@ use si_id::{
 };
 
 use crate::{
+    component::subscription_graph::SubscriptionGraph,
     prop::PropKind,
     workspace_snapshot::{
         edge_weight::{
@@ -63,10 +64,27 @@ pub fn validate_graph(
     graph: &impl std::ops::Deref<Target = WorkspaceSnapshotGraphVCurrent>,
 ) -> WorkspaceSnapshotGraphResult<Vec<ValidationIssue>> {
     let mut issues = vec![];
+
+    if let Some(issue) = validate_subscriptions_acyclic(graph)? {
+        issues.push(issue);
+    }
+
     for node in graph.nodes() {
         ValidateNode::validate_node(graph, &mut issues, node)?;
     }
     Ok(issues)
+}
+
+/// Check for subscription cycles
+fn validate_subscriptions_acyclic(
+    graph: &WorkspaceSnapshotGraphVCurrent,
+) -> WorkspaceSnapshotGraphResult<Option<ValidationIssue>> {
+    let subscription_graph = SubscriptionGraph::new_from_snapshot(graph)?;
+    Ok(if subscription_graph.is_cyclic() {
+        Some(ValidationIssue::CyclicSubscriptions)
+    } else {
+        None
+    })
 }
 
 trait ValidateNode {
@@ -327,6 +345,8 @@ pub enum ValidationIssue {
         only_in_children: Vec<Ulid>,
         only_in_ordering_node: Vec<Ulid>,
     },
+    /// There is a cycle in the subscription graph
+    CyclicSubscriptions,
     /// A child prop of an object has more than one attribute value
     DuplicateAttributeValue {
         original: AttributeValueId,
@@ -492,6 +512,9 @@ impl std::fmt::Display for WithGraph<'_, &'_ ValidationIssue> {
                     )?;
                 }
                 Ok(())
+            }
+            ValidationIssue::CyclicSubscriptions => {
+                write!(f, "Cycle in the subscriptions between components")
             }
             ValidationIssue::DuplicateAttributeValue {
                 original,

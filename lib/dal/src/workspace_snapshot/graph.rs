@@ -83,6 +83,8 @@ pub enum WorkspaceSnapshotGraphError {
     ContentMissingForContentHash,
     #[error("Action would create a graph cycle")]
     CreateGraphCycle,
+    #[error("attribute value tree for a component is internally cyclical, can't resolve root")]
+    CycleInAttributeValueTree,
     #[error("cannot delete the default view")]
     DefaultViewDeletionAttempt,
     #[error("could not find the newly imported subgraph when performing updates")]
