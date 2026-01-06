@@ -73,6 +73,7 @@ pub use self::{
     },
     garbage_collection::SnapshotGarbageCollector,
     layer_cache_backfill::{
+        BackfillConfig,
         BackfillError,
         BackfillResult,
     },
