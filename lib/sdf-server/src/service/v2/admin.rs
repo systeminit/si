@@ -68,6 +68,7 @@ mod get_snapshot;
 mod innit;
 mod kill_execution;
 mod list_change_sets;
+mod list_workspace_ids;
 mod search_workspaces;
 mod set_concurrency_limit;
 mod set_snapshot;
@@ -213,6 +214,10 @@ pub fn v2_routes(state: AppState) -> Router<AppState> {
             post(update_module_cache::update_module_cache),
         )
         .route("/workspaces", get(search_workspaces::search_workspaces))
+        .route(
+            "/workspace_ids",
+            get(list_workspace_ids::list_workspace_ids),
+        )
         .route(
             "/workspaces/:workspace_id/set_concurrency_limit",
             post(set_concurrency_limit::set_concurrency_limit),
