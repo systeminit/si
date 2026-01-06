@@ -3492,6 +3492,9 @@
   "<p>The user whose permissions and group memberships will be used by Amazon QuickSight to access the cluster. If this user already exists in your database, Amazon QuickSight is granted the same permissions that the user has. If the user doesn't exist, set the value of <code>AutoCreateDatabaseUser</code> to <code>True</code> to create a new user with PUBLIC permissions.</p>": {
     "enum": null
   },
+  "<p>The user whose permissions and group memberships will be used by Quick Suite to access the cluster. If this user already exists in your database, Quick Suite is granted the same permissions that the user has. If the user doesn't exist, set the value of <code>AutoCreateDatabaseUser</code> to <code>True</code> to create a new user with PUBLIC permissions.</p>": {
+    "enum": null
+  },
   "<p>The version number of the template version.</p>": {
     "enum": null
   },
@@ -3508,6 +3511,9 @@
     "enum": null
   },
   "<p>Use the <code>RoleArn</code> structure to allow Amazon QuickSight to call <code>redshift:GetClusterCredentials</code> on your cluster. The calling principal must have <code>iam:PassRole</code> access to pass the role to Amazon QuickSight. The role's trust policy must allow the Amazon QuickSight service principal to assume the role.</p>": {
+    "enum": null
+  },
+  "<p>Use the <code>RoleArn</code> structure to allow Quick Suite to call <code>redshift:GetClusterCredentials</code> on your cluster. The calling principal must have <code>iam:PassRole</code> access to pass the role to Quick Suite. The role's trust policy must allow the Quick Suite service principal to assume the role.</p>": {
     "enum": null
   },
   "<p>Use the <code>RoleArn</code> structure to override an account-wide role for a specific Athena data source. For example, say an account administrator has turned off all Athena access with an account-wide role. The administrator can then use <code>RoleArn</code> to bypass the account-wide role and allow Athena access for the single Athena data source that is specified in the structure, even if the account-wide role forbidding Athena access is still active.</p>": {
@@ -12910,6 +12916,12 @@
     "enum": null
   },
   "The filter expression defining criteria by which to group traces.": {
+    "enum": null
+  },
+  "The filter expression that specifies which log events are processed by this metric filter based on system fields. Returns the ``fieldSelectionCriteria`` value if it was specified when the metric filter was created.": {
+    "enum": null
+  },
+  "The filter expression that specifies which log events are processed by this subscription filter based on system fields. Returns the ``fieldSelectionCriteria`` value if it was specified when the subscription filter was created.": {
     "enum": null
   },
   "The filtering expressions that restrict what gets delivered to the destination AWS resource. For more information about the filter pattern syntax, see [Filter and Pattern Syntax](https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/FilterAndPatternSyntax.html).": {
