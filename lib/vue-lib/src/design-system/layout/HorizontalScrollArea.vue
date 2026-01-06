@@ -14,7 +14,7 @@
 
 <script lang="ts" setup>
 import clsx from "clsx";
-import { onMounted, ref } from "vue";
+import { onBeforeUnmount, onMounted, ref } from "vue";
 
 defineProps({
   hideScrollbar: { type: Boolean },
@@ -36,7 +36,15 @@ defineExpose({ scrollElement: scrollDivRef });
 
 onMounted(() => {
   if (scrollDivRef.value) {
-    scrollDivRef.value.addEventListener("wheel", horizontalScroll);
+    scrollDivRef.value.addEventListener("wheel", horizontalScroll, {
+      passive: false,
+    });
+  }
+});
+
+onBeforeUnmount(() => {
+  if (scrollDivRef.value) {
+    scrollDivRef.value.removeEventListener("wheel", horizontalScroll);
   }
 });
 </script>
