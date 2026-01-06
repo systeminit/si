@@ -84,6 +84,15 @@ export async function callAiAgentInit(
   // Determine tool
   const tool = options.tool || existingConfig?.tool || DEFAULT_CONFIG.tool;
 
+  // Validate tool
+  const validTools = ["claude", "codex", "opencode", "cursor"];
+  if (!validTools.includes(tool)) {
+    logger.error(
+      `Unknown tool: ${tool}. Valid tools are: ${validTools.join(", ")}`,
+    );
+    Deno.exit(1);
+  }
+
   // Create configuration
   const config = {
     apiToken,
@@ -167,11 +176,6 @@ export async function callAiAgentInit(
       logger.info(`✅ Created .cursorrules: ${cursorRulesPath}\n`);
       break;
     }
-
-    default:
-      logger.warn(
-        `Unknown tool: ${tool}. Skipping tool-specific configuration.`,
-      );
   }
 
   ctx.analytics.trackEvent("ai-agent init", {
@@ -233,7 +237,6 @@ export async function callAiAgentInit(
       break;
 
     case "claude":
-    default:
       logger.info("  1. Start the AI agent: si ai-agent start");
       logger.info(
         "     This will start the MCP server and launch your AI tool",

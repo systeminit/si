@@ -34,10 +34,19 @@ export async function callAiAgentStart(
   if (!config) {
     logger.error("❌ No configuration found!");
     logger.info("Please run: si ai-agent init");
-    throw new Error("AI agent not initialized");
+    Deno.exit(1);
   }
 
   const tool = options.tool || config.tool || "claude";
+
+  // Validate tool
+  const validTools = ["claude", "codex", "opencode", "cursor", "windsurf"];
+  if (!validTools.includes(tool)) {
+    logger.error(
+      `Unknown tool: ${tool}. Valid tools are: ${validTools.join(", ")}`,
+    );
+    Deno.exit(1);
+  }
 
   // Get the CLI command for the tool
   const toolCommand = getToolCommand(tool);
@@ -64,7 +73,7 @@ export async function callAiAgentStart(
       logger.info(`  Install from: ${getToolInstallUrl(tool)}`);
     }
 
-    throw new Error(`${getToolDisplayName(tool)} CLI not found`);
+    Deno.exit(1);
   }
 
   ctx.analytics.trackEvent("ai-agent start", {
@@ -111,7 +120,7 @@ function getToolCommand(tool: string): string {
     cursor: "cursor-agent",
     windsurf: "windsurf",
   };
-  return commands[tool] || tool;
+  return commands[tool];
 }
 
 /**
@@ -142,7 +151,7 @@ function getToolDisplayName(tool: string): string {
     cursor: "Cursor",
     windsurf: "Windsurf",
   };
-  return names[tool] || tool;
+  return names[tool];
 }
 
 /**
@@ -156,7 +165,7 @@ function getToolInstallUrl(tool: string): string {
     cursor: "https://cursor.sh/",
     windsurf: "https://codeium.com/windsurf",
   };
-  return urls[tool] || "";
+  return urls[tool];
 }
 
 /**
@@ -170,5 +179,5 @@ function getToolConfigInfo(tool: string): string {
     cursor: ".cursor/mcp.json",
     windsurf: ".mcp.json",
   };
-  return configInfo[tool] || "configuration file";
+  return configInfo[tool];
 }
