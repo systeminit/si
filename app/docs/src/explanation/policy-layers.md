@@ -27,6 +27,12 @@ System Initiative allows you to write policy in three complementary ways, from p
 
 **Use case**: When you need to prevent specific actions or resource configurations from ever being created (e.g., "no S3 buckets in eu-west-1" or "all EC2 instances must use approved AMIs").
 
+:::info
+
+See the [AWS Service Control Policy for Cost Control](../how-tos/aws-scp-policy) "how-to" for an example on how to implement a native cloud policy policy with System Initiative.
+
+:::
+
 ### 2. Component-Level Qualifications
 
 **Description**: Define requirements and best practices for individual component types within System Initiative.
