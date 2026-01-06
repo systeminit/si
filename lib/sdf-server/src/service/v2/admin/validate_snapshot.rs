@@ -7,6 +7,7 @@ use dal::{
     ChangeSetId,
     DalContext,
     WorkspacePk,
+    slow_rt,
     workspace_snapshot::graph::validator::ValidationIssue,
 };
 use si_db::Tenancy;
@@ -38,7 +39,7 @@ pub async fn validate_snapshot(
     ctx.update_tenancy(Tenancy::new(workspace_id));
     ctx.update_visibility_and_snapshot_to_visibility(change_set_id)
         .await?;
-    let issues = get_validation_issues(&ctx).await?;
+    let issues = slow_rt::spawn(async move { get_validation_issues(&ctx).await })?.await??;
 
     Ok(Json(Response { issues }))
 }

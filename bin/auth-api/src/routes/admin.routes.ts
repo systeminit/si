@@ -41,6 +41,19 @@ router.get("/workspaces/admin-lookup/:workspaceId", async (ctx) => {
   ctx.body = workspaceDetails;
 });
 
+// List all non-deleted and non-quarantined workspaces
+router.get("/list-workspace-ids", async (ctx) => {
+  extractAdminAuthUser(ctx);
+
+  const workspaces = await prisma.workspace.findMany({
+    where: { deletedAt: null, quarantinedAt: null },
+  });
+
+  const workspaceIds = workspaces.map((workspace) => workspace.id);
+
+  ctx.body = { workspaces: workspaceIds };
+});
+
 router.post("/workspaces/setup-production-workspace", async (ctx) => {
   // Just for authorization, result is discarded
   extractAdminAuthUser(ctx);
