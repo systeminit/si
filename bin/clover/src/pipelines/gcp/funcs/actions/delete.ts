@@ -122,7 +122,22 @@ async function main(component: Input): Promise<Output> {
     };
   }
 
-  const responseJson = await response.json();
+  // Handle 204 No Content (common for successful deletes like GCS)
+  if (response.status === 204) {
+    return {
+      status: "ok",
+    };
+  }
+
+  // Try to parse response body - some APIs return empty body on success
+  const responseText = await response.text();
+  if (!responseText) {
+    return {
+      status: "ok",
+    };
+  }
+
+  const responseJson = JSON.parse(responseText);
 
   // Handle Google Cloud Long-Running Operations (LRO)
   // Check if this is an operation response:

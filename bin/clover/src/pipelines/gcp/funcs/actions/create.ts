@@ -55,9 +55,11 @@ async function main(component: Input): Promise<Output> {
 
   // Build the URL by replacing path parameters
   let url = `${baseUrl}${insertApiPath.path}`;
+  const queryParams: string[] = [];
 
   // Replace path parameters with values from resource_value or domain
   // GCP APIs use RFC 6570 URI templates: {param} and {+param} (reserved expansion)
+  // Parameters not found in the path template are added as query parameters
   if (insertApiPath.parameterOrder) {
     for (const paramName of insertApiPath.parameterOrder) {
       let paramValue;
@@ -86,12 +88,21 @@ async function main(component: Input): Promise<Output> {
         // Handle {+param} (reserved expansion - don't encode, allows slashes)
         if (url.includes(`{+${paramName}}`)) {
           url = url.replace(`{+${paramName}}`, paramValue);
-        } else {
+        } else if (url.includes(`{${paramName}}`)) {
           // Handle {param} (simple expansion - encode)
           url = url.replace(`{${paramName}}`, encodeURIComponent(paramValue));
+        } else {
+          // Parameter not in path template - add as query parameter
+          // This handles APIs like GCS where project is a query param, not a path param
+          queryParams.push(`${paramName}=${encodeURIComponent(paramValue)}`);
         }
       }
     }
+  }
+
+  // Append query parameters to URL
+  if (queryParams.length > 0) {
+    url += (url.includes("?") ? "&" : "?") + queryParams.join("&");
   }
 
   // Make the API request with retry logic
