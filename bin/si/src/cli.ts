@@ -1610,6 +1610,12 @@ function buildPolicyCommand() {
           "Output directory for evaluation results (defaults to current directory)",
         )
         .action(async (options, filePath) => {
+          // deno-lint-ignore si-rules/no-deno-env-get
+          const claudeAPIKey = Deno.env.get("ANTHROPIC_API_KEY");
+          if (!claudeAPIKey) {
+            throw new Error("Your Anthropic API Key needs to be set to the `ANTHROPIC_API_KEY` environment variable, or in a `.env` file.");
+          }
+
           await callPolicyEvaluate(filePath as string, options);
         }),
     ).hidden();
