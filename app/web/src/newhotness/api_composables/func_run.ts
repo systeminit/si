@@ -149,7 +149,10 @@ export function funcRunStatus(
   if (
     funcRun.functionKind === "Management" &&
     funcRun.state === "Success" &&
-    managementState === "failure"
+    (managementState === "failure" ||
+      funcRun.actionResultState === "Failure" ||
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (funcRun.resultValue as any)?.health === "error")
   ) {
     return "Failure";
   }
