@@ -4,8 +4,8 @@ Validate System Initiative workspaces by checking all change sets for snapshot i
 """
 
 import argparse
-import csv
 import os
+import sqlite3
 import sys
 import time
 
@@ -21,6 +21,43 @@ def get_headers(token: str) -> dict:
     }
 
 
+def request_with_retry(url: str, headers: dict, max_retries: int = 11, initial_delay: float = 1.0) -> requests.Response:
+    """Make a GET request with exponential backoff retry on 502/503 errors and read timeouts."""
+    delay = initial_delay
+    last_exception = None
+
+    for attempt in range(max_retries + 1):
+        try:
+            response = requests.get(url, headers=headers)
+        except requests.exceptions.ReadTimeout as e:
+            last_exception = e
+            if attempt < max_retries:
+                print(f"      Read timed out, retrying in {delay:.1f}s (attempt {attempt + 1}/{max_retries})...")
+                time.sleep(delay)
+                delay *= 2
+                continue
+            raise last_exception
+
+        if response.status_code != 503 and response.status_code != 502:
+            response.raise_for_status()
+            return response
+
+        if response.status_code == 502:
+            last_exception = requests.HTTPError(f"502 Bad Gateway", response=response)
+        else:
+            last_exception = requests.HTTPError(f"503 Service Unavailable", response=response)
+
+        if attempt < max_retries:
+            print(f"      Got {response.status_code}, retrying in {delay:.1f}s (attempt {attempt + 1}/{max_retries})...")
+            time.sleep(delay)
+            delay *= 2
+
+    if last_exception is not None:
+        raise last_exception
+
+    raise Exception("How did i get here?")
+
+
 def get_workspace_ids(auth_api_url: str, headers: dict) -> list[str]:
     """Fetch all workspace IDs from the admin API."""
     url = f"{auth_api_url}/list-workspace-ids"
@@ -34,8 +71,7 @@ def get_workspace_ids(auth_api_url: str, headers: dict) -> list[str]:
 def get_change_sets(api_url: str, headers: dict, workspace_id: str) -> dict:
     """Fetch all change sets for a workspace."""
     url = f"{api_url}/api/v2/admin/workspaces/{workspace_id}/change_sets"
-    response = requests.get(url, headers=headers)
-    response.raise_for_status()
+    response = request_with_retry(url, headers)
     data = response.json()
     return data.get('changeSets', {})
 
@@ -43,9 +79,22 @@ def get_change_sets(api_url: str, headers: dict, workspace_id: str) -> dict:
 def validate_snapshot(api_url: str, headers: dict, workspace_id: str, change_set_id: str) -> dict:
     """Validate a snapshot for a specific change set."""
     url = f"{api_url}/api/v2/admin/workspaces/{workspace_id}/change_sets/{change_set_id}/validate_snapshot"
-    response = requests.get(url, headers=headers)
-    response.raise_for_status()
+    response = request_with_retry(url, headers)
     return response.json()
+
+
+def insert_result(cursor: sqlite3.Cursor, conn: sqlite3.Connection, result: dict):
+    """Insert a validation result into the database."""
+    cursor.execute('''
+        INSERT INTO validation_results (
+            workspace_id, change_set_id, change_set_name, change_set_status,
+            validation_status, issue_count, issues
+        ) VALUES (
+            :workspace_id, :change_set_id, :change_set_name, :change_set_status,
+            :validation_status, :issue_count, :issues
+        )
+    ''', result)
+    conn.commit()
 
 
 def main():
@@ -75,14 +124,19 @@ def main():
     parser.add_argument(
         '--output',
         '-o',
-        default='validation_results.csv',
-        help='Output CSV file path (default: validation_results.csv)'
+        default='validation_results.db',
+        help='Output SQLite database file path (default: validation_results.db)'
     )
     parser.add_argument(
         '--delay',
         '-d',
         action='store_true',
         help='Add a 0.5 second delay between validating each change set'
+    )
+    parser.add_argument(
+        '--dry-run',
+        action='store_true',
+        help='Fetch workspaces and change sets but skip actual validation API calls'
     )
 
     args = parser.parse_args()
@@ -108,7 +162,10 @@ def main():
     sdf_headers = get_headers(args.bearer_token)
     auth_headers = get_headers(args.auth_bearer_token)
 
-    print(f"Fetching workspace IDs from {sdf_api_url}...")
+    if args.dry_run:
+        print("DRY RUN MODE - will not call validation endpoint")
+
+    print(f"Fetching workspace IDs from {auth_api_url}...")
     try:
         workspace_ids = get_workspace_ids(auth_api_url, auth_headers)
     except requests.RequestException as e:
@@ -117,7 +174,29 @@ def main():
 
     print(f"Found {len(workspace_ids)} workspaces")
 
-    results = []
+    # Initialize database
+    conn = sqlite3.connect(args.output)
+    cursor = conn.cursor()
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS validation_results (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            workspace_id TEXT,
+            change_set_id TEXT,
+            change_set_name TEXT,
+            change_set_status TEXT,
+            validation_status TEXT,
+            issue_count INTEGER,
+            issues TEXT
+        )
+    ''')
+    conn.commit()
+
+    # Counters for summary
+    total = 0
+    valid_count = 0
+    invalid_count = 0
+    error_count = 0
+    dry_run_count = 0
 
     for workspace_id in workspace_ids:
         print(f"Processing workspace {workspace_id}...")
@@ -126,7 +205,7 @@ def main():
             change_sets = get_change_sets(sdf_api_url, sdf_headers, workspace_id)
         except requests.RequestException as e:
             print(f"  Error fetching change sets: {e}", file=sys.stderr)
-            results.append({
+            insert_result(cursor, conn, {
                 'workspace_id': workspace_id,
                 'change_set_id': '',
                 'change_set_name': '',
@@ -135,6 +214,8 @@ def main():
                 'issue_count': 0,
                 'issues': str(e)
             })
+            total += 1
+            error_count += 1
             continue
 
         print(f"  Found {len(change_sets)} change sets")
@@ -143,82 +224,89 @@ def main():
             change_set_name = change_set_info.get('name', '')
             change_set_status = change_set_info.get('status', '')
 
-            print(f"    Validating change set {change_set_id} ({change_set_name})...")
+            # Only validate change sets with status "Open"
+            if change_set_status != 'Open':
+                continue
 
-            try:
-                validation = validate_snapshot(sdf_api_url, sdf_headers, workspace_id, change_set_id)
-                issues = validation.get('issues', [])
-                issue_count = len(issues)
-
-                if issue_count == 0:
-                    validation_status = 'valid'
-                    issues_str = ''
-                else:
-                    validation_status = 'invalid'
-                    issues_str = '; '.join([
-                        f"{issue.get('message', 'Unknown issue')}"
-                        for issue in issues
-                    ])
-
-                results.append({
+            if args.dry_run:
+                print(f"    [DRY RUN] Would validate change set {change_set_id} ({change_set_name}, status: {change_set_status})")
+                insert_result(cursor, conn, {
                     'workspace_id': workspace_id,
                     'change_set_id': change_set_id,
                     'change_set_name': change_set_name,
                     'change_set_status': change_set_status,
-                    'validation_status': validation_status,
-                    'issue_count': issue_count,
-                    'issues': issues_str
-                })
-
-                if issue_count > 0:
-                    print(f"      Found {issue_count} issues")
-                else:
-                    print("      Valid")
-
-            except requests.RequestException as e:
-                print(f"      Error validating: {e}", file=sys.stderr)
-                results.append({
-                    'workspace_id': workspace_id,
-                    'change_set_id': change_set_id,
-                    'change_set_name': change_set_name,
-                    'change_set_status': change_set_status,
-                    'validation_status': 'error',
+                    'validation_status': 'dry_run',
                     'issue_count': 0,
-                    'issues': str(e)
+                    'issues': ''
                 })
+                total += 1
+                dry_run_count += 1
+            else:
+                print(f"    Validating change set {change_set_id} ({change_set_name})...")
 
-            if args.delay:
-                time.sleep(0.5)
+                try:
+                    validation = validate_snapshot(sdf_api_url, sdf_headers, workspace_id, change_set_id)
+                    issues = validation.get('issues', [])
+                    issue_count = len(issues)
 
-    # Write results to CSV
-    fieldnames = [
-        'workspace_id',
-        'change_set_id',
-        'change_set_name',
-        'change_set_status',
-        'validation_status',
-        'issue_count',
-        'issues'
-    ]
+                    if issue_count == 0:
+                        validation_status = 'valid'
+                        issues_str = ''
+                        valid_count += 1
+                    else:
+                        validation_status = 'invalid'
+                        issues_str = '; '.join([
+                            f"{issue.get('message', 'Unknown issue')}"
+                            for issue in issues
+                        ])
+                        invalid_count += 1
 
-    with open(args.output, 'w', newline='') as csvfile:
-        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
-        writer.writeheader()
-        writer.writerows(results)
+                    insert_result(cursor, conn, {
+                        'workspace_id': workspace_id,
+                        'change_set_id': change_set_id,
+                        'change_set_name': change_set_name,
+                        'change_set_status': change_set_status,
+                        'validation_status': validation_status,
+                        'issue_count': issue_count,
+                        'issues': issues_str
+                    })
+                    total += 1
+
+                    if issue_count > 0:
+                        print(f"      Found {issue_count} issues")
+                    else:
+                        print("      Valid")
+
+                except requests.RequestException as e:
+                    print(f"      Error validating: {e}", file=sys.stderr)
+                    insert_result(cursor, conn, {
+                        'workspace_id': workspace_id,
+                        'change_set_id': change_set_id,
+                        'change_set_name': change_set_name,
+                        'change_set_status': change_set_status,
+                        'validation_status': 'error',
+                        'issue_count': 0,
+                        'issues': str(e)
+                    })
+                    total += 1
+                    error_count += 1
+
+                if args.delay:
+                    time.sleep(0.5)
+
+    conn.close()
 
     print(f"\nResults written to {args.output}")
 
     # Summary
-    total = len(results)
-    valid = sum(1 for r in results if r['validation_status'] == 'valid')
-    invalid = sum(1 for r in results if r['validation_status'] == 'invalid')
-    errors = sum(1 for r in results if r['validation_status'] == 'error')
-
     print("\nSummary:")
-    print(f"  Total change sets checked: {total}")
-    print(f"  Valid: {valid}")
-    print(f"  Invalid: {invalid}")
-    print(f"  Errors: {errors}")
+    print(f"  Total change sets: {total}")
+    if args.dry_run:
+        print(f"  Would validate: {dry_run_count}")
+    else:
+        print(f"  Valid: {valid_count}")
+        print(f"  Invalid: {invalid_count}")
+        print(f"  Errors: {error_count}")
 
 
 if __name__ == '__main__':
