@@ -72,6 +72,7 @@
                 label="First Name"
                 autocomplete="given-name"
                 placeholder="Your first name"
+                :maxLength="MAX_LENGTH_STANDARD"
                 :regex="NAME_REGEX"
                 regexMessage="First name contains invalid characters or URLs"
               />
@@ -80,6 +81,7 @@
                 label="Last Name"
                 autocomplete="last-name"
                 placeholder="Your last name"
+                :maxLength="MAX_LENGTH_STANDARD"
                 :regex="NAME_REGEX"
                 regexMessage="Last name contains invalid characters or URLs"
               />
@@ -90,6 +92,7 @@
               autocomplete="username"
               required
               placeholder="This name will be shown in the application"
+              :maxLength="MAX_LENGTH_STANDARD"
               :regex="NAME_REGEX"
               regexMessage="Nickname contains invalid characters or URLs"
             />
@@ -107,6 +110,7 @@
               label="Discord Username"
               name="discord_username"
               placeholder="ex: eggscellent OR eggscellent#1234"
+              :maxLength="MAX_LENGTH_STANDARD"
               :regex="DISCORD_TAG_REGEX"
               regexMessage="Invalid discord tag"
               class="pb-xs"
@@ -125,6 +129,7 @@
               label="Github Username"
               name="github_username"
               placeholder="ex: devopsdude42"
+              :maxLength="MAX_LENGTH_STANDARD"
               :regex="GITHUB_USERNAME_REGEX"
               regexMessage="Invalid github username"
             />
@@ -171,6 +176,7 @@ import {
   NAME_REGEX,
   GITHUB_USERNAME_REGEX,
   DISCORD_TAG_REGEX,
+  MAX_LENGTH_STANDARD,
 } from "@/lib/validations";
 
 const { validationState, validationMethods } = useValidatedInputGroup();

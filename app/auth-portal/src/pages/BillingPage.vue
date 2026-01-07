@@ -22,7 +22,9 @@
                   autocomplete="given-name"
                   placeholder="Your first name"
                   required
-                  :regex="ALLOWED_INPUT_REGEX"
+                  :maxLength="MAX_LENGTH_STANDARD"
+                  :regex="NAME_REGEX"
+                  regexMessage="First name contains invalid characters or URLs"
                 />
                 <VormInput
                   v-model="draftBillingDetail.lastName"
@@ -30,7 +32,9 @@
                   autocomplete="last-name"
                   placeholder="Your last name"
                   required
-                  :regex="ALLOWED_INPUT_REGEX"
+                  :maxLength="MAX_LENGTH_STANDARD"
+                  :regex="NAME_REGEX"
+                  regexMessage="Last name contains invalid characters or URLs"
                 />
               </Tiles>
               <VormInput
@@ -176,7 +180,11 @@ import {
 import { useRouter } from "vue-router";
 import { useHead } from "@vueuse/head";
 import { useAuthStore, BillingDetails } from "@/store/auth.store";
-import { ALLOWED_INPUT_REGEX } from "@/lib/validations";
+import {
+  ALLOWED_INPUT_REGEX,
+  NAME_REGEX,
+  MAX_LENGTH_STANDARD,
+} from "@/lib/validations";
 
 const { validationMethods } = useValidatedInputGroup();
 const authStore = useAuthStore();

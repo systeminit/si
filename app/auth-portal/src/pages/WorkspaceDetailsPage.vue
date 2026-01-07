@@ -63,11 +63,11 @@
         <VormInput
           v-model="draftWorkspace.displayName"
           :disabled="!isWorkspaceOwner && !createMode"
-          :maxLength="500"
+          :maxLength="MAX_LENGTH_STANDARD"
           label="Display Name"
           placeholder="A display name for this workspace"
           required
-          :regex="ALLOWED_INPUT_REGEX"
+          :regex="DOMAIN_FRIENDLY_INPUT_REGEX"
         />
         <VormInput
           v-if="createMode"
@@ -95,9 +95,10 @@
           v-model="draftWorkspace.description"
           :disabled="!isWorkspaceOwner && !createMode"
           :required="false"
+          :maxLength="MAX_LENGTH_EXTENDED"
           label="Description"
           placeholder="A description for this workspace"
-          :regex="ALLOWED_INPUT_REGEX"
+          :regex="DOMAIN_FRIENDLY_INPUT_REGEX"
         />
 
         <div class="flex flex-row flex-wrap items-center w-full gap-xs">
@@ -274,7 +275,12 @@ import { tracker } from "@/lib/posthog";
 import { API_HTTP_URL } from "@/store/api";
 import MemberListItem from "@/components/MemberListItem.vue";
 import WorkspacePageHeader from "@/components/WorkspacePageHeader.vue";
-import { ALLOWED_INPUT_REGEX, ALLOWED_URL_REGEX } from "@/lib/validations";
+import {
+  DOMAIN_FRIENDLY_INPUT_REGEX,
+  ALLOWED_URL_REGEX,
+  MAX_LENGTH_STANDARD,
+  MAX_LENGTH_EXTENDED,
+} from "@/lib/validations";
 
 const workspacesStore = useWorkspacesStore();
 const router = useRouter();

@@ -21,7 +21,7 @@
     "dev": "pnpm run start",
     "start": "vite",
     "serve": "vite preview --port 8080",
-    "test": "vitest",
+    "test": "vitest --run",
     "vite:clean": "rm -rf ./node_modules/.vite",
     "cypress:run": "cypress run",
     "cypress:open": "cypress open"
