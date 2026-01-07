@@ -11356,21 +11356,21 @@ cargo.rust_library(
 )
 
 http_archive(
-    name = "num-bigint-dig-0.8.4.crate",
+    name = "num-bigint-dig-0.8.6.crate",
     sha256 = "dc84195820f291c7697304f3cbdadd1cb7199c0efc917ff5eafd71225c136151",
-    strip_prefix = "num-bigint-dig-0.8.4",
-    urls = ["https://static.crates.io/crates/num-bigint-dig/0.8.4/download"],
+    strip_prefix = "num-bigint-dig-0.8.6",
+    urls = ["https://static.crates.io/crates/num-bigint-dig/0.8.6/download"],
     visibility = [],
 )
 
 cargo.rust_library(
-    name = "num-bigint-dig-0.8.4",
-    srcs = [":num-bigint-dig-0.8.4.crate"],
+    name = "num-bigint-dig-0.8.6",
+    srcs = [":num-bigint-dig-0.8.6.crate"],
     crate = "num_bigint_dig",
-    crate_root = "num-bigint-dig-0.8.4.crate/src/lib.rs",
+    crate_root = "num-bigint-dig-0.8.6.crate/src/lib.rs",
     edition = "2021",
     env = {
-        "OUT_DIR": "$(location :num-bigint-dig-0.8.4-build-script-run[out_dir])",
+        "OUT_DIR": "$(location :num-bigint-dig-0.8.6-build-script-run[out_dir])",
     },
     features = [
         "i128",
@@ -11379,7 +11379,7 @@ cargo.rust_library(
         "u64_digit",
         "zeroize",
     ],
-    rustc_flags = ["@$(location :num-bigint-dig-0.8.4-build-script-run[rustc_flags])"],
+    rustc_flags = ["@$(location :num-bigint-dig-0.8.6-build-script-run[rustc_flags])"],
     visibility = [],
     deps = [
         ":byteorder-1.5.0",
@@ -11395,10 +11395,10 @@ cargo.rust_library(
 )
 
 cargo.rust_binary(
-    name = "num-bigint-dig-0.8.4-build-script-build",
-    srcs = [":num-bigint-dig-0.8.4.crate"],
+    name = "num-bigint-dig-0.8.6-build-script-build",
+    srcs = [":num-bigint-dig-0.8.6.crate"],
     crate = "build_script_build",
-    crate_root = "num-bigint-dig-0.8.4.crate/build.rs",
+    crate_root = "num-bigint-dig-0.8.6.crate/build.rs",
     edition = "2021",
     features = [
         "i128",
@@ -11411,9 +11411,9 @@ cargo.rust_binary(
 )
 
 buildscript_run(
-    name = "num-bigint-dig-0.8.4-build-script-run",
+    name = "num-bigint-dig-0.8.6-build-script-run",
     package_name = "num-bigint-dig",
-    buildscript_rule = ":num-bigint-dig-0.8.4-build-script-build",
+    buildscript_rule = ":num-bigint-dig-0.8.6-build-script-build",
     features = [
         "i128",
         "prime",
@@ -11421,7 +11421,7 @@ buildscript_run(
         "u64_digit",
         "zeroize",
     ],
-    version = "0.8.4",
+    version = "0.8.6",
 )
 
 http_archive(
@@ -15264,18 +15264,18 @@ cargo.rust_library(
 )
 
 http_archive(
-    name = "rsa-0.9.8.crate",
-    sha256 = "78928ac1ed176a5ca1d17e578a1825f3d81ca54cf41053a592584b020cfd691b",
-    strip_prefix = "rsa-0.9.8",
-    urls = ["https://static.crates.io/crates/rsa/0.9.8/download"],
+    name = "rsa-0.9.10.crate",
+    sha256 = "b8573f03f5883dcaebdfcf4725caa1ecb9c15b2ef50c43a07b816e06799bb12d",
+    strip_prefix = "rsa-0.9.10",
+    urls = ["https://static.crates.io/crates/rsa/0.9.10/download"],
     visibility = [],
 )
 
 cargo.rust_library(
-    name = "rsa-0.9.8",
-    srcs = [":rsa-0.9.8.crate"],
+    name = "rsa-0.9.10",
+    srcs = [":rsa-0.9.10.crate"],
     crate = "rsa",
-    crate_root = "rsa-0.9.8.crate/src/lib.rs",
+    crate_root = "rsa-0.9.10.crate/src/lib.rs",
     edition = "2021",
     features = [
         "default",
@@ -15287,7 +15287,7 @@ cargo.rust_library(
         "u64_digit",
     ],
     named_deps = {
-        "num_bigint": ":num-bigint-dig-0.8.4",
+        "num_bigint": ":num-bigint-dig-0.8.6",
     },
     visibility = [],
     deps = [
@@ -18024,7 +18024,7 @@ cargo.rust_library(
         "rrsa",
     ],
     named_deps = {
-        "rrsa": ":rsa-0.9.8",
+        "rrsa": ":rsa-0.9.10",
     },
     visibility = [],
     deps = [
