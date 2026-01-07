@@ -18,6 +18,7 @@ mod migrate;
 mod module;
 mod node_weight;
 mod pkg;
+mod policy_report;
 mod prompt_overrides;
 mod prop;
 mod property_editor;
