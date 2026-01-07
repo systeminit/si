@@ -30,6 +30,7 @@ pub mod index;
 pub mod integrations;
 pub mod management;
 pub mod module;
+pub mod policy_report;
 pub mod variant;
 pub mod view;
 pub mod workspace;
@@ -59,6 +60,7 @@ fn workspace_routes(state: AppState) -> Router<AppState> {
                     "/approval-requirement-definitions",
                     approval_requirement_definition::v2_routes(),
                 )
+                .nest("/policy-reports", policy_report::v2_routes())
                 .route_layer(middleware::from_extractor::<TargetChangeSetIdentFromPath>()),
         )
         .nest("/integrations", integrations::v2_routes())
