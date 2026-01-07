@@ -13,7 +13,9 @@
     "lint": "eslint src --ext .ts,.js,.cjs,.vue",
     "lint:strict": "pnpm run lint --max-warnings=0",
     "lint:fix": "pnpm run lint --fix",
-    "deploy": "pnpm run build && netlify deploy --dir=dist --prod"
+    "deploy": "pnpm run build && netlify deploy --dir=dist --prod",
+    "test": "vitest --run",
+    "test:validation": "vitest run src/lib/validations.test.ts"
   },
   "dependencies": {
     "@si/ts-lib": "workspace:*",
@@ -35,7 +37,6 @@
   },
   "devDependencies": {
     "@si/eslint-config": "workspace:*",
-    "@types/jest": "^30.0.0",
     "@si/tsconfig": "workspace:*",
     "@types/lodash-es": "^4.17.12",
     "@types/node": "^18.19.59",
@@ -49,6 +50,7 @@
     "vite-plugin-checker": "^0.6.4",
     "vite-plugin-markdown": "^2.2.0",
     "vite-svg-loader": "^3.4.0",
+    "vitest": "^3.2.4",
     "vue-tsc": "^1.8.27"
   }
 }

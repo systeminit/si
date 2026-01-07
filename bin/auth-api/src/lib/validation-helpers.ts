@@ -22,9 +22,18 @@ export function validate<Z extends Zod.Schema>(obj: any, schema: Z) {
 // Excludes characters that enable URLs: . / @
 export const ALLOWED_INPUT_REGEX = /^[0-9A-Za-zÀ-ÖØ-öø-ÿĀ-ỹ\s',_+()-]*$/;
 
+// Domain-friendly text input - like ALLOWED_INPUT_REGEX but allows dots (.) for domain names
+// Suitable for display names and descriptions that may contain domain names
+// Still excludes URL-enabling characters like / and @
+export const DOMAIN_FRIENDLY_INPUT_REGEX = /^[0-9A-Za-zÀ-ÖØ-öø-ÿĀ-ỹ\s',_+().-]*$/;
+
 // Name fields - more restrictive, only letters, spaces, hyphens, apostrophes
 // Prevents URLs and domain names from being entered
 export const NAME_REGEX = /^[0-9A-Za-zÀ-ÖØ-öø-ÿĀ-ỹ\s'-]*$/;
+
+// Max length constants for input validation
+export const MAX_LENGTH_STANDARD = 256; // For user profile fields and workspace displayName
+export const MAX_LENGTH_EXTENDED = 512; // For workspace description
 
 // GitHub username validation - official GitHub username rules
 // - 1-39 characters

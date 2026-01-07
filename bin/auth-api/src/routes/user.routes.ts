@@ -9,6 +9,7 @@ import {
   NAME_REGEX,
   URL_DETECTION_REGEX,
   validate,
+  MAX_LENGTH_STANDARD,
 } from "../lib/validation-helpers";
 import {
   findLatestTosForUser,
@@ -282,18 +283,21 @@ router.patch("/users/:userId", async (ctx) => {
       .object({
         // Name fields use NAME_REGEX to prevent URLs and domain names
         firstName: z.string()
+          .max(MAX_LENGTH_STANDARD, `First name must be ${MAX_LENGTH_STANDARD} characters or less`)
           .regex(NAME_REGEX, "First name contains invalid characters or URLs")
           .refine((val) => !URL_DETECTION_REGEX.test(val), {
             message: "URLs are not allowed in first name",
           })
           .nullable(),
         lastName: z.string()
+          .max(MAX_LENGTH_STANDARD, `Last name must be ${MAX_LENGTH_STANDARD} characters or less`)
           .regex(NAME_REGEX, "Last name contains invalid characters or URLs")
           .refine((val) => !URL_DETECTION_REGEX.test(val), {
             message: "URLs are not allowed in last name",
           })
           .nullable(),
         nickname: z.string()
+          .max(MAX_LENGTH_STANDARD, `Nickname must be ${MAX_LENGTH_STANDARD} characters or less`)
           .regex(NAME_REGEX, "Nickname contains invalid characters or URLs")
           .refine((val) => !URL_DETECTION_REGEX.test(val), {
             message: "URLs are not allowed in nickname",
@@ -312,10 +316,12 @@ router.patch("/users/:userId", async (ctx) => {
           .nullable(),
         // Discord username - supports both new format and old discriminator format
         discordUsername: z.string()
+          .max(MAX_LENGTH_STANDARD, `Discord username must be ${MAX_LENGTH_STANDARD} characters or less`)
           .regex(DISCORD_TAG_REGEX, "Invalid Discord username format")
           .nullable(),
         // GitHub username - follows official GitHub username rules
         githubUsername: z.string()
+          .max(MAX_LENGTH_STANDARD, `GitHub username must be ${MAX_LENGTH_STANDARD} characters or less`)
           .regex(GITHUB_USERNAME_REGEX, "Invalid GitHub username format")
           .nullable(),
       })
@@ -493,11 +499,13 @@ router.patch("/users/:userId/billingDetails", async (ctx) => {
       .object({
         // Billing names use NAME_REGEX to prevent URLs
         firstName: z.string()
+          .max(MAX_LENGTH_STANDARD, `First name must be ${MAX_LENGTH_STANDARD} characters or less`)
           .regex(NAME_REGEX, "First name contains invalid characters")
           .refine((val) => !URL_DETECTION_REGEX.test(val), {
             message: "URLs are not allowed in first name",
           }),
         lastName: z.string()
+          .max(MAX_LENGTH_STANDARD, `Last name must be ${MAX_LENGTH_STANDARD} characters or less`)
           .regex(NAME_REGEX, "Last name contains invalid characters")
           .refine((val) => !URL_DETECTION_REGEX.test(val), {
             message: "URLs are not allowed in last name",

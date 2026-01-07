@@ -27,8 +27,10 @@ import {
 } from "../services/workspaces.service";
 import {
   validate,
-  ALLOWED_INPUT_REGEX,
+  DOMAIN_FRIENDLY_INPUT_REGEX,
   ALLOWED_URL_REGEX,
+  MAX_LENGTH_STANDARD,
+  MAX_LENGTH_EXTENDED,
 } from "../lib/validation-helpers";
 
 import { CustomRouteContext } from "../custom-state";
@@ -39,6 +41,16 @@ import {
 import { tracker } from "../lib/tracker";
 import { findLatestTosForUser } from "../services/tos.service";
 import { automationApiRouter, extractAuthUser, router } from ".";
+
+// When we send a hubspot email via the posthog event
+// if the workspace name is a domain name like string e.g. bing.com
+// then when the email gets sent, it will render as a link to bing.com
+// rather than the workspace name as a string
+// this adds a zero width space to stop the email clients from rendering it
+// it will still look like bing.com but it's effectively breaking the link
+function escapeDomainLikeString(input: string): string {
+  return input.replace(/\./g, "\u200B.");
+}
 
 automationApiRouter.get("/workspaces", async (ctx) => {
   const authUser = extractAuthUser(ctx);
@@ -141,9 +153,13 @@ automationApiRouter.post("/workspaces/new", async (ctx) => {
     ctx.request.body,
     z.object({
       instanceUrl: z.string().url().regex(new RegExp(ALLOWED_URL_REGEX)),
-      displayName: z.string().regex(ALLOWED_INPUT_REGEX),
+      displayName: z.string()
+        .max(MAX_LENGTH_STANDARD, `Display name must be ${MAX_LENGTH_STANDARD} characters or less`)
+        .regex(DOMAIN_FRIENDLY_INPUT_REGEX),
       isDefault: z.boolean(),
-      description: z.string().regex(ALLOWED_INPUT_REGEX),
+      description: z.string()
+        .max(MAX_LENGTH_EXTENDED, `Description must be ${MAX_LENGTH_EXTENDED} characters or less`)
+        .regex(DOMAIN_FRIENDLY_INPUT_REGEX),
     }),
   );
 
@@ -181,8 +197,12 @@ automationApiRouter.patch("/workspaces/:workspaceId", async (ctx) => {
     ctx.request.body,
     z.object({
       instanceUrl: z.string().url(),
-      displayName: z.string().regex(ALLOWED_INPUT_REGEX),
-      description: z.string().regex(ALLOWED_INPUT_REGEX),
+      displayName: z.string()
+        .max(MAX_LENGTH_STANDARD, `Display name must be ${MAX_LENGTH_STANDARD} characters or less`)
+        .regex(DOMAIN_FRIENDLY_INPUT_REGEX),
+      description: z.string()
+        .max(MAX_LENGTH_EXTENDED, `Description must be ${MAX_LENGTH_EXTENDED} characters or less`)
+        .regex(DOMAIN_FRIENDLY_INPUT_REGEX),
     }),
   );
 
@@ -231,16 +251,6 @@ automationApiRouter.get("/workspace/:workspaceId/members", async (ctx) => {
 
   ctx.body = members;
 });
-
-// When we send a hubspot email via the posthog event
-// if the workspace name is a domain name like string e.g. bing.com
-// then when the email gets sent, it will render as a link to bing.com
-// rather than the workspace name as a string
-// this adds a zero width space to stop the email clients from rendering it
-// it will still look like bing.com but it's effectively breaking the link
-function escapeDomainLikeString(input: string): string {
-  return input.replace(/\./g, "\u200B.");
-}
 
 automationApiRouter.post("/workspace/:workspaceId/membership", async (ctx) => {
   const { authUser, workspace } = await authorizeWorkspaceRoute(ctx, [

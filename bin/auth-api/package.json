@@ -22,6 +22,7 @@
     "docker:build:local": "cd ../.. && docker build -f bin/auth-api/Dockerfile . -t si/si-auth-api-local",
     "test:all": "NODE_ENV=test tap -j1 test/**/*.test.ts",
     "test": "NODE_ENV=test tap",
+    "test:validation": "NODE_ENV=test tsx test/validation-helpers.test.ts",
     "nodev": "node -v",
     "whichnode": "which node"
   },
