@@ -2,6 +2,7 @@ use axum::{
     Json,
     response::Json as ResponseJson,
 };
+use dal::WsEvent;
 use serde::{
     Deserialize,
     Serialize,
@@ -81,6 +82,13 @@ pub(crate) async fn upload_policy_report(
             PolicyReport::new_pass(ctx, request.name, request.policy, request.report).await?
         }
     };
+
+    WsEvent::policy_uploaded(ctx)
+        .await?
+        .publish_on_commit(ctx)
+        .await?;
+
+    ctx.commit_no_rebase().await?;
 
     Ok(ResponseJson(UploadPolicyReportV1Response {
         id: policy_report.id,
