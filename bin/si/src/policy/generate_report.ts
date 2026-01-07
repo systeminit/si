@@ -8,6 +8,7 @@ import type { ExtractedPolicy } from './extract_policy.ts';
 import type { SourceDataCollection, ComponentData } from './collect_source_data.ts';
 import type { EvaluationResult } from './evaluate_policy.ts';
 import * as path from 'node:path';
+import { Context } from "../context.ts";
 
 /**
  * Get value from component attributes by path
@@ -133,7 +134,8 @@ export async function generateReport(
   changeSetId: string,
   outputPath: string
 ): Promise<string> {
-  console.log('\nStage 4: Generating report...');
+  const ctx = Context.instance();
+  ctx.logger.info('Stage 4: Generating report...');
 
   // Get current date in ISO 8601 format
   const currentDate = new Date().toISOString().split('.')[0] + 'Z';
@@ -165,8 +167,8 @@ export async function generateReport(
   const filename = join(path.dirname(outputPath), `report-${currentDate}.md`)
   await Deno.writeTextFile(filename, report);
 
-  console.log(`✓ Report generation complete`);
-  console.log(`  Output: ${filename}`);
+  ctx.logger.info('Report generation complete');
+  ctx.logger.info('Output: {filename}', { filename });
 
   return filename;
 }

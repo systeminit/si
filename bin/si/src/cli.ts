@@ -120,6 +120,7 @@ import {
   callWorkspaceMemberList,
   type WorkspaceMemberListOptions,
 } from "./workspace/member-list.ts";
+import { resolveChangeSet } from "./change-set/utils.ts";
 
 /**
  * Global options available to all commands
@@ -1606,6 +1607,10 @@ function buildPolicyCommand() {
         .description("Evaluate policies against infrastructure components")
         .arguments("<file-path:string>")
         .option(
+          "-c, --change-set <id:string>",
+          "Change set ID or name (defaults to HEAD)",
+        )
+        .option(
           "-o, --output <path:string>",
           "Output directory for evaluation results (defaults to current directory)",
         )
@@ -1625,11 +1630,11 @@ function buildPolicyCommand() {
  * Evaluates a policy file through the four-stage process.
  *
  * @param policyFilePath - Path to the policy markdown file
- * @param options - Command options including output directory
+ * @param options - Command options including output directory and change set
  */
 async function callPolicyEvaluate(
   policyFilePath: string,
-  options: { output?: string },
+  options: { output?: string; changeSet?: string },
 ) {
   const ctx = Context.instance();
   const workspaceId = Context.workspaceId();
@@ -1664,18 +1669,21 @@ async function callPolicyEvaluate(
       title: extractedPolicy.policyTitle,
     });
 
+    // Resolve change set (use provided change set or default to HEAD)
+    const { getHeadChangeSetId } = await import("./cli/helpers.ts");
+    const changeSetId = options.changeSet
+      ? await resolveChangeSet(workspaceId, options.changeSet)
+      : await getHeadChangeSetId();
+
     // Stage 2: Collect source data
     const { collectSourceData } = await import(
       "./policy/collect_source_data.ts"
     );
     const sourceData = await collectSourceData(
+      changeSetId,
       extractedPolicy.sourceDataQueries,
       sourceDataPath,
     );
-
-    // Get HEAD change set ID for evaluation
-    const { getHeadChangeSetId } = await import("./cli/helpers.ts");
-    const changeSetId = await getHeadChangeSetId();
 
     // Stage 3: Evaluate policy
     const { evaluatePolicy } = await import("./policy/evaluate_policy.ts");
@@ -1701,12 +1709,21 @@ async function callPolicyEvaluate(
 
     // Display summary
     ctx.logger.info("\nPolicy Evaluation Complete");
-    ctx.logger.info("Result: {result}", { result: evaluation.result });
-    if (evaluation.failingComponents.length > 0) {
-      ctx.logger.warn("Failing components: {count}", {
-        count: evaluation.failingComponents.length,
-      });
+
+    // Use different log levels based on result for visual distinction
+    if (evaluation.result === "Fail") {
+      ctx.logger.warn("Result: FAIL");
+      if (evaluation.failingComponents.length > 0) {
+        ctx.logger.warn("Failing components: {count}", {
+          count: evaluation.failingComponents.length,
+        });
+      } else {
+        ctx.logger.warn("Reason: {summary}", { summary: evaluation.summary });
+      }
+    } else {
+      ctx.logger.info("Result: PASS");
     }
+
     ctx.logger.info("Report: {path}", { path: reportName });
 
     // // Track analytics

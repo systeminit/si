@@ -7,6 +7,7 @@ import which from "which";
 import { query } from '@anthropic-ai/claude-agent-sdk';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { Context } from "../context.ts";
 
 export interface ExtractedPolicy {
   policyTitle: string;
@@ -41,7 +42,8 @@ Output your findings as a JSON object with this exact structure:
  * Extract structured policy data from markdown using Claude
  */
 export async function extractPolicy(policyContent: string, outputPath: string): Promise<ExtractedPolicy> {
-  console.log('Stage 1: Extracting policy structure...');
+  const ctx = Context.instance();
+  ctx.logger.info('Stage 1: Extracting policy structure...');
 
   const pathToClaudeCodeExecutable = await which("claude");
 
@@ -76,7 +78,7 @@ Please output your findings as a JSON object and write it to the file: ${outputP
       }
     } else if (message.type === 'result') {
       if (message.subtype === 'success') {
-        console.log(`✓ Policy extraction complete`);
+        ctx.logger.info('Policy extraction complete');
 
         // Read the extracted policy from file
         if (!fs.existsSync(outputPath)) {

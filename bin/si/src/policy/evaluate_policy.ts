@@ -8,6 +8,7 @@ import { query } from '@anthropic-ai/claude-agent-sdk';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import type { SourceDataCollection } from './collect_source_data.ts';
+import { Context } from "../context.ts";
 
 export interface FailingComponent {
   componentId: string;
@@ -97,15 +98,16 @@ export async function evaluatePolicy(
   sourceDataPath: string,
   outputPath: string
 ): Promise<EvaluationResult> {
-  console.log('\nStage 3: Evaluating policy compliance...');
+  const ctx = Context.instance();
+  ctx.logger.info('Stage 3: Evaluating policy compliance...');
 
   // Count total components
   const totalComponents = Object.values(sourceData).reduce((sum, components) => sum + components.length, 0);
-  console.log(`  Evaluating ${totalComponents} component(s)`);
+  ctx.logger.info('Evaluating {count} component(s)', { count: totalComponents });
 
   // If no source data, fail immediately
   if (totalComponents === 0) {
-    console.log('  No components found - policy fails');
+    ctx.logger.warn('No components found - policy fails');
     const result: EvaluationResult = {
       result: 'Fail',
       summary: 'No infrastructure components found to evaluate against the policy. The policy cannot pass without any components to check.',
@@ -155,7 +157,7 @@ After evaluating each component against the policy, write your findings as a JSO
       }
     } else if (message.type === 'result') {
       if (message.subtype === 'success') {
-        console.log(`✓ Policy evaluation complete`);
+        ctx.logger.info('Policy evaluation complete');
 
         // Read the evaluation result from file
         if (!fs.existsSync(outputPath)) {
@@ -175,8 +177,8 @@ After evaluating each component against the policy, write your findings as a JSO
           evaluation.sourceDataMetadata = {};
         }
 
-        console.log(`  Result: ${evaluation.result}`);
-        console.log(`  Failing components: ${evaluation.failingComponents.length}`);
+        ctx.logger.info('Result: {result}', { result: evaluation.result });
+        ctx.logger.info('Failing components: {count}', { count: evaluation.failingComponents.length });
 
         return evaluation;
       } else {
