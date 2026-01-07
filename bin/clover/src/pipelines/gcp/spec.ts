@@ -34,6 +34,16 @@ export type GcpMethodMap = Record<string, GcpMethod>;
 type GcpSchemaDefinition = NormalizedGcpSchema;
 type RawGcpProperty = NormalizedGcpSchema;
 
+// Resource patterns to skip during spec generation
+// Operations resources are internal GCP async tracking resources, not user-facing
+const SKIP_RESOURCE_PATTERNS = [
+  /[Oo]perations?$/, // operations, Operations, operation, Operation
+];
+
+function shouldSkipResource(resourceName: string): boolean {
+  return SKIP_RESOURCE_PATTERNS.some((pattern) => pattern.test(resourceName));
+}
+
 interface ResourceSpec extends GcpResourceMethods {
   resourceName: string;
   resourcePath: string[];
@@ -89,6 +99,11 @@ function collectResources(
   collected: ResourceSpec[],
 ) {
   for (const [resourceName, resource] of Object.entries(resources)) {
+    if (shouldSkipResource(resourceName)) {
+      logger.debug(`Skipping resource: ${resourceName}`);
+      continue;
+    }
+
     const resourcePath = [...parentPath, resourceName];
 
     if (resource.methods) {
@@ -187,7 +202,8 @@ function buildGcpResourceSpec(
   for (const paramName of pathParamsToAdd) {
     if (insert?.parameters?.[paramName]) {
       const existingProp = domainProperties[paramName];
-      const isReadOnly = existingProp && typeof existingProp === "object" && existingProp.readOnly;
+      const isReadOnly = existingProp && typeof existingProp === "object" &&
+        existingProp.readOnly;
 
       if (!existingProp || isReadOnly) {
         const param = insert.parameters[paramName];
@@ -227,14 +243,18 @@ function buildGcpResourceSpec(
   const requiredProperties = new Set<string>();
 
   // First check schema-level required array (rarely populated in GCP)
-  for (const prop of getResponseSchema.required || insert?.request?.required || []) {
+  for (
+    const prop of getResponseSchema.required || insert?.request?.required || []
+  ) {
     requiredProperties.add(prop);
   }
 
   // Then check property-level annotations.required for the insert method
   if (insert?.request?.properties) {
     const insertMethodId = insert.id; // e.g., "compute.instances.insert"
-    for (const [propName, propDef] of Object.entries(insert.request.properties)) {
+    for (
+      const [propName, propDef] of Object.entries(insert.request.properties)
+    ) {
       if (propDef.annotations?.required?.includes(insertMethodId)) {
         requiredProperties.add(propName);
       }
