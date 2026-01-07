@@ -82,7 +82,11 @@
       />
     </div>
     <AttributeChildLayout
-      v-if="'children' in filtered.tree && filtered.tree.children.length > 0"
+      v-if="
+        'children' in filtered.tree &&
+        filtered.tree.children.length > 0 &&
+        visibleDomainProps
+      "
       defaultOpen
     >
       <template #header><span class="text-sm">domain</span></template>
@@ -258,6 +262,18 @@ watch(
   },
   { immediate: true },
 );
+
+const visibleDomainProps = computed(() => {
+  if ("children" in filtered.tree && filtered.tree.children) {
+    for (const child of filtered.tree.children) {
+      if (child.prop && child.prop.hidden === false) {
+        return true;
+      }
+    }
+  }
+
+  return false;
+});
 
 const route = useRoute();
 
