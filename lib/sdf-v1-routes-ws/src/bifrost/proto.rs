@@ -242,7 +242,9 @@ impl BifrostStarted {
             tokio::select! {
                 // Cancellation token has fired, time to shut down
                 _ = self.token.cancelled() => {
+                    monotonic!(sdf_bifrost_select_branch = 1, branch = "cancellation");
                     trace!("web socket has received cancellation");
+
                     let close_frame = ws::CloseFrame {
                         // Indicates that an endpoint is "going away", such as a server going
                         // down
@@ -269,6 +271,8 @@ impl BifrostStarted {
                 }
                 // Maybe a message from web socket client
                 maybe_ws_client_message = ws_client.recv() => {
+                    monotonic!(sdf_bifrost_select_branch = 1, branch = "ws_client_message");
+
                     match maybe_ws_client_message {
                         // Received web socket text message
                         Some(Ok(ws::Message::Text(payload))) => {
@@ -340,6 +344,8 @@ impl BifrostStarted {
                 }
                 // Maybe a response for the web socket client
                 maybe_response = self.responses_rx.recv() => {
+                    monotonic!(sdf_bifrost_select_branch = 1, branch = "frigg_response");
+
                     match maybe_response {
                         // Received a response
                         Some(response) => {
@@ -375,6 +381,8 @@ impl BifrostStarted {
                 }
                 // NATS message from deployment or workspace subject
                 maybe_nats_message_result = self.nats_messages.next() => {
+                    monotonic!(sdf_bifrost_select_branch = 1, branch = "nats_message");
+
                     match maybe_nats_message_result {
                         // We have a message
                         Some(Ok(payload_with_nats_message)) => {
@@ -429,7 +437,11 @@ impl BifrostStarted {
                         }
                     }
                 }
-                else => break,
+                else => {
+                    monotonic!(sdf_bifrost_select_branch = 1, branch = "else");
+
+                    break;
+                }
             }
         }
 
