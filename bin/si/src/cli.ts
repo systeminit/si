@@ -1616,8 +1616,11 @@ function buildPolicyCommand() {
         .arguments("<file-path:string>")
         .option(
           "-n, --name <name:string>",
-          "Name for the policy evaluation (required)",
-          { required: true },
+          "Name for the policy evaluation (required unless --all is used)",
+        )
+        .option(
+          "--all",
+          "Evaluate all policy files in a directory (only works with directories)",
         )
         .option(
           "-c, --change-set <id:string>",
