@@ -7,6 +7,7 @@ import {
   DISCORD_TAG_REGEX,
   GITHUB_USERNAME_REGEX,
   NAME_REGEX,
+  NICKNAME_REGEX,
   URL_DETECTION_REGEX,
   validate,
   MAX_LENGTH_STANDARD,
@@ -298,7 +299,7 @@ router.patch("/users/:userId", async (ctx) => {
           .nullable(),
         nickname: z.string()
           .max(MAX_LENGTH_STANDARD, `Nickname must be ${MAX_LENGTH_STANDARD} characters or less`)
-          .regex(NAME_REGEX, "Nickname contains invalid characters or URLs")
+          .regex(NICKNAME_REGEX, "Nickname contains invalid characters or URLs")
           .refine((val) => !URL_DETECTION_REGEX.test(val), {
             message: "URLs are not allowed in nickname",
           }),
@@ -315,15 +316,21 @@ router.patch("/users/:userId", async (ctx) => {
           }, { message: "Only HTTP/HTTPS URLs are allowed for profile pictures" })
           .nullable(),
         // Discord username - supports both new format and old discriminator format
-        discordUsername: z.string()
-          .max(MAX_LENGTH_STANDARD, `Discord username must be ${MAX_LENGTH_STANDARD} characters or less`)
-          .regex(DISCORD_TAG_REGEX, "Invalid Discord username format")
-          .nullable(),
+        discordUsername: z.union([
+          z.string()
+            .max(MAX_LENGTH_STANDARD, `Discord username must be ${MAX_LENGTH_STANDARD} characters or less`)
+            .regex(DISCORD_TAG_REGEX, "Invalid Discord username format"),
+          z.literal(""),
+          z.null(),
+        ]).transform((val) => (val === "" ? null : val)),
         // GitHub username - follows official GitHub username rules
-        githubUsername: z.string()
-          .max(MAX_LENGTH_STANDARD, `GitHub username must be ${MAX_LENGTH_STANDARD} characters or less`)
-          .regex(GITHUB_USERNAME_REGEX, "Invalid GitHub username format")
-          .nullable(),
+        githubUsername: z.union([
+          z.string()
+            .max(MAX_LENGTH_STANDARD, `GitHub username must be ${MAX_LENGTH_STANDARD} characters or less`)
+            .regex(GITHUB_USERNAME_REGEX, "Invalid GitHub username format"),
+          z.literal(""),
+          z.null(),
+        ]).transform((val) => (val === "" ? null : val)),
       })
       .partial(),
   );

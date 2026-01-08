@@ -31,23 +31,30 @@ export const DOMAIN_FRIENDLY_INPUT_REGEX = /^[0-9A-Za-zÀ-ÖØ-öø-ÿĀ-ỹ\s',
 // Prevents URLs and domain names from being entered
 export const NAME_REGEX = /^[0-9A-Za-zÀ-ÖØ-öø-ÿĀ-ỹ\s'-]*$/;
 
+// Nickname/username fields - more permissive than NAME_REGEX
+// Allows common username characters: letters, numbers, spaces, and punctuation
+// Includes: - _ ' + & . ! # ( )
+// Still excludes URL-enabling characters: @ / :
+export const NICKNAME_REGEX = /^[0-9A-Za-zÀ-ÖØ-öø-ÿĀ-ỹ\s'_+&.!#()-]*$/;
+
 // Max length constants for input validation
 export const MAX_LENGTH_STANDARD = 256; // For user profile fields and workspace displayName
 export const MAX_LENGTH_EXTENDED = 512; // For workspace description
 
 // GitHub username validation - official GitHub username rules
-// - 1-39 characters
-// - Alphanumeric or single hyphens
+// - Empty string (optional field)
+// - OR 1-39 characters: alphanumeric or single hyphens
 // - Cannot begin or end with hyphen
 // - No consecutive hyphens
-export const GITHUB_USERNAME_REGEX = /^[a-z\d](?:[a-z\d]|-(?=[a-z\d])){0,38}$/i;
+export const GITHUB_USERNAME_REGEX = /^$|^[a-z\d](?:[a-z\d]|-(?=[a-z\d])){0,38}$/i;
 
 // Discord username/tag validation
-// - Prevents reserved words (discord, here, everyone)
+// - Empty string (optional field)
+// - OR prevents reserved words (discord, here, everyone)
 // - Allows new username format (2-32 chars, alphanumeric + underscores/periods)
 // - Allows old discriminator format (username#1234)
 // - No consecutive periods
-export const DISCORD_TAG_REGEX = /^(?!(discord|here|everyone))(((?!.*\.\.)(([\w.]{2,32})))|[^@#:]{2,32}#[\d]{4})$/i;
+export const DISCORD_TAG_REGEX = /^$|^(?!(discord|here|everyone))(((?!.*\.\.)(([\w.]{2,32})))|[^@#:]{2,32}#[\d]{4})$/i;
 
 // Detects common URL patterns to explicitly reject
 export const URL_DETECTION_REGEX = /(?:https?:\/\/|www\.|[a-z0-9-]+\.(com|org|net|io|co|dev|app|ai|uk|edu|gov|xyz|info|biz|me|tv|online|site|tech|cloud|store|blog))/i;

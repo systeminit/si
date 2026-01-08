@@ -4,6 +4,7 @@ import {
   ALLOWED_INPUT_REGEX,
   DOMAIN_FRIENDLY_INPUT_REGEX,
   NAME_REGEX,
+  NICKNAME_REGEX,
   GITHUB_USERNAME_REGEX,
   DISCORD_TAG_REGEX,
   URL_DETECTION_REGEX,
@@ -126,9 +127,71 @@ describe("Validation Helpers - Regex Tests", () => {
     });
   });
 
+  describe("NICKNAME_REGEX", () => {
+    it("should allow valid nicknames with extended character set", () => {
+      const validNicknames = [
+        "JohnDoe",
+        "John Doe",
+        "O'Brien",
+        "Mary-Jane",
+        "user_name", // underscore
+        "name+tag", // plus
+        "Smith & Jones", // ampersand
+        "john.doe", // period
+        "Player#1234", // hash
+        "Cool!", // exclamation
+        "Name (Admin)", // parentheses
+        "José", // accents
+        "François",
+        "Müller",
+        "user_name+tag", // combination
+        "Player#1_Pro!", // multiple special chars
+        "",
+      ];
+
+      for (const nickname of validNicknames) {
+        expect(NICKNAME_REGEX.test(nickname)).toBe(true);
+      }
+    });
+
+    it("should reject nicknames with URL-enabling characters", () => {
+      const invalidNicknames = [
+        "user@example.com", // @ symbol (email-like)
+        "http://example.com", // URL scheme
+        "https://test.com", // URL scheme
+        "/path/to/file", // forward slash
+        "user:password", // colon
+        "ftp://server.com", // URL scheme
+      ];
+
+      for (const nickname of invalidNicknames) {
+        expect(NICKNAME_REGEX.test(nickname)).toBe(false);
+      }
+    });
+
+    it("should be more permissive than NAME_REGEX", () => {
+      // These should pass NICKNAME_REGEX but fail NAME_REGEX
+      const nicknameOnlyValid = [
+        "user_name",
+        "name+tag",
+        "john.doe",
+        "Player#1234",
+        "Cool!",
+        "Name (Admin)",
+        "Smith & Jones",
+      ];
+
+      for (const input of nicknameOnlyValid) {
+        expect(NICKNAME_REGEX.test(input)).toBe(true);
+        expect(NAME_REGEX.test(input)).toBe(false);
+      }
+    });
+  });
+
   describe("GITHUB_USERNAME_REGEX", () => {
     it("should allow valid GitHub usernames", () => {
       const validUsernames = [
+        "", // Empty string (optional field)
         "john-doe",
         "user123",
         "a",
@@ -149,7 +212,6 @@ describe("Validation Helpers - Regex Tests", () => {
         "john--doe", // Consecutive hyphens
         "x".repeat(40), // Too long
         "user@name", // Invalid character
-        "", // Empty
       ];
 
       for (const username of invalidUsernames) {
@@ -161,6 +223,7 @@ describe("Validation Helpers - Regex Tests", () => {
   describe("DISCORD_TAG_REGEX", () => {
     it("should allow valid Discord usernames", () => {
       const validTags = [
+        "", // Empty string (optional field)
         "username",
         "user.name",
         "user_name",
