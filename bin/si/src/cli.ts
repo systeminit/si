@@ -687,8 +687,13 @@ function buildWorkspaceMembersListCommand() {
  */
 function buildWorkspaceMembersManageCommand() {
   return createSubCommand(true)
-    .description("Invite or update workspace members (collaborators by default, or approvers with --approvers)")
-    .option("--approvers <emails:string>", "Comma-separated list of emails to invite/update as approvers")
+    .description(
+      "Invite or update workspace members (collaborators by default, or approvers with --approvers)",
+    )
+    .option(
+      "--approvers <emails:string>",
+      "Comma-separated list of emails to invite/update as approvers",
+    )
     .arguments("[email:string]")
     .action(async (options, email) => {
       await callWorkspaceInvite({
@@ -1599,7 +1604,7 @@ function buildChangeSetCommand() {
  * @internal
  */
 function buildPolicyCommand() {
-  return createSubCommand(true)
+  return createSubCommand()
     .description("Policy management operations")
     .action(function () {
       this.showHelp();
@@ -1614,8 +1619,8 @@ function buildPolicyCommand() {
           "Change set ID or name (defaults to HEAD)",
         )
         .option(
-          "-o, --output <path:string>",
-          "Output directory for evaluation results (defaults to current directory)",
+          "-o, --output-folder <name:string>",
+          "Folder name to organize results (defaults to timestamp)",
         )
         .option(
           "--no-upload",
@@ -1625,7 +1630,9 @@ function buildPolicyCommand() {
           // deno-lint-ignore si-rules/no-deno-env-get
           const claudeAPIKey = Deno.env.get("ANTHROPIC_API_KEY");
           if (!claudeAPIKey) {
-            throw new Error("Your Anthropic API Key needs to be set to the `ANTHROPIC_API_KEY` environment variable, or in a `.env` file.");
+            throw new Error(
+              "Your Anthropic API Key needs to be set to the `ANTHROPIC_API_KEY` environment variable, or in a `.env` file.",
+            );
           }
 
           await callPolicyEvaluate(
