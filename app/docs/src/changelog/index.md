@@ -2,6 +2,21 @@
 
 All notable changes to System Initiative will be documented in this file.
 
+## December 22nd 2025 to January 4th, 2026
+
+### ✨ Added
+
+- Added support for **Cursor** in the SI AI Agent.
+- Added the ability to **upgrade a component** from the CLI.
+- Added an option to **restart workspace onboarding** in the Web App.
+- Added the ability to **invite users to a workspace** via the CLI.
+
+### 🔄 Changed
+
+- Reduced AI Agent token usage through improved caching and prompt updates.
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/afE-1yH9cG8?si=1_c_NJ3HUBp5-K-5" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+
 ## December 15th to 19th, 2025
 
 ### ✨ Added
