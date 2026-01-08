@@ -551,6 +551,10 @@ impl Component {
         ctx: &DalContext,
         id: ComponentId,
     ) -> ComponentResult<Option<serde_json::Value>> {
+        if !Self::exists_by_id(ctx, id).await? {
+            return Ok(None);
+        }
+
         let schema_variant_id = Self::schema_variant_id(ctx, id).await?;
         let root_prop_id =
             Prop::find_prop_id_by_path(ctx, schema_variant_id, &PropPath::new(["root"])).await?;
@@ -565,7 +569,6 @@ impl Component {
             }
         }
 
-        // Should this be an error?
         Ok(None)
     }
 
