@@ -17,8 +17,11 @@ import pprint
 import re  # noqa: F401
 import json
 
-from pydantic import BaseModel, ConfigDict, Field, StrictStr
+from pydantic import BaseModel, ConfigDict, Field, StrictBool, StrictStr
 from typing import Any, ClassVar, Dict, List, Optional
+from system_initiative_api_client.models.function_relationship_v1 import FunctionRelationshipV1
+from system_initiative_api_client.models.management_relationship_v1 import ManagementRelationshipV1
+from system_initiative_api_client.models.subscription_relationship_v1 import SubscriptionRelationshipV1
 from typing import Optional, Set
 from typing_extensions import Self
 
@@ -26,11 +29,21 @@ class ComponentDetailsV1(BaseModel):
     """
     ComponentDetailsV1
     """ # noqa: E501
+    action_functions: Optional[List[FunctionRelationshipV1]] = Field(default=None, alias="actionFunctions")
     codegen: Optional[Any] = None
     component_id: StrictStr = Field(alias="componentId")
+    diff_status: Optional[StrictStr] = Field(default=None, alias="diffStatus")
+    has_diff: Optional[StrictBool] = Field(default=None, alias="hasDiff")
+    has_resource: Optional[StrictBool] = Field(default=None, alias="hasResource")
+    management_functions: Optional[List[FunctionRelationshipV1]] = Field(default=None, alias="managementFunctions")
+    manages: Optional[List[ManagementRelationshipV1]] = None
     name: StrictStr
+    qualification_functions: Optional[List[FunctionRelationshipV1]] = Field(default=None, alias="qualificationFunctions")
+    resource_id: Optional[StrictStr] = Field(default=None, alias="resourceId")
+    resource_status: Optional[StrictStr] = Field(default=None, alias="resourceStatus")
     schema_name: StrictStr = Field(alias="schemaName")
-    __properties: ClassVar[List[str]] = ["codegen", "componentId", "name", "schemaName"]
+    subscriptions: Optional[List[SubscriptionRelationshipV1]] = None
+    __properties: ClassVar[List[str]] = ["actionFunctions", "codegen", "componentId", "diffStatus", "hasDiff", "hasResource", "managementFunctions", "manages", "name", "qualificationFunctions", "resourceId", "resourceStatus", "schemaName", "subscriptions"]
 
     model_config = ConfigDict(
         populate_by_name=True,
@@ -71,10 +84,70 @@ class ComponentDetailsV1(BaseModel):
             exclude=excluded_fields,
             exclude_none=True,
         )
+        # override the default output from pydantic by calling `to_dict()` of each item in action_functions (list)
+        _items = []
+        if self.action_functions:
+            for _item_action_functions in self.action_functions:
+                if _item_action_functions:
+                    _items.append(_item_action_functions.to_dict())
+            _dict['actionFunctions'] = _items
+        # override the default output from pydantic by calling `to_dict()` of each item in management_functions (list)
+        _items = []
+        if self.management_functions:
+            for _item_management_functions in self.management_functions:
+                if _item_management_functions:
+                    _items.append(_item_management_functions.to_dict())
+            _dict['managementFunctions'] = _items
+        # override the default output from pydantic by calling `to_dict()` of each item in manages (list)
+        _items = []
+        if self.manages:
+            for _item_manages in self.manages:
+                if _item_manages:
+                    _items.append(_item_manages.to_dict())
+            _dict['manages'] = _items
+        # override the default output from pydantic by calling `to_dict()` of each item in qualification_functions (list)
+        _items = []
+        if self.qualification_functions:
+            for _item_qualification_functions in self.qualification_functions:
+                if _item_qualification_functions:
+                    _items.append(_item_qualification_functions.to_dict())
+            _dict['qualificationFunctions'] = _items
+        # override the default output from pydantic by calling `to_dict()` of each item in subscriptions (list)
+        _items = []
+        if self.subscriptions:
+            for _item_subscriptions in self.subscriptions:
+                if _item_subscriptions:
+                    _items.append(_item_subscriptions.to_dict())
+            _dict['subscriptions'] = _items
         # set to None if codegen (nullable) is None
         # and model_fields_set contains the field
         if self.codegen is None and "codegen" in self.model_fields_set:
             _dict['codegen'] = None
+
+        # set to None if diff_status (nullable) is None
+        # and model_fields_set contains the field
+        if self.diff_status is None and "diff_status" in self.model_fields_set:
+            _dict['diffStatus'] = None
+
+        # set to None if has_diff (nullable) is None
+        # and model_fields_set contains the field
+        if self.has_diff is None and "has_diff" in self.model_fields_set:
+            _dict['hasDiff'] = None
+
+        # set to None if has_resource (nullable) is None
+        # and model_fields_set contains the field
+        if self.has_resource is None and "has_resource" in self.model_fields_set:
+            _dict['hasResource'] = None
+
+        # set to None if resource_id (nullable) is None
+        # and model_fields_set contains the field
+        if self.resource_id is None and "resource_id" in self.model_fields_set:
+            _dict['resourceId'] = None
+
+        # set to None if resource_status (nullable) is None
+        # and model_fields_set contains the field
+        if self.resource_status is None and "resource_status" in self.model_fields_set:
+            _dict['resourceStatus'] = None
 
         return _dict
 
@@ -88,10 +161,20 @@ class ComponentDetailsV1(BaseModel):
             return cls.model_validate(obj)
 
         _obj = cls.model_validate({
+            "actionFunctions": [FunctionRelationshipV1.from_dict(_item) for _item in obj["actionFunctions"]] if obj.get("actionFunctions") is not None else None,
             "codegen": obj.get("codegen"),
             "componentId": obj.get("componentId"),
+            "diffStatus": obj.get("diffStatus"),
+            "hasDiff": obj.get("hasDiff"),
+            "hasResource": obj.get("hasResource"),
+            "managementFunctions": [FunctionRelationshipV1.from_dict(_item) for _item in obj["managementFunctions"]] if obj.get("managementFunctions") is not None else None,
+            "manages": [ManagementRelationshipV1.from_dict(_item) for _item in obj["manages"]] if obj.get("manages") is not None else None,
             "name": obj.get("name"),
-            "schemaName": obj.get("schemaName")
+            "qualificationFunctions": [FunctionRelationshipV1.from_dict(_item) for _item in obj["qualificationFunctions"]] if obj.get("qualificationFunctions") is not None else None,
+            "resourceId": obj.get("resourceId"),
+            "resourceStatus": obj.get("resourceStatus"),
+            "schemaName": obj.get("schemaName"),
+            "subscriptions": [SubscriptionRelationshipV1.from_dict(_item) for _item in obj["subscriptions"]] if obj.get("subscriptions") is not None else None
         })
         return _obj
 

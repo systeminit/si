@@ -35,10 +35,82 @@ class TestComponentDetailsV1(unittest.TestCase):
         model = ComponentDetailsV1()
         if include_optional:
             return ComponentDetailsV1(
+                action_functions = [
+                    system_initiative_api_client.models.function_relationship_v1.FunctionRelationshipV1(
+                        depends_on = [
+                            ''
+                            ], 
+                        execution_history = [
+                            system_initiative_api_client.models.execution_history_entry.ExecutionHistoryEntry(
+                                func_run_id = '', 
+                                started_at = datetime.datetime.strptime('2013-10-20 19:20:30.00', '%Y-%m-%d %H:%M:%S.%f'), 
+                                state = '', )
+                            ], 
+                        execution_status = system_initiative_api_client.models.function_execution_status_v1.FunctionExecutionStatusV1(
+                            action_id = '', 
+                            func_run_id = '', 
+                            has_active_run = True, 
+                            state = '', ), 
+                        function_name = '', )
+                    ],
                 codegen = None,
                 component_id = '',
+                diff_status = '',
+                has_diff = True,
+                has_resource = True,
+                management_functions = [
+                    system_initiative_api_client.models.function_relationship_v1.FunctionRelationshipV1(
+                        depends_on = [
+                            ''
+                            ], 
+                        execution_history = [
+                            system_initiative_api_client.models.execution_history_entry.ExecutionHistoryEntry(
+                                func_run_id = '', 
+                                started_at = datetime.datetime.strptime('2013-10-20 19:20:30.00', '%Y-%m-%d %H:%M:%S.%f'), 
+                                state = '', )
+                            ], 
+                        execution_status = system_initiative_api_client.models.function_execution_status_v1.FunctionExecutionStatusV1(
+                            action_id = '', 
+                            func_run_id = '', 
+                            has_active_run = True, 
+                            state = '', ), 
+                        function_name = '', )
+                    ],
+                manages = [
+                    system_initiative_api_client.models.management_relationship_v1.ManagementRelationshipV1(
+                        to_component_id = '', 
+                        to_component_name = '', )
+                    ],
                 name = '',
-                schema_name = ''
+                qualification_functions = [
+                    system_initiative_api_client.models.function_relationship_v1.FunctionRelationshipV1(
+                        depends_on = [
+                            ''
+                            ], 
+                        execution_history = [
+                            system_initiative_api_client.models.execution_history_entry.ExecutionHistoryEntry(
+                                func_run_id = '', 
+                                started_at = datetime.datetime.strptime('2013-10-20 19:20:30.00', '%Y-%m-%d %H:%M:%S.%f'), 
+                                state = '', )
+                            ], 
+                        execution_status = system_initiative_api_client.models.function_execution_status_v1.FunctionExecutionStatusV1(
+                            action_id = '', 
+                            func_run_id = '', 
+                            has_active_run = True, 
+                            state = '', ), 
+                        function_name = '', )
+                    ],
+                resource_id = '',
+                resource_status = '',
+                schema_name = '',
+                subscriptions = [
+                    system_initiative_api_client.models.subscription_relationship_v1.SubscriptionRelationshipV1(
+                        current_value = null, 
+                        from_path = '', 
+                        to_component_id = '', 
+                        to_component_name = '', 
+                        to_path = '', )
+                    ]
             )
         else:
             return ComponentDetailsV1(

@@ -24,6 +24,7 @@ __all__ = [
     "DebugFuncsApi",
     "FuncsApi",
     "ManagementFuncsApi",
+    "PolicyReportsApi",
     "RootApi",
     "SchemasApi",
     "SearchApi",
@@ -102,6 +103,7 @@ __all__ = [
     "ExecDebugFuncV1Response",
     "ExecuteManagementFunctionV1Request",
     "ExecuteManagementFunctionV1Response",
+    "ExecutionHistoryEntry",
     "FindComponentV1Params",
     "FindSchemaV1Params",
     "FindSchemaV1Response",
@@ -109,6 +111,8 @@ __all__ = [
     "FuncRunLogViewV1",
     "FuncRunV1RequestPath",
     "FuncRunViewV1",
+    "FunctionExecutionStatusV1",
+    "FunctionRelationshipV1",
     "GetActionsV1Response",
     "GetChangeSetV1Response",
     "GetComponentResourceDataV1Response",
@@ -134,6 +138,7 @@ __all__ = [
     "ManagementFunctionReference",
     "ManagementFunctionReferenceOneOf",
     "ManagementFunctionReferenceOneOf1",
+    "ManagementRelationshipV1",
     "ManagingConnectionViewV1",
     "Member",
     "MergeStatusV1Response",
@@ -166,6 +171,7 @@ __all__ = [
     "SecretPropKey",
     "SecretV1",
     "SourceViewV1",
+    "SubscriptionRelationshipV1",
     "SystemStatusResponse",
     "UnlockFuncV1Request",
     "UnlockFuncV1Response",
@@ -180,6 +186,8 @@ __all__ = [
     "UpdateSecretV1Response",
     "UpdateWorkspaceRequest",
     "UpgradeComponentV1Response",
+    "UploadPolicyReportV1Request",
+    "UploadPolicyReportV1Response",
     "ViewV1",
     "WhoamiResponse",
     "Workspace",
@@ -193,6 +201,7 @@ from system_initiative_api_client.api.components_api import ComponentsApi as Com
 from system_initiative_api_client.api.debug_funcs_api import DebugFuncsApi as DebugFuncsApi
 from system_initiative_api_client.api.funcs_api import FuncsApi as FuncsApi
 from system_initiative_api_client.api.management_funcs_api import ManagementFuncsApi as ManagementFuncsApi
+from system_initiative_api_client.api.policy_reports_api import PolicyReportsApi as PolicyReportsApi
 from system_initiative_api_client.api.root_api import RootApi as RootApi
 from system_initiative_api_client.api.schemas_api import SchemasApi as SchemasApi
 from system_initiative_api_client.api.search_api import SearchApi as SearchApi
@@ -275,6 +284,7 @@ from system_initiative_api_client.models.exec_debug_func_v1_request import ExecD
 from system_initiative_api_client.models.exec_debug_func_v1_response import ExecDebugFuncV1Response as ExecDebugFuncV1Response
 from system_initiative_api_client.models.execute_management_function_v1_request import ExecuteManagementFunctionV1Request as ExecuteManagementFunctionV1Request
 from system_initiative_api_client.models.execute_management_function_v1_response import ExecuteManagementFunctionV1Response as ExecuteManagementFunctionV1Response
+from system_initiative_api_client.models.execution_history_entry import ExecutionHistoryEntry as ExecutionHistoryEntry
 from system_initiative_api_client.models.find_component_v1_params import FindComponentV1Params as FindComponentV1Params
 from system_initiative_api_client.models.find_schema_v1_params import FindSchemaV1Params as FindSchemaV1Params
 from system_initiative_api_client.models.find_schema_v1_response import FindSchemaV1Response as FindSchemaV1Response
@@ -282,6 +292,8 @@ from system_initiative_api_client.models.force_apply_change_set_v1_response impo
 from system_initiative_api_client.models.func_run_log_view_v1 import FuncRunLogViewV1 as FuncRunLogViewV1
 from system_initiative_api_client.models.func_run_v1_request_path import FuncRunV1RequestPath as FuncRunV1RequestPath
 from system_initiative_api_client.models.func_run_view_v1 import FuncRunViewV1 as FuncRunViewV1
+from system_initiative_api_client.models.function_execution_status_v1 import FunctionExecutionStatusV1 as FunctionExecutionStatusV1
+from system_initiative_api_client.models.function_relationship_v1 import FunctionRelationshipV1 as FunctionRelationshipV1
 from system_initiative_api_client.models.get_actions_v1_response import GetActionsV1Response as GetActionsV1Response
 from system_initiative_api_client.models.get_change_set_v1_response import GetChangeSetV1Response as GetChangeSetV1Response
 from system_initiative_api_client.models.get_component_resource_data_v1_response import GetComponentResourceDataV1Response as GetComponentResourceDataV1Response
@@ -307,6 +319,7 @@ from system_initiative_api_client.models.management_func_job_state_v1_request_pa
 from system_initiative_api_client.models.management_function_reference import ManagementFunctionReference as ManagementFunctionReference
 from system_initiative_api_client.models.management_function_reference_one_of import ManagementFunctionReferenceOneOf as ManagementFunctionReferenceOneOf
 from system_initiative_api_client.models.management_function_reference_one_of1 import ManagementFunctionReferenceOneOf1 as ManagementFunctionReferenceOneOf1
+from system_initiative_api_client.models.management_relationship_v1 import ManagementRelationshipV1 as ManagementRelationshipV1
 from system_initiative_api_client.models.managing_connection_view_v1 import ManagingConnectionViewV1 as ManagingConnectionViewV1
 from system_initiative_api_client.models.member import Member as Member
 from system_initiative_api_client.models.merge_status_v1_response import MergeStatusV1Response as MergeStatusV1Response
@@ -339,6 +352,7 @@ from system_initiative_api_client.models.secret_form_data_v1 import SecretFormDa
 from system_initiative_api_client.models.secret_prop_key import SecretPropKey as SecretPropKey
 from system_initiative_api_client.models.secret_v1 import SecretV1 as SecretV1
 from system_initiative_api_client.models.source_view_v1 import SourceViewV1 as SourceViewV1
+from system_initiative_api_client.models.subscription_relationship_v1 import SubscriptionRelationshipV1 as SubscriptionRelationshipV1
 from system_initiative_api_client.models.system_status_response import SystemStatusResponse as SystemStatusResponse
 from system_initiative_api_client.models.unlock_func_v1_request import UnlockFuncV1Request as UnlockFuncV1Request
 from system_initiative_api_client.models.unlock_func_v1_response import UnlockFuncV1Response as UnlockFuncV1Response
@@ -353,6 +367,8 @@ from system_initiative_api_client.models.update_secret_v1_request import UpdateS
 from system_initiative_api_client.models.update_secret_v1_response import UpdateSecretV1Response as UpdateSecretV1Response
 from system_initiative_api_client.models.update_workspace_request import UpdateWorkspaceRequest as UpdateWorkspaceRequest
 from system_initiative_api_client.models.upgrade_component_v1_response import UpgradeComponentV1Response as UpgradeComponentV1Response
+from system_initiative_api_client.models.upload_policy_report_v1_request import UploadPolicyReportV1Request as UploadPolicyReportV1Request
+from system_initiative_api_client.models.upload_policy_report_v1_response import UploadPolicyReportV1Response as UploadPolicyReportV1Response
 from system_initiative_api_client.models.view_v1 import ViewV1 as ViewV1
 from system_initiative_api_client.models.whoami_response import WhoamiResponse as WhoamiResponse
 from system_initiative_api_client.models.workspace import Workspace as Workspace
