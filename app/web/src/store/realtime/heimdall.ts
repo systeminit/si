@@ -784,6 +784,14 @@ const waitForInitCompletion = (): Promise<void> => {
 
 const MUSPELHEIM_CONCURRENCY = 1;
 
+/**
+ * These changeSetId's belong to any workspace that the elected leader
+ * worker sends back to us. Users have permissions to many workspaces,
+ * therefore not all changeSetIds here belong to the workspace in the main
+ * browser thread.
+ *
+ * Be careful of relying on these IDs elsewhere in the application.
+ */
 export const muspelheimStatuses = ref<{ [key: string]: boolean }>({});
 watch(
   muspelheimStatuses,
@@ -793,20 +801,6 @@ watch(
   },
   { deep: true },
 );
-
-export const muspelheimInProgress = computed(() => {
-  const muspelheimStates = muspelheimStatuses.value;
-  if (Object.keys(muspelheimStates).length === 0) {
-    return true;
-  }
-
-  for (const changeSetId in muspelheimStates) {
-    if (!muspelheimStates[changeSetId]) {
-      return true;
-    }
-  }
-  return false;
-});
 
 const fetchOpenChangeSets = async (
   workspaceId: WorkspacePk,

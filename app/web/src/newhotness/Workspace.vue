@@ -74,7 +74,7 @@
     >
       <Lobby
         v-if="!tokenFail && !changeSetRetrievalError && lobby"
-        :loadingSteps="_.values(muspelheimStatuses)"
+        :loadingSteps="_.values(workspaceMuspelheimStatuses)"
       />
     </Transition>
 
@@ -234,8 +234,6 @@ const realtimeStore = useRealtimeStore();
 const workspacePk = computed(() => props.workspacePk);
 const changeSetId = computed(() => props.changeSetId);
 
-const coldStartInProgress = computed(() => heimdall.muspelheimInProgress.value);
-
 const haveWSConn = computed<boolean>(() => {
   return !!heimdall.wsConnections.value[props.workspacePk];
 });
@@ -244,6 +242,37 @@ const haveWSConn = computed<boolean>(() => {
 const queriesEnabled = computed(
   () => heimdall.initCompleted.value && !coldStartInProgress.value,
 );
+
+// filter out change sets that don't belong to this workspace
+// (these come from the elected tab that is listening to all open workspaces)
+// filter out change sets that are no longer open
+// to accomplish both at the same time, cross reference with the
+// list of change sets from the HTTP GET to this workspace URL (e.g. `openChangeSets`)
+const workspaceMuspelheimStatuses = computed(() => {
+  const loaded: Record<string, boolean> = {};
+  const ids = openChangeSets.value.map((c) => c.id);
+  Object.entries(muspelheimStatuses.value).forEach(([csId, passfail]) => {
+    if (ids.includes(csId)) {
+      loaded[csId] = passfail;
+    }
+  });
+  return loaded;
+});
+
+const muspelheimInProgress = computed(() => {
+  if (Object.keys(workspaceMuspelheimStatuses.value).length === 0) {
+    return true;
+  }
+
+  // if there are any false values we are in progress
+  if ([...Object.values(workspaceMuspelheimStatuses.value)].some((b) => !b)) {
+    return true;
+  }
+
+  return false;
+});
+
+const coldStartInProgress = computed(() => muspelheimInProgress.value);
 
 const countsQueryKey = computed(() => {
   return [
