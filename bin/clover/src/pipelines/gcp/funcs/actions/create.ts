@@ -121,7 +121,11 @@ async function main(component: Input): Promise<Output> {
 
     if (!resp.ok) {
       const errorText = await resp.text();
-      const error = new Error(`Unable to create resource; API returned ${resp.status} ${resp.statusText}: ${errorText}`) as any;
+      const error = new Error(`Unable to create resource;
+Called "${url}"
+API returned ${resp.status} ${resp.statusText}:
+${errorText}`
+      ) as any;
       error.status = resp.status;
       error.body = errorText;
       throw error;

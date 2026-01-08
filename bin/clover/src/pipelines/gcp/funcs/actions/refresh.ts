@@ -109,7 +109,13 @@ async function main(component: Input): Promise<Output> {
       }
 
       const errorText = await resp.text();
-      const error = new Error(`Unable to refresh resource; API returned ${resp.status} ${resp.statusText}: ${errorText}`) as any;
+
+      const error = new Error(`Unable to refresh resource;
+Called "${url}"
+API returned ${resp.status} ${resp.statusText}:
+${errorText}`
+      ) as any;
+
       error.status = resp.status;
       error.body = errorText;
       throw error;
