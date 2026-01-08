@@ -3,8 +3,8 @@ import {
   addPropSuggestSource,
   createObjectProp,
   createScalarProp,
-  toPropPath,
   ExpandedPropSpec,
+  toPropPath,
 } from "../../../spec/props.ts";
 import { GcpSchema } from "../schema.ts";
 import _ from "lodash";
@@ -12,6 +12,8 @@ import _ from "lodash";
 export interface PropUsageMap {
   createOnly: string[];
   updatable: string[];
+  excluded: string[];
+  pathParameters: string[];
 }
 
 export function addDefaultProps(specs: ExpandedPkgSpec[]): ExpandedPkgSpec[] {
@@ -156,6 +158,31 @@ export function addDefaultProps(specs: ExpandedPkgSpec[]): ExpandedPkgSpec[] {
       extraProp.entries.push(resourceTypeProp);
     }
 
+    // Store availableScopes for scope handling
+    if (gcpSchema.availableScopes && gcpSchema.availableScopes.length > 0) {
+      const scopesProp = createScalarProp(
+        "availableScopes",
+        "string",
+        extraProp.metadata.propPath,
+        false,
+      );
+      scopesProp.data.hidden = true;
+      scopesProp.data.defaultValue = JSON.stringify(gcpSchema.availableScopes);
+      extraProp.entries.push(scopesProp);
+    }
+
+    // For global-only resources, set the location prop to default "global"
+    // This allows auto-construction of parent path without user input
+    if (gcpSchema.isGlobalOnly) {
+      const locationProp = domain.entries.find((p: ExpandedPropSpec) =>
+        p.name === "location"
+      );
+      if (locationProp) {
+        locationProp.data.hidden = true;
+        locationProp.data.defaultValue = "global";
+      }
+    }
+
     // Create PropUsageMap for filtering createOnly properties in updates
     {
       const propUsageMapProp = createScalarProp(
@@ -164,9 +191,40 @@ export function addDefaultProps(specs: ExpandedPkgSpec[]): ExpandedPkgSpec[] {
         extraProp.metadata.propPath,
         false,
       );
+
+      // Collect path parameters from all API methods that send request bodies
+      const pathParamsSet = new Set<string>();
+      if (gcpSchema.methods.insert?.parameterOrder) {
+        gcpSchema.methods.insert.parameterOrder.forEach((p: string) =>
+          pathParamsSet.add(p)
+        );
+      }
+      if (gcpSchema.methods.update?.parameterOrder) {
+        gcpSchema.methods.update.parameterOrder.forEach((p: string) =>
+          pathParamsSet.add(p)
+        );
+      }
+      if (gcpSchema.methods.patch?.parameterOrder) {
+        gcpSchema.methods.patch.parameterOrder.forEach((p: string) =>
+          pathParamsSet.add(p)
+        );
+      }
+
+      // Add 'location' to pathParameters for resources that use it in URL construction
+      // (e.g., projects/{project}/locations/{location}/keys)
+      // This prevents 'location' from being sent in the request body
+      if (
+        gcpSchema.isGlobalOnly ||
+        domain.entries.some((p: ExpandedPropSpec) => p.name === "location")
+      ) {
+        pathParamsSet.add("location");
+      }
+
       const propUsageMap: PropUsageMap = {
         createOnly: [],
         updatable: [],
+        excluded: [],
+        pathParameters: Array.from(pathParamsSet),
       };
 
       // Walk the domain properties and categorize them

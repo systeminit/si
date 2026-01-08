@@ -53,12 +53,20 @@ async function main(component: Input): Promise<Output> {
         paramValue = _.get(component.properties, ["resource", "payload", "parent"]) ||
                      _.get(component.properties, ["domain", "parent"]);
         if (!paramValue && projectId) {
-          const location = _.get(component.properties, ["resource", "payload", "location"]) ||
-                          _.get(component.properties, ["domain", "location"]) ||
-                          _.get(component.properties, ["domain", "zone"]) ||
-                          _.get(component.properties, ["domain", "region"]);
-          if (location) {
-            paramValue = `projects/${projectId}/locations/${location}`;
+          // Only auto-construct for project-only resources
+          // Multi-scope resources require explicit parent
+          const availableScopesJson = _.get(component.properties, ["domain", "extra", "availableScopes"]);
+          const availableScopes = availableScopesJson ? JSON.parse(availableScopesJson) : [];
+          const isProjectOnly = availableScopes.length === 1 && availableScopes[0] === "projects";
+
+          if (isProjectOnly) {
+            const location = _.get(component.properties, ["resource", "payload", "location"]) ||
+                            _.get(component.properties, ["domain", "location"]) ||
+                            _.get(component.properties, ["domain", "zone"]) ||
+                            _.get(component.properties, ["domain", "region"]);
+            if (location) {
+              paramValue = `projects/${projectId}/locations/${location}`;
+            }
           }
         }
       } else {

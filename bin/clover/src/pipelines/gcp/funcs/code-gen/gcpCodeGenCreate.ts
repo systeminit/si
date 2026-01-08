@@ -7,13 +7,22 @@ async function main(component: Input): Promise<Output> {
   const propUsageMapJson = payload.extra?.PropUsageMap;
   delete payload.extra;
 
-  // Remove excluded properties (props that are only used for URL construction, not request body)
+  // Remove properties that shouldn't be in the request body
   if (propUsageMapJson) {
     try {
       const propUsageMap = JSON.parse(propUsageMapJson);
+
       if (Array.isArray(propUsageMap.excluded)) {
         for (const excludedProp of propUsageMap.excluded) {
           delete payload[excludedProp];
+        }
+      }
+
+      // Remove path parameters (like 'parent', 'project', etc.)
+      // These are used in the URL path, not the request body
+      if (Array.isArray(propUsageMap.pathParameters)) {
+        for (const pathParam of propUsageMap.pathParameters) {
+          delete payload[pathParam];
         }
       }
     } catch {

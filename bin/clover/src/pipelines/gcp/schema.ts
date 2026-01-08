@@ -103,7 +103,8 @@ export interface GcpSchema extends SuperSchema {
   resourcePath: string[];
   baseUrl: string;
   documentationLink?: string;
-  // API methods for CRUD operations
+  availableScopes?: string[];
+  isGlobalOnly?: boolean;
   methods: {
     get?: GcpMethod;
     insert?: GcpMethod;
