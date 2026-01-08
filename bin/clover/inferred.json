@@ -10380,6 +10380,9 @@
   "The ID of the VPC.": {
     "enum": null
   },
+  "The ID of the VPN concentrator to associate with the VPN connection.": {
+    "enum": null
+  },
   "The ID of the VPN connection.": {
     "enum": null
   },
@@ -11782,6 +11785,9 @@
     "enum": null
   },
   "The confidence threshold for triggering guardrail actions based on Automated Reasoning policy violations.": {
+    "enum": null
+  },
+  "The confidence verdict threshold level.": {
     "enum": null
   },
   "The configValue for configuring audit checks.": {
@@ -19057,6 +19063,9 @@
     "enum": null
   },
   "Whether emails sent with this configuration set have optimized delivery algorithm enabled.": {
+    "enum": null
+  },
+  "Whether the condition threshold is enabled or disabled.": {
     "enum": null
   },
   "Whether the rule is active after it is created. If this parameter is equal to ``ENABLED``, ASH applies the rule to findings and finding updates after the rule is created.": {
