@@ -1,25 +1,29 @@
 /**
  * Policy Evaluation Module - Main orchestrator for policy evaluation
  *
- * This module coordinates the five-stage policy evaluation process:
+ * This module coordinates the policy evaluation process:
  * 1. Extract policy structure from markdown
  * 2. Collect source data from System Initiative
  * 3. Evaluate policy compliance using Claude
  * 4. Generate markdown report
  * 5. Upload results (coming soon)
  *
+ * All files are written directly to the output folder (timestamped or custom-named)
+ * to avoid unnecessary file operations.
+ *
  * @module
  */
 
 import { Context } from "../context.ts";
 import { resolveChangeSet } from "../change-set/utils.ts";
+import { resolve } from "@std/path";
 
 /**
  * Options for the policy evaluate command
  */
 export interface PolicyEvaluateOptions {
-  /** Output directory for evaluation results (defaults to current directory) */
-  output?: string;
+  /** Folder name to organize results (defaults to timestamp) */
+  outputFolder?: string;
   /** Change set ID or name (defaults to HEAD) */
   changeSet?: string;
   /** Skip uploading the policy evaluation results */
@@ -27,10 +31,10 @@ export interface PolicyEvaluateOptions {
 }
 
 /**
- * Evaluates a policy file through the five-stage process.
+ * Evaluates a policy file through the policy evaluation process.
  *
  * @param policyFilePath - Path to the policy markdown file
- * @param options - Command options including output directory, change set, and upload flag
+ * @param options - Command options including output folder, change set, and upload flag
  */
 export async function callPolicyEvaluate(
   policyFilePath: string,
@@ -44,16 +48,27 @@ export async function callPolicyEvaluate(
       path: policyFilePath,
     });
 
-    // Determine output directory
-    const outputDir = options.output || Deno.cwd();
+    // Determine output directory and folder name
     const baseName = policyFilePath.split("/").pop()?.replace(/\.md$/, "") ||
       "policy";
 
-    // Create output paths
-    const extractedPolicyPath = `${outputDir}/${baseName}-extracted.json`;
-    const sourceDataPath = `${outputDir}/${baseName}-source-data.json`;
-    const evaluationPath = `${outputDir}/${baseName}-evaluation.json`;
-    const reportPath = `${outputDir}/${baseName}-report.md`;
+    // Determine final output path:
+    // - If outputFolder is specified, use it in the current directory
+    // - Otherwise, create a timestamp folder in the current directory
+    // Always resolve to absolute paths to avoid working directory issues
+    const folderName = options.outputFolder ||
+      new Date().toISOString().split('.')[0] + 'Z';
+    const finalOutputPath = resolve(Deno.cwd(), folderName);
+
+    // Create output folder upfront
+    await Deno.mkdir(finalOutputPath, { recursive: true });
+    ctx.logger.debug("Created output folder: {path}", { path: finalOutputPath });
+
+    // Create output paths - write directly to final folder
+    const extractedPolicyPath = `${finalOutputPath}/${baseName}-extracted.json`;
+    const sourceDataPath = `${finalOutputPath}/${baseName}-source-data.json`;
+    const evaluationPath = `${finalOutputPath}/${baseName}-evaluation.json`;
+    const reportPath = `${finalOutputPath}/report.md`;
 
     // Read policy file
     ctx.logger.debug("Reading policy file...");
@@ -96,7 +111,7 @@ export async function callPolicyEvaluate(
 
     // Stage 4: Generate report
     const { generateReport } = await import("./generate_report.ts");
-    const reportName = await generateReport(
+    await generateReport(
       extractedPolicy,
       sourceData,
       evaluation,
@@ -105,12 +120,20 @@ export async function callPolicyEvaluate(
       reportPath,
     );
 
+    // All files have been written to the output folder
+    ctx.logger.info("Files organized in: {folder}", { folder: finalOutputPath });
+
     // Stage 5: Upload policy evaluation results
     ctx.logger.info("Stage 5: Uploading policy evaluation results...");
     if (options.noUpload) {
       ctx.logger.info("Skipping upload as per user request");
     } else {
       ctx.logger.info("Uploading coming soon");
+      // When implementing upload, use:
+      // - reportPath (report.md)
+      // - extractedPolicyPath (${baseName}-extracted.json)
+      // - sourceDataPath (${baseName}-source-data.json)
+      // - evaluationPath (${baseName}-evaluation.json)
     }
 
     // Display summary
@@ -130,7 +153,7 @@ export async function callPolicyEvaluate(
       ctx.logger.info("Result: PASS");
     }
 
-    ctx.logger.info("Report: {path}", { path: reportName });
+    ctx.logger.info("Report: {path}", { path: reportPath });
 
     // // Track analytics
     // ctx.analytics.trackEvent("policy evaluate", {

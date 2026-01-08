@@ -3,11 +3,9 @@
  * Deterministically generates markdown report from all collected data
  */
 
-import { join } from "node:path";
 import type { ExtractedPolicy } from './extract_policy.ts';
 import type { SourceDataCollection, ComponentData } from './collect_source_data.ts';
 import type { EvaluationResult } from './evaluate_policy.ts';
-import * as path from 'node:path';
 import { Context } from "../context.ts";
 
 /**
@@ -164,11 +162,10 @@ export async function generateReport(
   report += generateSourceDataSection(extractedPolicy, sourceData, evaluation, workspaceId, changeSetId);
 
   // Write to file
-  const filename = join(path.dirname(outputPath), `report-${currentDate}.md`)
-  await Deno.writeTextFile(filename, report);
+  await Deno.writeTextFile(outputPath, report);
 
   ctx.logger.info('Report generation complete');
-  ctx.logger.info('Output: {filename}', { filename });
+  ctx.logger.info('Output: {filename}', { filename: outputPath });
 
-  return filename;
+  return outputPath;
 }
