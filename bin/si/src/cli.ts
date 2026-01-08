@@ -120,7 +120,10 @@ import {
   callWorkspaceMemberList,
   type WorkspaceMemberListOptions,
 } from "./workspace/member-list.ts";
-import { resolveChangeSet } from "./change-set/utils.ts";
+import {
+  callPolicyEvaluate,
+  type PolicyEvaluateOptions,
+} from "./policy/evaluate.ts";
 
 /**
  * Global options available to all commands
@@ -1614,6 +1617,10 @@ function buildPolicyCommand() {
           "-o, --output <path:string>",
           "Output directory for evaluation results (defaults to current directory)",
         )
+        .option(
+          "--no-upload",
+          "Skip uploading the policy evaluation results",
+        )
         .action(async (options, filePath) => {
           // deno-lint-ignore si-rules/no-deno-env-get
           const claudeAPIKey = Deno.env.get("ANTHROPIC_API_KEY");
@@ -1621,123 +1628,12 @@ function buildPolicyCommand() {
             throw new Error("Your Anthropic API Key needs to be set to the `ANTHROPIC_API_KEY` environment variable, or in a `.env` file.");
           }
 
-          await callPolicyEvaluate(filePath as string, options);
+          await callPolicyEvaluate(
+            filePath as string,
+            options as PolicyEvaluateOptions,
+          );
         }),
     ).hidden();
-}
-
-/**
- * Evaluates a policy file through the four-stage process.
- *
- * @param policyFilePath - Path to the policy markdown file
- * @param options - Command options including output directory and change set
- */
-async function callPolicyEvaluate(
-  policyFilePath: string,
-  options: { output?: string; changeSet?: string },
-) {
-  const ctx = Context.instance();
-  const workspaceId = Context.workspaceId();
-
-  try {
-    ctx.logger.info("Starting policy evaluation for: {path}", {
-      path: policyFilePath,
-    });
-
-    // Determine output directory
-    const outputDir = options.output || Deno.cwd();
-    const baseName = policyFilePath.split("/").pop()?.replace(/\.md$/, "") ||
-      "policy";
-
-    // Create output paths
-    const extractedPolicyPath = `${outputDir}/${baseName}-extracted.json`;
-    const sourceDataPath = `${outputDir}/${baseName}-source-data.json`;
-    const evaluationPath = `${outputDir}/${baseName}-evaluation.json`;
-    const reportPath = `${outputDir}/${baseName}-report.md`;
-
-    // Read policy file
-    ctx.logger.debug("Reading policy file...");
-    const policyContent = await Deno.readTextFile(policyFilePath);
-
-    // Stage 1: Extract policy structure
-    const { extractPolicy } = await import("./policy/extract_policy.ts");
-    const extractedPolicy = await extractPolicy(
-      policyContent,
-      extractedPolicyPath,
-    );
-    ctx.logger.info("Policy extracted: {title}", {
-      title: extractedPolicy.policyTitle,
-    });
-
-    // Resolve change set (use provided change set or default to HEAD)
-    const { getHeadChangeSetId } = await import("./cli/helpers.ts");
-    const changeSetId = options.changeSet
-      ? await resolveChangeSet(workspaceId, options.changeSet)
-      : await getHeadChangeSetId();
-
-    // Stage 2: Collect source data
-    const { collectSourceData } = await import(
-      "./policy/collect_source_data.ts"
-    );
-    const sourceData = await collectSourceData(
-      changeSetId,
-      extractedPolicy.sourceDataQueries,
-      sourceDataPath,
-    );
-
-    // Stage 3: Evaluate policy
-    const { evaluatePolicy } = await import("./policy/evaluate_policy.ts");
-    const evaluation = await evaluatePolicy(
-      extractedPolicy.policyText,
-      sourceData,
-      workspaceId,
-      changeSetId,
-      sourceDataPath,
-      evaluationPath,
-    );
-
-    // Stage 4: Generate report
-    const { generateReport } = await import("./policy/generate_report.ts");
-    const reportName = await generateReport(
-      extractedPolicy,
-      sourceData,
-      evaluation,
-      workspaceId,
-      changeSetId,
-      reportPath,
-    );
-
-    // Display summary
-    ctx.logger.info("\nPolicy Evaluation Complete");
-
-    // Use different log levels based on result for visual distinction
-    if (evaluation.result === "Fail") {
-      ctx.logger.warn("Result: FAIL");
-      if (evaluation.failingComponents.length > 0) {
-        ctx.logger.warn("Failing components: {count}", {
-          count: evaluation.failingComponents.length,
-        });
-      } else {
-        ctx.logger.warn("Reason: {summary}", { summary: evaluation.summary });
-      }
-    } else {
-      ctx.logger.info("Result: PASS");
-    }
-
-    ctx.logger.info("Report: {path}", { path: reportName });
-
-    // // Track analytics
-    // ctx.analytics.trackEvent("policy evaluate", {
-    //   policyTitle: extractedPolicy.policyTitle,
-    //   result: evaluation.result,
-    //   failingComponentsCount: evaluation.failingComponents.length,
-    // });
-  } catch (error) {
-    ctx.logger.error("Policy evaluation failed: {error}", {
-      error: error instanceof Error ? error.message : String(error),
-    });
-    throw error;
-  }
 }
 
 async function ensureApiConfig(options: GlobalOptions): Promise<void> {
