@@ -519,7 +519,15 @@ impl BifrostStarted {
             span.set_parent(otel_ctx);
         }
 
+        let send_start = Instant::now();
+
         if let Err(err) = ws_client.send(ws_message).await {
+            let send_duration = send_start.elapsed();
+            histogram!(
+                sdf_bifrost_ws_send_latency_ms = send_duration.as_secs_f64() * 1000.0,
+                result = "error"
+            );
+
             match err
                 .source()
                 .and_then(|err| err.downcast_ref::<tungstenite::Error>())
@@ -534,6 +542,12 @@ impl BifrostStarted {
                 _ => return Some(Err(BifrostError::WsSendIo(err))),
             }
         }
+
+        let send_duration = send_start.elapsed();
+        histogram!(
+            sdf_bifrost_ws_send_latency_ms = send_duration.as_secs_f64() * 1000.0,
+            result = "success"
+        );
 
         None
     }

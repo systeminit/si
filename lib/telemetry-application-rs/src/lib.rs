@@ -358,6 +358,24 @@ fn custom_histogram_configs() -> Vec<HistogramBucketConfig> {
                 2500.0, // 2.5s
             ],
         ),
+        HistogramBucketConfig::new(
+            "sdf_bifrost_ws_send_latency_ms",
+            &[
+                0.1,     // 100μs
+                0.5,     // 500μs
+                1.0,     // 1ms
+                5.0,     // 5ms
+                10.0,    // 10ms
+                25.0,    // 25ms
+                50.0,    // 50ms
+                100.0,   // 100ms
+                250.0,   // 250ms
+                500.0,   // 500ms
+                1000.0,  // 1s
+                5000.0,  // 5s
+                10000.0, // 10s
+            ],
+        ),
     ]
 }
 
