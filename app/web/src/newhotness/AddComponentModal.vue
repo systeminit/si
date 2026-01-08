@@ -509,6 +509,7 @@ type AssetFilter = {
   icon: IconNames;
   count: number;
   color?: string;
+  startsWith?: boolean;
 };
 
 type UICategoryInfo = {
@@ -643,7 +644,10 @@ const fzfInstance = computed(() => {
   // Get the same filtering logic for consistency
   if (selectedFilter.value) {
     filteredResults.push(
-      ...getCategoriesAndCountForFilterStrings(selectedFilter.value).categories,
+      ...getCategoriesAndCountForFilterStrings(
+        selectedFilter.value,
+        selectedFilterObject.value?.startsWith,
+      ).categories,
     );
   } else {
     filteredResults.push(...categories.value);
@@ -661,7 +665,10 @@ const filteredCategories = computed(() => {
   // Filtering by the selected top level category filter
   if (selectedFilter.value) {
     filteredResults.push(
-      ...getCategoriesAndCountForFilterStrings(selectedFilter.value).categories,
+      ...getCategoriesAndCountForFilterStrings(
+        selectedFilter.value,
+        selectedFilterObject.value?.startsWith,
+      ).categories,
     );
   } else {
     filteredResults.push(...categories.value);
@@ -727,6 +734,12 @@ const searchRef = ref<InstanceType<typeof SiSearch>>();
 const fuzzySearchString = ref<string>("");
 const debouncedSearchString = ref<string>("");
 const selectedFilter = ref<string | undefined>(undefined);
+const selectedFilterObject = computed(() =>
+  componentFilters.value.find(
+    (filter) =>
+      filter.name.toLowerCase() === selectedFilter.value?.toLowerCase(),
+  ),
+);
 
 // Debounce the search string updates to avoid expensive filtering on every keystroke
 const updateDebouncedSearch = debounce(
@@ -837,21 +850,28 @@ const openFromIndex = (idx: number) => {
   return categoryIsOpen.value.has(cat.name);
 };
 
-const foundCategoryMatch = (categoryName: string, category: UICategory) => {
+const foundCategoryMatch = (
+  categoryName: string,
+  category: UICategory,
+  startsWith: boolean,
+) => {
   if (categoryName === "All") return true;
   if (categoryName === "Templates") return category.name === "Templates";
+  if (startsWith)
+    return category.name.toLowerCase().startsWith(categoryName.toLowerCase());
   return category.name.toLowerCase().includes(categoryName.toLowerCase());
 };
 
 const getCategoriesAndCountForFilterStrings = (
   categoryFilterStrings: string | Array<string> = "All",
+  startsWith = false,
 ) => {
   const filterForOneString = (filterStr: string) => {
     const output: UICategory[] = [];
     categories.value.forEach((category) => {
       const filtered: UICategory = { ...category, assets: [] };
       category.assets.forEach((asset) => {
-        if (foundCategoryMatch(filterStr, category)) {
+        if (foundCategoryMatch(filterStr, category, startsWith)) {
           count++;
           filtered.assets.push(asset);
         }
@@ -898,8 +918,9 @@ const componentFilters = computed((): AssetFilter[] => {
     {
       name: "Microsoft",
       icon: "logo-azure",
-      count: getCategoriesAndCountForFilterStrings("microsoft").count,
+      count: getCategoriesAndCountForFilterStrings("microsoft", true).count,
       color: BRAND_COLOR_FILTER_HEX_CODES.MS,
+      startsWith: true,
     },
     {
       name: "Hetzner",
@@ -910,11 +931,9 @@ const componentFilters = computed((): AssetFilter[] => {
     {
       name: "DigitalOcean",
       icon: "logo-digital-ocean",
-      count: getCategoriesAndCountForFilterStrings([
-        "digitalocean",
-        "digital ocean",
-      ]).count,
+      count: getCategoriesAndCountForFilterStrings("digitalocean", true).count,
       color: BRAND_COLOR_FILTER_HEX_CODES.DigitalOcean,
+      startsWith: true,
     },
     {
       name: "Fastly",
@@ -933,8 +952,9 @@ const componentFilters = computed((): AssetFilter[] => {
     filters.splice(3, 0, {
       name: "Google Cloud",
       icon: pickBrandIconByString("google cloud"),
-      count: getCategoriesAndCountForFilterStrings("google cloud").count,
+      count: getCategoriesAndCountForFilterStrings("google cloud", true).count,
       color: BRAND_COLOR_FILTER_HEX_CODES.GoogleCloud,
+      startsWith: true,
     });
   }
 

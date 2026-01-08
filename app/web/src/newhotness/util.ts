@@ -25,23 +25,14 @@ export const getAssetColor = (name: string) => {
 };
 
 export const pickBrandIconByString = (name: string): IconNames => {
-  if (name.toLowerCase().includes("aws")) return "logo-aws";
-  else if (
-    name.toLowerCase().includes("microsoft") ||
-    name.toLowerCase().includes("azure")
-  ) {
+  if (name.toLowerCase().startsWith("microsoft")) {
     return "logo-azure";
-  } else if (
-    name.toLowerCase().includes("google cloud") ||
-    name.toLowerCase().includes("gcp")
-  ) {
+  } else if (name.toLowerCase().startsWith("google cloud")) {
     return "logo-google-cloud";
-  } else if (
-    name.toLowerCase().includes("digitalocean") ||
-    name.toLowerCase().includes("digital ocean")
-  ) {
+  } else if (name.toLowerCase().startsWith("digitalocean")) {
     return "logo-digital-ocean";
-  } else if (name.toLowerCase().includes("coreos")) return "logo-coreos";
+  } else if (name.toLowerCase().includes("aws")) return "logo-aws";
+  else if (name.toLowerCase().includes("coreos")) return "logo-coreos";
   else if (name.toLowerCase().includes("docker")) return "logo-docker";
   else if (name.toLowerCase().includes("fastly")) return "logo-fastly";
   else if (name.toLowerCase().includes("hetzner")) return "logo-hetzner";
