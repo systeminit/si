@@ -54,14 +54,12 @@ use telemetry::{
     prelude::*,
 };
 use telemetry_utils::{
+    counter,
     histogram,
     monotonic,
 };
 use thiserror::Error;
-use tokio::sync::{
-    broadcast::error::RecvError,
-    mpsc,
-};
+use tokio::sync::mpsc;
 use tokio_stream::{
     StreamExt,
     adapters::Merge,
@@ -270,6 +268,10 @@ impl BifrostStarted {
                             "error while closing websocket connection during graceful shutdown",
                         );
                     }
+
+                    monotonic!(sdf_bifrost_connections_closed = 1, reason = "server_shutdown");
+                    counter!(sdf_bifrost_active_connections = -1);
+
                     return Ok(BifrostClosing {
                         ws_is_closed: true,
                         handle: self.handle,
@@ -324,6 +326,9 @@ impl BifrostStarted {
                                 "read web socket client close message; shutting down bifrost",
                             );
 
+                            monotonic!(sdf_bifrost_connections_closed = 1, reason = "client_close");
+                            counter!(sdf_bifrost_active_connections = -1);
+
                             return Ok(BifrostClosing {
                                 ws_is_closed: true,
                                 handle: self.handle,
@@ -334,12 +339,20 @@ impl BifrostStarted {
                             continue;
                         }
                         // Next message was a web socket error
-                        Some(Err(err)) => return Err(err.into()),
+                        Some(Err(err)) => {
+                            monotonic!(sdf_bifrost_connections_closed = 1, reason = "error");
+                            counter!(sdf_bifrost_active_connections = -1);
+
+                            return Err(err.into());
+                        }
                         // Web socket stream has closed
                         None => {
                             debug!(
                                 "web socket client stream has closed; shutting down bifrost",
                             );
+
+                            monotonic!(sdf_bifrost_connections_closed = 1, reason = "stream_closed");
+                            counter!(sdf_bifrost_active_connections = -1);
 
                             return Ok(BifrostClosing {
                                 ws_is_closed: true,
@@ -366,6 +379,12 @@ impl BifrostStarted {
                                         "before sending response, web socket client has closed; {}",
                                         "shutting down bifrost",
                                     );
+
+                                    monotonic!(
+                                        sdf_bifrost_connections_closed = 1,
+                                        reason = "ws_send_failed",
+                                    );
+                                    counter!(sdf_bifrost_active_connections = -1);
 
                                     return Ok(BifrostClosing {
                                         ws_is_closed: true,
@@ -413,6 +432,12 @@ impl BifrostStarted {
                                         "before sending response, web socket client has closed; {}",
                                         "shutting down bifrost",
                                     );
+
+                                    monotonic!(
+                                        sdf_bifrost_connections_closed = 1,
+                                        reason = "ws_send_failed",
+                                    );
+                                    counter!(sdf_bifrost_active_connections = -1);
 
                                     return Ok(BifrostClosing {
                                         ws_is_closed: true,

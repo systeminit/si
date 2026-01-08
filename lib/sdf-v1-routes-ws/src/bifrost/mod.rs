@@ -28,6 +28,10 @@ use sdf_extract::{
 };
 use si_data_nats::ConnectionMetadata;
 use telemetry::prelude::*;
+use telemetry_utils::{
+    counter,
+    monotonic,
+};
 use tokio_util::sync::CancellationToken;
 
 use crate::WsError;
@@ -68,6 +72,9 @@ async fn run_bifrost_proto(
     compute_executor: DedicatedExecutor,
     shutdown_token: CancellationToken,
 ) {
+    monotonic!(sdf_bifrost_connections_opened = 1);
+    counter!(sdf_bifrost_active_connections = 1);
+
     let proto = match proto::run(
         metadata,
         frigg,
