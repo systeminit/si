@@ -1,7 +1,7 @@
 <template>
   <div class="flex flex-row justify-between">
     <div class="flex flex-row items-center gap-xs">
-      <template v-if="!noText">
+      <template v-if="!noText && !inProgress">
         <TextPill
           v-if="
             component.qualificationTotals.failed === 0 &&
@@ -57,15 +57,24 @@ import { computed } from "vue";
 import {
   ComponentInList,
   BifrostComponent,
+  DependentValues,
 } from "@/workers/types/entity_kind_types";
 import StatusIndicatorIcon from "@/components/StatusIndicatorIcon.vue";
 
 const props = defineProps<{
   component: ComponentInList | BifrostComponent;
+  dependentValues?: DependentValues | null;
   noText?: boolean;
 }>();
 
+const inProgress = computed(() =>
+  props.dependentValues?.componentAttributes?.[props.component.id]?.includes(
+    "/qualification",
+  ),
+);
+
 const qualificationStatus = computed(() => {
+  if (inProgress.value) return "running";
   if (props.component.qualificationTotals.failed > 0) return "failure";
   if (props.component.qualificationTotals.warned > 0) return "warning";
   if (props.component.qualificationTotals.succeeded > 0) return "success";

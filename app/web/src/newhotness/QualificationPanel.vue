@@ -21,6 +21,7 @@ import { computed } from "vue";
 import {
   AttributeTree,
   BifrostComponent,
+  DependentValues,
 } from "@/workers/types/entity_kind_types";
 import QualificationView from "@/newhotness/QualificationView.vue";
 import { AttributeValueId } from "./types";
@@ -37,54 +38,51 @@ export interface Qualification {
   // This exists so the validation qualification can pass in its output, since that comes baked in the data
   // We should avoid using it for normal qualifications, for which QualificationView will lazily fetch the output
   output?: null | string[];
+  /** Indicates whether the qualification is dirty (running or waiting to run) */
+  isDirty?: boolean;
 }
 
 const props = defineProps<{
   component: BifrostComponent;
-  attributeTree?: AttributeTree;
+  attributeTree?: AttributeTree | null;
+  dependentValues?: DependentValues | null;
 }>();
 
-const root = computed(() => props.attributeTree);
-
 const qualifications = computed<Qualification[]>(() => {
-  const items: Qualification[] = [];
-  const r = root.value;
-  if (!r) return items;
-  const data = findAvsAtPropPath(r, [
+  const root = props.attributeTree;
+  if (!root) return [];
+
+  const qualificationItems = findAvsAtPropPath(root, [
     "root",
     "qualification",
     "qualificationItem",
   ]);
-  if (data) {
-    const { attributeValues } = data;
-
-    attributeValues.forEach((av) => {
-      const name = av.key;
-      const children = r.treeInfo[av.id]?.children ?? [];
-      let status;
-      let message;
-      children.forEach((avId) => {
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-        const child = r.attributeValues[avId]!;
-        if (child.path?.endsWith("result")) status = child.value;
-        else if (child.path?.endsWith("message")) message = child.value;
-      });
-      items.push({
-        avId: av.id,
-        name,
-        status,
-        message,
-      });
-    });
-  }
+  if (!qualificationItems) return [];
+  const items = qualificationItems.attributeValues.map((av) => {
+    const qualification = { avId: av.id, name: av.key } as Qualification;
+    // Set result and message based on the AttributeTree
+    for (const avId of root.treeInfo[av.id]?.children ?? []) {
+      const child = root.attributeValues[avId];
+      // TODO should we set both if they both exist?
+      if (child?.path?.endsWith("result"))
+        qualification.status = child.value as QualificationStatus;
+      else if (child?.path?.endsWith("message"))
+        qualification.message = child.value as string;
+    }
+    // Set isDirty based on dependentValues
+    qualification.isDirty = props.dependentValues?.componentAttributes[
+      props.component.id
+    ]?.includes(av.path);
+    return qualification;
+  });
 
   // Since we have all the data locally, we compute the validation rollup qualification over here
   // The qualification also gets computed in the backed for the old UI and luminork, so at some point we may
   // revisit this, but this works well.
   let hasValidations = false;
   const validationOutput: string[] = [];
-  Object.values(r.attributeValues).forEach((av) => {
-    const prop = r.props[av.propId ?? ""];
+  Object.values(root.attributeValues).forEach((av) => {
+    const prop = root.props[av.propId ?? ""];
     if (!av.validation || !prop) return;
     hasValidations = true;
 

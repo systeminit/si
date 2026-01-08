@@ -19,6 +19,7 @@ import { ChangeSetId } from "@/api/sdf/dal/change_set";
 import { DefaultMap } from "@/utils/defaultmap";
 import { ComponentName } from "@/store/components.store";
 import { WorkspacePk } from "@/newhotness/types";
+import { SecretId } from "@/store/realtime/realtime_events";
 import { ComponentInfo } from "./dbinterface";
 
 export enum EntityKind {
@@ -36,6 +37,7 @@ export enum EntityKind {
   ComponentsInViews = "ComponentsInViews",
   DefaultSubscriptions = "DefaultSubscriptions",
   DependentValueComponentList = "DependentValueComponentList",
+  DependentValues = "DependentValues",
   ErasedComponents = "ErasedComponents",
   IncomingConnections = "IncomingConnections",
   IncomingConnectionsList = "IncomingConnectionsList",
@@ -220,7 +222,7 @@ export interface SchemaMembers {
 }
 
 export interface UninstalledVariant {
-  schemaId: string;
+  schemaId: SchemaId;
   schemaName: string;
   displayName: string | null;
   category: string;
@@ -666,7 +668,7 @@ export interface SecretDefinition {
 
 export interface Secret {
   // The [`id`](SecretId) of a [`Secret`].
-  id: string;
+  id: SecretId;
   // The name of a [`Secret`] as provided by the user.
   name: string;
   // The definition of a [`Secret`].
@@ -678,8 +680,13 @@ export interface Secret {
 }
 
 export interface DependentValueComponentList {
-  id: string;
+  id: WorkspacePk;
   componentIds: ComponentId[];
+}
+
+export interface DependentValues {
+  id: WorkspacePk;
+  componentAttributes: Record<ComponentId, AttributePath[]>;
 }
 
 export interface DefaultSubscription {

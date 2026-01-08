@@ -310,11 +310,15 @@
             ><span class="text-sm">Qualifications</span></template
           >
           <template #headerIcons>
-            <MinimizedComponentQualificationStatus :component="component" />
+            <MinimizedComponentQualificationStatus
+              :component="component"
+              :dependentValues="dependentValues"
+            />
           </template>
           <QualificationPanel
             :component="component"
-            :attributeTree="attributeTree || undefined"
+            :attributeTree="attributeTree"
+            :dependentValues="dependentValues"
           />
         </CollapsingFlexItem>
         <CollapsingFlexItem ref="connectionsFlex" expandable>
@@ -448,6 +452,7 @@ import {
 import {
   AttributeTree,
   BifrostComponent,
+  DependentValues,
   EntityKind,
   IncomingConnections,
   MgmtFuncKind,
@@ -556,6 +561,13 @@ const attributeTreeQuery = useQuery<AttributeTree | null>({
   },
 });
 const attributeTree = computed(() => attributeTreeQuery.data.value);
+
+const dependentValuesQuery = useQuery<DependentValues | null>({
+  queryKey: key(EntityKind.DependentValues),
+  queryFn: async () =>
+    await bifrost<DependentValues>(args(EntityKind.DependentValues)),
+});
+const dependentValues = computed(() => dependentValuesQuery.data.value);
 
 // Determines if the component is able to have a resource. For example, for "AWS::EC2::KeyPair",
 // this would return 'true', but fore "AWS Region", this would return false.

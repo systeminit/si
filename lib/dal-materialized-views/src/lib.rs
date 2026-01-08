@@ -57,6 +57,7 @@ pub mod cached;
 pub mod component;
 pub mod component_list;
 pub mod dependent_value_component_list;
+pub mod dependent_values;
 pub mod incoming_connections;
 pub mod incoming_connections_list;
 pub mod luminork;
