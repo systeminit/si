@@ -58,11 +58,17 @@ use telemetry_utils::{
     monotonic,
 };
 use thiserror::Error;
-use tokio::sync::mpsc;
+use tokio::sync::{
+    broadcast::error::RecvError,
+    mpsc,
+};
 use tokio_stream::{
     StreamExt,
     adapters::Merge,
-    wrappers::BroadcastStream,
+    wrappers::{
+        BroadcastStream,
+        errors::BroadcastStreamRecvError,
+    },
 };
 use tokio_tungstenite::tungstenite;
 use tokio_util::sync::CancellationToken;
@@ -424,16 +430,27 @@ impl BifrostStarted {
                                 }
                             }
                         }
-                        // We have a `RecvError`
+                        // We have a broadcast stream `RecvError`
                         Some(Err(err)) => {
-                            warn!(
-                                si.error.message = ?err,
-                                "encountered a recv error on NATS subscription; skipping",
-                            );
+                            match &err {
+                                BroadcastStreamRecvError::Lagged(skipped_count) => {
+                                    warn!(
+                                        si.error.message = ?err,
+                                        skipped_messages = skipped_count,
+                                        "BROADCAST CHANNEL LAGGING: {}",
+                                        "This WS client is slow and caused message loss",
+                                    );
+                                    monotonic!(
+                                        sdf_bifrost_broadcast_lagged = 1,
+                                        skipped_messages = *skipped_count as i64
+                                    );
+                                }
+                            }
                         }
-                        // We have a `RecvError`
+                        // Merged stream is closed
                         None => {
-                            info!("nats listener has closed; bifrost is probably shutting down");
+                            debug!("broadcast channel closed; multiplexer may be shutting down");
+                            monotonic!(sdf_bifrost_broadcast_closed = 1);
                         }
                     }
                 }
