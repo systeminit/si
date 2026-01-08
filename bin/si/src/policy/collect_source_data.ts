@@ -8,7 +8,6 @@ import {
   SearchApi,
 } from "@systeminit/api-client";
 import { Context } from "../context.ts";
-import { getHeadChangeSetId } from "../cli/helpers.ts";
 
 export interface ComponentData {
   componentId: string;
@@ -94,15 +93,12 @@ export class SourceDataCollector {
    * Collect source data for all queries
    */
   async collect(
+    changeSetId: string,
     queries: Record<string, string>,
   ): Promise<SourceDataCollection> {
     const ctx = Context.instance();
     ctx.logger.info("Stage 2: Collecting source data...");
-
-    // Get HEAD change set
-    ctx.logger.debug("Finding HEAD change set...");
-    const headChangeSetId = await getHeadChangeSetId();
-    ctx.logger.debug("Found: {changeSetId}", { changeSetId: headChangeSetId });
+    ctx.logger.debug("Using change set: {changeSetId}", { changeSetId });
 
     // Collect data for each query
     const results: SourceDataCollection = {};
@@ -111,7 +107,7 @@ export class SourceDataCollector {
       ctx.logger.info("Collecting data for: {queryName}", { queryName });
       ctx.logger.debug("Query from policy: {query}", { query: queryString });
       const components = await this.searchComponents(
-        headChangeSetId,
+        changeSetId,
         queryString,
       );
       results[queryName] = components;
@@ -125,12 +121,13 @@ export class SourceDataCollector {
  * Main function to collect source data and write to file
  */
 export async function collectSourceData(
+  changeSetId: string,
   queries: Record<string, string>,
   outputPath: string,
 ): Promise<SourceDataCollection> {
   const ctx = Context.instance();
   const collector = new SourceDataCollector();
-  const data = await collector.collect(queries);
+  const data = await collector.collect(changeSetId, queries);
 
   // Write to file using Deno
   await Deno.writeTextFile(outputPath, JSON.stringify(data, null, 2));
