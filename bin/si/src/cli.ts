@@ -1558,11 +1558,11 @@ function buildChangeSetCommand() {
       "open",
       createSubCommand(true)
         .description("Open a change set in the browser")
-        .arguments("<change-set-id-or-name:string>")
+        .arguments("[change-set-id-or-name:string]")
         .action(async (options, changeSetIdOrName) => {
           await callChangeSetOpen({
             ...options,
-            changeSetIdOrName: changeSetIdOrName as string,
+            changeSetIdOrName: (changeSetIdOrName as string) || "HEAD",
           } as ChangeSetOpenOptions);
         }),
     )
