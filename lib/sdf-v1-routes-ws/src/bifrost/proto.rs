@@ -9,6 +9,7 @@ use std::{
     },
     string::FromUtf8Error,
     sync::Arc,
+    time::Instant,
 };
 
 use axum::extract::ws::{
@@ -52,7 +53,10 @@ use telemetry::{
     OpenTelemetrySpanExt,
     prelude::*,
 };
-use telemetry_utils::monotonic;
+use telemetry_utils::{
+    histogram,
+    monotonic,
+};
 use thiserror::Error;
 use tokio::sync::mpsc;
 use tokio_stream::{
@@ -374,6 +378,8 @@ impl BifrostStarted {
                     match maybe_nats_message_result {
                         // We have a message
                         Some(Ok(payload_with_nats_message)) => {
+                            let nats_receive_start = Instant::now();
+
                             let MultiplexerRequestPayload { nats_message, otel_ctx } = payload_with_nats_message;
                             let ws_message = match self.build_ws_message(nats_message).await {
                                 Ok(ws_message) => ws_message,
@@ -402,7 +408,12 @@ impl BifrostStarted {
                                 // Error sending message to client
                                 Some(Err(err)) => return Err(err),
                                 // Successfully sent web socket message to client
-                                None => {}
+                                None => {
+                                    let end_to_end_latency = nats_receive_start.elapsed();
+                                    let value_ms = end_to_end_latency.as_secs_f64() * 1000.0;
+
+                                    histogram!(sdf_bifrost_nats_to_ws_latency_ms = value_ms);
+                                }
                             }
                         }
                         // We have a `RecvError`
