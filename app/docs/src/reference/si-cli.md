@@ -1057,3 +1057,117 @@ si template run <template> --key <invocationKey> [OPTIONS]
 | --cache-baseline-only | flag   | false    | Exit after writing baseline cache (requires --cache-baseline) |
 | --dry-run             | flag   | false    | Show planned changes without executing them           |
 
+
+## policy
+
+Policy management operations.
+
+### policy evaluate
+
+Evaluate policies against infrastructure components.
+
+This command evaluates a compliance policy written in markdown format against your System Initiative infrastructure. The evaluation process uses Claude AI to:
+1. Extract policy structure from the markdown document
+2. Collect infrastructure data from System Initiative based on queries
+3. Evaluate components against the policy requirements
+4. Generate a detailed markdown report with findings
+
+All output files are organized in a single folder (timestamped or custom-named) for easy management.
+
+> Syntax
+
+```bash
+si policy evaluate <file-path> [OPTIONS]
+```
+
+#### Parameters
+
+| Name                    | Type   | Required | Description                                           | Default   |
+| ----------------------- | ------ | -------- | ----------------------------------------------------- | --------- |
+| file-path               | string | true     | Path to the policy markdown file                      | -         |
+| -c, --change-set        | string | false    | Change set ID or name to evaluate against             | `HEAD`    |
+| -o, --output-folder     | string | false    | Folder name to organize results                       | Timestamp (e.g., `2026-01-08T01:10:15Z`) |
+| --no-upload             | flag   | false    | Skip uploading the policy evaluation results          | false     |
+
+#### Output Files
+
+The command creates a folder containing:
+- `{policy-name}-extracted.json` - Extracted policy structure
+- `{policy-name}-source-data.json` - Infrastructure data collected from System Initiative
+- `{policy-name}-evaluation.json` - Policy evaluation results
+- `report.md` - Human-readable markdown report with findings
+
+#### Examples
+
+```bash
+# Evaluate policy against HEAD (default)
+si policy evaluate policies/vpc-compliance.md
+
+# Evaluate against a specific change set
+si policy evaluate policies/vpc-compliance.md -c my-changeset
+
+# Organize results in a custom folder
+si policy evaluate policies/vpc-compliance.md -o vpc-audit
+
+# Skip upload stage
+si policy evaluate policies/vpc-compliance.md --no-upload
+```
+
+#### Policy Markdown Format
+
+Your policy markdown file should include:
+
+1. **Policy Title** - The main heading (`# Policy Title`)
+2. **Policy Section** - Contains the policy requirements and exceptions
+3. **Source Data Section** - YAML block with queries to collect infrastructure data
+4. **Output Tags Section** - YAML block with tags for categorization
+
+Example structure:
+
+```markdown
+# All VPCs must use private IP ranges
+
+## Policy
+
+All VPCs must be configured with private IP address ranges (10.0.0.0/8, 172.16.0.0/12, or 192.168.0.0/16).
+
+### Exceptions
+
+Test VPCs may use non-standard ranges for development purposes.
+
+## Source Data
+
+### System Initiative
+
+```yaml
+all-vpcs: "schema:\"AWS::EC2::VPC\""
+```
+
+## Output Tags
+
+```yaml
+tags:
+  - networking
+  - security
+```
+```
+
+#### Evaluation Results
+
+The command displays:
+- **PASS** (green) - All components comply with the policy
+- **FAIL** (yellow warning) - One or more components fail the policy
+
+Exit codes:
+- `0` - Evaluation completed successfully (policy may pass or fail)
+- `1` - Evaluation process encountered an error
+
+#### Requirements
+
+- `ANTHROPIC_API_KEY` environment variable must be set
+- Active System Initiative workspace authentication
+
+::: tip
+The policy evaluation uses the Claude AI agent to analyze your infrastructure. The agent has read-only access and will not make any changes to your System Initiative workspace.
+:::
+
