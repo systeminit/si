@@ -454,23 +454,49 @@ impl BifrostStarted {
         let payload_buf =
             if header::content_encoding_is(nats_message.headers(), ContentEncoding::DEFLATE) {
                 span.record("bytes.size.compressed", nats_message.payload().len());
-                self.compute_executor
+
+                let decompress_start = Instant::now();
+                let result = self
+                    .compute_executor
                     .spawn(async move {
                         let compressed = nats_message.into_inner().payload;
                         inflate::decompress_to_vec(&compressed)
                     })
                     .await?
-                    .map_err(|decompress_err| Error::Decompress(decompress_err.to_string()))?
+                    .map_err(|decompress_err| Error::Decompress(decompress_err.to_string()))?;
+
+                let decompress_duration = decompress_start.elapsed();
+                histogram!(
+                    sdf_bifrost_decompress_latency_ms = decompress_duration.as_secs_f64() * 1000.0,
+                    encoding = "deflate"
+                );
+                monotonic!(sdf_bifrost_compressed_messages = 1, encoding = "deflate");
+
+                result
             } else if header::content_encoding_is(nats_message.headers(), ContentEncoding::ZLIB) {
                 span.record("bytes.size.compressed", nats_message.payload().len());
-                self.compute_executor
+
+                let decompress_start = std::time::Instant::now();
+                let result = self
+                    .compute_executor
                     .spawn(async move {
                         let compressed = nats_message.into_inner().payload;
                         inflate::decompress_to_vec_zlib(&compressed)
                     })
                     .await?
-                    .map_err(|decompress_err| Error::Decompress(decompress_err.to_string()))?
+                    .map_err(|decompress_err| Error::Decompress(decompress_err.to_string()))?;
+
+                let decompress_duration = decompress_start.elapsed();
+                histogram!(
+                    sdf_bifrost_decompress_latency_ms = decompress_duration.as_secs_f64() * 1000.0,
+                    encoding = "zlib"
+                );
+                monotonic!(sdf_bifrost_compressed_messages = 1, encoding = "zlib");
+
+                result
             } else {
+                monotonic!(sdf_bifrost_compressed_messages = 1, encoding = "none");
+
                 nats_message.into_inner().payload.into()
             };
 
