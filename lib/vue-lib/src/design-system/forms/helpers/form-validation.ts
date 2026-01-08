@@ -266,12 +266,12 @@ export const validators = {
   },
   minLength: (minLength: number) => {
     return (value: any) =>
-      req(typeof value === "string" ? value.trim() : value) &&
+      !req(typeof value === "string" ? value.trim() : value) ||
       value.length >= minLength;
   },
   maxLength: (maxLength: number) => {
     return (value: any) =>
-      req(typeof value === "string" ? value.trim() : value) &&
+      !req(typeof value === "string" ? value.trim() : value) ||
       value.length <= maxLength;
   },
 };

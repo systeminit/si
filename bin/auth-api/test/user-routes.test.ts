@@ -68,6 +68,54 @@ t.test("User routes", async () => {
         .expectBody({ user: GOOD_PARAMS });
     });
 
+    t.test("can clear optional username fields with empty string", async () => {
+      // First set the usernames
+      await request.patch(`/users/${user.id}`)
+        .set("spoof-auth", user.id)
+        .send({
+          discordUsername: "testuser#1234",
+          githubUsername: "testuser",
+        })
+        .expectOk();
+
+      // Then clear them with empty strings (should be converted to null)
+      const response = await request.patch(`/users/${user.id}`)
+        .set("spoof-auth", user.id)
+        .send({
+          discordUsername: "",
+          githubUsername: "",
+        })
+        .expectOk();
+
+      // Verify they were cleared (converted to null)
+      expect(response.body.user.discordUsername).to.be.null;
+      expect(response.body.user.githubUsername).to.be.null;
+    });
+
+    t.test("can clear optional username fields with null", async () => {
+      // First set the usernames
+      await request.patch(`/users/${user.id}`)
+        .set("spoof-auth", user.id)
+        .send({
+          discordUsername: "testuser#1234",
+          githubUsername: "testuser",
+        })
+        .expectOk();
+
+      // Then clear them with null
+      const response = await request.patch(`/users/${user.id}`)
+        .set("spoof-auth", user.id)
+        .send({
+          discordUsername: null,
+          githubUsername: null,
+        })
+        .expectOk();
+
+      // Verify they were cleared
+      expect(response.body.user.discordUsername).to.be.null;
+      expect(response.body.user.githubUsername).to.be.null;
+    });
+
     // check bad params
     _.each({
       "non-string firstName": { firstName: 1 },

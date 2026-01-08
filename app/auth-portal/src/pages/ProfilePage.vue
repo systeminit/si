@@ -93,7 +93,7 @@
               required
               placeholder="This name will be shown in the application"
               :maxLength="MAX_LENGTH_STANDARD"
-              :regex="NAME_REGEX"
+              :regex="NICKNAME_REGEX"
               regexMessage="Nickname contains invalid characters or URLs"
             />
             <VormInput
@@ -174,6 +174,7 @@ import { tracker } from "@/lib/posthog";
 import { useWorkspacesStore } from "@/store/workspaces.store";
 import {
   NAME_REGEX,
+  NICKNAME_REGEX,
   GITHUB_USERNAME_REGEX,
   DISCORD_TAG_REGEX,
   MAX_LENGTH_STANDARD,
