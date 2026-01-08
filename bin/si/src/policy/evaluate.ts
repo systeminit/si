@@ -14,6 +14,7 @@
  * @module
  */
 
+import { PolicyReportsApi } from "@systeminit/api-client";
 import { Context } from "../context.ts";
 import { resolveChangeSet } from "../change-set/utils.ts";
 import { resolve } from "@std/path";
@@ -22,6 +23,8 @@ import { resolve } from "@std/path";
  * Options for the policy evaluate command
  */
 export interface PolicyEvaluateOptions {
+  /** Name for the policy evaluation (required) */
+  name: string;
   /** Folder name to organize results (defaults to timestamp) */
   outputFolder?: string;
   /** Change set ID or name (defaults to HEAD) */
@@ -40,7 +43,13 @@ export async function callPolicyEvaluate(
   policyFilePath: string,
   options: PolicyEvaluateOptions,
 ): Promise<void> {
+  // Validate name before doing anything else
+  if (!options.name || options.name.trim() === "") {
+    throw new Error("Policy name is required. Please provide a name using the --name option.");
+  }
+
   const ctx = Context.instance();
+  const apiConfig = Context.apiConfig();
   const workspaceId = Context.workspaceId();
 
   try {
@@ -57,12 +66,14 @@ export async function callPolicyEvaluate(
     // - Otherwise, create a timestamp folder in the current directory
     // Always resolve to absolute paths to avoid working directory issues
     const folderName = options.outputFolder ||
-      new Date().toISOString().split('.')[0] + 'Z';
+      new Date().toISOString().split(".")[0] + "Z";
     const finalOutputPath = resolve(Deno.cwd(), folderName);
 
     // Create output folder upfront
     await Deno.mkdir(finalOutputPath, { recursive: true });
-    ctx.logger.debug("Created output folder: {path}", { path: finalOutputPath });
+    ctx.logger.debug("Created output folder: {path}", {
+      path: finalOutputPath,
+    });
 
     // Create output paths - write directly to final folder
     const extractedPolicyPath = `${finalOutputPath}/${baseName}-extracted.json`;
@@ -121,7 +132,9 @@ export async function callPolicyEvaluate(
     );
 
     // All files have been written to the output folder
-    ctx.logger.info("Files organized in: {folder}", { folder: finalOutputPath });
+    ctx.logger.info("Files organized in: {folder}", {
+      folder: finalOutputPath,
+    });
 
     // Stage 5: Upload policy evaluation results
     ctx.logger.info("Stage 5: Uploading policy evaluation results...");
@@ -129,11 +142,26 @@ export async function callPolicyEvaluate(
       ctx.logger.info("Skipping upload as per user request");
     } else {
       ctx.logger.info("Uploading coming soon");
-      // When implementing upload, use:
-      // - reportPath (report.md)
-      // - extractedPolicyPath (${baseName}-extracted.json)
-      // - sourceDataPath (${baseName}-source-data.json)
-      // - evaluationPath (${baseName}-evaluation.json)
+
+      // Read the generated report
+      const report = await Deno.readTextFile(reportPath);
+
+      const policyReportsApi = new PolicyReportsApi(apiConfig);
+
+      const resp = await policyReportsApi.uploadPolicyReport({
+        workspaceId,
+        changeSetId,
+        uploadPolicyReportV1Request: {
+          name: options.name,
+          policy: policyContent,
+          report: report,
+          result: evaluation.result,
+        },
+      });
+
+      const data = { id: resp.data.id };
+
+      console.log(`Policy Uploaded: ${data.id}`);
     }
 
     // Display summary
@@ -155,12 +183,9 @@ export async function callPolicyEvaluate(
 
     ctx.logger.info("Report: {path}", { path: reportPath });
 
-    // // Track analytics
-    // ctx.analytics.trackEvent("policy evaluate", {
-    //   policyTitle: extractedPolicy.policyTitle,
-    //   result: evaluation.result,
-    //   failingComponentsCount: evaluation.failingComponents.length,
-    // });
+    ctx.analytics.trackEvent("policy evaluate", {
+      result: evaluation.result,
+    });
   } catch (error) {
     ctx.logger.error("Policy evaluation failed: {error}", {
       error: error instanceof Error ? error.message : String(error),

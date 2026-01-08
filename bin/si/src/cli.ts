@@ -1615,6 +1615,11 @@ function buildPolicyCommand() {
         .description("Evaluate policies against infrastructure components")
         .arguments("<file-path:string>")
         .option(
+          "-n, --name <name:string>",
+          "Name for the policy evaluation (required)",
+          { required: true },
+        )
+        .option(
           "-c, --change-set <id:string>",
           "Change set ID or name (defaults to HEAD)",
         )
