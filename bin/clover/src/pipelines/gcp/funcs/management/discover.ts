@@ -67,20 +67,59 @@ async function main({ thisComponent }: Input): Promise<Output> {
 
   // Build list URL by replacing path parameters
   let listUrl = `${baseUrl}${listApiPath.path}`;
+  const queryParams: string[] = [];
+
   if (listApiPath.parameterOrder) {
     for (const paramName of listApiPath.parameterOrder) {
       let paramValue;
 
       if (paramName === "project") {
         paramValue = projectId;
+      } else if (paramName === "parent") {
+        // Try explicit parent first, otherwise auto-construct from projectId
+        paramValue = _.get(component.properties, ["domain", "parent"]);
+        if (!paramValue && projectId) {
+          // Check if resource requires location in the parent path
+          const location = _.get(component.properties, ["domain", "location"]) ||
+                          _.get(component.properties, ["domain", "zone"]) ||
+                          _.get(component.properties, ["domain", "region"]);
+
+          if (location) {
+            // Resource uses location: projects/{project}/locations/{location}
+            paramValue = `projects/${projectId}/locations/${location}`;
+          } else {
+            // Resource doesn't use location: projects/{project}
+            // This works for both project-only and multi-scope resources
+            // (multi-scope resources default to project scope for discovery)
+            paramValue = `projects/${projectId}`;
+          }
+        }
       } else {
         paramValue = _.get(component.properties, ["domain", paramName]);
       }
 
       if (paramValue) {
-        listUrl = listUrl.replace(`{${paramName}}`, encodeURIComponent(paramValue));
+        if (listUrl.includes(`{+${paramName}}`)) {
+          listUrl = listUrl.replace(`{+${paramName}}`, paramValue);
+        } else if (listUrl.includes(`{${paramName}}`)) {
+          listUrl = listUrl.replace(`{${paramName}}`, encodeURIComponent(paramValue));
+        }
       }
     }
+  }
+
+  // Handle parent as query parameter for APIs like Resource Manager Folders
+  // that don't use parent in the path but require it as a query parameter
+  if (!listUrl.includes("parent=") && !listApiPath.path.includes("{parent}") && !listApiPath.path.includes("{+parent}")) {
+    const parentValue = _.get(component.properties, ["domain", "parent"]);
+    if (parentValue) {
+      queryParams.push(`parent=${encodeURIComponent(parentValue)}`);
+    }
+  }
+
+  // Append query parameters
+  if (queryParams.length > 0) {
+    listUrl += (listUrl.includes("?") ? "&" : "?") + queryParams.join("&");
   }
 
   // Handle pagination with pageToken
@@ -117,8 +156,21 @@ async function main({ thisComponent }: Input): Promise<Output> {
 
     const listData = await listResponse.json();
 
-    // GCP list responses typically have an "items" array
-    const items = listData.items || [];
+    // GCP list responses vary in structure:
+    // - Compute Engine uses "items" array
+    // - Other APIs use the plural resource name (e.g., "contacts", "clusters", "buckets")
+    // Try "items" first, then look for any array property that isn't metadata
+    let items = listData.items;
+    if (!items) {
+      // Find the first array property that likely contains resources
+      for (const [key, value] of Object.entries(listData)) {
+        if (Array.isArray(value) && key !== "unreachable" && key !== "warnings") {
+          items = value;
+          break;
+        }
+      }
+    }
+    items = items || [];
     resources = resources.concat(items);
     nextPageToken = listData.nextPageToken || null;
 
@@ -162,7 +214,13 @@ async function main({ thisComponent }: Input): Promise<Output> {
         }
 
         if (paramValue) {
-          getUrl = getUrl.replace(`{${paramName}}`, encodeURIComponent(paramValue));
+          // {+param} = reserved expansion (no encoding, allows slashes)
+          // {param} = simple expansion (URL encoded)
+          if (getUrl.includes(`{+${paramName}}`)) {
+            getUrl = getUrl.replace(`{+${paramName}}`, paramValue);
+          } else if (getUrl.includes(`{${paramName}}`)) {
+            getUrl = getUrl.replace(`{${paramName}}`, encodeURIComponent(paramValue));
+          }
         }
       }
     }

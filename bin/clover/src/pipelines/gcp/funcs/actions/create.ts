@@ -58,7 +58,6 @@ async function main(component: Input): Promise<Output> {
   const queryParams: string[] = [];
 
   // Replace path parameters with values from resource_value or domain
-  // GCP APIs use RFC 6570 URI templates: {param} and {+param} (reserved expansion)
   // Parameters not found in the path template are added as query parameters
   if (insertApiPath.parameterOrder) {
     for (const paramName of insertApiPath.parameterOrder) {
@@ -68,16 +67,20 @@ async function main(component: Input): Promise<Output> {
       if (paramName === "project") {
         paramValue = projectId;
       } else if (paramName === "parent") {
-        // "parent" is a common GCP pattern: projects/{project}/locations/{location}
-        // Try to get explicit parent first, otherwise construct from projectId + location
         paramValue = _.get(component.properties, ["domain", "parent"]);
         if (!paramValue && projectId) {
-          // Try location, zone, or region to construct parent
-          const location = _.get(component.properties, ["domain", "location"]) ||
-                          _.get(component.properties, ["domain", "zone"]) ||
-                          _.get(component.properties, ["domain", "region"]);
-          if (location) {
-            paramValue = `projects/${projectId}/locations/${location}`;
+          // auto-construct for project-only resources
+          const availableScopesJson = _.get(component.properties, ["domain", "extra", "availableScopes"]);
+          const availableScopes = availableScopesJson ? JSON.parse(availableScopesJson) : [];
+          const isProjectOnly = availableScopes.length === 1 && availableScopes[0] === "projects";
+
+          if (isProjectOnly) {
+            const location = _.get(component.properties, ["domain", "location"]) ||
+                            _.get(component.properties, ["domain", "zone"]) ||
+                            _.get(component.properties, ["domain", "region"]);
+            if (location) {
+              paramValue = `projects/${projectId}/locations/${location}`;
+            }
           }
         }
       } else {
@@ -135,13 +138,32 @@ async function main(component: Input): Promise<Output> {
   // Check if this is an operation response:
   // - Compute Engine uses "kind" containing "operation"
   // - GKE/Container API uses "operationType" field
+  // - Other APIs (API Keys, etc.) use "name" starting with "operations/"
   const isLRO = (responseJson.kind && responseJson.kind.includes("operation")) ||
-                responseJson.operationType;
+                responseJson.operationType ||
+                (responseJson.name && responseJson.name.startsWith("operations/"));
   if (isLRO) {
     console.log(`[CREATE] LRO detected, polling for completion...`);
 
     // Use selfLink or construct URL from operation name
-    const pollingUrl = responseJson.selfLink || `${baseUrl}${responseJson.name}`;
+    // For APIs that don't provide selfLink, we need to construct the URL
+    // The API version prefix (v1, v2, etc.) comes from the API paths
+    let pollingUrl = responseJson.selfLink;
+    if (!pollingUrl && responseJson.name) {
+      // Extract version from one of the API paths (e.g., "v2/{+parent}/keys" -> "v2")
+      const insertApiPathJson = _.get(component.properties, ["domain", "extra", "insertApiPath"], "");
+      const getApiPathJson = _.get(component.properties, ["domain", "extra", "getApiPath"], "");
+      const pathJson = insertApiPathJson || getApiPathJson;
+      let apiVersion = "";
+      if (pathJson) {
+        const apiPath = JSON.parse(pathJson);
+        const versionMatch = apiPath.path?.match(/^(v\d+)\//);
+        if (versionMatch) {
+          apiVersion = versionMatch[1] + "/";
+        }
+      }
+      pollingUrl = `${baseUrl}${apiVersion}${responseJson.name}`;
+    }
 
     // Poll the operation until it completes using new siExec.pollLRO
     const finalResource = await siExec.pollLRO({
@@ -150,20 +172,20 @@ async function main(component: Input): Promise<Output> {
       maxAttempts: 20,
       baseDelay: 2000,
       maxDelay: 30000,
-      isCompleteFn: (response, body) => body.status === "DONE",
+      isCompleteFn: (response, body) => body.status === "DONE" || body.done === true,
       isErrorFn: (response, body) => !!body.error,
       extractResultFn: async (response, body) => {
         // If operation has error, throw it
         if (body.error) {
           throw new Error(`Operation failed: ${JSON.stringify(body.error)}`);
         }
-        
+
         // For create operations, get the final resource from the operation response
         // Some operations include the created resource in the response field
         if (body.response) {
           return body.response;
         }
-        
+
         // GCP pattern: fetch the final resource from targetLink
         if (body.targetLink) {
           const resourceResponse = await fetch(body.targetLink, {
@@ -177,9 +199,35 @@ async function main(component: Input): Promise<Output> {
 
           return await resourceResponse.json();
         }
-        
-        // Fallback: return the operation body
-        console.warn("[GCP] Operation completed but no response or targetLink found");
+
+        // Fallback: Try to extract resource name from operation metadata and fetch using getApiPath
+        // This handles APIs that don't provide targetLink or response in the operation
+        const operationMetadata = body.metadata;
+        if (operationMetadata?.target) {
+          const getApiPathJson = _.get(component.properties, ["domain", "extra", "getApiPath"], "");
+          if (getApiPathJson) {
+            const getApiPath = JSON.parse(getApiPathJson);
+            let getUrl = `${baseUrl}${getApiPath.path}`;
+
+            // Replace {+name} or {name} with the target resource name
+            if (getUrl.includes("{+name}")) {
+              getUrl = getUrl.replace("{+name}", operationMetadata.target);
+            } else if (getUrl.includes("{name}")) {
+              getUrl = getUrl.replace("{name}", encodeURIComponent(operationMetadata.target));
+            }
+
+            const resourceResponse = await fetch(getUrl, {
+              method: "GET",
+              headers: { "Authorization": `Bearer ${token}` },
+            });
+
+            if (resourceResponse.ok) {
+              return await resourceResponse.json();
+            }
+          }
+        }
+
+        console.warn("[GCP] Operation completed but couldn't fetch final resource");
         return body;
       }
     });

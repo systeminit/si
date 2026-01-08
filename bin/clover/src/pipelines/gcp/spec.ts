@@ -48,6 +48,7 @@ interface ResourceSpec extends GcpResourceMethods {
   resourceName: string;
   resourcePath: string[];
   handlers: { [key in CfHandlerKind]?: CfHandler };
+  availableScopes?: string[];
 }
 
 export function parseGcpDiscoveryDocument(
@@ -68,8 +69,12 @@ export function parseGcpDiscoveryDocument(
     collectResources(doc.resources, [], resourceSpecs);
   }
 
+  // Deduplicate resources by their path after stripping scope prefix
+  // Group by stripped path and track all available scopes
+  const deduplicatedSpecs = deduplicateScopedResources(resourceSpecs);
+
   // Process each resource
-  for (const resourceSpec of resourceSpecs) {
+  for (const resourceSpec of deduplicatedSpecs) {
     try {
       const spec = buildGcpResourceSpec(resourceSpec, doc);
       if (spec) {
@@ -92,6 +97,135 @@ export function parseGcpDiscoveryDocument(
   return specs;
 }
 
+/**
+ * Deduplicate resources that exist at multiple scopes (projects, organizations, folders, billingAccounts).
+ * Groups resources by their path after stripping the scope prefix, keeps one representative,
+ * and records all available scopes. Note that all scopes share an API surface,
+ * so it is safe to only keep one.
+ */
+function deduplicateScopedResources(
+  resourceSpecs: ResourceSpec[],
+): ResourceSpec[] {
+  const byStrippedPath = new Map<
+    string,
+    { spec: ResourceSpec; scopes: string[] }
+  >();
+
+  for (const spec of resourceSpecs) {
+    const scope = getScopePrefix(spec.resourcePath);
+    const strippedPath = stripScopePrefix(spec.resourcePath);
+    const key = strippedPath.join(".");
+
+    if (byStrippedPath.has(key)) {
+      const existing = byStrippedPath.get(key)!;
+      if (scope && !existing.scopes.includes(scope)) {
+        existing.scopes.push(scope);
+      }
+    } else {
+      // First occurrence - use stripped path and record scope
+      byStrippedPath.set(key, {
+        spec: {
+          ...spec,
+          resourcePath: strippedPath,
+          resourceName: spec.resourceName,
+        },
+        scopes: scope ? [scope] : [],
+      });
+    }
+  }
+
+  // Convert back to array, include availableScopes for any scoped resource
+  return Array.from(byStrippedPath.values()).map(({ spec, scopes }) => ({
+    ...spec,
+    availableScopes: scopes.length > 0 ? scopes : undefined,
+  }));
+}
+
+// Scope prefixes that indicate a multi-scope resource
+// These will be deduplicated into a single asset with a scope selector
+const SCOPE_PREFIXES = [
+  "projects",
+  "organizations",
+  "folders",
+  "billingAccounts",
+];
+
+// Path segments to strip from resource paths (they don't add meaningful context)
+// "locations", "zones", and "regions" are stripped because regional vs global is handled by the location parameter
+const STRIP_PATH_SEGMENTS = ["locations", "zones", "regions"];
+
+// Patterns in method descriptions that indicate the resource only supports global location
+const GLOBAL_ONLY_PATTERNS = [
+  /only supported value for location is `global`/i,
+  /Only global location is supported/i,
+];
+
+// Check if any method description indicates this is a global-only resource
+function isGlobalOnlyResource(methods: {
+  get?: GcpMethod;
+  insert?: GcpMethod;
+  update?: GcpMethod;
+  patch?: GcpMethod;
+  delete?: GcpMethod;
+  list?: GcpMethod;
+}): boolean {
+  const allMethods = [
+    methods.get,
+    methods.insert,
+    methods.update,
+    methods.patch,
+    methods.delete,
+    methods.list,
+  ].filter(Boolean) as GcpMethod[];
+
+  for (const method of allMethods) {
+    if (method.description) {
+      for (const pattern of GLOBAL_ONLY_PATTERNS) {
+        if (pattern.test(method.description)) {
+          return true;
+        }
+      }
+    }
+  }
+  return false;
+}
+
+function getScopePrefix(resourcePath: string[]): string | null {
+  if (resourcePath.length === 0) return null;
+  const firstSegment = resourcePath[0].toLowerCase();
+  const match = SCOPE_PREFIXES.find((prefix) =>
+    firstSegment === prefix.toLowerCase()
+  );
+  return match || null;
+}
+
+function stripScopePrefix(resourcePath: string[]): string[] {
+  let path = resourcePath;
+
+  // Strip scope prefix (projects, organizations, etc.)
+  // BUT only if there's something left after stripping - if the resource IS
+  // the scope type itself (like "folders" in Resource Manager), keep it
+  const scope = getScopePrefix(path);
+  if (scope && path.length > 1) {
+    path = path.slice(1);
+  }
+
+  // Strip other non-meaningful segments (like "locations"), but keep the last
+  // segment if stripping would result in an empty path (e.g., keep "locations"
+  // for location discovery endpoints)
+  const filtered = path.filter((segment) =>
+    !STRIP_PATH_SEGMENTS.some((strip) =>
+      segment.toLowerCase() === strip.toLowerCase()
+    )
+  );
+
+  // If filtering removed everything, keep the last segment from the original path
+  if (filtered.length === 0 && path.length > 0) {
+    return [path[path.length - 1]];
+  }
+
+  return filtered;
+}
 /// Recursively collect all resources and their methods
 function collectResources(
   resources: Record<string, GcpResource>,
@@ -153,6 +287,7 @@ function buildGcpResourceSpec(
     delete: deleteMethod,
     list,
     handlers,
+    availableScopes,
   } = resourceSpec;
 
   // We need at least a get method to build a spec
@@ -226,6 +361,46 @@ function buildGcpResourceSpec(
     ),
   );
 
+  // Add 'parent' property if required by API and not "project" only
+  // Project-only resources get parent auto-constructed from projectId + location
+  // Multi-scope or non-project resources require explicit parent from user
+  const insertParams = insert?.parameterOrder || [];
+  const listParams = list?.parameterOrder || [];
+  const apiNeedsParent =
+    (insertParams.includes("parent") || listParams.includes("parent")) &&
+    !writableDomainProperties["parent"];
+  const isProjectOnly = availableScopes?.length === 1 &&
+    availableScopes[0] === "projects";
+  const needsExplicitParent = apiNeedsParent && !isProjectOnly;
+
+  if (needsExplicitParent) {
+    writableDomainProperties["parent"] = {
+      type: "string",
+      description:
+        "The parent resource name (e.g., projects/my-project/locations/us-central1, organizations/123, folders/456)",
+    };
+  }
+
+  // For project-only resources that are global-only, add a location prop with default "global"
+  // This allows the parent to be auto-constructed as projects/{projectId}/locations/global
+  // The prop will be marked hidden in addDefaultProps since the value is always "global"
+  const isGlobalOnly = isGlobalOnlyResource({
+    get,
+    insert,
+    update,
+    patch,
+    delete: deleteMethod,
+    list,
+  });
+  if (isProjectOnly && isGlobalOnly && !writableDomainProperties["location"]) {
+    writableDomainProperties["location"] = {
+      type: "string",
+      description:
+        "The location for this resource (this resource only supports 'global')",
+      default: "global",
+    };
+  }
+
   // Determine primary identifier from path parameters
   const primaryIdentifier = determinePrimaryIdentifier(get);
 
@@ -277,6 +452,8 @@ function buildGcpResourceSpec(
     resourcePath,
     baseUrl: doc.baseUrl,
     documentationLink: doc.documentationLink,
+    availableScopes,
+    isGlobalOnly,
     methods: {
       get,
       insert,

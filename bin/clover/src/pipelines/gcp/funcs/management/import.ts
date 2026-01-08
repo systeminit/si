@@ -47,14 +47,36 @@ async function main({ thisComponent }: Input): Promise<Output> {
       if (paramName === getApiPath.parameterOrder[getApiPath.parameterOrder.length - 1]) {
         paramValue = resourceId;
       } else if (paramName === "project") {
-        // Use extracted project_id for project parameter
         paramValue = projectId;
+      } else if (paramName === "parent") {
+        // Try explicit parent first, otherwise auto-construct for project-only resources
+        paramValue = _.get(component, ["domain", "parent"]);
+        if (!paramValue && projectId) {
+          const availableScopesJson = _.get(component, ["domain", "extra", "availableScopes"]);
+          const availableScopes = availableScopesJson ? JSON.parse(availableScopesJson) : [];
+          const isProjectOnly = availableScopes.length === 1 && availableScopes[0] === "projects";
+
+          if (isProjectOnly) {
+            const location = _.get(component, ["domain", "location"]) ||
+                            _.get(component, ["domain", "zone"]) ||
+                            _.get(component, ["domain", "region"]);
+            if (location) {
+              paramValue = `projects/${projectId}/locations/${location}`;
+            }
+          }
+        }
       } else {
         paramValue = _.get(component, ["domain", paramName]);
       }
 
       if (paramValue) {
-        url = url.replace(`{${paramName}}`, encodeURIComponent(paramValue));
+        // {+param} = reserved expansion (no encoding, allows slashes)
+        // {param} = simple expansion (URL encoded)
+        if (url.includes(`{+${paramName}}`)) {
+          url = url.replace(`{+${paramName}}`, paramValue);
+        } else if (url.includes(`{${paramName}}`)) {
+          url = url.replace(`{${paramName}}`, encodeURIComponent(paramValue));
+        }
       }
     }
   }
