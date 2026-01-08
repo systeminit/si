@@ -3166,6 +3166,16 @@ class ComponentsApi:
         limit: Annotated[Optional[StrictStr], Field(description="Maximum number of results to return (default: 50, max: 300)")] = None,
         cursor: Annotated[Optional[StrictStr], Field(description="Cursor for pagination (ComponentId of the last item from previous page)")] = None,
         include_codegen: Annotated[Optional[StrictBool], Field(description="Allow returning the codegen for the cloudformation template for the component (if it exists)")] = None,
+        include_all: Annotated[Optional[StrictBool], Field(description="Include all graph summary data (equivalent to enabling all include options)")] = None,
+        include_functions: Annotated[Optional[StrictBool], Field(description="Include all function types (action, management, qualification)")] = None,
+        include_subscriptions: Annotated[Optional[StrictBool], Field(description="Include subscription relationships")] = None,
+        include_manages: Annotated[Optional[StrictBool], Field(description="Include management relationships")] = None,
+        include_action_functions: Annotated[Optional[StrictBool], Field(description="Include action function relationships")] = None,
+        include_management_functions: Annotated[Optional[StrictBool], Field(description="Include management function relationships")] = None,
+        include_qualification_functions: Annotated[Optional[StrictBool], Field(description="Include qualification function relationships")] = None,
+        include_resource_info: Annotated[Optional[StrictBool], Field(description="Include resource information (resource ID and status)")] = None,
+        include_diff_status: Annotated[Optional[StrictBool], Field(description="Include component diff status vs HEAD (Added/Modified/None)")] = None,
+        include_execution_history: Annotated[Optional[StrictBool], Field(description="Include last 10 execution history entries for each function")] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -3192,6 +3202,26 @@ class ComponentsApi:
         :type cursor: str
         :param include_codegen: Allow returning the codegen for the cloudformation template for the component (if it exists)
         :type include_codegen: bool
+        :param include_all: Include all graph summary data (equivalent to enabling all include options)
+        :type include_all: bool
+        :param include_functions: Include all function types (action, management, qualification)
+        :type include_functions: bool
+        :param include_subscriptions: Include subscription relationships
+        :type include_subscriptions: bool
+        :param include_manages: Include management relationships
+        :type include_manages: bool
+        :param include_action_functions: Include action function relationships
+        :type include_action_functions: bool
+        :param include_management_functions: Include management function relationships
+        :type include_management_functions: bool
+        :param include_qualification_functions: Include qualification function relationships
+        :type include_qualification_functions: bool
+        :param include_resource_info: Include resource information (resource ID and status)
+        :type include_resource_info: bool
+        :param include_diff_status: Include component diff status vs HEAD (Added/Modified/None)
+        :type include_diff_status: bool
+        :param include_execution_history: Include last 10 execution history entries for each function
+        :type include_execution_history: bool
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -3220,6 +3250,16 @@ class ComponentsApi:
             limit=limit,
             cursor=cursor,
             include_codegen=include_codegen,
+            include_all=include_all,
+            include_functions=include_functions,
+            include_subscriptions=include_subscriptions,
+            include_manages=include_manages,
+            include_action_functions=include_action_functions,
+            include_management_functions=include_management_functions,
+            include_qualification_functions=include_qualification_functions,
+            include_resource_info=include_resource_info,
+            include_diff_status=include_diff_status,
+            include_execution_history=include_execution_history,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -3250,6 +3290,16 @@ class ComponentsApi:
         limit: Annotated[Optional[StrictStr], Field(description="Maximum number of results to return (default: 50, max: 300)")] = None,
         cursor: Annotated[Optional[StrictStr], Field(description="Cursor for pagination (ComponentId of the last item from previous page)")] = None,
         include_codegen: Annotated[Optional[StrictBool], Field(description="Allow returning the codegen for the cloudformation template for the component (if it exists)")] = None,
+        include_all: Annotated[Optional[StrictBool], Field(description="Include all graph summary data (equivalent to enabling all include options)")] = None,
+        include_functions: Annotated[Optional[StrictBool], Field(description="Include all function types (action, management, qualification)")] = None,
+        include_subscriptions: Annotated[Optional[StrictBool], Field(description="Include subscription relationships")] = None,
+        include_manages: Annotated[Optional[StrictBool], Field(description="Include management relationships")] = None,
+        include_action_functions: Annotated[Optional[StrictBool], Field(description="Include action function relationships")] = None,
+        include_management_functions: Annotated[Optional[StrictBool], Field(description="Include management function relationships")] = None,
+        include_qualification_functions: Annotated[Optional[StrictBool], Field(description="Include qualification function relationships")] = None,
+        include_resource_info: Annotated[Optional[StrictBool], Field(description="Include resource information (resource ID and status)")] = None,
+        include_diff_status: Annotated[Optional[StrictBool], Field(description="Include component diff status vs HEAD (Added/Modified/None)")] = None,
+        include_execution_history: Annotated[Optional[StrictBool], Field(description="Include last 10 execution history entries for each function")] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -3276,6 +3326,26 @@ class ComponentsApi:
         :type cursor: str
         :param include_codegen: Allow returning the codegen for the cloudformation template for the component (if it exists)
         :type include_codegen: bool
+        :param include_all: Include all graph summary data (equivalent to enabling all include options)
+        :type include_all: bool
+        :param include_functions: Include all function types (action, management, qualification)
+        :type include_functions: bool
+        :param include_subscriptions: Include subscription relationships
+        :type include_subscriptions: bool
+        :param include_manages: Include management relationships
+        :type include_manages: bool
+        :param include_action_functions: Include action function relationships
+        :type include_action_functions: bool
+        :param include_management_functions: Include management function relationships
+        :type include_management_functions: bool
+        :param include_qualification_functions: Include qualification function relationships
+        :type include_qualification_functions: bool
+        :param include_resource_info: Include resource information (resource ID and status)
+        :type include_resource_info: bool
+        :param include_diff_status: Include component diff status vs HEAD (Added/Modified/None)
+        :type include_diff_status: bool
+        :param include_execution_history: Include last 10 execution history entries for each function
+        :type include_execution_history: bool
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -3304,6 +3374,16 @@ class ComponentsApi:
             limit=limit,
             cursor=cursor,
             include_codegen=include_codegen,
+            include_all=include_all,
+            include_functions=include_functions,
+            include_subscriptions=include_subscriptions,
+            include_manages=include_manages,
+            include_action_functions=include_action_functions,
+            include_management_functions=include_management_functions,
+            include_qualification_functions=include_qualification_functions,
+            include_resource_info=include_resource_info,
+            include_diff_status=include_diff_status,
+            include_execution_history=include_execution_history,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -3334,6 +3414,16 @@ class ComponentsApi:
         limit: Annotated[Optional[StrictStr], Field(description="Maximum number of results to return (default: 50, max: 300)")] = None,
         cursor: Annotated[Optional[StrictStr], Field(description="Cursor for pagination (ComponentId of the last item from previous page)")] = None,
         include_codegen: Annotated[Optional[StrictBool], Field(description="Allow returning the codegen for the cloudformation template for the component (if it exists)")] = None,
+        include_all: Annotated[Optional[StrictBool], Field(description="Include all graph summary data (equivalent to enabling all include options)")] = None,
+        include_functions: Annotated[Optional[StrictBool], Field(description="Include all function types (action, management, qualification)")] = None,
+        include_subscriptions: Annotated[Optional[StrictBool], Field(description="Include subscription relationships")] = None,
+        include_manages: Annotated[Optional[StrictBool], Field(description="Include management relationships")] = None,
+        include_action_functions: Annotated[Optional[StrictBool], Field(description="Include action function relationships")] = None,
+        include_management_functions: Annotated[Optional[StrictBool], Field(description="Include management function relationships")] = None,
+        include_qualification_functions: Annotated[Optional[StrictBool], Field(description="Include qualification function relationships")] = None,
+        include_resource_info: Annotated[Optional[StrictBool], Field(description="Include resource information (resource ID and status)")] = None,
+        include_diff_status: Annotated[Optional[StrictBool], Field(description="Include component diff status vs HEAD (Added/Modified/None)")] = None,
+        include_execution_history: Annotated[Optional[StrictBool], Field(description="Include last 10 execution history entries for each function")] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -3360,6 +3450,26 @@ class ComponentsApi:
         :type cursor: str
         :param include_codegen: Allow returning the codegen for the cloudformation template for the component (if it exists)
         :type include_codegen: bool
+        :param include_all: Include all graph summary data (equivalent to enabling all include options)
+        :type include_all: bool
+        :param include_functions: Include all function types (action, management, qualification)
+        :type include_functions: bool
+        :param include_subscriptions: Include subscription relationships
+        :type include_subscriptions: bool
+        :param include_manages: Include management relationships
+        :type include_manages: bool
+        :param include_action_functions: Include action function relationships
+        :type include_action_functions: bool
+        :param include_management_functions: Include management function relationships
+        :type include_management_functions: bool
+        :param include_qualification_functions: Include qualification function relationships
+        :type include_qualification_functions: bool
+        :param include_resource_info: Include resource information (resource ID and status)
+        :type include_resource_info: bool
+        :param include_diff_status: Include component diff status vs HEAD (Added/Modified/None)
+        :type include_diff_status: bool
+        :param include_execution_history: Include last 10 execution history entries for each function
+        :type include_execution_history: bool
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -3388,6 +3498,16 @@ class ComponentsApi:
             limit=limit,
             cursor=cursor,
             include_codegen=include_codegen,
+            include_all=include_all,
+            include_functions=include_functions,
+            include_subscriptions=include_subscriptions,
+            include_manages=include_manages,
+            include_action_functions=include_action_functions,
+            include_management_functions=include_management_functions,
+            include_qualification_functions=include_qualification_functions,
+            include_resource_info=include_resource_info,
+            include_diff_status=include_diff_status,
+            include_execution_history=include_execution_history,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -3413,6 +3533,16 @@ class ComponentsApi:
         limit,
         cursor,
         include_codegen,
+        include_all,
+        include_functions,
+        include_subscriptions,
+        include_manages,
+        include_action_functions,
+        include_management_functions,
+        include_qualification_functions,
+        include_resource_info,
+        include_diff_status,
+        include_execution_history,
         _request_auth,
         _content_type,
         _headers,
@@ -3450,6 +3580,46 @@ class ComponentsApi:
         if include_codegen is not None:
             
             _query_params.append(('includeCodegen', include_codegen))
+            
+        if include_all is not None:
+            
+            _query_params.append(('includeAll', include_all))
+            
+        if include_functions is not None:
+            
+            _query_params.append(('includeFunctions', include_functions))
+            
+        if include_subscriptions is not None:
+            
+            _query_params.append(('includeSubscriptions', include_subscriptions))
+            
+        if include_manages is not None:
+            
+            _query_params.append(('includeManages', include_manages))
+            
+        if include_action_functions is not None:
+            
+            _query_params.append(('includeActionFunctions', include_action_functions))
+            
+        if include_management_functions is not None:
+            
+            _query_params.append(('includeManagementFunctions', include_management_functions))
+            
+        if include_qualification_functions is not None:
+            
+            _query_params.append(('includeQualificationFunctions', include_qualification_functions))
+            
+        if include_resource_info is not None:
+            
+            _query_params.append(('includeResourceInfo', include_resource_info))
+            
+        if include_diff_status is not None:
+            
+            _query_params.append(('includeDiffStatus', include_diff_status))
+            
+        if include_execution_history is not None:
+            
+            _query_params.append(('includeExecutionHistory', include_execution_history))
             
         # process the header parameters
         # process the form parameters

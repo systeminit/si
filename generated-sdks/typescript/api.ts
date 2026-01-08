@@ -333,6 +333,12 @@ export interface ChangeSetViewV1 {
 export interface ComponentDetailsV1 {
     /**
      * 
+     * @type {Array<FunctionRelationshipV1>}
+     * @memberof ComponentDetailsV1
+     */
+    'actionFunctions'?: Array<FunctionRelationshipV1>;
+    /**
+     * 
      * @type {any}
      * @memberof ComponentDetailsV1
      */
@@ -348,13 +354,67 @@ export interface ComponentDetailsV1 {
      * @type {string}
      * @memberof ComponentDetailsV1
      */
+    'diffStatus'?: string | null;
+    /**
+     * 
+     * @type {boolean}
+     * @memberof ComponentDetailsV1
+     */
+    'hasDiff'?: boolean | null;
+    /**
+     * 
+     * @type {boolean}
+     * @memberof ComponentDetailsV1
+     */
+    'hasResource'?: boolean | null;
+    /**
+     * 
+     * @type {Array<FunctionRelationshipV1>}
+     * @memberof ComponentDetailsV1
+     */
+    'managementFunctions'?: Array<FunctionRelationshipV1>;
+    /**
+     * 
+     * @type {Array<ManagementRelationshipV1>}
+     * @memberof ComponentDetailsV1
+     */
+    'manages'?: Array<ManagementRelationshipV1>;
+    /**
+     * 
+     * @type {string}
+     * @memberof ComponentDetailsV1
+     */
     'name': string;
+    /**
+     * 
+     * @type {Array<FunctionRelationshipV1>}
+     * @memberof ComponentDetailsV1
+     */
+    'qualificationFunctions'?: Array<FunctionRelationshipV1>;
+    /**
+     * 
+     * @type {string}
+     * @memberof ComponentDetailsV1
+     */
+    'resourceId'?: string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof ComponentDetailsV1
+     */
+    'resourceStatus'?: string | null;
     /**
      * 
      * @type {string}
      * @memberof ComponentDetailsV1
      */
     'schemaName': string;
+    /**
+     * 
+     * @type {Array<SubscriptionRelationshipV1>}
+     * @memberof ComponentDetailsV1
+     */
+    'subscriptions'?: Array<SubscriptionRelationshipV1>;
 }
 /**
  * @type ComponentPropKey
@@ -1437,6 +1497,31 @@ export interface ExecuteManagementFunctionV1Response {
 /**
  * 
  * @export
+ * @interface ExecutionHistoryEntry
+ */
+export interface ExecutionHistoryEntry {
+    /**
+     * 
+     * @type {string}
+     * @memberof ExecutionHistoryEntry
+     */
+    'funcRunId': string;
+    /**
+     * 
+     * @type {string}
+     * @memberof ExecutionHistoryEntry
+     */
+    'startedAt': string;
+    /**
+     * 
+     * @type {string}
+     * @memberof ExecutionHistoryEntry
+     */
+    'state': string;
+}
+/**
+ * 
+ * @export
  * @interface FindComponentV1Params
  */
 export interface FindComponentV1Params {
@@ -1734,6 +1819,68 @@ export interface FuncRunViewV1 {
      * @memberof FuncRunViewV1
      */
     'updatedAt': string;
+}
+/**
+ * 
+ * @export
+ * @interface FunctionExecutionStatusV1
+ */
+export interface FunctionExecutionStatusV1 {
+    /**
+     * 
+     * @type {string}
+     * @memberof FunctionExecutionStatusV1
+     */
+    'actionId'?: string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof FunctionExecutionStatusV1
+     */
+    'funcRunId'?: string | null;
+    /**
+     * 
+     * @type {boolean}
+     * @memberof FunctionExecutionStatusV1
+     */
+    'hasActiveRun': boolean;
+    /**
+     * 
+     * @type {string}
+     * @memberof FunctionExecutionStatusV1
+     */
+    'state': string;
+}
+/**
+ * 
+ * @export
+ * @interface FunctionRelationshipV1
+ */
+export interface FunctionRelationshipV1 {
+    /**
+     * 
+     * @type {Array<string>}
+     * @memberof FunctionRelationshipV1
+     */
+    'dependsOn'?: Array<string>;
+    /**
+     * 
+     * @type {Array<ExecutionHistoryEntry>}
+     * @memberof FunctionRelationshipV1
+     */
+    'executionHistory'?: Array<ExecutionHistoryEntry>;
+    /**
+     * 
+     * @type {FunctionExecutionStatusV1}
+     * @memberof FunctionRelationshipV1
+     */
+    'executionStatus'?: FunctionExecutionStatusV1 | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof FunctionRelationshipV1
+     */
+    'functionName': string;
 }
 /**
  * 
@@ -2275,6 +2422,25 @@ export interface ManagementFunctionReferenceOneOf1 {
      * @memberof ManagementFunctionReferenceOneOf1
      */
     'managementPrototypeId': string;
+}
+/**
+ * 
+ * @export
+ * @interface ManagementRelationshipV1
+ */
+export interface ManagementRelationshipV1 {
+    /**
+     * 
+     * @type {string}
+     * @memberof ManagementRelationshipV1
+     */
+    'toComponentId': string;
+    /**
+     * 
+     * @type {string}
+     * @memberof ManagementRelationshipV1
+     */
+    'toComponentName': string;
 }
 /**
  * 
@@ -2960,6 +3126,43 @@ export interface SourceViewV1 {
 /**
  * 
  * @export
+ * @interface SubscriptionRelationshipV1
+ */
+export interface SubscriptionRelationshipV1 {
+    /**
+     * 
+     * @type {any}
+     * @memberof SubscriptionRelationshipV1
+     */
+    'currentValue'?: any;
+    /**
+     * 
+     * @type {string}
+     * @memberof SubscriptionRelationshipV1
+     */
+    'fromPath': string;
+    /**
+     * 
+     * @type {string}
+     * @memberof SubscriptionRelationshipV1
+     */
+    'toComponentId': string;
+    /**
+     * 
+     * @type {string}
+     * @memberof SubscriptionRelationshipV1
+     */
+    'toComponentName': string;
+    /**
+     * 
+     * @type {string}
+     * @memberof SubscriptionRelationshipV1
+     */
+    'toPath': string;
+}
+/**
+ * 
+ * @export
  * @interface SystemStatusResponse
  */
 export interface SystemStatusResponse {
@@ -3246,6 +3449,50 @@ export interface UpgradeComponentV1Response {
      * @memberof UpgradeComponentV1Response
      */
     'component': ComponentViewV1;
+}
+/**
+ * The request payload for uploading a policy report
+ * @export
+ * @interface UploadPolicyReportV1Request
+ */
+export interface UploadPolicyReportV1Request {
+    /**
+     * The unique name of the policy report.
+     * @type {string}
+     * @memberof UploadPolicyReportV1Request
+     */
+    'name': string;
+    /**
+     * The policy document that was used for evaluation.
+     * @type {string}
+     * @memberof UploadPolicyReportV1Request
+     */
+    'policy': string;
+    /**
+     * The contents of the report.
+     * @type {string}
+     * @memberof UploadPolicyReportV1Request
+     */
+    'report': string;
+    /**
+     * Whether the policy check passed or failed.
+     * @type {string}
+     * @memberof UploadPolicyReportV1Request
+     */
+    'result': string;
+}
+/**
+ * The response payload after uploading a policy report.
+ * @export
+ * @interface UploadPolicyReportV1Response
+ */
+export interface UploadPolicyReportV1Response {
+    /**
+     * The ID of the created policy report.
+     * @type {string}
+     * @memberof UploadPolicyReportV1Response
+     */
+    'id': string;
 }
 /**
  * 
@@ -5228,10 +5475,20 @@ export const ComponentsApiAxiosParamCreator = function (configuration?: Configur
          * @param {string} [limit] Maximum number of results to return (default: 50, max: 300)
          * @param {string} [cursor] Cursor for pagination (ComponentId of the last item from previous page)
          * @param {boolean} [includeCodegen] Allow returning the codegen for the cloudformation template for the component (if it exists)
+         * @param {boolean} [includeAll] Include all graph summary data (equivalent to enabling all include options)
+         * @param {boolean} [includeFunctions] Include all function types (action, management, qualification)
+         * @param {boolean} [includeSubscriptions] Include subscription relationships
+         * @param {boolean} [includeManages] Include management relationships
+         * @param {boolean} [includeActionFunctions] Include action function relationships
+         * @param {boolean} [includeManagementFunctions] Include management function relationships
+         * @param {boolean} [includeQualificationFunctions] Include qualification function relationships
+         * @param {boolean} [includeResourceInfo] Include resource information (resource ID and status)
+         * @param {boolean} [includeDiffStatus] Include component diff status vs HEAD (Added/Modified/None)
+         * @param {boolean} [includeExecutionHistory] Include last 10 execution history entries for each function
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        listComponents: async (workspaceId: string, changeSetId: string, limit?: string, cursor?: string, includeCodegen?: boolean, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+        listComponents: async (workspaceId: string, changeSetId: string, limit?: string, cursor?: string, includeCodegen?: boolean, includeAll?: boolean, includeFunctions?: boolean, includeSubscriptions?: boolean, includeManages?: boolean, includeActionFunctions?: boolean, includeManagementFunctions?: boolean, includeQualificationFunctions?: boolean, includeResourceInfo?: boolean, includeDiffStatus?: boolean, includeExecutionHistory?: boolean, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
             // verify required parameter 'workspaceId' is not null or undefined
             assertParamExists('listComponents', 'workspaceId', workspaceId)
             // verify required parameter 'changeSetId' is not null or undefined
@@ -5260,6 +5517,46 @@ export const ComponentsApiAxiosParamCreator = function (configuration?: Configur
 
             if (includeCodegen !== undefined) {
                 localVarQueryParameter['includeCodegen'] = includeCodegen;
+            }
+
+            if (includeAll !== undefined) {
+                localVarQueryParameter['includeAll'] = includeAll;
+            }
+
+            if (includeFunctions !== undefined) {
+                localVarQueryParameter['includeFunctions'] = includeFunctions;
+            }
+
+            if (includeSubscriptions !== undefined) {
+                localVarQueryParameter['includeSubscriptions'] = includeSubscriptions;
+            }
+
+            if (includeManages !== undefined) {
+                localVarQueryParameter['includeManages'] = includeManages;
+            }
+
+            if (includeActionFunctions !== undefined) {
+                localVarQueryParameter['includeActionFunctions'] = includeActionFunctions;
+            }
+
+            if (includeManagementFunctions !== undefined) {
+                localVarQueryParameter['includeManagementFunctions'] = includeManagementFunctions;
+            }
+
+            if (includeQualificationFunctions !== undefined) {
+                localVarQueryParameter['includeQualificationFunctions'] = includeQualificationFunctions;
+            }
+
+            if (includeResourceInfo !== undefined) {
+                localVarQueryParameter['includeResourceInfo'] = includeResourceInfo;
+            }
+
+            if (includeDiffStatus !== undefined) {
+                localVarQueryParameter['includeDiffStatus'] = includeDiffStatus;
+            }
+
+            if (includeExecutionHistory !== undefined) {
+                localVarQueryParameter['includeExecutionHistory'] = includeExecutionHistory;
             }
 
 
@@ -5668,11 +5965,21 @@ export const ComponentsApiFp = function(configuration?: Configuration) {
          * @param {string} [limit] Maximum number of results to return (default: 50, max: 300)
          * @param {string} [cursor] Cursor for pagination (ComponentId of the last item from previous page)
          * @param {boolean} [includeCodegen] Allow returning the codegen for the cloudformation template for the component (if it exists)
+         * @param {boolean} [includeAll] Include all graph summary data (equivalent to enabling all include options)
+         * @param {boolean} [includeFunctions] Include all function types (action, management, qualification)
+         * @param {boolean} [includeSubscriptions] Include subscription relationships
+         * @param {boolean} [includeManages] Include management relationships
+         * @param {boolean} [includeActionFunctions] Include action function relationships
+         * @param {boolean} [includeManagementFunctions] Include management function relationships
+         * @param {boolean} [includeQualificationFunctions] Include qualification function relationships
+         * @param {boolean} [includeResourceInfo] Include resource information (resource ID and status)
+         * @param {boolean} [includeDiffStatus] Include component diff status vs HEAD (Added/Modified/None)
+         * @param {boolean} [includeExecutionHistory] Include last 10 execution history entries for each function
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        async listComponents(workspaceId: string, changeSetId: string, limit?: string, cursor?: string, includeCodegen?: boolean, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<ListComponentsV1Response>> {
-            const localVarAxiosArgs = await localVarAxiosParamCreator.listComponents(workspaceId, changeSetId, limit, cursor, includeCodegen, options);
+        async listComponents(workspaceId: string, changeSetId: string, limit?: string, cursor?: string, includeCodegen?: boolean, includeAll?: boolean, includeFunctions?: boolean, includeSubscriptions?: boolean, includeManages?: boolean, includeActionFunctions?: boolean, includeManagementFunctions?: boolean, includeQualificationFunctions?: boolean, includeResourceInfo?: boolean, includeDiffStatus?: boolean, includeExecutionHistory?: boolean, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<ListComponentsV1Response>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.listComponents(workspaceId, changeSetId, limit, cursor, includeCodegen, includeAll, includeFunctions, includeSubscriptions, includeManages, includeActionFunctions, includeManagementFunctions, includeQualificationFunctions, includeResourceInfo, includeDiffStatus, includeExecutionHistory, options);
             const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
             const localVarOperationServerBasePath = operationServerMap['ComponentsApi.listComponents']?.[localVarOperationServerIndex]?.url;
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
@@ -5872,7 +6179,7 @@ export const ComponentsApiFactory = function (configuration?: Configuration, bas
          * @throws {RequiredError}
          */
         listComponents(requestParameters: ComponentsApiListComponentsRequest, options?: RawAxiosRequestConfig): AxiosPromise<ListComponentsV1Response> {
-            return localVarFp.listComponents(requestParameters.workspaceId, requestParameters.changeSetId, requestParameters.limit, requestParameters.cursor, requestParameters.includeCodegen, options).then((request) => request(axios, basePath));
+            return localVarFp.listComponents(requestParameters.workspaceId, requestParameters.changeSetId, requestParameters.limit, requestParameters.cursor, requestParameters.includeCodegen, requestParameters.includeAll, requestParameters.includeFunctions, requestParameters.includeSubscriptions, requestParameters.includeManages, requestParameters.includeActionFunctions, requestParameters.includeManagementFunctions, requestParameters.includeQualificationFunctions, requestParameters.includeResourceInfo, requestParameters.includeDiffStatus, requestParameters.includeExecutionHistory, options).then((request) => request(axios, basePath));
         },
         /**
          * 
@@ -6436,6 +6743,76 @@ export interface ComponentsApiListComponentsRequest {
      * @memberof ComponentsApiListComponents
      */
     readonly includeCodegen?: boolean
+
+    /**
+     * Include all graph summary data (equivalent to enabling all include options)
+     * @type {boolean}
+     * @memberof ComponentsApiListComponents
+     */
+    readonly includeAll?: boolean
+
+    /**
+     * Include all function types (action, management, qualification)
+     * @type {boolean}
+     * @memberof ComponentsApiListComponents
+     */
+    readonly includeFunctions?: boolean
+
+    /**
+     * Include subscription relationships
+     * @type {boolean}
+     * @memberof ComponentsApiListComponents
+     */
+    readonly includeSubscriptions?: boolean
+
+    /**
+     * Include management relationships
+     * @type {boolean}
+     * @memberof ComponentsApiListComponents
+     */
+    readonly includeManages?: boolean
+
+    /**
+     * Include action function relationships
+     * @type {boolean}
+     * @memberof ComponentsApiListComponents
+     */
+    readonly includeActionFunctions?: boolean
+
+    /**
+     * Include management function relationships
+     * @type {boolean}
+     * @memberof ComponentsApiListComponents
+     */
+    readonly includeManagementFunctions?: boolean
+
+    /**
+     * Include qualification function relationships
+     * @type {boolean}
+     * @memberof ComponentsApiListComponents
+     */
+    readonly includeQualificationFunctions?: boolean
+
+    /**
+     * Include resource information (resource ID and status)
+     * @type {boolean}
+     * @memberof ComponentsApiListComponents
+     */
+    readonly includeResourceInfo?: boolean
+
+    /**
+     * Include component diff status vs HEAD (Added/Modified/None)
+     * @type {boolean}
+     * @memberof ComponentsApiListComponents
+     */
+    readonly includeDiffStatus?: boolean
+
+    /**
+     * Include last 10 execution history entries for each function
+     * @type {boolean}
+     * @memberof ComponentsApiListComponents
+     */
+    readonly includeExecutionHistory?: boolean
 }
 
 /**
@@ -6728,7 +7105,7 @@ export class ComponentsApi extends BaseAPI implements ComponentsApiInterface {
      * @memberof ComponentsApi
      */
     public listComponents(requestParameters: ComponentsApiListComponentsRequest, options?: RawAxiosRequestConfig) {
-        return ComponentsApiFp(this.configuration).listComponents(requestParameters.workspaceId, requestParameters.changeSetId, requestParameters.limit, requestParameters.cursor, requestParameters.includeCodegen, options).then((request) => request(this.axios, this.basePath));
+        return ComponentsApiFp(this.configuration).listComponents(requestParameters.workspaceId, requestParameters.changeSetId, requestParameters.limit, requestParameters.cursor, requestParameters.includeCodegen, requestParameters.includeAll, requestParameters.includeFunctions, requestParameters.includeSubscriptions, requestParameters.includeManages, requestParameters.includeActionFunctions, requestParameters.includeManagementFunctions, requestParameters.includeQualificationFunctions, requestParameters.includeResourceInfo, requestParameters.includeDiffStatus, requestParameters.includeExecutionHistory, options).then((request) => request(this.axios, this.basePath));
     }
 
     /**
@@ -7898,6 +8275,172 @@ export class ManagementFuncsApi extends BaseAPI implements ManagementFuncsApiInt
      */
     public getManagementFuncRunState(requestParameters: ManagementFuncsApiGetManagementFuncRunStateRequest, options?: RawAxiosRequestConfig) {
         return ManagementFuncsApiFp(this.configuration).getManagementFuncRunState(requestParameters.workspaceId, requestParameters.changeSetId, requestParameters.managementFuncJobStateId, options).then((request) => request(this.axios, this.basePath));
+    }
+}
+
+
+
+/**
+ * PolicyReportsApi - axios parameter creator
+ * @export
+ */
+export const PolicyReportsApiAxiosParamCreator = function (configuration?: Configuration) {
+    return {
+        /**
+         * 
+         * @summary Upload a policy report
+         * @param {string} workspaceId Workspace identifier
+         * @param {string} changeSetId Change Set identifier
+         * @param {UploadPolicyReportV1Request} uploadPolicyReportV1Request 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        uploadPolicyReport: async (workspaceId: string, changeSetId: string, uploadPolicyReportV1Request: UploadPolicyReportV1Request, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'workspaceId' is not null or undefined
+            assertParamExists('uploadPolicyReport', 'workspaceId', workspaceId)
+            // verify required parameter 'changeSetId' is not null or undefined
+            assertParamExists('uploadPolicyReport', 'changeSetId', changeSetId)
+            // verify required parameter 'uploadPolicyReportV1Request' is not null or undefined
+            assertParamExists('uploadPolicyReport', 'uploadPolicyReportV1Request', uploadPolicyReportV1Request)
+            const localVarPath = `/v1/w/{workspace_id}/change-sets/{change_set_id}/policy-reports`
+                .replace(`{${"workspace_id"}}`, encodeURIComponent(String(workspaceId)))
+                .replace(`{${"change_set_id"}}`, encodeURIComponent(String(changeSetId)));
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'POST', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+
+    
+            localVarHeaderParameter['Content-Type'] = 'application/json';
+
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+            localVarRequestOptions.data = serializeDataIfNeeded(uploadPolicyReportV1Request, localVarRequestOptions, configuration)
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+    }
+};
+
+/**
+ * PolicyReportsApi - functional programming interface
+ * @export
+ */
+export const PolicyReportsApiFp = function(configuration?: Configuration) {
+    const localVarAxiosParamCreator = PolicyReportsApiAxiosParamCreator(configuration)
+    return {
+        /**
+         * 
+         * @summary Upload a policy report
+         * @param {string} workspaceId Workspace identifier
+         * @param {string} changeSetId Change Set identifier
+         * @param {UploadPolicyReportV1Request} uploadPolicyReportV1Request 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async uploadPolicyReport(workspaceId: string, changeSetId: string, uploadPolicyReportV1Request: UploadPolicyReportV1Request, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<UploadPolicyReportV1Response>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.uploadPolicyReport(workspaceId, changeSetId, uploadPolicyReportV1Request, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['PolicyReportsApi.uploadPolicyReport']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+    }
+};
+
+/**
+ * PolicyReportsApi - factory interface
+ * @export
+ */
+export const PolicyReportsApiFactory = function (configuration?: Configuration, basePath?: string, axios?: AxiosInstance) {
+    const localVarFp = PolicyReportsApiFp(configuration)
+    return {
+        /**
+         * 
+         * @summary Upload a policy report
+         * @param {PolicyReportsApiUploadPolicyReportRequest} requestParameters Request parameters.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        uploadPolicyReport(requestParameters: PolicyReportsApiUploadPolicyReportRequest, options?: RawAxiosRequestConfig): AxiosPromise<UploadPolicyReportV1Response> {
+            return localVarFp.uploadPolicyReport(requestParameters.workspaceId, requestParameters.changeSetId, requestParameters.uploadPolicyReportV1Request, options).then((request) => request(axios, basePath));
+        },
+    };
+};
+
+/**
+ * PolicyReportsApi - interface
+ * @export
+ * @interface PolicyReportsApi
+ */
+export interface PolicyReportsApiInterface {
+    /**
+     * 
+     * @summary Upload a policy report
+     * @param {PolicyReportsApiUploadPolicyReportRequest} requestParameters Request parameters.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof PolicyReportsApiInterface
+     */
+    uploadPolicyReport(requestParameters: PolicyReportsApiUploadPolicyReportRequest, options?: RawAxiosRequestConfig): AxiosPromise<UploadPolicyReportV1Response>;
+
+}
+
+/**
+ * Request parameters for uploadPolicyReport operation in PolicyReportsApi.
+ * @export
+ * @interface PolicyReportsApiUploadPolicyReportRequest
+ */
+export interface PolicyReportsApiUploadPolicyReportRequest {
+    /**
+     * Workspace identifier
+     * @type {string}
+     * @memberof PolicyReportsApiUploadPolicyReport
+     */
+    readonly workspaceId: string
+
+    /**
+     * Change Set identifier
+     * @type {string}
+     * @memberof PolicyReportsApiUploadPolicyReport
+     */
+    readonly changeSetId: string
+
+    /**
+     * 
+     * @type {UploadPolicyReportV1Request}
+     * @memberof PolicyReportsApiUploadPolicyReport
+     */
+    readonly uploadPolicyReportV1Request: UploadPolicyReportV1Request
+}
+
+/**
+ * PolicyReportsApi - object-oriented interface
+ * @export
+ * @class PolicyReportsApi
+ * @extends {BaseAPI}
+ */
+export class PolicyReportsApi extends BaseAPI implements PolicyReportsApiInterface {
+    /**
+     * 
+     * @summary Upload a policy report
+     * @param {PolicyReportsApiUploadPolicyReportRequest} requestParameters Request parameters.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof PolicyReportsApi
+     */
+    public uploadPolicyReport(requestParameters: PolicyReportsApiUploadPolicyReportRequest, options?: RawAxiosRequestConfig) {
+        return PolicyReportsApiFp(this.configuration).uploadPolicyReport(requestParameters.workspaceId, requestParameters.changeSetId, requestParameters.uploadPolicyReportV1Request, options).then((request) => request(this.axios, this.basePath));
     }
 }
 

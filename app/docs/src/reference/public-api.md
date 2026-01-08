@@ -396,6 +396,16 @@ Components management endpoints
 |limit|query|string|false|Maximum number of results to return (default: 50, max: 300)|
 |cursor|query|string|false|Cursor for pagination (ComponentId of the last item from previous page)|
 |includeCodegen|query|boolean|false|Allow returning the codegen for the cloudformation template for the component (if it exists)|
+|includeAll|query|boolean|false|Include all graph summary data (equivalent to enabling all include options)|
+|includeFunctions|query|boolean|false|Include all function types (action, management, qualification)|
+|includeSubscriptions|query|boolean|false|Include subscription relationships|
+|includeManages|query|boolean|false|Include management relationships|
+|includeActionFunctions|query|boolean|false|Include action function relationships|
+|includeManagementFunctions|query|boolean|false|Include management function relationships|
+|includeQualificationFunctions|query|boolean|false|Include qualification function relationships|
+|includeResourceInfo|query|boolean|false|Include resource information (resource ID and status)|
+|includeDiffStatus|query|boolean|false|Include component diff status vs HEAD (Added/Modified/None)|
+|includeExecutionHistory|query|boolean|false|Include last 10 execution history entries for each function|
 
 > Example responses
 
@@ -3522,6 +3532,7 @@ Status Code **200**
 
 ```json
 {
+  "createSetupToken": false,
   "description": "Production environment for customer deployments",
   "displayName": "My Production Workspace",
   "instanceUrl": "https://app.systeminit.com",
@@ -4003,6 +4014,53 @@ Status Code **200**
 |» signupAt|string,null|false|none|none|
 |» userId|string|true|none|none|
 
+# [policy_reports](#system-initiative-api-policy_reports)
+
+## Upload a policy report
+
+<a id="opIdupload_policy_report"></a>
+
+> Request format
+
+`POST /v1/w/{workspace_id}/change-sets/{change_set_id}/policy-reports`
+
+> Body parameter
+
+```json
+{
+  "name": "string",
+  "policy": "string",
+  "report": "string",
+  "result": "Pass"
+}
+```
+
+<h3 id="upload-a-policy-report-parameters">Parameters</h3>
+
+|Name|In|Type|Required|Description|
+|---|---|---|---|---|
+|workspace_id|path|string|true|Workspace identifier|
+|change_set_id|path|string|true|Change Set identifier|
+|body|body|[UploadPolicyReportV1Request](#schemauploadpolicyreportv1request)|true|none|
+
+> Example responses
+
+> 200 Response
+
+```json
+{
+  "id": "01H9ZQD35JPMBGHH69BT0Q79VY"
+}
+```
+
+<h3 id="upload-a-policy-report-responses">Responses</h3>
+
+|Status|Meaning|Description|Schema|
+|---|---|---|---|
+|200|[OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)|Policy report uploaded successfully|[UploadPolicyReportV1Response](#schemauploadpolicyreportv1response)|
+|401|[Unauthorized](https://tools.ietf.org/html/rfc7235#section-3.1)|Unauthorized - Invalid or missing token|None|
+|500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
+
 # [search](#system-initiative-api-search)
 
 ## Complex search for components
@@ -4362,10 +4420,78 @@ expected data.
 
 ```json
 {
+  "actionFunctions": [
+    {
+      "dependsOn": [
+        "string"
+      ],
+      "executionHistory": [
+        {
+          "funcRunId": "string",
+          "startedAt": "2019-08-24T14:15:22Z",
+          "state": "string"
+        }
+      ],
+      "executionStatus": {},
+      "functionName": "string"
+    }
+  ],
   "codegen": null,
   "componentId": "string",
+  "diffStatus": "string",
+  "hasDiff": true,
+  "hasResource": true,
+  "managementFunctions": [
+    {
+      "dependsOn": [
+        "string"
+      ],
+      "executionHistory": [
+        {
+          "funcRunId": "string",
+          "startedAt": "2019-08-24T14:15:22Z",
+          "state": "string"
+        }
+      ],
+      "executionStatus": {},
+      "functionName": "string"
+    }
+  ],
+  "manages": [
+    {
+      "toComponentId": "string",
+      "toComponentName": "string"
+    }
+  ],
   "name": "string",
-  "schemaName": "string"
+  "qualificationFunctions": [
+    {
+      "dependsOn": [
+        "string"
+      ],
+      "executionHistory": [
+        {
+          "funcRunId": "string",
+          "startedAt": "2019-08-24T14:15:22Z",
+          "state": "string"
+        }
+      ],
+      "executionStatus": {},
+      "functionName": "string"
+    }
+  ],
+  "resourceId": "string",
+  "resourceStatus": "string",
+  "schemaName": "string",
+  "subscriptions": [
+    {
+      "currentValue": null,
+      "fromPath": "string",
+      "toComponentId": "string",
+      "toComponentName": "string",
+      "toPath": "string"
+    }
+  ]
 }
 
 ```
@@ -4374,10 +4500,20 @@ expected data.
 
 |Name|Type|Required|Restrictions|Description|
 |---|---|---|---|---|
+|actionFunctions|[[FunctionRelationshipV1](#schemafunctionrelationshipv1)]|false|none|none|
 |codegen|any|false|none|none|
 |componentId|string|true|none|none|
+|diffStatus|string,null|false|none|none|
+|hasDiff|boolean,null|false|none|none|
+|hasResource|boolean,null|false|none|none|
+|managementFunctions|[[FunctionRelationshipV1](#schemafunctionrelationshipv1)]|false|none|none|
+|manages|[[ManagementRelationshipV1](#schemamanagementrelationshipv1)]|false|none|none|
 |name|string|true|none|none|
+|qualificationFunctions|[[FunctionRelationshipV1](#schemafunctionrelationshipv1)]|false|none|none|
+|resourceId|string,null|false|none|none|
+|resourceStatus|string,null|false|none|none|
 |schemaName|string|true|none|none|
+|subscriptions|[[SubscriptionRelationshipV1](#schemasubscriptionrelationshipv1)]|false|none|none|
 
 ## [ComponentPropKey](#tocS_ComponentPropKey)
 
@@ -5255,6 +5391,7 @@ xor
 
 ```json
 {
+  "createSetupToken": false,
   "description": "Production environment for customer deployments",
   "displayName": "My Production Workspace",
   "instanceUrl": "https://app.systeminit.com",
@@ -5267,6 +5404,7 @@ xor
 
 |Name|Type|Required|Restrictions|Description|
 |---|---|---|---|---|
+|createSetupToken|boolean,null|false|none|none|
 |description|string|true|none|none|
 |displayName|string|true|none|none|
 |instanceUrl|string|true|none|none|
@@ -5612,6 +5750,30 @@ A prop path, starting from root/domain, with / instead of PROP_PATH_SEPARATOR as
 |message|string,null|false|none|none|
 |status|string|true|none|none|
 
+## [ExecutionHistoryEntry](#tocS_ExecutionHistoryEntry)
+
+<a id="schemaexecutionhistoryentry"></a>
+<a id="schema_ExecutionHistoryEntry"></a>
+<a id="tocSexecutionhistoryentry"></a>
+<a id="tocsexecutionhistoryentry"></a>
+
+```json
+{
+  "funcRunId": "string",
+  "startedAt": "2019-08-24T14:15:22Z",
+  "state": "string"
+}
+
+```
+
+### [Properties](#executionhistoryentry-properties)
+
+|Name|Type|Required|Restrictions|Description|
+|---|---|---|---|---|
+|funcRunId|string|true|none|none|
+|startedAt|string(date-time)|true|none|none|
+|state|string|true|none|none|
+
 ## [FindComponentV1Params](#tocS_FindComponentV1Params)
 
 <a id="schemafindcomponentv1params"></a>
@@ -5855,6 +6017,83 @@ continued
 |schemaName|string,null|false|none|none|
 |state|string|true|none|none|
 |updatedAt|string|true|none|none|
+
+## [FunctionExecutionStatusV1](#tocS_FunctionExecutionStatusV1)
+
+<a id="schemafunctionexecutionstatusv1"></a>
+<a id="schema_FunctionExecutionStatusV1"></a>
+<a id="tocSfunctionexecutionstatusv1"></a>
+<a id="tocsfunctionexecutionstatusv1"></a>
+
+```json
+{
+  "actionId": "string",
+  "funcRunId": "string",
+  "hasActiveRun": true,
+  "state": "string"
+}
+
+```
+
+### [Properties](#functionexecutionstatusv1-properties)
+
+|Name|Type|Required|Restrictions|Description|
+|---|---|---|---|---|
+|actionId|string,null|false|none|none|
+|funcRunId|string,null|false|none|none|
+|hasActiveRun|boolean|true|none|none|
+|state|string|true|none|none|
+
+## [FunctionRelationshipV1](#tocS_FunctionRelationshipV1)
+
+<a id="schemafunctionrelationshipv1"></a>
+<a id="schema_FunctionRelationshipV1"></a>
+<a id="tocSfunctionrelationshipv1"></a>
+<a id="tocsfunctionrelationshipv1"></a>
+
+```json
+{
+  "dependsOn": [
+    "string"
+  ],
+  "executionHistory": [
+    {
+      "funcRunId": "string",
+      "startedAt": "2019-08-24T14:15:22Z",
+      "state": "string"
+    }
+  ],
+  "executionStatus": {},
+  "functionName": "string"
+}
+
+```
+
+### [Properties](#functionrelationshipv1-properties)
+
+|Name|Type|Required|Restrictions|Description|
+|---|---|---|---|---|
+|dependsOn|[string]|false|none|none|
+|executionHistory|[[ExecutionHistoryEntry](#schemaexecutionhistoryentry)]|false|none|none|
+|executionStatus|any|false|none|none|
+
+oneOf
+
+|Name|Type|Required|Restrictions|Description|
+|---|---|---|---|---|
+|» *anonymous*|null|false|none|none|
+
+xor
+
+|Name|Type|Required|Restrictions|Description|
+|---|---|---|---|---|
+|» *anonymous*|[FunctionExecutionStatusV1](#schemafunctionexecutionstatusv1)|false|none|none|
+
+continued
+
+|Name|Type|Required|Restrictions|Description|
+|---|---|---|---|---|
+|functionName|string|true|none|none|
 
 ## [GetActionsV1Response](#tocS_GetActionsV1Response)
 
@@ -6663,6 +6902,28 @@ xor
 |*anonymous*|object|false|none|none|
 |» managementPrototypeId|string|true|none|none|
 
+## [ManagementRelationshipV1](#tocS_ManagementRelationshipV1)
+
+<a id="schemamanagementrelationshipv1"></a>
+<a id="schema_ManagementRelationshipV1"></a>
+<a id="tocSmanagementrelationshipv1"></a>
+<a id="tocsmanagementrelationshipv1"></a>
+
+```json
+{
+  "toComponentId": "string",
+  "toComponentName": "string"
+}
+
+```
+
+### [Properties](#managementrelationshipv1-properties)
+
+|Name|Type|Required|Restrictions|Description|
+|---|---|---|---|---|
+|toComponentId|string|true|none|none|
+|toComponentName|string|true|none|none|
+
 ## [ManagingConnectionViewV1](#tocS_ManagingConnectionViewV1)
 
 <a id="schemamanagingconnectionviewv1"></a>
@@ -7456,6 +7717,34 @@ xor
 |component|string|true|none|none|
 |propPath|string|true|none|none|
 
+## [SubscriptionRelationshipV1](#tocS_SubscriptionRelationshipV1)
+
+<a id="schemasubscriptionrelationshipv1"></a>
+<a id="schema_SubscriptionRelationshipV1"></a>
+<a id="tocSsubscriptionrelationshipv1"></a>
+<a id="tocssubscriptionrelationshipv1"></a>
+
+```json
+{
+  "currentValue": null,
+  "fromPath": "string",
+  "toComponentId": "string",
+  "toComponentName": "string",
+  "toPath": "string"
+}
+
+```
+
+### [Properties](#subscriptionrelationshipv1-properties)
+
+|Name|Type|Required|Restrictions|Description|
+|---|---|---|---|---|
+|currentValue|any|false|none|none|
+|fromPath|string|true|none|none|
+|toComponentId|string|true|none|none|
+|toComponentName|string|true|none|none|
+|toPath|string|true|none|none|
+
 ## [SystemStatusResponse](#tocS_SystemStatusResponse)
 
 <a id="schemasystemstatusresponse"></a>
@@ -7926,6 +8215,56 @@ xor
 |Name|Type|Required|Restrictions|Description|
 |---|---|---|---|---|
 |component|[ComponentViewV1](#schemacomponentviewv1)|true|none|none|
+
+## [UploadPolicyReportV1Request](#tocS_UploadPolicyReportV1Request)
+
+<a id="schemauploadpolicyreportv1request"></a>
+<a id="schema_UploadPolicyReportV1Request"></a>
+<a id="tocSuploadpolicyreportv1request"></a>
+<a id="tocsuploadpolicyreportv1request"></a>
+
+```json
+{
+  "name": "string",
+  "policy": "string",
+  "report": "string",
+  "result": "Pass"
+}
+
+```
+
+The request payload for uploading a policy report
+
+### [Properties](#uploadpolicyreportv1request-properties)
+
+|Name|Type|Required|Restrictions|Description|
+|---|---|---|---|---|
+|name|string|true|none|The unique name of the policy report.|
+|policy|string|true|none|The policy document that was used for evaluation.|
+|report|string|true|none|The contents of the report.|
+|result|string|true|none|Whether the policy check passed or failed.|
+
+## [UploadPolicyReportV1Response](#tocS_UploadPolicyReportV1Response)
+
+<a id="schemauploadpolicyreportv1response"></a>
+<a id="schema_UploadPolicyReportV1Response"></a>
+<a id="tocSuploadpolicyreportv1response"></a>
+<a id="tocsuploadpolicyreportv1response"></a>
+
+```json
+{
+  "id": "01H9ZQD35JPMBGHH69BT0Q79VY"
+}
+
+```
+
+The response payload after uploading a policy report.
+
+### [Properties](#uploadpolicyreportv1response-properties)
+
+|Name|Type|Required|Restrictions|Description|
+|---|---|---|---|---|
+|id|string|true|none|The ID of the created policy report.|
 
 ## [ViewV1](#tocS_ViewV1)
 
