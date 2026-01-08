@@ -1645,7 +1645,7 @@ function buildPolicyCommand() {
             options as PolicyEvaluateOptions,
           );
         }),
-    ).hidden();
+    );
 }
 
 async function ensureApiConfig(options: GlobalOptions): Promise<void> {
