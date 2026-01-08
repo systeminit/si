@@ -1066,25 +1066,32 @@ Policy management operations.
 
 Evaluate policies against infrastructure components.
 
-This command evaluates a compliance policy written in markdown format against your System Initiative infrastructure. The evaluation process uses Claude AI to:
-1. Extract policy structure from the markdown document
+This command evaluates one or more compliance policies written in markdown format against your System Initiative infrastructure. The evaluation process uses Claude AI to:
+1. Extract policy structure from the markdown document(s)
 2. Collect infrastructure data from System Initiative based on queries
 3. Evaluate components against the policy requirements
-4. Generate a detailed markdown report with findings
+4. Generate detailed markdown reports with findings
+5. Upload results to System Initiative (unless `--no-upload` is specified)
 
 All output files are organized in a single folder (timestamped or custom-named) for easy management.
 
 > Syntax
 
 ```bash
-si policy evaluate <file-path> [OPTIONS]
+# Evaluate a single policy file
+si policy evaluate <file-path> --name <policy-name> [OPTIONS]
+
+# Evaluate all policies in a directory
+si policy evaluate <directory-path> --all [OPTIONS]
 ```
 
 #### Parameters
 
 | Name                    | Type   | Required | Description                                           | Default   |
 | ----------------------- | ------ | -------- | ----------------------------------------------------- | --------- |
-| file-path               | string | true     | Path to the policy markdown file                      | -         |
+| file-path               | string | true     | Path to a policy markdown file or directory           | -         |
+| -n, --name              | string | conditional | Name for the policy evaluation (required for single files, derived from filename when using `--all`) | - |
+| --all                   | flag   | false    | Evaluate all `.md` files in a directory (only works with directories) | false |
 | -c, --change-set        | string | false    | Change set ID or name to evaluate against             | `HEAD`    |
 | -o, --output-folder     | string | false    | Folder name to organize results                       | Timestamp (e.g., `2026-01-08T01:10:15Z`) |
 | --no-upload             | flag   | false    | Skip uploading the policy evaluation results          | false     |
@@ -1100,17 +1107,59 @@ The command creates a folder containing:
 #### Examples
 
 ```bash
-# Evaluate policy against HEAD (default)
-si policy evaluate policies/vpc-compliance.md
+# Evaluate a single policy file
+si policy evaluate policies/vpc-compliance.md --name "VPC Compliance Policy"
 
 # Evaluate against a specific change set
-si policy evaluate policies/vpc-compliance.md -c my-changeset
+si policy evaluate policies/vpc-compliance.md --name "VPC Policy" -c my-changeset
 
 # Organize results in a custom folder
-si policy evaluate policies/vpc-compliance.md -o vpc-audit
+si policy evaluate policies/vpc-compliance.md --name "VPC Policy" -o vpc-audit
 
 # Skip upload stage
-si policy evaluate policies/vpc-compliance.md --no-upload
+si policy evaluate policies/vpc-compliance.md --name "VPC Policy" --no-upload
+
+# Evaluate all policies in a directory
+si policy evaluate policies/ --all
+
+# Evaluate all policies with custom options
+si policy evaluate policies/ --all -c my-changeset -o audit-results
+```
+
+#### Behavior
+
+**Single File Mode:**
+- Requires `--name` parameter to identify the policy
+- Evaluates one policy file
+- Policy name is used in the uploaded report
+
+**Directory Mode (with `--all`):**
+- Automatically finds all `.md` files in the directory
+- Policy name is derived from filename (e.g., `vpc-compliance.md` → `vpc-compliance`)
+- Each policy is evaluated independently
+- If one policy fails, others continue processing
+- Summary shows results for all evaluated policies
+
+#### Validation
+
+The command validates inputs and provides clear error messages:
+
+```bash
+# Directory without --all
+$ si policy evaluate policies/
+Error: The path "policies/" is a directory. Please use the --all flag to evaluate all policy files in the directory.
+
+# File with --all but no name
+$ si policy evaluate policy.md --all
+Error: When evaluating a single file, the --name option is required. The --all flag only applies to directories.
+
+# Empty directory
+$ si policy evaluate empty/ --all
+Error: No policy files (.md) found in directory: empty/
+
+# Non-existent path
+$ si policy evaluate invalid/path
+Error: Path does not exist: invalid/path
 ```
 
 #### Policy Markdown Format
