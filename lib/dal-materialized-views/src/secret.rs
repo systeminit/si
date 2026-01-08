@@ -7,6 +7,7 @@ use dal::{
     Secret,
     SecretId,
     prop::PropPath,
+    property_editor::schema::WidgetKind,
 };
 use si_frontend_mv_types::{
     schema_variant::prop_tree::{
@@ -79,12 +80,30 @@ pub async fn find_definition(
                         })
                         .collect::<WidgetOptions>()
                 });
+                let widget_kind = match field_prop.widget_kind {
+                    WidgetKind::Array => PropWidgetKind::Array,
+                    WidgetKind::Checkbox => PropWidgetKind::Checkbox,
+                    WidgetKind::CodeEditor => PropWidgetKind::CodeEditor,
+                    WidgetKind::Header => PropWidgetKind::Header,
+                    WidgetKind::Map => PropWidgetKind::Map,
+                    WidgetKind::Password => PropWidgetKind::Password,
+                    WidgetKind::Select => PropWidgetKind::Select {
+                        options: widget_options.clone(),
+                    },
+                    WidgetKind::Color => PropWidgetKind::Color,
+                    WidgetKind::Secret => PropWidgetKind::Secret {
+                        options: widget_options.clone(),
+                    },
+                    WidgetKind::Text => PropWidgetKind::Text,
+                    WidgetKind::TextArea => PropWidgetKind::TextArea,
+                    WidgetKind::ComboBox => PropWidgetKind::ComboBox {
+                        options: widget_options.clone(),
+                    },
+                };
                 form_data_views.push(SecretFormDataView {
                     name: field_prop.name,
                     kind: field_prop.kind.to_string(),
-                    widget_kind: PropWidgetKind::Secret {
-                        options: widget_options,
-                    },
+                    widget_kind,
                 });
             }
             Ok(Some(SecretDefinition {

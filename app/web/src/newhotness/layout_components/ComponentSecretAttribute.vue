@@ -53,6 +53,7 @@
                   <SecretInput
                     :field="field"
                     :fieldname="fieldname"
+                    :widgetKind="secretFieldWidgetKinds[fieldname]"
                     :placeholder="
                       attributeTree.secret ? getPlaceholder(fieldname) : ''
                     "
@@ -203,6 +204,24 @@ const secretFormData = computed(() => {
       ...form,
     };
   } else return {};
+});
+
+const secretFieldWidgetKinds = computed(() => {
+  if (
+    props.attributeTree.prop?.isOriginSecret &&
+    props.attributeTree.prop?.secretDefinition
+  ) {
+    return props.attributeTree.prop.secretDefinition.formData.reduce(
+      (obj, field) => {
+        obj[field.name] = field.widgetKind;
+        return obj;
+      },
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      {} as Record<string, any>,
+    );
+  } else {
+    return {};
+  }
 });
 
 const saveApi = useApi();
