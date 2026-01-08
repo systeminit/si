@@ -10,6 +10,7 @@ mod components;
 mod debug_funcs;
 mod funcs;
 mod management_funcs;
+mod policy_reports;
 mod schemas;
 mod search;
 mod secrets;
@@ -127,6 +128,10 @@ pub use management_funcs::{
     ManagementFuncsError,
     ManagementFuncsResult,
     get_management_func_run_state::GetManagementFuncJobStateV1Response,
+};
+pub use policy_reports::{
+    UploadPolicyReportV1Request,
+    UploadPolicyReportV1Response,
 };
 pub use schemas::{
     DetachFuncBindingV1Response,
@@ -262,6 +267,7 @@ pub use crate::api_types::func_run::v1::{
         secrets::update_secret::update_secret,
         secrets::get_secrets::get_secrets,
         search::search,
+        policy_reports::upload::upload_policy_report,
     ),
     components(
         schemas(
@@ -358,6 +364,8 @@ pub use crate::api_types::func_run::v1::{
             ExecDebugFuncV1Request,
             ExecDebugFuncV1Response,
             GetDebugFuncJobStateV1Response,
+            UploadPolicyReportV1Request,
+            UploadPolicyReportV1Response,
         )
     ),
     tags(
@@ -369,7 +377,8 @@ pub use crate::api_types::func_run::v1::{
         (name = "secrets", description = "Secret management endpoints"),
         (name = "funcs", description = "Functions management endpoints"),
         (name = "debug_funcs", description = "Debug function endpoints"),
-        (name = "management_funcs", description = "Management functions endpoints")
+        (name = "management_funcs", description = "Management functions endpoints"),
+        (name = "policy_reports", description = "Policy report endpoints")
     )
 )]
 pub struct V1ApiDoc;

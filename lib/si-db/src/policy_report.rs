@@ -49,8 +49,11 @@ use crate::{
     SiDbTransactions,
 };
 
-/// The default limit when listing [policy reports](PolicyReport).
-pub(crate) const DEFAULT_LIST_LIMIT: i64 = 200;
+/// The default page number when fetching a batch of [policy reports](PolicyReport).
+pub const DEFAULT_PAGE_NUMBER: u64 = 1;
+
+/// The default page size when fetching a batch of [policy reports](PolicyReport).
+pub const DEFAULT_PAGE_SIZE: u64 = 200;
 
 #[allow(missing_docs)]
 #[remain::sorted]
@@ -128,6 +131,23 @@ impl TryFrom<PgRow> for PolicyReport {
     }
 }
 
+/// Contains a batch of [policy reports](PolicyReport) for a workspace and change set with relevant
+/// metadata.
+#[derive(Debug)]
+pub struct PolicyReportBatch {
+    /// A list of reports for a workspace and change set.
+    pub reports: Vec<PolicyReport>,
+    /// The page size used to fetch the list of reports.
+    pub page_size: u64,
+    /// The page number used to fetch the list of reports.
+    pub page_number: u64,
+    /// The total number of pages given the page size and total number of reports for the workspace
+    /// and change set.
+    pub total_page_count: u64,
+    /// The total number of reports for the workspace and change set.
+    pub total_report_count: u64,
+}
+
 impl PolicyReport {
     /// Inserts a new policy report entry with a passing [result](PolicyReportResult).
     pub async fn new_pass(
@@ -169,7 +189,8 @@ impl PolicyReport {
                     policy,
                     report,
                     result
-                ) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *",
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7)
+                RETURNING *",
                 &[
                     &ctx.tenancy().workspace_pk()?,
                     &ctx.change_set_id(),
@@ -185,34 +206,89 @@ impl PolicyReport {
         Self::try_from(row)
     }
 
-    /// List all [`PolicyReports`](PolicyReport) for the current workspace and change set. Limits
-    /// the number of results with a [default](DEFAULT_LIST_LIMIT) limit.
-    pub async fn list(ctx: &impl SiDbContext) -> Result<Vec<Self>> {
-        Self::list_inner(ctx, DEFAULT_LIST_LIMIT).await
-    }
+    /// Fetches a batch of [`PolicyReports`](PolicyReport) for the current workspace and change set via pagination.
+    /// Bundles the data into a [`PolicyReportBatch`].
+    ///
+    /// - If the caller does not provide a page size, the [`DEFAULT_PAGE_SIZE`] is used
+    /// - If the caller does not provide a page number, the [`DEFAULT_PAGE_NUMBER`] is used
+    /// - If the caller provides a page size that isn't greater than zero, the page size will be `1`
+    /// - If the caller provides a page number that isn't greater than zero, the page number will be `1`
+    pub async fn fetch_batch(
+        ctx: &impl SiDbContext,
+        page_size: Option<u64>,
+        page_number: Option<u64>,
+    ) -> Result<PolicyReportBatch> {
+        // Fallback to the default page size and page number, as needed. We also ensure that the
+        // the page number and size are at least "1".
+        let page_size = page_size.unwrap_or(DEFAULT_PAGE_SIZE).max(1);
+        let page_number = page_number.unwrap_or(DEFAULT_PAGE_NUMBER).max(1);
 
-    /// List all [`PolicyReports`](PolicyReport) for the current workspace and change set with a
-    /// provided limit.
-    pub async fn list_with_limit(ctx: &impl SiDbContext, limit: i64) -> Result<Vec<Self>> {
-        Self::list_inner(ctx, limit).await
-    }
-
-    async fn list_inner(ctx: &impl SiDbContext, limit: i64) -> Result<Vec<Self>> {
-        let rows = ctx
-            .txns()
-            .await?
-            .pg()
-            .query(
-                "SELECT * FROM policy_reports WHERE workspace_id = $1 AND change_set_id = $2 ORDER BY created_at DESC LIMIT $3",
-                &[&ctx.tenancy().workspace_pk()?, &ctx.change_set_id(), &limit],
-            )
-            .await?;
-
+        // Collect the paginated reports. We need an offset if we are beyond the first page.
+        let rows = if page_number == 1 {
+            ctx.txns().await?.pg()
+                .query(
+                    "SELECT * FROM policy_reports WHERE workspace_id = $1 AND change_set_id = $2 ORDER BY created_at DESC LIMIT $3",
+                    &[
+                        &ctx.tenancy().workspace_pk()?,
+                        &ctx.change_set_id(),
+                        &(page_size as i64), // required to make the query happy, but I want to strangle it
+                    ],
+                )
+                .await?
+        } else {
+            let offset = page_number.saturating_sub(1).saturating_mul(page_size);
+            ctx.txns().await?.pg()
+                .query(
+                    "SELECT * FROM policy_reports WHERE workspace_id = $1 AND change_set_id = $2 ORDER BY created_at DESC LIMIT $3 OFFSET $4",
+                    &[
+                        &ctx.tenancy().workspace_pk()?,
+                        &ctx.change_set_id(),
+                        &(page_size as i64), // required to make the query happy, but I want to strangle it
+                        &(offset as i64) // required to make the query happy, but I want to strangle it
+                    ],
+                )
+                .await?
+        };
         let mut reports = Vec::with_capacity(rows.len());
         for row in rows {
             reports.push(Self::try_from(row)?);
         }
 
-        Ok(reports)
+        // Determine the total number of reports available within the workspace and change set.
+        // Then, derive the total number of pages from that.
+        let total_report_count = Self::total_count(ctx).await?;
+        let total_page_count = if total_report_count == 0 {
+            0
+        } else {
+            // Ceiling division makes it so that there's always another page if at least one entry
+            // is on it. I LOVE THE NUMBERS.
+            total_report_count.div_ceil(page_size)
+        };
+
+        Ok(PolicyReportBatch {
+            reports,
+            page_size,
+            page_number,
+            total_page_count,
+            total_report_count,
+        })
+    }
+
+    async fn total_count(ctx: &impl SiDbContext) -> Result<u64> {
+        let row = ctx.txns().await?.pg()
+            .query_one(
+                "SELECT COUNT(*) FROM policy_reports WHERE workspace_id = $1 AND change_set_id = $2",
+                &[
+                    &ctx.tenancy().workspace_pk()?,
+                    &ctx.change_set_id()
+                ],
+            )
+            .await?;
+
+        // I want to turn ToSql into a flea, a harmless little flea, and then I'll put that flea in
+        // a box, and then I'll put that box inside of another box, and then I'll mail that box to
+        // myself. And when it arrives, I'LL SMASH IT WITH A HAMMER. Pain.
+        let bigint: i64 = row.try_get("count")?;
+        Ok(bigint as u64)
     }
 }

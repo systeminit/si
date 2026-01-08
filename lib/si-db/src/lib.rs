@@ -31,6 +31,8 @@ pub use management_func_execution::{
     ManagementState,
 };
 pub use policy_report::{
+    DEFAULT_PAGE_NUMBER,
+    DEFAULT_PAGE_SIZE,
     PolicyReport,
     PolicyReportError,
     PolicyReportResult,
