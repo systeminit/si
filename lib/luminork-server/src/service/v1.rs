@@ -171,6 +171,7 @@ pub use schemas::{
         FindSchemaV1Params,
         FindSchemaV1Response,
     },
+    install_from_file::InstallFromFileV1Response,
     list_schemas::ListSchemaV1Response,
     search_schemas::{
         SearchSchemasV1Request,
@@ -238,6 +239,7 @@ pub use crate::api_types::func_run::v1::{
         schemas::create_schema::create_schema,
         schemas::unlock_schema::unlock_schema,
         schemas::install_schema::install_schema,
+        schemas::install_from_file::install_from_file,
         schemas::create_action::create_variant_action,
         schemas::search_schemas::search_schemas,
         schemas::create_authentication::create_variant_authentication,
@@ -354,6 +356,7 @@ pub use crate::api_types::func_run::v1::{
             CreateVariantQualificationFuncV1Response,
             CreateSchemaV1Request,
             UnlockedSchemaV1Response,
+            InstallFromFileV1Response,
             CreateVariantCodegenFuncV1Request,
             CreateVariantCodegenFuncV1Response,
             CreateVariantManagementFuncV1Request,
