@@ -45,6 +45,20 @@ pub async fn subscribe(
     Ok(())
 }
 
+/// Set the subs on a value, without doing sanity checks
+pub async fn subscribe_unchecked(
+    ctx: &DalContext,
+    subscriber: impl AttributeValueKey,
+    subscription: impl AttributeValueKey,
+) -> Result<()> {
+    let subscriber = vivify(ctx, subscriber).await?;
+    let subscription = AttributeValueKey::to_subscription(ctx, subscription).await?;
+    let reason = Reason::new_user_added(ctx);
+    AttributeValue::set_to_subscription_unchecked(ctx, subscriber, subscription, None, reason)
+        .await?;
+    Ok(())
+}
+
 /// Set the subscriptions on a value
 pub async fn subscribe_with_custom_function(
     ctx: &DalContext,

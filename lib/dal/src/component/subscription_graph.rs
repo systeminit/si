@@ -180,3 +180,29 @@ impl SubscriptionGraph {
         &self.inner
     }
 }
+
+const WHITELISTED_WORKSPACES: [&str; 8] = [
+    "01J8K1NADNB211F3PGW0WVFNGZ",
+    "01K6BVSETG8RWWFA9XAJ466DJH",
+    "01K6ZNY9ZBKR7KZ2BGZYF6HNJS",
+    "01K8KS1SMGNZ1YHEVN4YCPWRSM",
+    "01K9D7ZN09EBNPBSSMVFG3NVTZ",
+    "01KAE9XXM3FCFFN44E8C8XTMN1",
+    "01KAEX523JDZ2H335FR853X684",
+    "01KC00WFPBNZNMMYCE367JR98C",
+];
+
+/// Check if the current workspace snapshot has a subscription cycle,
+/// but ignore whitelisted workspaces
+pub async fn sub_cycle_check(ctx: &DalContext) -> ComponentResult<bool> {
+    let workspace_id = ctx.workspace_pk()?;
+    let workspace_id_str = workspace_id.to_string();
+
+    Ok(
+        if WHITELISTED_WORKSPACES.contains(&workspace_id_str.as_str()) {
+            false
+        } else {
+            SubscriptionGraph::new(ctx).await?.is_cyclic()
+        },
+    )
+}

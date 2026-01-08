@@ -73,6 +73,7 @@ use crate::{
     TransactionsError,
     attribute::prototype::AttributePrototypeError,
     change_set::ChangeSetError,
+    component::subscription_graph::sub_cycle_check,
     func::{
         FuncExecutionPk,
         argument::{
@@ -1964,17 +1965,14 @@ impl AttributeValue {
         Self::set_to_subscription_unchecked(ctx, subscriber_av_id, subscription, func_id, reason)
             .await?;
 
-        Ok(())
-
-        // When we are sure there are no subscription cycles in the wild, uncomment this
-        // if SubscriptionGraph::new(ctx).await?.is_cyclic() {
-        //     Err(AttributeValueError::SubscriptionWouldCycle {
-        //         subscriber_av_id,
-        //         subscription: subscription_title,
-        //     })
-        // } else {
-        //     Ok(())
-        // }
+        if sub_cycle_check(ctx).await? {
+            Err(AttributeValueError::SubscriptionWouldCycle {
+                subscriber_av_id,
+                subscription: subscription_title,
+            })
+        } else {
+            Ok(())
+        }
     }
 
     /// Set the source of this attribute value to one or more subscriptions.

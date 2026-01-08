@@ -777,7 +777,19 @@ async fn subscription_cycles(ctx: &mut DalContext) -> Result<()> {
 
     assert!(issues.is_empty());
 
-    value::subscribe(
+    // This should produce a cycle (and an error)
+    assert!(
+        value::subscribe(
+            ctx,
+            ("source_2", "/domain/Value2"),
+            ("subscriber", "/domain/Value2"),
+        )
+        .await
+        .is_err()
+    );
+
+    // Create the cycle by skipping checks
+    value::subscribe_unchecked(
         ctx,
         ("source_2", "/domain/Value2"),
         ("subscriber", "/domain/Value2"),
@@ -879,7 +891,7 @@ async fn subscription_graph_constructors_produce_identical_results(
     )
     .await?;
 
-    value::subscribe(
+    value::subscribe_unchecked(
         ctx,
         ("subscriber2", "/domain/Value2"),
         ("source2", "/domain/Value"),
