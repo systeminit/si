@@ -11,7 +11,7 @@
     "
   >
     <component
-      :is="fieldname === 'Description' ? 'textarea' : 'input'"
+      :is="isTextArea ? 'textarea' : 'input'"
       ref="inputRef"
       :class="
         clsx(
@@ -22,13 +22,15 @@
             'text-white bg-black disabled:bg-neutral-900',
           ),
           field.state.meta.errors.length > 0 && 'border-destructive-500 z-100',
-          fieldname === 'Description' ? 'min-h-[36px]' : 'h-lg',
+          isTextArea ? 'min-h-[36px]' : 'h-lg',
+          isTextArea &&
+            isSecretField &&
+            !secretShowing &&
+            'secret-masked-textarea',
         )
       "
-      :type="
-        fieldname === 'Description' ? null : getCurrentFormFieldType(fieldname)
-      "
-      :rows="fieldname === 'Description' ? 4 : null"
+      :type="isTextArea ? null : getCurrentFormFieldType(fieldname)"
+      :rows="isTextArea ? 4 : null"
       :value="field.state.value"
       tabindex="0"
       :placeholder="placeholder"
@@ -38,12 +40,11 @@
       data-form-type="other"
       @keydown.tab="onTab"
       @input="
-      (e: Event) =>
-        field.handleChange((e.target as HTMLInputElement).value)
-    "
+        (e: Event) => field.handleChange((e.target as HTMLInputElement).value)
+      "
     />
     <Icon
-      v-if="getFormFieldType(fieldname) === 'password'"
+      v-if="isSecretField"
       v-tooltip="secretShowing ? 'Hide Value' : 'Show Value'"
       :name="secretShowing ? 'hide' : 'eye'"
       size="xs"
@@ -56,14 +57,64 @@
 <script setup lang="ts">
 import { Icon, themeClasses } from "@si/vue-lib/design-system";
 import clsx from "clsx";
-import { nextTick, ref } from "vue";
+import { computed, nextTick, ref } from "vue";
 
-defineProps<{
+import { PropertyEditorPropWidgetKind } from "@/api/sdf/dal/property_editor";
+
+const props = defineProps<{
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   field: any;
   fieldname: string;
+  // widgetKind can be either a PropertyEditorPropWidgetKind object or a string (when coming from secret definitions)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  widgetKind?: PropertyEditorPropWidgetKind | string | any;
   placeholder?: null | string;
 }>();
+
+const isTextArea = computed(() => {
+  // Description is always a textarea (special case - not from schema)
+  if (props.fieldname === "Description") {
+    return true;
+  }
+
+  // Check if the widgetKind indicates a textarea
+  // The widgetKind can be either:
+  //   - A string: "textArea", "password", "secret", "text", etc.
+  //   - An object with the widget type as a key: { "textArea": {...} }
+  //
+  // Currently supported widget types for secret fields:
+  //   - "textArea" -> renders as textarea (masked with CSS)
+  //   - "password" -> renders as input type="password" (for future use)
+  //   - "secret" or undefined -> defaults to password input
+  //
+  // To add support for other widget types (e.g., "codeEditor", "select"),
+  // add the appropriate checks here and update the component rendering logic.
+
+  if (props.widgetKind) {
+    // Handle string widget kind
+    if (
+      typeof props.widgetKind === "string" &&
+      props.widgetKind === "textArea"
+    ) {
+      return true;
+    }
+    // Handle object widget kind (legacy format)
+    if (
+      typeof props.widgetKind === "object" &&
+      "textArea" in props.widgetKind
+    ) {
+      return true;
+    }
+  }
+
+  return false;
+});
+
+const isSecretField = computed(() => {
+  // Secret fields are all fields except Name and Description
+  // Secret fields get masked inputs with show/hide toggle
+  return props.fieldname !== "Name" && props.fieldname !== "Description";
+});
 
 const getFormFieldType = (fieldname: string) => {
   if (fieldname !== "Name" && fieldname !== "Description") {
@@ -113,3 +164,40 @@ const onTab = (e: KeyboardEvent) => {
   }
 };
 </script>
+
+<style scoped>
+/*
+ * Mask text in secret textareas
+ *
+ * Primary method: -webkit-text-security (works in Chrome, Safari, Edge)
+ * Fallback: text-security font (works in Firefox and other browsers)
+ *
+ * The -webkit-text-security property is nonstandard but widely supported in WebKit/Blink browsers.
+ * For browsers that don't support it (mainly Firefox), we use a custom font that renders all
+ * characters as bullets.
+ *
+ * Font source: https://github.com/noppa/text-security
+ */
+@font-face {
+  font-family: "text-security-disc";
+  src: url("data:font/woff2;base64,d09GMgABAAAAAAMoAA0AAAAAB2QAAALcAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAP0ZGVE0cGh4GYACCahEICjx3CzoAATYCJAMgBCAFhAoHIBuHBhEVnJ3Ifhy4MbWEhv/////nxv+dyv83k8mJCZiYmYnZ/yGBgYGBgYGBwYP///////+h0f8/xv8f/H+H/R+y/z/h/z/+/w/+P+H/H/x/m/0////7/1/+P/j/4P/Z/z/+/7f/f/v/l/8/+v/w/+H/w/8P/z/8f/L/r/9/+v/w/+H/w/8P/z/8f/L/r/9/+//X/7/9/+v/X/4/+f/k/5P/T/4/+f/k/5P/T/4/+f/k/5P/T/4/+f/k/5P/T/4/+f/k/5P/T/4/+f/k/xP/T/g/8f/E/xP/T/w/8f/E/xP/T/w/8f/E/xP/T/w/8f/E/xP/T/w/8f/E/xP+T/g/8f/E/xP/T/w/8f/E/xP/T/w/8f/E/xP/T/w/8f/E/xP+T/g/8f/E/xP/T/w/8f/E/xP/T/w/8f/E/xP/T/w/8f/E/xP+T/g/8f/E/xP/T/w/8f/E/xP/T/w/8f/E/xP/T/w/8f/E/xP+T/g/8f/E/xP/T/w/8f/E/xP/T/w/8f/E/xP/T/w/8f/E/xP+T/g/8f/E/xP/T/w/8f/E/xP/T/w/8f/E/xP/T/w/8f/E/xP+T/g/8f/E/xP/T/w/8f/E/xAAC")
+    format("woff2");
+}
+
+.secret-masked-textarea {
+  /* Primary: WebKit/Blink browsers (Chrome, Safari, Edge) */
+  -webkit-text-security: disc;
+  text-security: disc;
+
+  /* Fallback: Font-based masking for Firefox and other browsers */
+  /* This font renders all characters as bullet points */
+  font-family: "text-security-disc", monospace;
+}
+
+/* Override font-family when -webkit-text-security is supported */
+@supports (-webkit-text-security: disc) {
+  .secret-masked-textarea {
+    font-family: inherit;
+  }
+}
+</style>
