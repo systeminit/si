@@ -243,12 +243,15 @@ function collectResources(
     if (resource.methods) {
       const methods = extractMethodsFromResource(resource.methods);
 
-      // Only create a spec if there's at least a get or insert method
-      if (methods.get || methods.insert) {
+      // Create a spec if there's a get, list, or insert method
+      // - insert: resources we can create
+      // - get/list only: read-only resources useful for prop-to-prop subscriptions
+      if (methods.get || methods.list || methods.insert) {
         const handlers: { [key in CfHandlerKind]?: CfHandler } = {};
         const defaultHandler = { permissions: [], timeoutInMinutes: 60 };
 
-        if (methods.get) handlers.read = defaultHandler;
+        // read handler works with get, or falls back to filtering list results
+        if (methods.get || methods.list) handlers.read = defaultHandler;
         if (methods.list) handlers.list = defaultHandler;
         if (methods.insert) {
           handlers.create = defaultHandler;
@@ -290,27 +293,44 @@ function buildGcpResourceSpec(
     availableScopes,
   } = resourceSpec;
 
-  // We need at least a get method to build a spec
-  if (!get) {
+  // We need at least a get or list method to build a spec
+  // List-only resources can still work - we filter list results for refresh
+  if (!get && !list) {
     logger.debug(
-      `No GET method found for resource ${resourcePath.join(".")}`,
+      `No GET or LIST method found for resource ${resourcePath.join(".")}`,
     );
     return null;
   }
 
   // Get the response schema for resource_value properties
-  const getResponseSchema = get.response;
+  // Prefer get.response, but fall back to extracting item schema from list.response
+  let resourceSchema: NormalizedGcpSchema | undefined;
 
-  if (!getResponseSchema) {
+  if (get?.response) {
+    resourceSchema = get.response;
+  } else if (list?.response) {
+    // List responses typically have an array property containing resources
+    // Common patterns: "items", or the plural resource name (e.g., "connections")
+    const listResponse = list.response;
+    if (listResponse.properties) {
+      // Find the array property that contains the resource items
+      for (const [propName, propDef] of Object.entries(listResponse.properties)) {
+        if (propDef.type === "array" && propDef.items) {
+          resourceSchema = propDef.items;
+          break;
+        }
+      }
+    }
+  }
+
+  if (!resourceSchema) {
     logger.debug(
-      `No response schema found for GET method of ${resourcePath.join(".")}`,
+      `No response schema found for resource ${resourcePath.join(".")}`,
     );
     return null;
   }
 
-  const resourceValueProperties = normalizeGcpSchemaProperties(
-    getResponseSchema,
-  );
+  const resourceValueProperties = normalizeGcpSchemaProperties(resourceSchema);
 
   // Get the request schema for domain properties
   const domainProperties = insert?.request
@@ -402,14 +422,16 @@ function buildGcpResourceSpec(
   }
 
   // Determine primary identifier from path parameters
-  const primaryIdentifier = determinePrimaryIdentifier(get);
+  // Use get method if available, otherwise fall back to list or insert
+  const primaryIdentifier = determinePrimaryIdentifier(get || list || insert);
 
   const typeName = buildGcpTypeName(doc.title || doc.name, resourcePath);
 
   // Normalize the asset description
   const description = normalizeDescription(
-    getResponseSchema.description ||
-      get.description ||
+    resourceSchema.description ||
+      get?.description ||
+      list?.description ||
       `GCP ${doc.name} ${titleCaseResourcePath(resourcePath)} resource`,
   )!;
 
@@ -419,7 +441,7 @@ function buildGcpResourceSpec(
 
   // First check schema-level required array (rarely populated in GCP)
   for (
-    const prop of getResponseSchema.required || insert?.request?.required || []
+    const prop of resourceSchema.required || insert?.request?.required || []
   ) {
     requiredProperties.add(prop);
   }
@@ -672,16 +694,26 @@ export function extractMethodsFromResource(
       case "delete":
         result.delete = method;
         break;
+      default:
+        // Handle non-standard delete method names (deleteConnection, remove, etc.)
+        // Only map if we haven't already found a standard delete method
+        if (
+          !result.delete &&
+          (lowerName.startsWith("delete") || lowerName.startsWith("remove"))
+        ) {
+          result.delete = method;
+        }
+        break;
     }
   }
 
   return result;
 }
 
-function determinePrimaryIdentifier(method: GcpMethod): string[] {
+function determinePrimaryIdentifier(method: GcpMethod | undefined): string[] {
   // GCP resources typically have a 'name' or 'id' field
   // Look at the last parameter in parameterOrder
-  if (method.parameterOrder && method.parameterOrder.length > 0) {
+  if (method?.parameterOrder && method.parameterOrder.length > 0) {
     const lastParam = method.parameterOrder[method.parameterOrder.length - 1];
 
     // Common GCP identifier patterns

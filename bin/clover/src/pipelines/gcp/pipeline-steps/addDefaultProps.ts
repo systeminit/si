@@ -127,6 +127,8 @@ export function addDefaultProps(specs: ExpandedPkgSpec[]): ExpandedPkgSpec[] {
       deleteProp.data.defaultValue = JSON.stringify({
         path: gcpSchema.methods.delete.path,
         parameterOrder: gcpSchema.methods.delete.parameterOrder,
+        // Include httpMethod since some APIs use POST for delete (e.g., deleteConnection)
+        httpMethod: gcpSchema.methods.delete.httpMethod,
       });
       extraProp.entries.push(deleteProp);
     }
@@ -170,6 +172,20 @@ export function addDefaultProps(specs: ExpandedPkgSpec[]): ExpandedPkgSpec[] {
       scopesProp.data.hidden = true;
       scopesProp.data.defaultValue = JSON.stringify(gcpSchema.availableScopes);
       extraProp.entries.push(scopesProp);
+    }
+
+    // Flag for list-only resources (no get method)
+    // Refresh action uses list filtering when this is true
+    if (!gcpSchema.methods.get && gcpSchema.methods.list) {
+      const listOnlyProp = createScalarProp(
+        "listOnly",
+        "string",
+        extraProp.metadata.propPath,
+        false,
+      );
+      listOnlyProp.data.hidden = true;
+      listOnlyProp.data.defaultValue = "true";
+      extraProp.entries.push(listOnlyProp);
     }
 
     // For global-only resources, set the location prop to default "global"
