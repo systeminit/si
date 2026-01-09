@@ -3228,6 +3228,9 @@
   "<p>The ARN for the IAM role granted by the key provider that provides access to the key provider API. This role must have a trust policy that allows MediaPackage to assume the role, and it must have a sufficient permissions policy to allow access to the specific key retrieval URL. Get this from your DRM solution provider.</p> <p>Valid format: <code>arn:aws:iam::{accountID}:role/{name}</code>. The following example shows a role ARN: <code>arn:aws:iam::444455556666:role/SpekeAccess</code> </p>": {
     "enum": null
   },
+  "<p>The ARN for the certificate that you imported to AWS Certificate Manager to add content key encryption to this endpoint. For this feature to work, your DRM key provider must support content key encryption.</p>": {
+    "enum": null
+  },
   "<p>The ARN of the theme associated with a version of the dashboard.</p>": {
     "enum": null
   },
@@ -9621,6 +9624,9 @@
   "The Amazon Resource Name (ARN) that uniquely identifies this delivery source.": {
     "enum": null
   },
+  "The Amazon Resource Name (ARN) to use as the primary cluster of the global cluster. You may also choose to instead specify the DBClusterIdentifier. If you provide a value for this parameter, don't specify values for the following settings because Amazon DocumentDB uses the values from the specified source DB cluster: Engine, EngineVersion, StorageEncrypted": {
+    "enum": null
+  },
   "The Amazon Resource Name (ARN) to use as the primary cluster of the global database. This parameter is optional. This parameter is stored as a lowercase string.": {
     "enum": null
   },
@@ -11718,6 +11724,9 @@
   "The client token of the instance connect endpoint.": {
     "enum": null
   },
+  "The cluster identifier of the global cluster.": {
+    "enum": null
+  },
   "The cluster identifier of the new global database cluster. This parameter is stored as a lowercase string.": {
     "enum": null
   },
@@ -12049,6 +12058,9 @@
     "enum": null
   },
   "The data type.": {
+    "enum": null
+  },
+  "The database engine to use for this global cluster.": {
     "enum": null
   },
   "The database name associated for the namespace that is being created. Only alphanumeric characters and underscores are allowed. It should start with an alphabet.": {
@@ -12826,6 +12838,9 @@
     "enum": null
   },
   "The engine version requested by the user. Possible values are determined by the output of ListEngineVersions, including Auto. The default is Auto.": {
+    "enum": null
+  },
+  "The engine version to use for this global cluster.": {
     "enum": null
   },
   "The entity that creates and manages the required security groups for inter-app communication in VPCOnly mode. Required when CreateDomain.AppNetworkAccessType is VPCOnly and DomainSettings.RStudioServerProDomainSettings.DomainExecutionRoleArn is provided.": {
