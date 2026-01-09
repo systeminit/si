@@ -204,7 +204,7 @@ import {
 import ComponentPage from "./ComponentDetails.vue";
 import NavbarPanelLeft from "./nav/NavbarPanelLeft.vue";
 import { useChangeSets } from "./logic_composables/change_set";
-import { routes, useApi } from "./api_composables";
+import { ApiContext, routes, useApi } from "./api_composables";
 import Review from "./Review.vue";
 import EmptyState from "./EmptyState.vue";
 import NavbarPanelCenter from "./nav/NavbarPanelCenter.vue";
@@ -242,6 +242,26 @@ const haveWSConn = computed<boolean>(() => {
 const queriesEnabled = computed(
   () => heimdall.initCompleted.value && !coldStartInProgress.value,
 );
+
+const { user, userWorkspaceFlags } = storeToRefs(authStore);
+
+const apiCtx = computed<ApiContext>(() => {
+  return {
+    workspacePk,
+    changeSetId,
+    user: user.value,
+    onHead: computed(() => {
+      return changeSetId.value === _headChangeSetId.value;
+    }),
+  };
+});
+
+const {
+  openChangeSets,
+  changeSet: activeChangeSet,
+  headChangeSetId,
+  defaultApprovers,
+} = useChangeSets(apiCtx);
 
 // filter out change sets that don't belong to this workspace
 // (these come from the elected tab that is listening to all open workspaces)
@@ -351,8 +371,6 @@ const reopenOnboarding = () => {
   onboardingCompleted.value = false;
 };
 
-const { user, userWorkspaceFlags } = storeToRefs(authStore);
-
 const ctx = computed<Context>(() => {
   return {
     workspacePk,
@@ -398,13 +416,6 @@ const workspaces = computed(() => {
   };
 });
 provide("WORKSPACES", workspaces.value);
-
-const {
-  openChangeSets,
-  changeSet: activeChangeSet,
-  headChangeSetId,
-  defaultApprovers,
-} = useChangeSets(ctx, queriesEnabled);
 
 const changeSetsNeedingApproval = computed(() =>
   openChangeSets.value.filter(

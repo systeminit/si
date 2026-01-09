@@ -1,5 +1,5 @@
 import * as _ from "lodash-es";
-import { computed, ComputedRef, Ref, ref } from "vue";
+import { computed, ComputedRef } from "vue";
 import { useQuery, useQueryClient } from "@tanstack/vue-query";
 import { RouteLocationNormalizedLoadedGeneric, Router } from "vue-router";
 import { ChangeSetId, ChangeSetStatus } from "@/api/sdf/dal/change_set";
@@ -10,7 +10,7 @@ import {
 } from "@/workers/types/entity_kind_types";
 import { useMakeKeyForHead } from "@/store/realtime/heimdall";
 import { ApprovalData, Context, UserId } from "../types";
-import { routes, useApi } from "../api_composables";
+import { ApiContext, routes, useApi } from "../api_composables";
 import { reset } from "./navigation_stack";
 
 /**
@@ -18,14 +18,10 @@ import { reset } from "./navigation_stack";
  * Which is why we are passing `ctx` and not using `inject`
  * Because Workspace is the one who `provides` it (catch-22)
  */
-export const useChangeSets = (
-  ctx: ComputedRef<Context>,
-  enabled?: ComputedRef<boolean> | Ref<boolean>,
-) => {
-  if (!enabled) enabled = ref(true);
+export const useChangeSets = (ctx: ComputedRef<ApiContext>) => {
   const changeSetApi = useApi(ctx.value);
   const changeSetQuery = useQuery<WorkspaceMetadata | null>({
-    enabled,
+    enabled: true,
     queryKey: ["changesets"],
     staleTime: 5000,
     queryFn: async () => {
