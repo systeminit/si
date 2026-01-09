@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 
-use si_db::Visibility;
 use si_events::WorkspaceSnapshotAddress;
 use si_layer_cache::LayerDbError;
 use si_split_graph::SplitGraphError;
@@ -119,8 +118,7 @@ impl SnapshotGraphMigrator {
                 // on it, since its main purpose is to allow access to the services context.
                 // We need to create a context for each migrated changeset here to run operations
                 // that depend on the graph
-                let mut ctx_after_migration =
-                    ctx.clone_with_new_visibility(Visibility::from(change_set.id));
+                let mut ctx_after_migration = ctx.clone_with_change_set(change_set.id);
                 // TODO make sure that when we clone with a changeset id we also set changeset
                 // (or there's no clone anymore and we always change it via following method)
                 ctx_after_migration.set_change_set(change_set.clone())?;

@@ -23,7 +23,7 @@ use dal::{
 };
 use edda_client::EddaClient;
 use pending_events::PendingEventsError;
-use rebaser_core::api_types::enqueue_updates_request::EnqueueUpdatesRequest;
+use rebaser_core::api_types::enqueue_updates_request::RebaseRequestV4;
 use shuttle_server::ShuttleError;
 use si_events::{
     RebaseBatchAddressKind,
@@ -98,7 +98,7 @@ type RebaseResult<T> = Result<T, RebaseError>;
 pub(crate) async fn perform_rebase(
     ctx: &mut DalContext,
     edda: &EddaClient,
-    request: &EnqueueUpdatesRequest,
+    request: &RebaseRequestV4,
     server_tracker: &TaskTracker,
     features: Features,
 ) -> RebaseResult<RebaseBatchAddressKind> {
@@ -106,12 +106,11 @@ pub(crate) async fn perform_rebase(
     let workspace = get_workspace(ctx).await?;
     let updating_head = request.change_set_id == workspace.default_change_set_id();
 
-    // Gather everything we need to detect conflicts and updates from the inbound message.
     let mut to_rebase_change_set = ChangeSet::get_by_id(ctx, request.change_set_id).await?;
 
     // if the change set isn't active, do not do this work
-    if !to_rebase_change_set.status.is_active() {
-        debug!("Attempted to rebase for abandoned change set. Early returning");
+    if !to_rebase_change_set.status.is_active_or_applying() {
+        info!("Attempted to rebase for inactive change set. Early returning");
         return Err(RebaseError::AbandonedChangeSet(to_rebase_change_set.id));
     }
 
@@ -159,11 +158,8 @@ pub(crate) async fn perform_rebase(
     }
 
     if updating_head && *workspace.pk() != WorkspacePk::NONE {
-        //todo(brit): what do we want to do about change sets that haven't
-        // been applied yet, but are approved? (like gh merge-queue)
-        // should we 'unapprove' them?
-        let all_open_change_sets = ChangeSet::list_active(ctx).await?;
-        for target_change_set in all_open_change_sets.into_iter().filter(|cs| {
+        let replayable_change_sets = ChangeSet::list_replayable(ctx).await?;
+        for target_change_set in replayable_change_sets.into_iter().filter(|cs| {
             cs.id != workspace.default_change_set_id()
                 && cs.id != to_rebase_change_set.id
                 && request.from_change_set_id != Some(cs.id)
@@ -173,7 +169,7 @@ pub(crate) async fn perform_rebase(
             {
                 let ctx_clone = ctx.clone();
                 server_tracker.spawn(async move {
-                    debug!(
+                    warn!(
                         "replaying batch {} onto {} from {}",
                         updates_address, target_change_set.id, to_rebase_change_set.id
                     );
@@ -234,7 +230,7 @@ async fn rebase_split(
     ctx: &mut DalContext,
     to_rebase_workspace_snapshot_address: WorkspaceSnapshotAddress,
     edda: &EddaClient,
-    request: &EnqueueUpdatesRequest,
+    request: &RebaseRequestV4,
     _features: Features,
     updating_head: bool,
     to_rebase_change_set: &mut ChangeSet,
@@ -328,7 +324,7 @@ async fn rebase_legacy(
     ctx: &mut DalContext,
     to_rebase_workspace_snapshot_address: WorkspaceSnapshotAddress,
     edda: &EddaClient,
-    request: &EnqueueUpdatesRequest,
+    request: &RebaseRequestV4,
     _features: Features,
     updating_head: bool,
     to_rebase_change_set: &mut ChangeSet,

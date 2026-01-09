@@ -422,7 +422,7 @@ mod handlers {
 
         // We should skip any change sets that are not active
         // Active in this case is open, needs approval status, approved or rejected
-        if !to_process_change_set.status.is_active() {
+        if !to_process_change_set.status.is_active_or_applying() {
             debug!("Attempted to process a non-active change set. Skipping");
             return Ok(());
         }

@@ -9,11 +9,9 @@ use color_eyre::{
 use dal::{
     ChangeSet,
     ChangeSetId,
+    ChangeSetStatus,
     ComponentId,
     DalContext,
-    Func,
-    Schema,
-    SchemaVariant,
     Ulid,
     action::{
         Action,
@@ -21,7 +19,10 @@ use dal::{
         dependency_graph::ActionDependencyGraph,
     },
     diagram::view::View,
-    workspace_snapshot::selector::WorkspaceSnapshotSelectorDiscriminants,
+    workspace_snapshot::{
+        DependentValueRoot,
+        selector::WorkspaceSnapshotSelectorDiscriminants,
+    },
 };
 use si_db::{
     ManagementFuncJobState,
@@ -73,19 +74,17 @@ impl ChangeSetTestHelpers {
     pub async fn commit_and_update_snapshot_to_visibility(ctx: &mut DalContext) -> Result<()> {
         // The rebaser has responsibility for executing dvu jobs, so we should
         // prevent them from running in tests
-        let has_roots = ctx
-            .txns()
+        ctx.txns()
             .await?
             .job_queue()
             .clear_dependent_values_jobs()
             .await;
         ctx.blocking_commit().await?;
+        ctx.update_snapshot_to_visibility().await?;
 
         // But we have to wait until the dvu jobs complete
-        if has_roots {
+        if DependentValueRoot::roots_exist(ctx).await? {
             ChangeSet::wait_for_dvu(ctx, false).await?;
-        } else {
-            ctx.update_snapshot_to_visibility().await?;
         }
 
         Ok(())
@@ -120,13 +119,6 @@ impl ChangeSetTestHelpers {
         Err(eyre!(
             "timeout waiting for actions to clear from test workspace"
         ))
-    }
-
-    /// Apply Changeset To base Approvals
-    pub async fn apply_change_set_to_base_approvals(ctx: &mut DalContext) -> Result<()> {
-        ChangeSet::prepare_for_apply(ctx).await?;
-        Self::apply_change_set_to_base_approvals_without_prepare_step(ctx).await?;
-        Ok(())
     }
 
     /// Switch to the [`ChangeSet`] corresponding to the provided ID.
@@ -196,23 +188,17 @@ impl ChangeSetTestHelpers {
 
     /// Force Apply Changeset To base Approvals
     pub async fn force_apply_change_set_to_base_approvals(ctx: &mut DalContext) -> Result<()> {
-        ChangeSet::prepare_for_force_apply(ctx).await?;
-        Self::apply_change_set_to_base_approvals_without_prepare_step(ctx).await?;
+        ChangeSet::force_change_set_approval(ctx).await?;
+        Self::commit_and_update_snapshot_to_visibility(ctx).await?;
+        Self::apply_change_set_to_base_approvals_with_status_check(ctx).await?;
         Ok(())
     }
 
-    /// Apply the change set to base for the approvals flow, but without performing the "prepare"
-    /// step.
-    ///
-    /// _Warning:_ if you do not know what to choose, use [Self::force_apply_change_set_to_base_approvals]
-    /// or [Self::apply_change_set_to_base_approvals] instead of this function. This function
-    /// should only be used if you have an alternative "prepare" workflow (e.g. testing fine grained
-    /// access control in sdf tests).
-    pub async fn apply_change_set_to_base_approvals_without_prepare_step(
+    /// Apply changeset to head, but only if Approved
+    pub async fn apply_change_set_to_base_approvals_with_status_check(
         ctx: &mut DalContext,
     ) -> Result<()> {
-        Self::commit_and_update_snapshot_to_visibility(ctx).await?;
-        Self::apply_change_set_to_base_inner(ctx).await?;
+        Self::apply_change_set_to_base_inner(ctx, false, true).await?;
         Ok(())
     }
 
@@ -233,8 +219,13 @@ impl ChangeSetTestHelpers {
         )
     }
 
-    /// Applies the current change set to the base change set, waiting for replays to land on any open change sets.
-    pub async fn apply_change_set_to_base_inner(ctx: &mut DalContext) -> Result<bool> {
+    /// Applies the current change set to the base change set, waiting for
+    /// replays to land on any open change sets.
+    pub async fn apply_change_set_to_base_inner(
+        ctx: &mut DalContext,
+        skip_status_check: bool,
+        lock_schemas_and_funcs: bool,
+    ) -> Result<bool> {
         let mut open_change_sets = ChangeSet::list_active(ctx)
             .await?
             .iter()
@@ -242,7 +233,39 @@ impl ChangeSetTestHelpers {
             .collect::<Vec<(_, _)>>();
 
         let had_updates = Self::has_updates(ctx).await?;
-        let applied_change_set = ChangeSet::apply_to_base_change_set(ctx).await?;
+        let applied_change_set = ChangeSet::get_by_id(ctx, ctx.change_set_id()).await?;
+
+        if lock_schemas_and_funcs {
+            if skip_status_check {
+                ChangeSet::begin_apply_without_status_check(ctx).await?
+            } else {
+                ChangeSet::begin_apply(ctx).await?
+            }
+        } else {
+            // We only skip locking schemas/funcs in tests
+            if skip_status_check {
+                ChangeSet::begin_apply_no_lock_no_status_check(ctx).await?
+            } else {
+                ChangeSet::begin_apply_no_lock(ctx).await?
+            }
+        };
+
+        // Wait until the apply completes
+        let change_set_id = ctx.change_set_id();
+        let mut change_set;
+        loop {
+            change_set = ChangeSet::get_by_id(ctx, change_set_id).await?;
+            if change_set.status != ChangeSetStatus::ApplyStarted {
+                break;
+            }
+
+            tokio::time::sleep(Duration::from_millis(50)).await;
+        }
+
+        if change_set.status != ChangeSetStatus::Applied {
+            color_eyre::eyre::bail!("change set apply failed");
+        }
+
         ctx.update_visibility_and_snapshot_to_visibility(
             applied_change_set.base_change_set_id.ok_or(eyre!(
                 "base change set not found for change set: {}",
@@ -257,7 +280,7 @@ impl ChangeSetTestHelpers {
         // waiting for the changes to reach the open change sets.
         if had_updates {
             let mut iters = 0;
-            // only do this for 10 seconds
+            // only do this for 30 seconds
             while !open_change_sets.is_empty() && iters < 1000 {
                 let mut updated_sets = vec![];
                 for (change_set_id, original_updated_at) in &open_change_sets {
@@ -274,7 +297,7 @@ impl ChangeSetTestHelpers {
                 if open_change_sets.is_empty() {
                     break;
                 }
-                tokio::time::sleep(Duration::from_millis(10)).await;
+                tokio::time::sleep(Duration::from_millis(30)).await;
                 iters += 1
             }
         }
@@ -282,35 +305,9 @@ impl ChangeSetTestHelpers {
     }
 
     /// Applies the current [`ChangeSet`] to its base [`ChangeSet`], leaving ctx pointed at HEAD.
-    /// 1. Prepares the apply by locking unlocked variants.
-    /// 2. Prepares the apply by Then, it updates the snapshot
-    ///    to the visibility without using an editing [`ChangeSet`]. In other words, the resulting,
-    ///    snapshot is "HEAD" without an editing [`ChangeSet`].
-    ///
-    /// Also locks existing editing funcs and schema variants to mimic SDF
     pub async fn apply_change_set_to_base(ctx: &mut DalContext) -> Result<bool> {
-        // Lock all unlocked variants
-        for schema_id in Schema::list_ids(ctx).await? {
-            let schema = Schema::get_by_id(ctx, schema_id).await?;
-            let Some(variant) = SchemaVariant::get_unlocked_for_schema(ctx, schema_id).await?
-            else {
-                continue;
-            };
-
-            let variant_id = variant.id();
-
-            variant.lock(ctx).await?;
-            schema.set_default_variant_id(ctx, variant_id).await?;
-        }
-        // Lock all unlocked functions too
-        for func in Func::list_for_default_and_editing(ctx).await? {
-            if !func.is_locked {
-                func.lock(ctx).await?;
-            }
-        }
-
-        ctx.commit().await?;
-        Self::apply_change_set_to_base_inner(ctx).await
+        ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
+        Self::apply_change_set_to_base_inner(ctx, true, true).await
     }
 
     /// Abandons the current [`ChangeSet`].

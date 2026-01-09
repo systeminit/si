@@ -86,7 +86,7 @@ impl SnapshotGarbageCollector {
         // Gather the WorkspaceSnapshotAddress of all open change sets.
         let open_statuses: Vec<String> = ChangeSetStatus::iter()
             .filter_map(|status| {
-                if status.is_active() {
+                if status.is_active_or_applying() {
                     Some(status.to_string())
                 } else {
                     None

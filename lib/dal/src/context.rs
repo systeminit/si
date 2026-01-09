@@ -19,9 +19,13 @@ use futures::{
 use rebaser_client::{
     RebaserClient,
     RequestId,
-    api_types::enqueue_updates_response::{
-        EnqueueUpdatesResponse,
-        RebaseStatus,
+    api_types::{
+        enqueue_updates_request::ApplyToHeadRequestV4,
+        enqueue_updates_response::{
+            EnqueueUpdatesResponse,
+            EnqueueUpdatesResponseVCurrent,
+            RebaseStatus,
+        },
     },
 };
 use serde::{
@@ -617,6 +621,24 @@ impl DalContext {
         .await
     }
 
+    pub async fn run_async_apply_to_head(
+        &self,
+        request: ApplyToHeadRequestV4,
+    ) -> TransactionsResult<RequestId> {
+        self.rebaser()
+            .enqueue_apply_to_head(
+                request.workspace_id,
+                request.head_change_set_id,
+                request.head_change_set_address,
+                request.change_set_to_apply_id,
+                request.event_session_id,
+                request.previous_change_set_status,
+                request.mode,
+            )
+            .await
+            .map_err(Into::into)
+    }
+
     pub async fn run_async_rebase_from_change_set(
         &self,
         workspace_pk: WorkspacePk,
@@ -625,7 +647,7 @@ impl DalContext {
         from_change_set_id: ChangeSetId,
     ) -> TransactionsResult<RequestId> {
         self.rebaser()
-            .enqueue_updates_from_change_set(
+            .enqueue_rebase_from_change_set(
                 workspace_pk,
                 change_set_id,
                 updates_address,
@@ -647,7 +669,7 @@ impl DalContext {
         BoxFuture<'static, Result<EnqueueUpdatesResponse, rebaser_client::ClientError>>,
     )> {
         self.rebaser()
-            .enqueue_updates_from_change_set_with_reply(
+            .enqueue_rebase_from_change_set_with_reply(
                 workspace_pk,
                 change_set_id,
                 updates_address,
@@ -1014,10 +1036,10 @@ impl DalContext {
         Ok(())
     }
 
-    /// Clones a new context from this one with a new [`Visibility`].
-    pub fn clone_with_new_visibility(&self, visibility: Visibility) -> Self {
+    /// Clones a new context from this one with a new change set.
+    pub fn clone_with_change_set(&self, change_set_id: ChangeSetId) -> Self {
         let mut new = self.clone();
-        new.update_visibility_deprecated(visibility);
+        new.update_visibility_deprecated(Visibility { change_set_id });
         new
     }
 
@@ -1250,9 +1272,7 @@ impl DalContext {
     }
 
     // Gets a reference to the DAL context's Rebaser client.
-    //
-    // **NOTE**: Internal API
-    fn rebaser(&self) -> &RebaserClient {
+    pub fn rebaser(&self) -> &RebaserClient {
         &self.services_context.rebaser
     }
 
@@ -1705,6 +1725,8 @@ impl DalContextBuilder {
 #[remain::sorted]
 #[derive(Debug, Error, EnumDiscriminants)]
 pub enum TransactionsError {
+    #[error("apply to head {0} of change set {1} failed: {2}")]
+    ApplyFailed(ChangeSetId, ChangeSetId, String),
     #[error("audit logging error: {0}")]
     AuditLogging(#[from] Box<AuditLoggingError>),
     #[error("expected a {0:?} activity, but received a {1:?}")]
@@ -1714,6 +1736,8 @@ pub enum TransactionsError {
     /// was specified.
     #[error("Bad Workspace & Change Set")]
     BadWorkspaceAndChangeSet,
+    #[error("Begin apply of {0} to head failed: {1}")]
+    BeginApplyFailed(ChangeSetId, String),
     #[error("change set error: {0}")]
     ChangeSet(#[from] Box<ChangeSetError>),
     #[error("change set not set on DalContext")]
@@ -1740,6 +1764,8 @@ pub enum TransactionsError {
     Rebaser(#[from] Box<rebaser_client::ClientError>),
     #[error("rebaser reply deadline elapsed; waited={0:?}, request_id={1}")]
     RebaserReplyDeadlineElasped(Duration, RequestId),
+    #[error("rebaser unexpected response: {0:?}")]
+    RebaserUnexpectedResponse(EnqueueUpdatesResponse),
     #[error("serde json error: {0}")]
     SerdeJson(#[from] serde_json::Error),
     #[error("si db error: {0}")]
@@ -2077,7 +2103,7 @@ async fn rebase_with_reply(
     let metric_label = format!("{workspace_pk}:{change_set_id}");
     metric!(counter.dal.rebase_requested = 1, label = metric_label);
     let (request_id, reply_fut) = rebaser
-        .enqueue_updates_with_reply(
+        .enqueue_rebase_with_reply(
             workspace_pk,
             change_set_id,
             updates_address,
@@ -2100,13 +2126,18 @@ async fn rebase_with_reply(
 
     metric!(counter.dal.rebase_requested = -1, label = metric_label);
 
-    match &reply.status {
+    let EnqueueUpdatesResponse::V2(EnqueueUpdatesResponseVCurrent::Rebase { status, .. }) = reply
+    else {
+        return Err(TransactionsError::RebaserUnexpectedResponse(reply.clone()));
+    };
+
+    match status {
         RebaseStatus::Success { .. } => Ok(()),
         // Return a specific error if the Rebaser reports that it failed to process the request
         RebaseStatus::Error { message } => Err(TransactionsError::RebaseFailed(
             updates_address,
             change_set_id,
-            message.clone(),
+            message,
         )),
     }
 }

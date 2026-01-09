@@ -1,4 +1,7 @@
+use std::time::Duration;
+
 use dal::{
+    ChangeSet,
     Component,
     DalContext,
     diagram::{
@@ -18,7 +21,10 @@ use dal_test::{
         generate_fake_name,
     },
     helpers::create_component_for_default_schema_name,
-    prelude::OptionExt,
+    prelude::{
+        ChangeSetTestHelpers,
+        OptionExt,
+    },
     test,
 };
 use petgraph::Direction::Outgoing;
@@ -80,6 +86,22 @@ async fn correct_transforms_remove_view_all_geometries_removed(ctx: &mut DalCont
         1,
         View::list(ctx).await.expect("Unable to list Views").len()
     );
+
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("Failed to commit and update snapshot to visibility");
+
+    let mut head_ctx = ctx
+        .clone_with_head()
+        .await
+        .expect("Failed to clone context");
+    ChangeSet::wait_for_dvu(&mut head_ctx, false)
+        .await
+        .expect("Failed to wait for DVU");
+    tokio::time::sleep(Duration::from_secs(1)).await;
+    ChangeSet::wait_for_dvu(&mut head_ctx, false)
+        .await
+        .expect("Failed to wait for DVU the 2nd time");
 
     expected::apply_change_set_to_base(ctx).await;
 
@@ -364,6 +386,23 @@ async fn correct_transforms_remove_view_with_component_in_another_view(ctx: &mut
             .len()
     );
 
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("Failed to commit and update snapshot to visibility");
+
+    let mut head_ctx = ctx
+        .clone_with_head()
+        .await
+        .expect("Failed to clone context");
+    ChangeSet::wait_for_dvu(&mut head_ctx, false)
+        .await
+        .expect("Failed to wait for DVU");
+    tokio::time::sleep(Duration::from_secs(1)).await;
+    ChangeSet::wait_for_dvu(&mut head_ctx, false)
+        .await
+        .expect("Failed to wait for DVU the 2nd time");
+    tokio::time::sleep(Duration::from_secs(1)).await;
+
     expected::apply_change_set_to_base(ctx).await;
 
     assert_eq!(
@@ -394,6 +433,15 @@ async fn correct_transforms_remove_view_components_moved_to_another_view(
     .await
     .expect("Unable to create Component in new View");
     expected::apply_change_set_to_base(ctx).await;
+
+    let mut head_ctx = ctx
+        .clone_with_head()
+        .await
+        .expect("Failed to clone context");
+    ChangeSet::wait_for_dvu(&mut head_ctx, false)
+        .await
+        .expect("Failed to wait for DVU");
+
     expected::fork_from_head_change_set(ctx).await;
 
     assert_eq!(
@@ -426,7 +474,20 @@ async fn correct_transforms_remove_view_components_moved_to_another_view(
             .await?
             .len(),
     );
+
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("Failed to commit and update snapshot to visibility");
+
+    ChangeSet::wait_for_dvu(&mut head_ctx, false)
+        .await
+        .expect("Failed to wait for DVU");
+    tokio::time::sleep(Duration::from_secs(5)).await;
+    ChangeSet::wait_for_dvu(&mut head_ctx, false)
+        .await
+        .expect("Failed to wait for DVU the 2nd time");
     expected::apply_change_set_to_base(ctx).await;
+    tokio::time::sleep(Duration::from_secs(3)).await;
 
     // Applying the set of transforms should see that even though the View being removed
     // was the only one the Component was in, it is also being added to a different View

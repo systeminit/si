@@ -23,8 +23,12 @@ use rebaser_core::{
         SerializeContainer,
         SerializeError,
         enqueue_updates_request::{
+            ApplyToHeadRequestV4,
+            BeginApplyMode,
+            BeginApplyToHeadRequestV4,
             EnqueueUpdatesRequest,
             EnqueueUpdatesRequestVCurrent,
+            RebaseRequestV4,
         },
         enqueue_updates_response::EnqueueUpdatesResponse,
     },
@@ -46,9 +50,11 @@ use si_data_nats::{
 };
 use si_events::{
     ChangeSetId,
+    ChangeSetStatus,
     EventSessionId,
     RebaseBatchAddressKind,
     WorkspacePk,
+    WorkspaceSnapshotAddress,
 };
 use telemetry::prelude::*;
 use telemetry_nats::propagation;
@@ -106,7 +112,7 @@ impl Client {
 
     /// Asynchronously enqueues graph updates for processing by a Rebaser & return a [`RequestId`].
     #[instrument(
-        name = "rebaser_client.enqueue_updates",
+        name = "rebaser_client.enqueue_rebase",
         level = "info",
         skip_all,
         fields(
@@ -114,28 +120,32 @@ impl Client {
             si.workspace.id = %workspace_id,
         ),
     )]
-    pub async fn enqueue_updates(
+    pub async fn enqueue_rebase(
         &self,
         workspace_id: WorkspacePk,
         change_set_id: ChangeSetId,
         updates_address: RebaseBatchAddressKind,
         event_session_id: EventSessionId,
     ) -> Result<RequestId> {
-        self.call_async(
-            workspace_id,
-            change_set_id,
-            updates_address,
-            None,
-            None,
-            event_session_id,
-        )
-        .await
+        let id = RequestId::new();
+
+        let request = EnqueueUpdatesRequestVCurrent::Rebase {
+            id,
+            request: RebaseRequestV4 {
+                workspace_id,
+                change_set_id,
+                updates_address,
+                from_change_set_id: None,
+                event_session_id: Some(event_session_id),
+            },
+        };
+        self.call_async(request, None, event_session_id).await
     }
 
     /// Asynchronously enqueues graph updates that originate from a Change Set & return a
     /// [`RequestId`].
     #[instrument(
-        name = "rebaser_client.enqueue_updates_from_change_set",
+        name = "rebaser_client.enqueue_rebase_from_change_set",
         level = "info",
         skip_all,
         fields(
@@ -143,7 +153,7 @@ impl Client {
             si.workspace.id = %workspace_id,
         ),
     )]
-    pub async fn enqueue_updates_from_change_set(
+    pub async fn enqueue_rebase_from_change_set(
         &self,
         workspace_id: WorkspacePk,
         change_set_id: ChangeSetId,
@@ -151,21 +161,26 @@ impl Client {
         from_change_set_id: ChangeSetId,
         event_session_id: EventSessionId,
     ) -> Result<RequestId> {
-        self.call_async(
-            workspace_id,
-            change_set_id,
-            updates_address,
-            Some(from_change_set_id),
-            None,
-            event_session_id,
-        )
-        .await
+        let id = RequestId::new();
+
+        let request = EnqueueUpdatesRequestVCurrent::Rebase {
+            id,
+            request: RebaseRequestV4 {
+                workspace_id,
+                change_set_id,
+                updates_address,
+                from_change_set_id: Some(from_change_set_id),
+                event_session_id: Some(event_session_id),
+            },
+        };
+
+        self.call_async(request, None, event_session_id).await
     }
 
     /// Enqueues graph updates for processing by a Rebaser and return a [`Future`] that will await
     /// the Rebaser's response with status.
     #[instrument(
-        name = "rebaser_client.enqueue_updates_with_reply",
+        name = "rebaser_client.enqueue_rebase_with_reply",
         level = "info",
         skip_all,
         fields(
@@ -173,7 +188,7 @@ impl Client {
             si.workspace.id = %workspace_id,
         ),
     )]
-    pub async fn enqueue_updates_with_reply(
+    pub async fn enqueue_rebase_with_reply(
         &self,
         workspace_id: WorkspacePk,
         change_set_id: ChangeSetId,
@@ -183,20 +198,25 @@ impl Client {
         RequestId,
         BoxFuture<'static, Result<EnqueueUpdatesResponse>>,
     )> {
-        self.call_with_reply(
-            workspace_id,
-            change_set_id,
-            updates_address,
-            None,
-            event_session_id,
-        )
-        .await
+        let id = RequestId::new();
+        let request = EnqueueUpdatesRequestVCurrent::Rebase {
+            id,
+            request: RebaseRequestV4 {
+                workspace_id,
+                change_set_id,
+                updates_address,
+                from_change_set_id: None,
+                event_session_id: Some(event_session_id),
+            },
+        };
+
+        self.call_with_reply(request, event_session_id).await
     }
 
     /// Enqueues graph updates that originate from a Change Set and return a [`Future`] that will
     /// await the Rebaser's response with status.
     #[instrument(
-        name = "rebaser_client.enqueue_updates_from_change_set_with_reply",
+        name = "rebaser_client.enqueue_rebase_from_change_set_with_reply",
         level = "info",
         skip_all,
         fields(
@@ -204,7 +224,7 @@ impl Client {
             si.workspace.id = %workspace_id,
         ),
     )]
-    pub async fn enqueue_updates_from_change_set_with_reply(
+    pub async fn enqueue_rebase_from_change_set_with_reply(
         &self,
         workspace_id: WorkspacePk,
         change_set_id: ChangeSetId,
@@ -215,26 +235,198 @@ impl Client {
         RequestId,
         BoxFuture<'static, Result<EnqueueUpdatesResponse>>,
     )> {
-        self.call_with_reply(
-            workspace_id,
-            change_set_id,
-            updates_address,
-            Some(from_change_set_id),
-            event_session_id,
-        )
-        .await
+        let id = RequestId::new();
+        let request = EnqueueUpdatesRequestVCurrent::Rebase {
+            id,
+            request: RebaseRequestV4 {
+                workspace_id,
+                change_set_id,
+                updates_address,
+                from_change_set_id: Some(from_change_set_id),
+                event_session_id: Some(event_session_id),
+            },
+        };
+
+        self.call_with_reply(request, event_session_id).await
+    }
+
+    /// Enqueues a request to begin applying a change set to the HEAD of a workspace.
+    #[instrument(
+        name = "rebaser_client.enqueue_begin_apply",
+        level = "info",
+        skip_all,
+        fields(
+            si.change_set.id = %change_set_id,
+            si.workspace.id = %workspace_id,
+            si.head_change_set.id = %head_change_set_id,
+        ),
+    )]
+    #[allow(clippy::too_many_arguments)]
+    pub async fn enqueue_begin_apply(
+        &self,
+        workspace_id: WorkspacePk,
+        change_set_id: ChangeSetId,
+        head_change_set_id: ChangeSetId,
+        head_change_set_address: WorkspaceSnapshotAddress,
+        previous_change_set_status: Option<ChangeSetStatus>,
+        event_session_id: EventSessionId,
+        mode: BeginApplyMode,
+    ) -> Result<RequestId> {
+        let id = RequestId::new();
+        let request = EnqueueUpdatesRequestVCurrent::BeginApplyToHead {
+            id,
+            request: BeginApplyToHeadRequestV4 {
+                workspace_id,
+                change_set_id,
+                head_change_set_id,
+                head_change_set_address,
+                event_session_id,
+                previous_change_set_status,
+                mode,
+            },
+        };
+
+        self.call_async(request, None, event_session_id).await
+    }
+
+    /// Enqueues a request to begin applying a change set to the HEAD of a
+    /// workspace, returning a reply future.
+    #[instrument(
+        name = "rebaser_client.enqueue_begin_apply_with_reply",
+        level = "info",
+        skip_all,
+        fields(
+            si.change_set.id = %change_set_id,
+            si.workspace.id = %workspace_id,
+            si.head_change_set.id = %head_change_set_id,
+        ),
+    )]
+    #[allow(clippy::too_many_arguments)]
+    pub async fn enqueue_begin_apply_with_retry(
+        &self,
+        workspace_id: WorkspacePk,
+        change_set_id: ChangeSetId,
+        previous_change_set_status: Option<ChangeSetStatus>,
+        head_change_set_id: ChangeSetId,
+        head_change_set_address: WorkspaceSnapshotAddress,
+        event_session_id: EventSessionId,
+        mode: BeginApplyMode,
+    ) -> Result<(
+        RequestId,
+        BoxFuture<'static, Result<EnqueueUpdatesResponse>>,
+    )> {
+        let id = RequestId::new();
+        let request = EnqueueUpdatesRequestVCurrent::BeginApplyToHead {
+            id,
+            request: BeginApplyToHeadRequestV4 {
+                workspace_id,
+                change_set_id,
+                previous_change_set_status,
+                head_change_set_address,
+                head_change_set_id,
+                event_session_id,
+                mode,
+            },
+        };
+
+        self.call_with_reply(request, event_session_id).await
+    }
+
+    /// Enqueues a request to apply a change set to the head
+    /// workspace.
+    #[instrument(
+        name = "rebaser_client.apply_to_head",
+        level = "info",
+        skip_all,
+        fields(
+            si.change_set.id = %head_change_set_id,
+            si.workspace.id = %workspace_id,
+            si.change_set_to_apply.id= %change_set_to_apply_id,
+        ),
+    )]
+    #[allow(clippy::too_many_arguments)]
+    pub async fn enqueue_apply_to_head(
+        &self,
+        workspace_id: WorkspacePk,
+        head_change_set_id: ChangeSetId,
+        head_change_set_address: WorkspaceSnapshotAddress,
+        change_set_to_apply_id: ChangeSetId,
+        event_session_id: EventSessionId,
+        previous_change_set_status: ChangeSetStatus,
+        mode: Option<BeginApplyMode>,
+    ) -> Result<RequestId> {
+        let id = RequestId::new();
+        let request = EnqueueUpdatesRequestVCurrent::ApplyToHead {
+            id,
+            request: ApplyToHeadRequestV4 {
+                workspace_id,
+                head_change_set_id,
+                head_change_set_address,
+                change_set_to_apply_id,
+                event_session_id,
+                previous_change_set_status,
+                mode,
+            },
+        };
+
+        self.call_async(request, None, event_session_id).await
+    }
+
+    /// Enqueues a request to apply a change set to the head
+    /// workspace, with reply.
+    #[instrument(
+        name = "rebaser_client.apply_to_head_with_reply",
+        level = "info",
+        skip_all,
+        fields(
+            si.change_set.id = %head_change_set_id,
+            si.workspace.id = %workspace_id,
+            si.change_set_to_apply.id= %change_set_to_apply_id,
+        ),
+    )]
+    #[allow(clippy::too_many_arguments)]
+    pub async fn enqueue_apply_to_head_with_reply(
+        &self,
+        workspace_id: WorkspacePk,
+        head_change_set_id: ChangeSetId,
+        head_change_set_address: WorkspaceSnapshotAddress,
+        change_set_to_apply_id: ChangeSetId,
+        event_session_id: EventSessionId,
+        previous_change_set_status: ChangeSetStatus,
+        mode: Option<BeginApplyMode>,
+    ) -> Result<(
+        RequestId,
+        BoxFuture<'static, Result<EnqueueUpdatesResponse>>,
+    )> {
+        let id = RequestId::new();
+        let request = EnqueueUpdatesRequestVCurrent::ApplyToHead {
+            id,
+            request: ApplyToHeadRequestV4 {
+                workspace_id,
+                head_change_set_id,
+                head_change_set_address,
+                change_set_to_apply_id,
+                event_session_id,
+                previous_change_set_status,
+                mode,
+            },
+        };
+
+        self.call_with_reply(request, event_session_id).await
     }
 
     async fn call_async(
         &self,
-        workspace_id: WorkspacePk,
-        change_set_id: ChangeSetId,
-        updates_address: RebaseBatchAddressKind,
-        from_change_set_id: Option<ChangeSetId>,
+        mut request: EnqueueUpdatesRequestVCurrent,
         maybe_reply_inbox: Option<&Subject>,
         event_session_id: EventSessionId,
     ) -> Result<RequestId> {
-        let id = RequestId::new();
+        let id = request.request_id();
+
+        let workspace_id = request.workspace_id();
+        let change_set_id = request.change_set_id();
+
+        request.set_event_session_id(event_session_id);
 
         let pending_events_stream =
             PendingEventsStream::get_or_create(self.context.to_owned()).await?;
@@ -242,14 +434,7 @@ impl Client {
             .publish_audit_log_final_message(workspace_id, change_set_id, event_session_id)
             .await?;
 
-        let request = EnqueueUpdatesRequest::new(EnqueueUpdatesRequestVCurrent {
-            id,
-            workspace_id,
-            change_set_id,
-            updates_address,
-            from_change_set_id,
-            event_session_id: Some(event_session_id),
-        });
+        let request = EnqueueUpdatesRequest::new(request);
 
         // Cut down on the amount of `String` allocations dealing with ids
         let mut wid_buf = [0; WorkspacePk::ID_LEN];
@@ -293,10 +478,7 @@ impl Client {
 
     async fn call_with_reply(
         &self,
-        workspace_id: WorkspacePk,
-        change_set_id: ChangeSetId,
-        updates_address: RebaseBatchAddressKind,
-        from_change_set_id: Option<ChangeSetId>,
+        request: EnqueueUpdatesRequestVCurrent,
         event_session_id: EventSessionId,
     ) -> Result<(
         RequestId,
@@ -319,14 +501,7 @@ impl Client {
             .map_err(Error::Subscribe)?;
 
         let id = self
-            .call_async(
-                workspace_id,
-                change_set_id,
-                updates_address,
-                from_change_set_id,
-                Some(&reply_inbox),
-                event_session_id,
-            )
+            .call_async(request, Some(&reply_inbox), event_session_id)
             .await?;
 
         let fut = Box::pin(async move {

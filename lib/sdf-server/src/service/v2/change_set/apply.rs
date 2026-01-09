@@ -86,7 +86,7 @@ pub async fn apply(
         post_to_webhook(&ctx, workspace_pk, message.as_str()).await?;
 
         // WS Event fires from the dal
-        ctx.commit().await?;
+        ctx.commit_no_rebase().await?;
     }
 
     Ok(Json(action_list))

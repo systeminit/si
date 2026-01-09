@@ -430,7 +430,7 @@ async fn build_from_request_context_allows_change_set_from_workspace_with_access
 #[test]
 async fn change_set_approval_flow(ctx: &mut DalContext) {
     // create a new change set
-    let new_change_set = ChangeSetTestHelpers::fork_from_head_change_set(ctx)
+    let change_set = ChangeSetTestHelpers::fork_from_head_change_set(ctx)
         .await
         .expect("could not fork head");
     let current_user = ChangeSet::extract_userid_from_context(ctx).await;
@@ -444,7 +444,7 @@ async fn change_set_approval_flow(ctx: &mut DalContext) {
         .await
         .expect("could not commit and update");
     // request approval
-    let mut change_set = ChangeSet::get_by_id(ctx, new_change_set.id)
+    let mut change_set = ChangeSet::get_by_id(ctx, change_set.id)
         .await
         .expect("could not find change set");
 
@@ -456,7 +456,7 @@ async fn change_set_approval_flow(ctx: &mut DalContext) {
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
         .expect("could not commit and update");
-    let mut change_set = ChangeSet::get_by_id(ctx, new_change_set.id)
+    let mut change_set = ChangeSet::get_by_id(ctx, change_set.id)
         .await
         .expect("could not find change set");
 
@@ -475,7 +475,7 @@ async fn change_set_approval_flow(ctx: &mut DalContext) {
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
         .expect("could not commit and update");
-    let mut change_set = ChangeSet::get_by_id(ctx, new_change_set.id)
+    let mut change_set = ChangeSet::get_by_id(ctx, change_set.id)
         .await
         .expect("could not find change set");
     assert_eq!(change_set.status, ChangeSetStatus::Rejected);
@@ -485,7 +485,8 @@ async fn change_set_approval_flow(ctx: &mut DalContext) {
     assert_eq!(change_set.reviewed_by_user_id, current_user);
 
     // let's see if we can apply now, it should fail because the change set has not been approved
-    let apply_result = ChangeSetTestHelpers::apply_change_set_to_base_approvals(ctx).await;
+    let apply_result =
+        ChangeSetTestHelpers::apply_change_set_to_base_approvals_with_status_check(ctx).await;
     assert!(apply_result.is_err());
 
     // now let's re-open it
@@ -496,7 +497,7 @@ async fn change_set_approval_flow(ctx: &mut DalContext) {
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
         .expect("could not commit and update");
-    let mut change_set = ChangeSet::get_by_id(ctx, new_change_set.id)
+    let mut change_set = ChangeSet::get_by_id(ctx, change_set.id)
         .await
         .expect("could not find change set");
     assert_eq!(change_set.status, ChangeSetStatus::Open);
@@ -514,7 +515,7 @@ async fn change_set_approval_flow(ctx: &mut DalContext) {
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
         .expect("could not commit and update");
-    let mut change_set = ChangeSet::get_by_id(ctx, new_change_set.id)
+    let mut change_set = ChangeSet::get_by_id(ctx, change_set.id)
         .await
         .expect("could not find change set");
 
@@ -534,7 +535,7 @@ async fn change_set_approval_flow(ctx: &mut DalContext) {
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
         .expect("could not commit and update");
-    let change_set = ChangeSet::get_by_id(ctx, new_change_set.id)
+    let change_set = ChangeSet::get_by_id(ctx, change_set.id)
         .await
         .expect("could not find change set");
 
@@ -546,8 +547,7 @@ async fn change_set_approval_flow(ctx: &mut DalContext) {
     assert_eq!(change_set.reviewed_by_user_id, current_user);
 
     // now let's apply it!
-
-    ChangeSetTestHelpers::apply_change_set_to_base_approvals(ctx)
+    ChangeSetTestHelpers::apply_change_set_to_base_approvals_with_status_check(ctx)
         .await
         .expect("could not apply to head");
 

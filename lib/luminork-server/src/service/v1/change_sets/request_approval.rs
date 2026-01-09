@@ -87,7 +87,7 @@ pub async fn request_approval(
             .publish_on_commit(ctx)
             .await?;
     } else {
-        ChangeSet::prepare_for_force_apply(ctx).await?;
+        ChangeSet::force_change_set_approval(ctx).await?;
         ctx.write_audit_log(
             AuditLogKind::ApproveChangeSetApply {
                 from_status: old_status.into(),
@@ -97,9 +97,9 @@ pub async fn request_approval(
         .await?;
 
         // We need to run a commit before apply so changes get saved
-        ctx.commit().await?;
+        ctx.commit_no_rebase().await?;
 
-        ChangeSet::apply_to_base_change_set(ctx).await?;
+        ChangeSet::begin_apply(ctx).await?;
 
         tracker.track(
             ctx,

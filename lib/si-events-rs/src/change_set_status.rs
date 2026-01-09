@@ -15,6 +15,7 @@ use strum::{
 pub enum ChangeSetStatus {
     Abandoned,
     Applied,
+    ApplyStarted,
     Approved,
     Failed,
     NeedsAbandonApproval,

@@ -32,6 +32,8 @@ pub enum ChangeSetStatus {
     Abandoned,
     /// Applied this changeset to its parent
     Applied,
+    /// An apply has begun, but not yet finished
+    ApplyStarted,
     /// Approved by relevant parties and ready to be applied
     Approved,
     /// Migration of Workspace Snapshot for this change set failed
@@ -48,6 +50,18 @@ pub enum ChangeSetStatus {
 }
 
 impl ChangeSetStatus {
+    pub fn is_active_or_applying(&self) -> bool {
+        matches!(
+            self,
+            ChangeSetStatus::Open
+                | ChangeSetStatus::NeedsApproval
+                | ChangeSetStatus::NeedsAbandonApproval
+                | ChangeSetStatus::Approved
+                | ChangeSetStatus::Rejected
+                | ChangeSetStatus::ApplyStarted
+        )
+    }
+
     pub fn is_active(&self) -> bool {
         matches!(
             self,
@@ -73,6 +87,7 @@ impl From<si_events::ChangeSetStatus> for ChangeSetStatus {
             si_events::ChangeSetStatus::Open => Self::Open,
             si_events::ChangeSetStatus::Approved => Self::Approved,
             si_events::ChangeSetStatus::Rejected => Self::Rejected,
+            si_events::ChangeSetStatus::ApplyStarted => Self::ApplyStarted,
         }
     }
 }
@@ -82,6 +97,7 @@ impl From<ChangeSetStatus> for si_events::ChangeSetStatus {
         match value {
             ChangeSetStatus::Abandoned => Self::Abandoned,
             ChangeSetStatus::Applied => Self::Applied,
+            ChangeSetStatus::ApplyStarted => Self::ApplyStarted,
             ChangeSetStatus::Failed => Self::Failed,
             ChangeSetStatus::NeedsAbandonApproval => Self::NeedsAbandonApproval,
             ChangeSetStatus::NeedsApproval => Self::NeedsApproval,

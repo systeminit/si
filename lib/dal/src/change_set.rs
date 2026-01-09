@@ -9,6 +9,18 @@ use chrono::{
     DateTime,
     Utc,
 };
+use rebaser_client::{
+    RebaserClient,
+    api_types::{
+        enqueue_updates_request::BeginApplyMode,
+        enqueue_updates_response::{
+            ApplyToHeadStatus,
+            BeginApplyStatus,
+            EnqueueUpdatesResponse,
+            EnqueueUpdatesResponseVCurrent,
+        },
+    },
+};
 use serde::{
     Deserialize,
     Serialize,
@@ -24,7 +36,6 @@ use si_db::{
     change_set::FIND_ANCESTORS_QUERY,
 };
 use si_events::{
-    RebaseBatchAddressKind,
     WorkspaceSnapshotAddress,
     audit_log::AuditLogKind,
     merkle_tree_hash::MerkleTreeHash,
@@ -34,11 +45,13 @@ use si_events::{
 use si_id::{
     ActionId,
     EntityId,
+    EventSessionId,
     UserPk,
     WorkspacePk,
 };
 use si_layer_cache::LayerDbError;
 use telemetry::prelude::*;
+use telemetry_utils::metric;
 use thiserror::Error;
 use tokio::time;
 
@@ -64,12 +77,12 @@ use crate::{
         self,
         BillingPublishError,
     },
+    context::TransactionsResult,
     slow_rt::SlowRuntimeError,
     workspace_snapshot::{
         DependentValueRoot,
         dependent_value_root::DependentValueRootError,
         graph::RebaseBatch,
-        selector::WorkspaceSnapshotSelectorDiscriminants,
         split_snapshot::{
             SplitRebaseBatchVCurrent,
             SplitSnapshot,
@@ -534,37 +547,84 @@ impl ChangeSet {
     /// First, transitions the status of the [`ChangeSet`] to [`ChangeSetStatus::NeedsApproval`]
     /// then [`ChangeSetStatus::Approved`]. Next, checks if DVU Roots still exist. Finally,
     /// lock every [`SchemaVariant`] and [`Func`] that is currently unlocked
-    pub async fn prepare_for_force_apply(ctx: &DalContext) -> ChangeSetResult<()> {
+    pub async fn force_change_set_approval(ctx: &DalContext) -> ChangeSetResult<()> {
         // first change the status to approved and who did it
         let mut change_set = ChangeSet::get_by_id(ctx, ctx.change_set_id()).await?;
 
         change_set.request_change_set_approval(ctx).await?;
         // then approve it
         change_set.approve_change_set_for_apply(ctx).await?;
-        // then do the rest
-        Self::prepare_for_apply(ctx).await
+
+        Ok(())
     }
 
-    /// First, checks if DVU Roots still exist. Next, ensures the [`ChangeSet`] has an
-    /// [`ChangeSetStatus::Approved`]. Finally,
-    /// lock every [`SchemaVariant`] and [`Func`] that is currently unlocked
-    pub async fn prepare_for_apply(ctx: &DalContext) -> ChangeSetResult<()> {
-        Self::prepare_for_apply_inner(ctx, false).await
+    /// First, checks if DVU Roots still exist. Next, ensures the [`ChangeSet`]
+    /// has an [`ChangeSetStatus::Approved`]. Then asks the begin applying the
+    /// change set. Returns the state of the change set prior to the prepare, so
+    /// that the rebaser can reset it if the apply fails.
+    pub async fn begin_apply(ctx: &DalContext) -> ChangeSetResult<ChangeSetStatus> {
+        Self::begin_apply_inner(ctx, false, true).await
     }
 
-    /// This is a copy of [Self::prepare_for_apply], but skips the status check. This is because
+    /// This is a copy of [Self::begin_apply], but skips the status check. This is because
     /// sdf now handles the approvals flow as part of the fine grained access control work (i.e.
     /// SpiceDB is intentionally not accessible in the DAL).
-    pub async fn prepare_for_apply_without_status_check(ctx: &DalContext) -> ChangeSetResult<()> {
-        Self::prepare_for_apply_inner(ctx, true).await
+    pub async fn begin_apply_without_status_check(
+        ctx: &DalContext,
+    ) -> ChangeSetResult<ChangeSetStatus> {
+        Self::begin_apply_inner(ctx, true, true).await
+    }
+
+    pub async fn begin_apply_no_lock(ctx: &DalContext) -> ChangeSetResult<ChangeSetStatus> {
+        Self::begin_apply_inner(ctx, false, false).await
+    }
+
+    pub async fn begin_apply_no_lock_no_status_check(
+        ctx: &DalContext,
+    ) -> ChangeSetResult<ChangeSetStatus> {
+        Self::begin_apply_inner(ctx, true, false).await
+    }
+
+    #[instrument(
+        name = "change_set.lock_schemas_and_funcs_for_apply",
+        level = "info",
+        skip_all
+    )]
+    pub async fn lock_schemas_and_funcs_for_apply(ctx: &DalContext) -> ChangeSetResult<()> {
+        // Lock all unlocked variants
+        for schema_id in Schema::list_ids(ctx).await.map_err(Box::new)? {
+            let schema = Schema::get_by_id(ctx, schema_id).await.map_err(Box::new)?;
+            let Some(variant) = SchemaVariant::get_unlocked_for_schema(ctx, schema_id)
+                .await
+                .map_err(Box::new)?
+            else {
+                continue;
+            };
+
+            let variant_id = variant.id();
+
+            variant.lock(ctx).await.map_err(Box::new)?;
+            schema
+                .set_default_variant_id(ctx, variant_id)
+                .await
+                .map_err(Box::new)?;
+        }
+        // Lock all unlocked functions too
+        for func in Func::list_all(ctx).await.map_err(Box::new)? {
+            if !func.is_locked {
+                func.lock(ctx).await.map_err(Box::new)?;
+            }
+        }
+        Ok(())
     }
 
     // TODO(nick): now that the fine grained access control flag is gone, we can collapse the two
     // outer methods and chase down tests continuing to use the old method.
-    async fn prepare_for_apply_inner(
+    async fn begin_apply_inner(
         ctx: &DalContext,
         dangerous_skip_status_check: bool,
-    ) -> ChangeSetResult<()> {
+        lock_schemas_and_funcs: bool,
+    ) -> ChangeSetResult<ChangeSetStatus> {
         // Ensure that DVU roots are empty before continuing.
         if DependentValueRoot::roots_exist(ctx).await? {
             // TODO(nick): we should consider requiring this check in integration tests too. Why did I
@@ -587,34 +647,28 @@ impl ChangeSet {
             }
         }
 
-        // Lock all unlocked variants
-        for schema_id in Schema::list_ids(ctx).await.map_err(Box::new)? {
-            let schema = Schema::get_by_id(ctx, schema_id).await.map_err(Box::new)?;
-            let Some(variant) = SchemaVariant::get_unlocked_for_schema(ctx, schema_id)
-                .await
-                .map_err(Box::new)?
-            else {
-                continue;
-            };
+        let head_change_set_id = ctx.get_workspace_default_change_set_id().await?;
+        let head_change_set_address = ChangeSet::get_by_id(ctx, head_change_set_id)
+            .await?
+            .workspace_snapshot_address;
 
-            let variant_id = variant.id();
+        let previous_change_set_status = begin_apply_with_reply(
+            ctx.rebaser(),
+            ctx.workspace_pk()?,
+            ctx.change_set_id(),
+            None,
+            head_change_set_id,
+            head_change_set_address,
+            ctx.event_session_id(),
+            if lock_schemas_and_funcs {
+                BeginApplyMode::LockSchemasAndFuncs
+            } else {
+                BeginApplyMode::NoLock
+            },
+        )
+        .await?;
 
-            variant.lock(ctx).await.map_err(Box::new)?;
-            schema
-                .set_default_variant_id(ctx, variant_id)
-                .await
-                .map_err(Box::new)?;
-        }
-        // Lock all unlocked functions too
-        for func in Func::list_for_default_and_editing(ctx)
-            .await
-            .map_err(Box::new)?
-        {
-            if !func.is_locked {
-                func.lock(ctx).await.map_err(Box::new)?;
-            }
-        }
-        Ok(())
+        Ok(previous_change_set_status)
     }
 
     pub async fn approve_change_set_for_apply(&mut self, ctx: &DalContext) -> ChangeSetResult<()> {
@@ -755,6 +809,33 @@ impl ChangeSet {
         }
     }
 
+    pub async fn list_replayable(ctx: &DalContext) -> ChangeSetResult<Vec<Self>> {
+        let mut result = vec![];
+        let rows = ctx
+            .txns()
+            .await?
+            .pg()
+            .query(
+                "SELECT * from change_set_pointers WHERE workspace_id = $1 AND status IN ($2, $3, $4, $5, $6, $7)",
+                &[
+                    &ctx.tenancy().workspace_pk_opt(),
+                    &ChangeSetStatus::Open.to_string(),
+                    &ChangeSetStatus::NeedsApproval.to_string(),
+                    &ChangeSetStatus::NeedsAbandonApproval.to_string(),
+                    &ChangeSetStatus::Approved.to_string(),
+                    &ChangeSetStatus::Rejected.to_string(),
+                    &ChangeSetStatus::ApplyStarted.to_string(),
+                ],
+            )
+            .await?;
+
+        for row in rows {
+            result.push(Self::try_from(row)?);
+        }
+
+        Ok(result)
+    }
+
     pub async fn list_active(ctx: &DalContext) -> ChangeSetResult<Vec<Self>> {
         let mut result = vec![];
         let rows = ctx
@@ -884,31 +965,33 @@ impl ChangeSet {
         Ok(result)
     }
 
-    /// Applies the current [`ChangeSet`] in the provided [`DalContext`]. [`Actions`](Action)
-    /// are enqueued as needed and only done so if the base [`ChangeSet`] is "HEAD" (i.e.
-    /// the default [`ChangeSet`] of the [`Workspace`]).
-    /// Also sends the relevant WSEvent
+    /// This should *only* *EVER* be called by the rebaser after the begin apply step
     #[instrument(level = "info", skip_all)]
-    pub async fn apply_to_base_change_set(ctx: &mut DalContext) -> ChangeSetApplyResult<ChangeSet> {
-        let base_change_set_id = ctx.get_workspace_default_change_set_id().await?;
+    pub async fn apply_to_base_change_set(
+        ctx: &mut DalContext,
+        previous_change_set_status: ChangeSetStatus,
+        head_change_set_address: WorkspaceSnapshotAddress,
+        mode: Option<BeginApplyMode>,
+    ) -> ChangeSetApplyResult<()> {
+        let head_change_set_id = ctx.get_workspace_default_change_set_id().await?;
 
-        if ctx.change_set_id() == base_change_set_id {
-            return Err(ChangeSetApplyError::CannotApplyToItself(base_change_set_id));
+        if ctx.change_set_id() == head_change_set_id {
+            return Err(ChangeSetApplyError::CannotApplyToItself(head_change_set_id));
         }
 
-        // Apply to the base change with the current change set (non-editing) and commit.
-        let mut change_set_to_be_applied = Self::get_by_id(ctx, ctx.change_set_id()).await?;
+        apply_to_head_with_reply(
+            ctx.rebaser(),
+            ctx.workspace_pk()?,
+            head_change_set_id,
+            head_change_set_address,
+            ctx.change_set_id(),
+            ctx.event_session_id(),
+            previous_change_set_status,
+            mode,
+        )
+        .await?;
 
-        ctx.update_visibility_and_snapshot_to_visibility(ctx.change_set_id())
-            .await?;
-        change_set_to_be_applied
-            .apply_to_base_change_set_inner(ctx)
-            .await?;
-
-        // This is just to send the ws events
-        ctx.blocking_commit_no_rebase().await?;
-
-        Ok(change_set_to_be_applied)
+        Ok(())
     }
 
     #[instrument(
@@ -969,83 +1052,6 @@ impl ChangeSet {
         )
         .await
         .map_err(Box::new)?)
-    }
-
-    /// Applies the current [`ChangeSet`] in the provided [`DalContext`] to its base
-    /// [`ChangeSet`]. This involves performing a rebase request, updating the status
-    /// of the [`ChangeSet`] accordingly, and publishing a WSEvent
-    ///
-    /// This function neither changes the visibility nor the snapshot after performing the
-    /// aforementioned actions.
-    async fn apply_to_base_change_set_inner(&mut self, ctx: &DalContext) -> ChangeSetResult<()> {
-        let workspace_id = self
-            .workspace_id
-            .ok_or(ChangeSetError::NoWorkspacePkSet(self.id))?;
-        let base_change_set_id = self
-            .base_change_set_id
-            .ok_or(ChangeSetError::NoBaseChangeSet(self.id))?;
-
-        let snapshot_kind: WorkspaceSnapshotSelectorDiscriminants =
-            ctx.workspace_snapshot().map_err(Box::new)?.into();
-
-        let maybe_rebase_batch_address = match snapshot_kind {
-            WorkspaceSnapshotSelectorDiscriminants::LegacySnapshot => {
-                if let Some(rebase_batch) =
-                    self.detect_updates_that_will_be_applied_legacy(ctx).await?
-                {
-                    Some(RebaseBatchAddressKind::Legacy(
-                        ctx.write_legacy_rebase_batch(rebase_batch).await?,
-                    ))
-                } else {
-                    None
-                }
-            }
-            WorkspaceSnapshotSelectorDiscriminants::SplitSnapshot => {
-                if let Some(rebase_batch) =
-                    self.detect_updates_that_will_be_applied_split(ctx).await?
-                {
-                    Some(RebaseBatchAddressKind::Split(
-                        ctx.write_split_snapshot_rebase_batch(rebase_batch).await?,
-                    ))
-                } else {
-                    None
-                }
-            }
-        };
-
-        if let Some(rebase_batch_address) = maybe_rebase_batch_address {
-            let (request_id, reply_fut) = ctx
-                .run_rebase_from_change_set_with_reply(
-                    workspace_id,
-                    base_change_set_id,
-                    rebase_batch_address,
-                    self.id,
-                )
-                .await?;
-
-            let reply_fut = reply_fut.instrument(info_span!(
-                "rebaser_client.await_response",
-                si.workspace.id = %workspace_id,
-                si.change_set.id = %base_change_set_id,
-            ));
-
-            // Wait on response from Rebaser after request has processed
-            let timeout = Duration::from_secs(60);
-            let _reply = time::timeout(timeout, reply_fut)
-                .await
-                .map_err(|_elapsed| {
-                    TransactionsError::RebaserReplyDeadlineElasped(timeout, request_id)
-                })??;
-        }
-
-        self.update_status(ctx, ChangeSetStatus::Applied).await?;
-        let user = Self::extract_userid_from_context(ctx).await;
-        WsEvent::change_set_applied(ctx, self.id, base_change_set_id, user)
-            .await?
-            .publish_on_commit(ctx)
-            .await?;
-
-        Ok(())
     }
 
     /// Returns a new [`ChangeSetId`](ChangeSet) if a new [`ChangeSet`] was created.
@@ -1242,4 +1248,139 @@ pub async fn calculate_checksum(
         hasher.update(hash.as_bytes());
     }
     Ok(hasher.finalize())
+}
+
+#[instrument(
+    level="info",
+    skip_all,
+    fields(
+            si.change_set.id = %change_set_id,
+            si.workspace.id = %workspace_pk,
+            si.head_change_set.id = %head_change_set_id,
+        ),
+    )]
+#[inline]
+#[allow(clippy::too_many_arguments)]
+async fn begin_apply_with_reply(
+    rebaser: &RebaserClient,
+    workspace_pk: WorkspacePk,
+    change_set_id: ChangeSetId,
+    previous_change_set_status: Option<ChangeSetStatus>,
+    head_change_set_id: ChangeSetId,
+    head_change_set_address: WorkspaceSnapshotAddress,
+    event_session_id: EventSessionId,
+    mode: BeginApplyMode,
+) -> TransactionsResult<ChangeSetStatus> {
+    let timeout = Duration::from_secs(60);
+    let metric_label = format!("{workspace_pk}:{change_set_id}");
+    metric!(counter.dal.begin_apply_request = 1, label = metric_label);
+    let (request_id, reply_fut) = rebaser
+        .enqueue_begin_apply_with_retry(
+            workspace_pk,
+            change_set_id,
+            previous_change_set_status.map(Into::into),
+            head_change_set_id,
+            head_change_set_address,
+            event_session_id,
+            mode,
+        )
+        .await?;
+
+    let reply_fut = reply_fut.instrument(info_span!(
+        "rebaser_client.await_response",
+        si.workspace.id = %workspace_pk,
+        si.change_set.id = %change_set_id,
+    ));
+
+    // Wait on response from Rebaser after request has processed
+    let reply = time::timeout(timeout, reply_fut)
+        .await
+        .map_err(|_elapsed| {
+            TransactionsError::RebaserReplyDeadlineElasped(timeout, request_id)
+        })??;
+
+    metric!(counter.dal.begin_apply_requested = -1, label = metric_label);
+
+    let EnqueueUpdatesResponse::V2(EnqueueUpdatesResponseVCurrent::BeginApplyToHead {
+        status, ..
+    }) = reply
+    else {
+        return Err(TransactionsError::RebaserUnexpectedResponse(reply.clone()));
+    };
+
+    match status {
+        BeginApplyStatus::Success {
+            previous_change_set_status,
+        } => Ok(previous_change_set_status.into()),
+        BeginApplyStatus::Error { message } => {
+            Err(TransactionsError::BeginApplyFailed(change_set_id, message))
+        }
+    }
+}
+
+#[instrument(
+    level="info",
+    skip_all,
+    fields(
+            si.change_set.id = %head_change_set_id,
+            si.workspace.id = %workspace_pk,
+            si.change_set_to_apply.id = %change_set_to_apply_id,
+        ),
+    )]
+#[inline]
+#[allow(clippy::too_many_arguments)]
+async fn apply_to_head_with_reply(
+    rebaser: &RebaserClient,
+    workspace_pk: WorkspacePk,
+    head_change_set_id: ChangeSetId,
+    head_change_set_address: WorkspaceSnapshotAddress,
+    change_set_to_apply_id: ChangeSetId,
+    event_session_id: EventSessionId,
+    previous_change_set_status: ChangeSetStatus,
+    mode: Option<BeginApplyMode>,
+) -> TransactionsResult<()> {
+    let timeout = Duration::from_secs(60);
+    let metric_label = format!("{workspace_pk}:{head_change_set_id}");
+    metric!(counter.dal.apply_requested = 1, label = metric_label);
+    let (request_id, reply_fut) = rebaser
+        .enqueue_apply_to_head_with_reply(
+            workspace_pk,
+            head_change_set_id,
+            head_change_set_address,
+            change_set_to_apply_id,
+            event_session_id,
+            previous_change_set_status.into(),
+            mode,
+        )
+        .await?;
+
+    let reply_fut = reply_fut.instrument(info_span!(
+        "rebaser_client.await_response",
+        si.workspace.id = %workspace_pk,
+        si.change_set.id = %head_change_set_id,
+    ));
+
+    // Wait on response from Rebaser after request has processed
+    let reply = time::timeout(timeout, reply_fut)
+        .await
+        .map_err(|_elapsed| {
+            TransactionsError::RebaserReplyDeadlineElasped(timeout, request_id)
+        })??;
+
+    metric!(counter.dal.apply_requested = -1, label = metric_label);
+
+    let EnqueueUpdatesResponse::V2(EnqueueUpdatesResponseVCurrent::ApplyToHead { status, .. }) =
+        reply
+    else {
+        return Err(TransactionsError::RebaserUnexpectedResponse(reply.clone()));
+    };
+
+    match status {
+        ApplyToHeadStatus::Success | ApplyToHeadStatus::Retrying => Ok(()),
+        ApplyToHeadStatus::Error { message } => Err(TransactionsError::ApplyFailed(
+            head_change_set_id,
+            change_set_to_apply_id,
+            message,
+        )),
+    }
 }

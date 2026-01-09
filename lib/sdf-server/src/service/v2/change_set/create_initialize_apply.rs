@@ -79,8 +79,7 @@ pub async fn create_initialize_apply(
     )
     .await?;
 
-    let mut initialization_changeset_ctx =
-        ctx.clone_with_new_visibility(initialization_change_set.id.into());
+    let mut initialization_changeset_ctx = ctx.clone_with_change_set(initialization_change_set.id);
     let initialization_result =
         initialize_and_apply(&mut initialization_changeset_ctx, request).await;
 
@@ -315,7 +314,7 @@ async fn initialize_and_apply(ctx: &mut DalContext, request: Request) -> Result<
     let change_set = ctx.change_set()?.clone();
     let old_status = change_set.status;
 
-    ChangeSet::prepare_for_force_apply(ctx).await?;
+    ChangeSet::force_change_set_approval(ctx).await?;
     ctx.write_audit_log(
         AuditLogKind::ApproveChangeSetApply {
             from_status: old_status.into(),
@@ -324,7 +323,7 @@ async fn initialize_and_apply(ctx: &mut DalContext, request: Request) -> Result<
     )
     .await?;
 
-    ChangeSet::apply_to_base_change_set(ctx).await?;
+    ChangeSet::begin_apply(ctx).await?;
 
     ctx.write_audit_log(AuditLogKind::ApplyChangeSet, change_set.name.clone())
         .await?;

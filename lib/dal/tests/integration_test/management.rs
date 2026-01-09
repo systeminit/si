@@ -2,6 +2,7 @@ use std::time::Duration;
 
 use dal::{
     AttributeValue,
+    ChangeSet,
     Component,
     ComponentId,
     DalContext,
@@ -268,7 +269,7 @@ async fn import_and_refresh(ctx: &mut DalContext) -> Result<()> {
         .and_then(|v| v.as_u64())
         .expect("has a refresh_count");
     assert_eq!(serde_json::json!(2), refresh_count);
-
+    ChangeSet::wait_for_dvu(ctx, false).await?;
     // now apply the change set
     ChangeSetTestHelpers::apply_change_set_to_base(ctx).await?;
     // fork head, and run import again. Refresh should not run in this case.

@@ -98,7 +98,7 @@ async fn keeps_only_one_unlocked_variant_from_concurrent_requests(ctx: &mut DalC
 
     // NOTE: We *CANNOT* use `ChangeSetTestHelpers::apply_change_set_to_base` as it explicitly
     // locks all editing SchemaVariants, which defeats what we're attempting to test.
-    ChangeSetTestHelpers::apply_change_set_to_base_inner(ctx)
+    ChangeSetTestHelpers::apply_change_set_to_base_inner(ctx, true, false)
         .await
         .expect("Unable to apply first request to base change set");
 
@@ -126,7 +126,7 @@ async fn keeps_only_one_unlocked_variant_from_concurrent_requests(ctx: &mut DalC
     ctx.update_visibility_and_snapshot_to_visibility(second_request_change_set.id)
         .await
         .expect("Unable to update ctx to second request change set");
-    ChangeSetTestHelpers::apply_change_set_to_base_inner(ctx)
+    ChangeSetTestHelpers::apply_change_set_to_base_inner(ctx, true, false)
         .await
         .expect("Unable to apply second request to base change set");
 

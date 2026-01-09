@@ -30,6 +30,7 @@
 use thiserror::Error;
 
 mod app_state;
+mod apply;
 mod change_set_processor_task;
 mod config;
 mod handlers;

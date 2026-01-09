@@ -28,12 +28,12 @@ pub async fn force_apply(
     Host(host_name): Host,
     Path((_workspace_pk, change_set_id)): Path<(WorkspacePk, ChangeSetId)>,
 ) -> Result<()> {
-    let mut ctx = builder
+    let ctx = builder
         .build(request_ctx.build(change_set_id.into()))
         .await?;
     let change_set = ChangeSet::get_by_id(&ctx, change_set_id).await?;
     let old_status = change_set.status;
-    ChangeSet::prepare_for_force_apply(&ctx).await?;
+    ChangeSet::force_change_set_approval(&ctx).await?;
     ctx.write_audit_log(
         AuditLogKind::ApproveChangeSetApply {
             from_status: old_status.into(),
@@ -44,7 +44,7 @@ pub async fn force_apply(
     // We need to run a commit before apply so changes get saved
     ctx.commit().await?;
 
-    ChangeSet::apply_to_base_change_set(&mut ctx).await?;
+    ChangeSet::begin_apply(&ctx).await?;
 
     track(
         &posthog_client,
@@ -57,7 +57,7 @@ pub async fn force_apply(
         }),
     );
 
-    let change_set = ChangeSet::get_by_id(&ctx, ctx.visibility().change_set_id).await?;
+    let change_set = ChangeSet::get_by_id(&ctx, change_set_id).await?;
 
     ctx.write_audit_log(AuditLogKind::ApplyChangeSet, change_set.name)
         .await?;

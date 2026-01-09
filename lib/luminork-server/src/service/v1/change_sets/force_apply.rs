@@ -48,7 +48,7 @@ pub async fn force_apply(
     }
 
     let old_status = ctx.change_set()?.status;
-    ChangeSet::prepare_for_force_apply(ctx).await?;
+    ChangeSet::force_change_set_approval(ctx).await?;
     ctx.write_audit_log(
         AuditLogKind::ApproveChangeSetApply {
             from_status: old_status.into(),
@@ -59,7 +59,7 @@ pub async fn force_apply(
 
     ctx.commit().await?;
 
-    ChangeSet::apply_to_base_change_set(ctx).await?;
+    ChangeSet::begin_apply(ctx).await?;
 
     tracker.track(
         ctx,

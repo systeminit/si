@@ -97,14 +97,9 @@ pub async fn protected_apply_to_base_change_set(
         }
     }
 
-    // With no unsatisfied requirements, we can prepare to apply.
-    ChangeSet::prepare_for_apply_without_status_check(ctx).await?;
-
-    // We need to commit our preparations before performing the apply.
-    ctx.commit().await?;
-
-    // With the requirement check and preparations committed, we can finally perform the apply.
-    ChangeSet::apply_to_base_change_set(ctx).await?;
+    // With the requirement check satisfied, we can finally perform the apply.
+    // We skip the "status" check since it is performed above
+    ChangeSet::begin_apply_without_status_check(ctx).await?;
 
     Ok(())
 }

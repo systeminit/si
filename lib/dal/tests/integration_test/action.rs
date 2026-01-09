@@ -398,7 +398,7 @@ async fn refresh_actions_run_where_they_should(ctx: &mut DalContext) -> Result<(
     ChangeSetTestHelpers::fork_from_head_change_set(ctx).await?;
     Action::enqueue_refresh_in_correct_change_set_and_commit(ctx, small_even_lego.id()).await?;
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
-    let seconds = 10;
+    let seconds = 120;
     let mut did_pass = false;
     for _ in 0..(seconds * 10) {
         ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
