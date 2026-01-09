@@ -74,6 +74,10 @@ impl AttributePrototypeArgumentNodeWeight {
         &self.timestamp
     }
 
+    pub fn set_timestamp(&mut self, timestamp: Timestamp) {
+        self.timestamp = timestamp;
+    }
+
     pub fn content_hash(&self) -> ContentHash {
         self.node_hash()
     }

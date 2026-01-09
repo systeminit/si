@@ -88,6 +88,21 @@ impl ActionPrototypeNodeWeight {
         self.description.as_deref()
     }
 
+    pub fn set_name(&mut self, name: impl Into<String>) -> &mut Self {
+        self.name = name.into();
+        self
+    }
+
+    pub fn set_description(&mut self, description: Option<impl Into<String>>) -> &mut Self {
+        self.description = description.map(|d| d.into());
+        self
+    }
+
+    pub fn set_kind(&mut self, kind: ActionKind) -> &mut Self {
+        self.kind = kind;
+        self
+    }
+
     pub fn lineage_id(&self) -> Ulid {
         self.lineage_id
     }

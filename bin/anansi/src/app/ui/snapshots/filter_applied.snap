@@ -1,0 +1,44 @@
+---
+source: bin/anansi/src/app/ui/tests.rs
+expression: redacted
+---
+anansi k(n)ows about nodes in system initiative                                                     
+┌Filter────────────────────────────────────────────────────────────────────────────────────────────┐
+│Filter: alpha (Press / to edit, Esc to clear)                                                     │
+└──────────────────────────────────────────────────────────────────────────────────────────────────┘
+┌Nodes (1/1 | 1/16 total)──────────────┐┌Node Details──────────────────────────────────────────────┐
+│    ID     Node W Name                ││Node Weight Kind: Prop                                    │
+│[•] [ULID] Prop   alpha_prop          ││ID: [ULID]                            │
+│                                      ││UTC Timestamp in ULID: [TIMESTAMP]                │
+│                                      ││Lineage ID: [ULID]                    │
+│                                      ││Merkle Tree Hash: f65283170e94f54480b9693c47d06490        │
+│                                      ││                                                          │
+│                                      │└──────────────────────────────────────────────────────────┘
+│                                      │┌Edges (out: 0, in: 0)─────────────────────────────────────┐
+│                                      ││Outgoing:                                                 │
+│                                      ││  (none)                                                  │
+│                                      ││                                                          │
+│                                      ││Incoming:                                                 │
+│                                      ││  (none)                                                  │
+└──────────────────────────────────────┘└──────────────────────────────────────────────────────────┘
+┌Edit History──────────────────────────────────────────────────────────────────────────────────────┐
+│No edits yet. Press 'e' to edit the selected node.                                                │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+└──────────────────────────────────────────────────────────────────────────────────────────────────┘
+Tab: Panels | /: Filter | e: Edit | a: Add Edge | d: Delete | u: Undo | q: Quit

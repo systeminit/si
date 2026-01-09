@@ -98,6 +98,10 @@ impl CategoryNodeWeight {
         self.kind
     }
 
+    pub fn set_kind(&mut self, kind: CategoryNodeKind) {
+        self.kind = kind;
+    }
+
     pub fn lineage_id(&self) -> Ulid {
         self.lineage_id
     }

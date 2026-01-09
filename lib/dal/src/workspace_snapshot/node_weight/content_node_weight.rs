@@ -44,7 +44,7 @@ pub struct ContentNodeWeight {
     pub merkle_tree_hash: MerkleTreeHash,
     /// The first time a [`ChangeSet`] has "seen" this content. This is useful for determining
     /// whether the absence of this content on one side or the other of a rebase/merge is because
-    /// the content is new, or because one side deleted it.
+    /// the content is new, or because one side deleted it. -- note: this is not used.
     pub to_delete: bool,
 }
 

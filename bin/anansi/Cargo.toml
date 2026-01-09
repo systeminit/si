@@ -1,0 +1,32 @@
+[package]
+name = "anansi"
+version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[[bin]]
+name = "anansi"
+path = "src/main.rs"
+
+[dependencies]
+chrono = { workspace = true }
+clap = { workspace = true }
+color-eyre = { workspace = true }
+crossterm = { workspace = true }
+dal = { path = "../../lib/dal" }
+petgraph = { workspace = true }
+postcard = { workspace = true }
+ratatui = { workspace = true }
+serde = { workspace = true }
+si-events = { path = "../../lib/si-events-rs" }
+si-layer-cache = { path = "../../lib/si-layer-cache" }
+tokio = { workspace = true }
+tokio-util = { workspace = true }
+
+[dev-dependencies]
+insta = { workspace = true }
+regex = { workspace = true }

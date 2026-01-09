@@ -99,6 +99,16 @@ impl PropNodeWeight {
         &self.name
     }
 
+    pub fn set_name(&mut self, name: impl Into<String>) -> &mut Self {
+        self.name = name.into();
+        self
+    }
+
+    pub fn set_kind(&mut self, kind: PropKind) -> &mut Self {
+        self.kind = kind;
+        self
+    }
+
     pub fn new_content_hash(&mut self, content_hash: ContentHash) -> NodeWeightResult<()> {
         let new_address = match &self.content_address {
             ContentAddress::Prop(_) => ContentAddress::Prop(content_hash),

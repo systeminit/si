@@ -1,0 +1,51 @@
+load(
+    "@prelude-si//:macros.bzl",
+    "rust_binary",
+    "rust_binary_artifact",
+)
+
+rust_binary(
+    name = "anansi",
+    deps = [
+        "//lib/dal:dal",
+        "//lib/si-events-rs:si-events",
+        "//lib/si-layer-cache:si-layer-cache",
+        "//third-party/rust:chrono",
+        "//third-party/rust:clap",
+        "//third-party/rust:color-eyre",
+        "//third-party/rust:crossterm",
+        "//third-party/rust:petgraph",
+        "//third-party/rust:postcard",
+        "//third-party/rust:ratatui",
+        "//third-party/rust:serde",
+        "//third-party/rust:tokio",
+        "//third-party/rust:tokio-util",
+    ],
+    srcs = glob([
+        "src/**/*.rs",
+        "src/app/si_logo.txt",
+    ]),
+    test_unit_deps = [
+        "//third-party/rust:insta",
+        "//third-party/rust:regex",
+    ],
+    test_unit_srcs = glob(["src/**/*.snap"]),
+    test_unit_resources = glob(["src/**/*.snap"]),
+    test_unit_env = {
+        # https://insta.rs/docs/quickstart/#continuous-integration
+        "CI": "true",
+        # https://insta.rs/docs/advanced/#controlling-snapshot-updating
+        "INSTA_UPDATE": "no",
+        # Required for insta snapshot tests - Buck2 will resolve this to an absolute path
+        "CARGO_MANIFEST_DIR": ".",
+        # Prevents insta from trying to run `cargo metadata` in Buck2 builds
+        # https://insta.rs/docs/advanced/#disabling-cargo-metadata-lookup
+        "INSTA_WORKSPACE_ROOT": ".",
+    },
+    env = {"CARGO_BIN_NAME": "anansi"},
+)
+
+rust_binary_artifact(
+    name = "anansi",
+    binary = ":anansi",
+)

@@ -1,0 +1,44 @@
+---
+source: bin/anansi/src/app/ui/tests.rs
+expression: redacted
+---
+anansi k(n)ows about nodes in system initiative                                                     
+┌Filter────────────────────────────────────────────────────────────────────────────────────────────┐
+│Press / to filter by node weight kind, ID, or name                                                │
+└──────────────────────────────────────────────────────────────────────────────────────────────────┘
+┌Nodes (8/33)──────────────────────────┐┌Node Details──────────────────────────────────────────────┐
+│    ID     Node W Name                ││Node Weight Kind: Category                                │
+│[ ] [ULID] Catego DeprecatedActionBatc││ID: [ULID]                            │
+│[ ] [ULID] Catego Func                ││UTC Timestamp in ULID: [TIMESTAMP]                │
+│[•] [ULID] Catego Module              ││Lineage ID: [ULID]                    │
+│[ ] [ULID] Catego Schema              ││Merkle Tree Hash: f999b426ac59050801c3e14a13bc6cab        │
+│[ ] [ULID] Catego Secret              ││                                                          │
+│[ ] [ULID] Catego DependentValueRoots │└──────────────────────────────────────────────────────────┘
+│[ ] [ULID] Catego View                │┌Edges (out: 0, in: 1) [1/1]───────────────────────────────┐
+│[ ] [ULID] Catego DiagramObject       ││Outgoing:                                                 │
+│[ ] [ULID] Prop   prop_00             ││  (none)                                                  │
+│[ ] [ULID] Prop   prop_01             ││                                                          │
+│[ ] [ULID] Prop   prop_02             ││Incoming:                                                 │
+│                                      ││[ ]  ← Use { is_default: false } - Content ([ULID]│
+└──────────────────────────────────────┘└──────────────────────────────────────────────────────────┘
+┌Edit History──────────────────────────────────────────────────────────────────────────────────────┐
+│No edits yet. Press 'e' to edit the selected node.                                                │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+└──────────────────────────────────────────────────────────────────────────────────────────────────┘
+Tab: Panels | /: Filter | e: Edit | a: Add Edge | d: Delete | u: Undo | q: Quit

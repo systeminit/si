@@ -59,6 +59,7 @@ console-subscriber = { version = "0.4.1", default-features = false }
 convert_case = "0.6.0"
 core_affinity = "0.8.3"
 crossbeam-queue = { version = "0.3.11" }
+crossterm = { version = "0.28.1" }
 darling = "0.20.10"
 dashmap = "6.1.0"
 deadpool = { version = "0.12.1", features = ["rt_tokio_1"] }
@@ -125,6 +126,7 @@ proc-macro2 = "1.0.92"
 procfs = "0.17.0"
 quote = "1.0.37"
 rand = "0.8.5"
+ratatui = "0.29.0"
 rcgen = { version = "0.13.2", default-features = false, features = ["pem", "ring"] }
 refinery = { version = "0.8.14", features = ["tokio-postgres"] }
 regex = "1.11.1"
