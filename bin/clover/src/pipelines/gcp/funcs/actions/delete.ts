@@ -16,6 +16,9 @@ async function main(component: Input): Promise<Output> {
   const deleteApiPath = JSON.parse(deleteApiPathJson);
   const baseUrl = _.get(component.properties, ["domain", "extra", "baseUrl"], "");
 
+  // Use the stored httpMethod (some APIs like Service Networking use POST for delete)
+  const httpMethod = deleteApiPath.httpMethod || "DELETE";
+
   // Get resourceId
   const resourceId = component.properties?.si?.resourceId;
   if (!resourceId) {
@@ -99,7 +102,7 @@ async function main(component: Input): Promise<Output> {
   // Make the API request with retry logic
   const response = await siExec.withRetry(async () => {
     const resp = await fetch(url, {
-      method: "DELETE", // delete is always DELETE
+      method: httpMethod, // Usually DELETE, but some APIs use POST (e.g., deleteConnection)
       headers: {
         "Authorization": `Bearer ${token}`,
       },
