@@ -314,7 +314,7 @@ function buildGcpResourceSpec(
     if (listResponse.properties) {
       // Find the array property that contains the resource items
       for (
-        const [propName, propDef] of Object.entries(listResponse.properties)
+        const [_, propDef] of Object.entries(listResponse.properties)
       ) {
         if (propDef.type === "array" && propDef.items) {
           resourceSchema = propDef.items;

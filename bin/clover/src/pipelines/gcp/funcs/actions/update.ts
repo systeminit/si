@@ -14,14 +14,11 @@ async function main(component: Input): Promise<Output> {
   const currentResource = component.properties?.resource?.payload;
 
   // Filter to only changed fields (GCP PATCH requires this for some resources)
-  // Include fields if they're different from current resource OR if they're being set for the first time
   if (currentResource) {
     const changedFields: Record<string, any> = {};
 
     for (const [key, value] of Object.entries(updatePayload)) {
-      // Include field if:
-      // 1. It doesn't exist in current resource (new field being set)
-      // 2. OR it exists but has a different value
+      // Include field if it doesn't exist in current resource or has different value
       if (!(key in currentResource) || !_.isEqual(value, currentResource[key])) {
         changedFields[key] = value;
       }
@@ -30,25 +27,15 @@ async function main(component: Input): Promise<Output> {
     updatePayload = changedFields;
 
     // GCP requires fingerprint for updates to prevent concurrent modifications
-    // Always include the fingerprint from the current resource if it exists
     if (currentResource.fingerprint) {
       updatePayload.fingerprint = currentResource.fingerprint;
     }
   }
 
   // Try to get update API path first, fall back to patch
-  let updateApiPathJson = _.get(
-    component.properties,
-    ["domain", "extra", "updateApiPath"],
-    "",
-  );
-
+  let updateApiPathJson = _.get(component.properties, ["domain", "extra", "updateApiPath"], "");
   if (!updateApiPathJson) {
-    updateApiPathJson = _.get(
-      component.properties,
-      ["domain", "extra", "patchApiPath"],
-      "",
-    );
+    updateApiPathJson = _.get(component.properties, ["domain", "extra", "patchApiPath"], "");
   }
 
   if (!updateApiPathJson) {
@@ -78,76 +65,10 @@ async function main(component: Input): Promise<Output> {
 
   const { token, projectId } = await getAccessToken(serviceAccountJson);
 
-  // Build the URL by replacing path parameters
-  let url: string;
+  // Build the URL
+  let url = buildUrlWithParams(baseUrl, updateApiPath, component, projectId, { resourceId });
 
-  // If resourceId is already a full path matching the API structure, use it directly
-  // This handles cases where resourceId is "projects/xxx/datasets/yyy/tables/zzz"
-  if (isFullResourcePath(resourceId, updateApiPath.path)) {
-    url = `${baseUrl}${resourceId}`;
-  } else {
-    url = `${baseUrl}${updateApiPath.path}`;
-
-    // Replace path parameters with values from resource_value or domain
-    // GCP APIs use RFC 6570 URI templates: {param} and {+param} (reserved expansion)
-    if (updateApiPath.parameterOrder) {
-      for (const paramName of updateApiPath.parameterOrder) {
-        let paramValue;
-
-        // For the resource identifier, use resourceId
-        if (paramName === updateApiPath.parameterOrder[updateApiPath.parameterOrder.length - 1]) {
-          paramValue = resourceId;
-        } else if (paramName === "project" || paramName === "projectId") {
-          // Use extracted project_id for project/projectId parameter
-          paramValue = projectId;
-        } else if (paramName === "parent") {
-          // "parent" is a common GCP pattern: projects/{project}/locations/{location}
-          paramValue = _.get(component.properties, ["resource", "payload", "parent"]) ||
-            _.get(component.properties, ["domain", "parent"]);
-          if (!paramValue && projectId) {
-            // Only auto-construct for project-only resources
-            // Multi-scope resources require explicit parent
-            const availableScopesJson = _.get(component.properties, ["domain", "extra", "availableScopes"]);
-            const availableScopes = availableScopesJson ? JSON.parse(availableScopesJson) : [];
-            const isProjectOnly = availableScopes.length === 1 && availableScopes[0] === "projects";
-
-            if (isProjectOnly) {
-              const location = _.get(component.properties, ["resource", "payload", "location"]) ||
-                _.get(component.properties, ["domain", "location"]) ||
-                _.get(component.properties, ["domain", "zone"]) ||
-                _.get(component.properties, ["domain", "region"]);
-              if (location) {
-                paramValue = `projects/${projectId}/locations/${location}`;
-              }
-            }
-          }
-        } else {
-          paramValue = _.get(component.properties, ["resource", "payload", paramName]) ||
-            _.get(component.properties, ["domain", paramName]);
-
-          // GCP often returns full URLs for reference fields (e.g., region, zone, network)
-          // Extract just the resource name from the URL
-          if (paramValue && typeof paramValue === "string" && paramValue.startsWith("https://")) {
-            const urlParts = paramValue.split("/");
-            paramValue = urlParts[urlParts.length - 1];
-          }
-        }
-
-        if (paramValue) {
-          // Handle {+param} (reserved expansion - don't encode, allows slashes)
-          if (url.includes(`{+${paramName}}`)) {
-            url = url.replace(`{+${paramName}}`, paramValue);
-          } else {
-            // Handle {param} (simple expansion - encode)
-            url = url.replace(`{${paramName}}`, encodeURIComponent(paramValue));
-          }
-        }
-      }
-    }
-  }
-
-  // Many GCP APIs require or benefit from an updateMask query parameter
-  // that specifies which fields are being updated
+  // Add updateMask query parameter (GCP APIs require/benefit from specifying which fields are being updated)
   const updateFields = Object.keys(updatePayload).filter(k => k !== 'fingerprint');
   if (updateFields.length > 0) {
     const updateMask = updateFields.join(',');
@@ -167,7 +88,6 @@ async function main(component: Input): Promise<Output> {
 
     if (!resp.ok) {
       const errorText = await resp.text();
-
       const error = new Error(`Unable to update resource;
 Called "${url}"
 API returned ${resp.status} ${resp.statusText}:
@@ -181,209 +101,198 @@ ${errorText}`
 
     return resp;
   }, {
-    isRateLimitedFn: (error) => error.status === 429
-  }).then((r) => r.result);
+    isRateLimitedFn: (error: any) => error.status === 429
+  }).then((r: any) => r.result);
 
   const responseJson = await response.json();
 
-  // Handle Google Cloud Long-Running Operations (LRO)
-  // Check if this is an operation response:
-  // - Compute Engine uses "kind" containing "operation"
-  // - GKE/Container API uses "operationType" field
-  // - Other APIs (API Keys, etc.) use "name" starting with "operations/"
-  const isLRO = (responseJson.kind && responseJson.kind.includes("operation")) ||
+  // Check if this resource uses Long-Running Operations based on metadata
+  const lroStyle = _.get(component.properties, ["domain", "extra", "lroStyle"], "none");
+
+  // Detect LRO response - only check if lroStyle indicates LRO support
+  const isLRO = lroStyle !== "none" && (
+    (responseJson.kind && responseJson.kind.includes("operation")) ||
     responseJson.operationType ||
-    (responseJson.name && responseJson.name.startsWith("operations/"));
+    (responseJson.name && responseJson.name.startsWith("operations/"))
+  );
+
   if (isLRO) {
     console.log(`[UPDATE] LRO detected, polling for completion...`);
 
-    // Use selfLink or construct URL from operation name
-    // For APIs that don't provide selfLink, we need to construct the URL
-    // The API version prefix (v1, v2, etc.) comes from the API paths
-    let pollingUrl = responseJson.selfLink;
-    if (!pollingUrl && responseJson.name) {
-      // Extract version from one of the API paths (e.g., "v2/{+parent}/keys" -> "v2")
-      const insertApiPathJson = _.get(component.properties, ["domain", "extra", "insertApiPath"], "");
-      const getApiPathJson = _.get(component.properties, ["domain", "extra", "getApiPath"], "");
-      const pathJson = insertApiPathJson || getApiPathJson;
-      let apiVersion = "";
-      if (pathJson) {
-        const apiPath = JSON.parse(pathJson);
-        const versionMatch = apiPath.path?.match(/^(v\d+)\//);
-        if (versionMatch) {
-          apiVersion = versionMatch[1] + "/";
-        }
-      }
-      pollingUrl = `${baseUrl}${apiVersion}${responseJson.name}`;
-    }
+    const pollingUrl = buildLroPollingUrl(baseUrl, responseJson, component);
 
-    // Poll the operation until it completes using new siExec.pollLRO
-    const finalResource = await siExec.pollLRO({
+    // Poll until complete - don't fetch final resource, let refresh handle that
+    await siExec.pollLRO({
       url: pollingUrl,
       headers: { "Authorization": `Bearer ${token}` },
       maxAttempts: 20,
       baseDelay: 2000,
       maxDelay: 30000,
-      isCompleteFn: (response: any, body: any) => body.status === "DONE" || body.done === true,
-      isErrorFn: (response: any, body: any) => !!body.error,
-      extractResultFn: async (response: any, body: any) => {
-        // If operation has error, throw it
+      isCompleteFn: (_response: any, body: any) => body.status === "DONE" || body.done === true,
+      isErrorFn: (_response: any, body: any) => !!body.error,
+      extractResultFn: async (_response: any, body: any) => {
         if (body.error) {
-          throw new Error(`Operation failed: ${JSON.stringify(body.error)}`);
+          throw new Error(`Update operation failed: ${JSON.stringify(body.error)}`);
         }
-
-        // Some operations include the updated resource in the response field
-        if (body.response) {
-          return body.response;
-        }
-
-        // For update operations, fetch the final resource from targetLink
-        if (body.targetLink) {
-          const resourceResponse = await fetch(body.targetLink, {
-            method: "GET",
-            headers: { "Authorization": `Bearer ${token}` },
-          });
-
-          if (!resourceResponse.ok) {
-            throw new Error(`Failed to fetch final resource: ${resourceResponse.status}`);
-          }
-
-          return await resourceResponse.json();
-        }
-
-        // Fallback: Use resourceId with getApiPath to fetch final resource
-        // This handles APIs like API Keys that don't provide targetLink or response
-        const getApiPathJson = _.get(component.properties, ["domain", "extra", "getApiPath"], "");
-        if (getApiPathJson && resourceId) {
-          const getApiPath = JSON.parse(getApiPathJson);
-          let getUrl = `${baseUrl}${getApiPath.path}`;
-
-          // Replace {+name} or {name} with resourceId
-          if (getUrl.includes("{+name}")) {
-            getUrl = getUrl.replace("{+name}", resourceId);
-          } else if (getUrl.includes("{name}")) {
-            getUrl = getUrl.replace("{name}", encodeURIComponent(resourceId));
-          }
-
-          const resourceResponse = await fetch(getUrl, {
-            method: "GET",
-            headers: { "Authorization": `Bearer ${token}` },
-          });
-
-          if (resourceResponse.ok) {
-            return await resourceResponse.json();
-          }
-        }
-
-        console.warn("[GCP] Operation completed but couldn't fetch final resource");
         return body;
       }
     });
 
     console.log(`[UPDATE] Operation complete`);
-    return {
-      payload: normalizeGcpResourceValues(finalResource),
-      status: "ok",
-    };
   }
 
-  // Handle synchronous response
-  return {
-    payload: normalizeGcpResourceValues(responseJson),
-    status: "ok",
-  };
+  // Return success - refresh will fetch the final resource state
+  return { status: "ok" };
 }
 
-async function getAccessToken(serviceAccountJson: string): Promise<{ token: string; projectId: string | undefined }> {
-  // Parse service account JSON to extract project_id (optional)
-  let projectId: string | undefined;
-  try {
-    const serviceAccount = JSON.parse(serviceAccountJson);
-    projectId = serviceAccount.project_id;
-  } catch {
-    // If parsing fails or project_id is missing, continue without it
-    projectId = undefined;
-  }
+// ============================================================================
+// Helper Functions
+// ============================================================================
 
-  const activateResult = await siExec.waitUntilEnd("gcloud", [
-    "auth",
-    "activate-service-account",
-    "--key-file=-",
-    "--quiet"
-  ], {
-    input: serviceAccountJson
-  });
-
-  if (activateResult.exitCode !== 0) {
-    throw new Error(`Failed to activate service account: ${activateResult.stderr}`);
-  }
-
-  const tokenResult = await siExec.waitUntilEnd("gcloud", [
-    "auth",
-    "print-access-token"
-  ]);
-
-  if (tokenResult.exitCode !== 0) {
-    throw new Error(`Failed to get access token: ${tokenResult.stderr}`);
-  }
-
-  return {
-    token: tokenResult.stdout.trim(),
-    projectId,
-  };
+// Get location from component, checking resource payload first then domain
+function getLocation(component: Input): string | undefined {
+  return _.get(component.properties, ["resource", "payload", "location"]) ||
+    _.get(component.properties, ["domain", "location"]) ||
+    _.get(component.properties, ["domain", "zone"]) ||
+    _.get(component.properties, ["domain", "region"]);
 }
 
-// URL normalization for GCP resource values
-const GCP_URL_PATTERN = /^https:\/\/[^/]*\.?googleapis\.com\//;
-const LOCATION_SEGMENTS = new Set(["regions", "zones", "locations"]);
+// Resolve a parameter value from component properties
+function resolveParamValue(
+  component: Input,
+  paramName: string,
+  projectId: string | undefined
+): string | undefined {
+  if (paramName === "project" || paramName === "projectId") {
+    return projectId;
+  }
 
-function normalizeGcpResourceValues<T>(obj: T): T {
-  if (obj === null || obj === undefined) return obj;
-  if (Array.isArray(obj)) return obj.map(item => normalizeGcpResourceValues(item)) as T;
-  if (typeof obj === "object") {
-    const normalized: Record<string, unknown> = {};
-    for (const [key, value] of Object.entries(obj)) {
-      if (typeof value === "string" && GCP_URL_PATTERN.test(value)) {
-        const pathParts = new URL(value).pathname.split("/").filter(Boolean);
-        if (pathParts.length >= 2 && LOCATION_SEGMENTS.has(pathParts[pathParts.length - 2])) {
-          normalized[key] = pathParts[pathParts.length - 1];
-        } else {
-          const projectsIdx = pathParts.indexOf("projects");
-          if (projectsIdx !== -1) {
-            normalized[key] = pathParts.slice(projectsIdx).join("/");
-          } else {
-            // For non-project APIs (e.g., Storage), extract after API version (v1, v2, etc.)
-            const versionIdx = pathParts.findIndex(p => /^v\d+/.test(p));
-            normalized[key] = versionIdx !== -1 && versionIdx + 1 < pathParts.length
-              ? pathParts.slice(versionIdx + 1).join("/")
-              : pathParts[pathParts.length - 1] || value;
-          }
-        }
-      } else if (typeof value === "object" && value !== null) {
-        normalized[key] = normalizeGcpResourceValues(value);
-      } else {
-        normalized[key] = value;
+  if (paramName === "parent") {
+    let parentValue = _.get(component.properties, ["resource", "payload", "parent"]) ||
+      _.get(component.properties, ["domain", "parent"]);
+    if (!parentValue && projectId) {
+      const location = getLocation(component);
+      const supportsAutoConstruct = _.get(component.properties, ["domain", "extra", "supportsParentAutoConstruct"]) === "true";
+
+      if (supportsAutoConstruct && location) {
+        parentValue = `projects/${projectId}/locations/${location}`;
       }
     }
-    return normalized as T;
+    return parentValue;
   }
-  return obj;
+
+  let paramValue = _.get(component.properties, ["resource", "payload", paramName]) ||
+    _.get(component.properties, ["domain", paramName]);
+
+  // GCP often returns full URLs for reference fields - extract just the resource name
+  if (paramValue && typeof paramValue === "string" && paramValue.startsWith("https://")) {
+    const urlParts = paramValue.split("/");
+    paramValue = urlParts[urlParts.length - 1];
+  }
+
+  return paramValue;
 }
 
 // Check if resourceId is already a full path matching the API path structure
 function isFullResourcePath(resourceId: string, pathTemplate: string): boolean {
   if (!resourceId.includes('/')) return false;
 
-  // Extract static segments from template (non-parameter parts)
-  // e.g., "projects/{+projectId}/datasets/{+datasetId}/tables/{+tableId}" -> ["projects", "datasets", "tables"]
   const templateSegments = pathTemplate.split('/').filter(s => !s.startsWith('{'));
+  const resourceSegments = resourceId.split('/');
+  let templateIdx = 0;
 
-  // Check if resourceId contains these segments in order
-  let lastIdx = -1;
-  for (const seg of templateSegments) {
-    const idx = resourceId.indexOf(seg, lastIdx + 1);
-    if (idx === -1) return false;
-    lastIdx = idx;
+  for (const seg of resourceSegments) {
+    if (templateIdx < templateSegments.length && seg === templateSegments[templateIdx]) {
+      templateIdx++;
+    }
   }
-  return true;
+
+  return templateIdx === templateSegments.length;
+}
+
+// Build URL by replacing path parameters using RFC 6570 URI templates
+function buildUrlWithParams(
+  baseUrl: string,
+  apiPath: { path: string; parameterOrder?: string[] },
+  component: Input,
+  projectId: string | undefined,
+  options: { resourceId?: string } = {}
+): string {
+  if (options.resourceId && isFullResourcePath(options.resourceId, apiPath.path)) {
+    return `${baseUrl}${options.resourceId}`;
+  }
+
+  let url = `${baseUrl}${apiPath.path}`;
+
+  if (apiPath.parameterOrder) {
+    const lastParam = apiPath.parameterOrder[apiPath.parameterOrder.length - 1];
+
+    for (const paramName of apiPath.parameterOrder) {
+      let paramValue: string | undefined;
+
+      if (options.resourceId && paramName === lastParam) {
+        paramValue = options.resourceId;
+      } else {
+        paramValue = resolveParamValue(component, paramName, projectId);
+      }
+
+      if (paramValue) {
+        if (url.includes(`{+${paramName}}`)) {
+          url = url.replace(`{+${paramName}}`, paramValue);
+        } else if (url.includes(`{${paramName}}`)) {
+          url = url.replace(`{${paramName}}`, encodeURIComponent(paramValue));
+        }
+      }
+    }
+  }
+
+  return url;
+}
+
+// Build LRO polling URL from operation response
+function buildLroPollingUrl(baseUrl: string, responseJson: any, component: Input): string {
+  if (responseJson.selfLink) {
+    return responseJson.selfLink;
+  }
+
+  // Extract API version from paths to construct polling URL
+  const insertApiPathJson = _.get(component.properties, ["domain", "extra", "insertApiPath"], "");
+  const getApiPathJson = _.get(component.properties, ["domain", "extra", "getApiPath"], "");
+  const pathJson = insertApiPathJson || getApiPathJson;
+
+  let apiVersion = "";
+  if (pathJson) {
+    const apiPath = JSON.parse(pathJson);
+    const versionMatch = apiPath.path?.match(/^(v\d+)\//);
+    if (versionMatch) {
+      apiVersion = versionMatch[1] + "/";
+    }
+  }
+
+  return `${baseUrl}${apiVersion}${responseJson.name}`;
+}
+
+async function getAccessToken(serviceAccountJson: string): Promise<{ token: string; projectId: string | undefined }> {
+  let projectId: string | undefined;
+  try {
+    const serviceAccount = JSON.parse(serviceAccountJson);
+    projectId = serviceAccount.project_id;
+  } catch {
+    projectId = undefined;
+  }
+
+  const activateResult = await siExec.waitUntilEnd("gcloud", [
+    "auth", "activate-service-account", "--key-file=-", "--quiet"
+  ], { input: serviceAccountJson });
+
+  if (activateResult.exitCode !== 0) {
+    throw new Error(`Failed to activate service account: ${activateResult.stderr}`);
+  }
+
+  const tokenResult = await siExec.waitUntilEnd("gcloud", ["auth", "print-access-token"]);
+  if (tokenResult.exitCode !== 0) {
+    throw new Error(`Failed to get access token: ${tokenResult.stderr}`);
+  }
+
+  return { token: tokenResult.stdout.trim(), projectId };
 }

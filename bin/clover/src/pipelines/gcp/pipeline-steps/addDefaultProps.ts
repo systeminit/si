@@ -188,6 +188,65 @@ export function addDefaultProps(specs: ExpandedPkgSpec[]): ExpandedPkgSpec[] {
       extraProp.entries.push(listOnlyProp);
     }
 
+    // resourceIdStyle: determines how to interpret resourceId values
+    // "fullPath" = APIs using {+name} need full resource path (e.g., "projects/x/instances/y")
+    // "simpleName" = APIs using {name} need just the resource name (e.g., "my-instance")
+    {
+      const usesFullPath = gcpSchema.methods.get?.path?.includes("{+");
+      const resourceIdStyleProp = createScalarProp(
+        "resourceIdStyle",
+        "string",
+        extraProp.metadata.propPath,
+        false,
+      );
+      resourceIdStyleProp.data.hidden = true;
+      resourceIdStyleProp.data.defaultValue = usesFullPath
+        ? "fullPath"
+        : "simpleName";
+      extraProp.entries.push(resourceIdStyleProp);
+    }
+
+    // supportsParentAutoConstruct: whether parent can be auto-built from projectId + location
+    // Only project-only resources support this (multi-scope resources need explicit parent)
+    {
+      const isProjectOnly = gcpSchema.availableScopes?.length === 1 &&
+        gcpSchema.availableScopes[0] === "projects";
+      const supportsParentAutoConstructProp = createScalarProp(
+        "supportsParentAutoConstruct",
+        "string",
+        extraProp.metadata.propPath,
+        false,
+      );
+      supportsParentAutoConstructProp.data.hidden = true;
+      supportsParentAutoConstructProp.data.defaultValue = isProjectOnly
+        ? "true"
+        : "false";
+      extraProp.entries.push(supportsParentAutoConstructProp);
+    }
+
+    // lroStyle: how to detect and handle Long Running Operations
+    // "compute" = Compute Engine style (kind contains "operation", status: "DONE")
+    // "modern" = Modern APIs (name starts with "operations/", done: true)
+    // "none" = Synchronous operations (no LRO handling needed)
+    {
+      const lroStyleProp = createScalarProp(
+        "lroStyle",
+        "string",
+        extraProp.metadata.propPath,
+        false,
+      );
+      lroStyleProp.data.hidden = true;
+      // Default to "compute" for resources with insert/update/delete methods
+      // as most GCP APIs that need LRO handling use Compute Engine style
+      // The "modern" style is less common and harder to detect at build time
+      const hasModifyingMethods = gcpSchema.methods.insert ||
+        gcpSchema.methods.update ||
+        gcpSchema.methods.patch ||
+        gcpSchema.methods.delete;
+      lroStyleProp.data.defaultValue = hasModifyingMethods ? "compute" : "none";
+      extraProp.entries.push(lroStyleProp);
+    }
+
     // For global-only resources, set the location prop to default "global"
     // This allows auto-construction of parent path without user input
     if (gcpSchema.isGlobalOnly) {

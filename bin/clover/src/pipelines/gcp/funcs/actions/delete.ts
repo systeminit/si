@@ -36,81 +36,13 @@ async function main(component: Input): Promise<Output> {
 
   const { token, projectId } = await getAccessToken(serviceAccountJson);
 
-  // Build the URL by replacing path parameters
-  let url: string;
-
-  // If resourceId is already a full path matching the API structure, use it directly
-  // This handles cases where resourceId is "projects/xxx/datasets/yyy/tables/zzz"
-  if (isFullResourcePath(resourceId, deleteApiPath.path)) {
-    url = `${baseUrl}${resourceId}`;
-  } else {
-    url = `${baseUrl}${deleteApiPath.path}`;
-
-    // Replace path parameters with values from resource_value or domain
-    // GCP APIs use RFC 6570 URI templates: {param} and {+param} (reserved expansion)
-    if (deleteApiPath.parameterOrder) {
-      for (const paramName of deleteApiPath.parameterOrder) {
-        let paramValue;
-
-        // For the resource identifier, use resourceId
-        if (paramName === deleteApiPath.parameterOrder[deleteApiPath.parameterOrder.length - 1]) {
-          paramValue = resourceId;
-        } else if (paramName === "project" || paramName === "projectId") {
-          // Use extracted project_id for project/projectId parameter
-          paramValue = projectId;
-        } else if (paramName === "parent") {
-          // "parent" is a common GCP pattern: projects/{project}/locations/{location}
-          paramValue = _.get(component.properties, ["resource", "payload", "parent"]) ||
-            _.get(component.properties, ["domain", "parent"]);
-          if (!paramValue && projectId) {
-            // Only auto-construct for project-only resources
-            // Multi-scope resources require explicit parent
-            const availableScopesJson = _.get(component.properties, ["domain", "extra", "availableScopes"]);
-            const availableScopes = availableScopesJson ? JSON.parse(availableScopesJson) : [];
-            const isProjectOnly = availableScopes.length === 1 && availableScopes[0] === "projects";
-
-            if (isProjectOnly) {
-              const location = _.get(component.properties, ["resource", "payload", "location"]) ||
-                _.get(component.properties, ["domain", "location"]) ||
-                _.get(component.properties, ["domain", "zone"]) ||
-                _.get(component.properties, ["domain", "region"]);
-              if (location) {
-                paramValue = `projects/${projectId}/locations/${location}`;
-              }
-            }
-          }
-        } else {
-          paramValue = _.get(component.properties, ["resource", "payload", paramName]) ||
-            _.get(component.properties, ["domain", paramName]);
-
-          // GCP often returns full URLs for reference fields e.g.
-          // region: //www.googleapis.com/compute/v1/projects/myproject/regions/us-central1
-          // network: //www.googleapis.com/compute/v1/projects/myproject/networks/my-network
-
-          // Extract just the resource name from the URL
-          if (paramValue && typeof paramValue === "string" && paramValue.startsWith("https://")) {
-            const urlParts = paramValue.split("/");
-            paramValue = urlParts[urlParts.length - 1];
-          }
-        }
-
-        if (paramValue) {
-          // Handle {+param} (reserved expansion - don't encode, allows slashes)
-          if (url.includes(`{+${paramName}}`)) {
-            url = url.replace(`{+${paramName}}`, paramValue);
-          } else {
-            // Handle {param} (simple expansion - encode)
-            url = url.replace(`{${paramName}}`, encodeURIComponent(paramValue));
-          }
-        }
-      }
-    }
-  }
+  // Build the URL
+  const url = buildUrlWithParams(baseUrl, deleteApiPath, component, projectId, { resourceId });
 
   // Make the API request with retry logic
   const response = await siExec.withRetry(async () => {
     const resp = await fetch(url, {
-      method: httpMethod, // Usually DELETE, but some APIs use POST (e.g., deleteConnection)
+      method: httpMethod,
       headers: {
         "Authorization": `Bearer ${token}`,
       },
@@ -123,7 +55,6 @@ async function main(component: Input): Promise<Output> {
       }
 
       const errorText = await resp.text();
-
       const error = new Error(`Unable to delete resource;
 Called "${url}"
 API returned ${resp.status} ${resp.statusText}:
@@ -137,39 +68,37 @@ ${errorText}`
 
     return resp;
   }, {
-    isRateLimitedFn: (error) => error.status === 429
-  }).then((r) => r.result);
+    isRateLimitedFn: (error: any) => error.status === 429
+  }).then((r: any) => r.result);
 
   // Handle 404 as success for delete operations
   if (response.status === 404) {
-    return {
-      status: "ok",
-    };
+    return { status: "ok" };
   }
 
   // Handle 204 No Content (common for successful deletes like GCS)
   if (response.status === 204) {
-    return {
-      status: "ok",
-    };
+    return { status: "ok" };
   }
 
   // Try to parse response body - some APIs return empty body on success
   const responseText = await response.text();
   if (!responseText) {
-    return {
-      status: "ok",
-    };
+    return { status: "ok" };
   }
 
   const responseJson = JSON.parse(responseText);
 
-  // Handle Google Cloud Long-Running Operations (LRO)
-  // Check if this is an operation response:
-  // - Compute Engine uses "kind" containing "operation"
-  // - GKE/Container API uses "operationType" field
-  const isLRO = (responseJson.kind && responseJson.kind.includes("operation")) ||
-    responseJson.operationType;
+  // Check if this resource uses Long-Running Operations based on metadata
+  const lroStyle = _.get(component.properties, ["domain", "extra", "lroStyle"], "none");
+
+  // Detect LRO response - only check if lroStyle indicates LRO support
+  const isLRO = lroStyle !== "none" && (
+    (responseJson.kind && responseJson.kind.includes("operation")) ||
+    responseJson.operationType ||
+    (responseJson.name && responseJson.name.startsWith("operations/"))
+  );
+
   if (isLRO) {
     console.log(`[DELETE] LRO detected, polling for completion...`);
 
@@ -183,10 +112,9 @@ ${errorText}`
       maxAttempts: 20,
       baseDelay: 2000,
       maxDelay: 30000,
-      isCompleteFn: (response, body) => body.status === "DONE",
-      isErrorFn: (response, body) => !!body.error,
-      extractResultFn: async (response, body) => {
-        // If operation has error, throw it
+      isCompleteFn: (_response: any, body: any) => body.status === "DONE" || body.done === true,
+      isErrorFn: (_response: any, body: any) => !!body.error,
+      extractResultFn: async (_response: any, body: any) => {
         if (body.error) {
           throw new Error(`Delete operation failed: ${JSON.stringify(body.error)}`);
         }
@@ -197,64 +125,139 @@ ${errorText}`
     console.log(`[DELETE] Operation complete`);
   }
 
-  return {
-    status: "ok",
-  };
+  return { status: "ok" };
+}
+
+// ============================================================================
+// Helper Functions
+// ============================================================================
+
+// Get location from component, checking resource payload first then domain
+function getLocation(component: Input): string | undefined {
+  return _.get(component.properties, ["resource", "payload", "location"]) ||
+    _.get(component.properties, ["domain", "location"]) ||
+    _.get(component.properties, ["domain", "zone"]) ||
+    _.get(component.properties, ["domain", "region"]);
+}
+
+// Resolve a parameter value from component properties
+function resolveParamValue(
+  component: Input,
+  paramName: string,
+  projectId: string | undefined
+): string | undefined {
+  if (paramName === "project" || paramName === "projectId") {
+    return projectId;
+  }
+
+  if (paramName === "parent") {
+    let parentValue = _.get(component.properties, ["resource", "payload", "parent"]) ||
+      _.get(component.properties, ["domain", "parent"]);
+    if (!parentValue && projectId) {
+      const location = getLocation(component);
+      const supportsAutoConstruct = _.get(component.properties, ["domain", "extra", "supportsParentAutoConstruct"]) === "true";
+
+      if (supportsAutoConstruct && location) {
+        parentValue = `projects/${projectId}/locations/${location}`;
+      }
+    }
+    return parentValue;
+  }
+
+  let paramValue = _.get(component.properties, ["resource", "payload", paramName]) ||
+    _.get(component.properties, ["domain", paramName]);
+
+  // GCP often returns full URLs for reference fields - extract just the resource name
+  if (paramValue && typeof paramValue === "string" && paramValue.startsWith("https://")) {
+    const urlParts = paramValue.split("/");
+    paramValue = urlParts[urlParts.length - 1];
+  }
+
+  return paramValue;
+}
+
+// Check if resourceId is already a full path matching the API path structure
+// Uses proper segment matching (not substring) to avoid false positives
+function isFullResourcePath(resourceId: string, pathTemplate: string): boolean {
+  if (!resourceId.includes('/')) return false;
+
+  const templateSegments = pathTemplate.split('/').filter(s => !s.startsWith('{'));
+  const resourceSegments = resourceId.split('/');
+  let templateIdx = 0;
+
+  for (const seg of resourceSegments) {
+    if (templateIdx < templateSegments.length && seg === templateSegments[templateIdx]) {
+      templateIdx++;
+    }
+  }
+
+  return templateIdx === templateSegments.length;
+}
+
+// Build URL by replacing path parameters using RFC 6570 URI templates
+function buildUrlWithParams(
+  baseUrl: string,
+  apiPath: { path: string; parameterOrder?: string[] },
+  component: Input,
+  projectId: string | undefined,
+  options: { resourceId?: string } = {}
+): string {
+  // If resourceId is already a full path matching the API structure, use it directly
+  if (options.resourceId && isFullResourcePath(options.resourceId, apiPath.path)) {
+    return `${baseUrl}${options.resourceId}`;
+  }
+
+  let url = `${baseUrl}${apiPath.path}`;
+
+  if (apiPath.parameterOrder) {
+    const lastParam = apiPath.parameterOrder[apiPath.parameterOrder.length - 1];
+
+    for (const paramName of apiPath.parameterOrder) {
+      let paramValue: string | undefined;
+
+      // For the resource identifier, use resourceId
+      if (options.resourceId && paramName === lastParam) {
+        paramValue = options.resourceId;
+      } else {
+        paramValue = resolveParamValue(component, paramName, projectId);
+      }
+
+      if (paramValue) {
+        // Handle {+param} (reserved expansion - don't encode, allows slashes)
+        if (url.includes(`{+${paramName}}`)) {
+          url = url.replace(`{+${paramName}}`, paramValue);
+        } else if (url.includes(`{${paramName}}`)) {
+          // Handle {param} (simple expansion - encode)
+          url = url.replace(`{${paramName}}`, encodeURIComponent(paramValue));
+        }
+      }
+    }
+  }
+
+  return url;
 }
 
 async function getAccessToken(serviceAccountJson: string): Promise<{ token: string; projectId: string | undefined }> {
-  // Parse service account JSON to extract project_id (optional)
   let projectId: string | undefined;
   try {
     const serviceAccount = JSON.parse(serviceAccountJson);
     projectId = serviceAccount.project_id;
   } catch {
-    // If parsing fails or project_id is missing, continue without it
     projectId = undefined;
   }
 
   const activateResult = await siExec.waitUntilEnd("gcloud", [
-    "auth",
-    "activate-service-account",
-    "--key-file=-",
-    "--quiet"
-  ], {
-    input: serviceAccountJson
-  });
+    "auth", "activate-service-account", "--key-file=-", "--quiet"
+  ], { input: serviceAccountJson });
 
   if (activateResult.exitCode !== 0) {
     throw new Error(`Failed to activate service account: ${activateResult.stderr}`);
   }
 
-  const tokenResult = await siExec.waitUntilEnd("gcloud", [
-    "auth",
-    "print-access-token"
-  ]);
-
+  const tokenResult = await siExec.waitUntilEnd("gcloud", ["auth", "print-access-token"]);
   if (tokenResult.exitCode !== 0) {
     throw new Error(`Failed to get access token: ${tokenResult.stderr}`);
   }
 
-  return {
-    token: tokenResult.stdout.trim(),
-    projectId,
-  };
-}
-
-// Check if resourceId is already a full path matching the API path structure
-function isFullResourcePath(resourceId: string, pathTemplate: string): boolean {
-  if (!resourceId.includes('/')) return false;
-
-  // Extract static segments from template (non-parameter parts)
-  // e.g., "projects/{+projectId}/datasets/{+datasetId}/tables/{+tableId}" -> ["projects", "datasets", "tables"]
-  const templateSegments = pathTemplate.split('/').filter(s => !s.startsWith('{'));
-
-  // Check if resourceId contains these segments in order
-  let lastIdx = -1;
-  for (const seg of templateSegments) {
-    const idx = resourceId.indexOf(seg, lastIdx + 1);
-    if (idx === -1) return false;
-    lastIdx = idx;
-  }
-  return true;
+  return { token: tokenResult.stdout.trim(), projectId };
 }

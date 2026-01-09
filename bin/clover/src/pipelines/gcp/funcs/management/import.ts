@@ -1,7 +1,7 @@
 async function main({ thisComponent }: Input): Promise<Output> {
   const component = thisComponent.properties;
   const resourcePayload = _.get(component, ["resource", "payload"], "");
-  let resourceId = _.get(component, ["si", "resourceId"]);
+  const resourceId = _.get(component, ["si", "resourceId"]);
 
   if (!resourceId) {
     return {
@@ -11,12 +11,7 @@ async function main({ thisComponent }: Input): Promise<Output> {
   }
 
   // Get API path metadata from domain.extra
-  const getApiPathJson = _.get(
-    component,
-    ["domain", "extra", "getApiPath"],
-    "",
-  );
-
+  const getApiPathJson = _.get(component, ["domain", "extra", "getApiPath"], "");
   if (!getApiPathJson) {
     return {
       status: "error",
@@ -35,59 +30,14 @@ async function main({ thisComponent }: Input): Promise<Output> {
 
   const { token, projectId } = await getAccessToken(serviceAccountJson);
 
-  // Build the URL by replacing path parameters
-  let url = `${baseUrl}${getApiPath.path}`;
-
-  // Replace path parameters with values from resource_value or domain
-  if (getApiPath.parameterOrder) {
-    for (const paramName of getApiPath.parameterOrder) {
-      let paramValue;
-
-      // For the resource identifier, use resourceId
-      if (paramName === getApiPath.parameterOrder[getApiPath.parameterOrder.length - 1]) {
-        paramValue = resourceId;
-      } else if (paramName === "project") {
-        paramValue = projectId;
-      } else if (paramName === "parent") {
-        // Try explicit parent first, otherwise auto-construct for project-only resources
-        paramValue = _.get(component, ["domain", "parent"]);
-        if (!paramValue && projectId) {
-          const availableScopesJson = _.get(component, ["domain", "extra", "availableScopes"]);
-          const availableScopes = availableScopesJson ? JSON.parse(availableScopesJson) : [];
-          const isProjectOnly = availableScopes.length === 1 && availableScopes[0] === "projects";
-
-          if (isProjectOnly) {
-            const location = _.get(component, ["domain", "location"]) ||
-                            _.get(component, ["domain", "zone"]) ||
-                            _.get(component, ["domain", "region"]);
-            if (location) {
-              paramValue = `projects/${projectId}/locations/${location}`;
-            }
-          }
-        }
-      } else {
-        paramValue = _.get(component, ["domain", paramName]);
-      }
-
-      if (paramValue) {
-        // {+param} = reserved expansion (no encoding, allows slashes)
-        // {param} = simple expansion (URL encoded)
-        if (url.includes(`{+${paramName}}`)) {
-          url = url.replace(`{+${paramName}}`, paramValue);
-        } else if (url.includes(`{${paramName}}`)) {
-          url = url.replace(`{${paramName}}`, encodeURIComponent(paramValue));
-        }
-      }
-    }
-  }
+  // Build the URL
+  const url = buildUrlWithParams(baseUrl, getApiPath, component, projectId, resourceId);
 
   // Make the API request with retry logic
   const response = await siExec.withRetry(async () => {
     const resp = await fetch(url, {
       method: "GET",
-      headers: {
-        "Authorization": `Bearer ${token}`,
-      },
+      headers: { "Authorization": `Bearer ${token}` },
     });
 
     if (!resp.ok) {
@@ -102,8 +52,8 @@ async function main({ thisComponent }: Input): Promise<Output> {
 
     return resp;
   }, {
-    isRateLimitedFn: (error) => error.status === 429
-  }).then((r) => r.result);
+    isRateLimitedFn: (error: any) => error.status === 429
+  }).then((r: any) => r.result);
 
   const resourceProperties = await response.json();
   console.log(resourceProperties);
@@ -127,9 +77,7 @@ async function main({ thisComponent }: Input): Promise<Output> {
 
   const ops = {
     update: {
-      self: {
-        properties,
-      },
+      self: { properties },
     },
     actions: {
       self: {
@@ -152,43 +100,101 @@ async function main({ thisComponent }: Input): Promise<Output> {
   };
 }
 
+// ============================================================================
+// Helper Functions
+// ============================================================================
+
+// Get location from component
+function getLocation(component: any): string | undefined {
+  return _.get(component, ["domain", "location"]) ||
+    _.get(component, ["domain", "zone"]) ||
+    _.get(component, ["domain", "region"]);
+}
+
+// Resolve a parameter value from component properties
+function resolveParamValue(
+  component: any,
+  paramName: string,
+  projectId: string | undefined
+): string | undefined {
+  if (paramName === "project" || paramName === "projectId") {
+    return projectId;
+  }
+
+  if (paramName === "parent") {
+    let parentValue = _.get(component, ["domain", "parent"]);
+    if (!parentValue && projectId) {
+      const location = getLocation(component);
+      const supportsAutoConstruct = _.get(component, ["domain", "extra", "supportsParentAutoConstruct"]) === "true";
+
+      if (supportsAutoConstruct && location) {
+        parentValue = `projects/${projectId}/locations/${location}`;
+      }
+    }
+    return parentValue;
+  }
+
+  return _.get(component, ["domain", paramName]);
+}
+
+// Build URL by replacing path parameters
+function buildUrlWithParams(
+  baseUrl: string,
+  apiPath: { path: string; parameterOrder?: string[] },
+  component: any,
+  projectId: string | undefined,
+  resourceId: string
+): string {
+  let url = `${baseUrl}${apiPath.path}`;
+
+  if (apiPath.parameterOrder) {
+    const lastParam = apiPath.parameterOrder[apiPath.parameterOrder.length - 1];
+
+    for (const paramName of apiPath.parameterOrder) {
+      let paramValue: string | undefined;
+
+      if (paramName === lastParam) {
+        paramValue = resourceId;
+      } else {
+        paramValue = resolveParamValue(component, paramName, projectId);
+      }
+
+      if (paramValue) {
+        if (url.includes(`{+${paramName}}`)) {
+          url = url.replace(`{+${paramName}}`, paramValue);
+        } else if (url.includes(`{${paramName}}`)) {
+          url = url.replace(`{${paramName}}`, encodeURIComponent(paramValue));
+        }
+      }
+    }
+  }
+
+  return url;
+}
+
 async function getAccessToken(serviceAccountJson: string): Promise<{ token: string; projectId: string | undefined }> {
-  // Parse service account JSON to extract project_id (optional)
   let projectId: string | undefined;
   try {
     const serviceAccount = JSON.parse(serviceAccountJson);
     projectId = serviceAccount.project_id;
   } catch {
-    // If parsing fails or project_id is missing, continue without it
     projectId = undefined;
   }
 
   const activateResult = await siExec.waitUntilEnd("gcloud", [
-    "auth",
-    "activate-service-account",
-    "--key-file=-",
-    "--quiet"
-  ], {
-    input: serviceAccountJson
-  });
+    "auth", "activate-service-account", "--key-file=-", "--quiet"
+  ], { input: serviceAccountJson });
 
   if (activateResult.exitCode !== 0) {
     throw new Error(`Failed to activate service account: ${activateResult.stderr}`);
   }
 
-  const tokenResult = await siExec.waitUntilEnd("gcloud", [
-    "auth",
-    "print-access-token"
-  ]);
-
+  const tokenResult = await siExec.waitUntilEnd("gcloud", ["auth", "print-access-token"]);
   if (tokenResult.exitCode !== 0) {
     throw new Error(`Failed to get access token: ${tokenResult.stderr}`);
   }
 
-  return {
-    token: tokenResult.stdout.trim(),
-    projectId,
-  };
+  return { token: tokenResult.stdout.trim(), projectId };
 }
 
 // URL normalization for GCP resource values
@@ -210,7 +216,6 @@ function normalizeGcpResourceValues<T>(obj: T): T {
           if (projectsIdx !== -1) {
             normalized[key] = pathParts.slice(projectsIdx).join("/");
           } else {
-            // For non-project APIs (e.g., Storage), extract after API version (v1, v2, etc.)
             const versionIdx = pathParts.findIndex(p => /^v\d+/.test(p));
             normalized[key] = versionIdx !== -1 && versionIdx + 1 < pathParts.length
               ? pathParts.slice(versionIdx + 1).join("/")

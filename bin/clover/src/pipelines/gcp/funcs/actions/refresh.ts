@@ -23,7 +23,7 @@ async function main(component: Input): Promise<Output> {
 // Resolve a parameter value from component properties
 // forList: controls parent auto-construction behavior
 //   - true (list operations): always auto-construct parent, fallback to projects/${projectId}
-//   - false (get operations): only auto-construct for project-only resources, require location
+//   - false (get operations): only auto-construct if supportsParentAutoConstruct is true
 function resolveParamValue(
   component: Input,
   paramName: string,
@@ -38,23 +38,15 @@ function resolveParamValue(
     let parentValue = _.get(component.properties, ["resource", "payload", "parent"]) ||
       _.get(component.properties, ["domain", "parent"]);
     if (!parentValue && projectId) {
-      const location = _.get(component.properties, ["resource", "payload", "location"]) ||
-        _.get(component.properties, ["domain", "location"]) ||
-        _.get(component.properties, ["domain", "zone"]) ||
-        _.get(component.properties, ["domain", "region"]);
+      const location = getLocation(component);
+      const supportsAutoConstruct = _.get(component.properties, ["domain", "extra", "supportsParentAutoConstruct"]) === "true";
 
       if (forList) {
         // List operations: always auto-construct, fallback to project-only
         parentValue = location ? `projects/${projectId}/locations/${location}` : `projects/${projectId}`;
-      } else {
-        // Get operations: only auto-construct for project-only resources with location
-        const availableScopesJson = _.get(component.properties, ["domain", "extra", "availableScopes"]);
-        const availableScopes = availableScopesJson ? JSON.parse(availableScopesJson) : [];
-        const isProjectOnly = availableScopes.length === 1 && availableScopes[0] === "projects";
-
-        if (isProjectOnly && location) {
-          parentValue = `projects/${projectId}/locations/${location}`;
-        }
+      } else if (supportsAutoConstruct && location) {
+        // Get/update/delete operations: only auto-construct if metadata says we can
+        parentValue = `projects/${projectId}/locations/${location}`;
       }
     }
     return parentValue;
@@ -72,7 +64,16 @@ function resolveParamValue(
   return paramValue;
 }
 
+// Get location from component, checking resource payload first then domain
+function getLocation(component: Input): string | undefined {
+  return _.get(component.properties, ["resource", "payload", "location"]) ||
+    _.get(component.properties, ["domain", "location"]) ||
+    _.get(component.properties, ["domain", "zone"]) ||
+    _.get(component.properties, ["domain", "region"]);
+}
+
 // Check if resourceId is already a full path matching the API path structure
+// Uses proper segment matching (not substring) to avoid false positives
 function isFullResourcePath(resourceId: string, pathTemplate: string): boolean {
   if (!resourceId.includes('/')) return false;
 
@@ -80,14 +81,18 @@ function isFullResourcePath(resourceId: string, pathTemplate: string): boolean {
   // e.g., "projects/{+projectId}/datasets/{+datasetId}/tables/{+tableId}" -> ["projects", "datasets", "tables"]
   const templateSegments = pathTemplate.split('/').filter(s => !s.startsWith('{'));
 
-  // Check if resourceId contains these segments in order
-  let lastIdx = -1;
-  for (const seg of templateSegments) {
-    const idx = resourceId.indexOf(seg, lastIdx + 1);
-    if (idx === -1) return false;
-    lastIdx = idx;
+  // Check if resourceId contains these as actual path segments (bounded by /)
+  // This prevents false positives like "my-projects-datasets" matching "projects/datasets"
+  const resourceSegments = resourceId.split('/');
+  let templateIdx = 0;
+
+  for (const seg of resourceSegments) {
+    if (templateIdx < templateSegments.length && seg === templateSegments[templateIdx]) {
+      templateIdx++;
+    }
   }
-  return true;
+
+  return templateIdx === templateSegments.length;
 }
 
 // Build URL by replacing path parameters using RFC 6570 URI templates
