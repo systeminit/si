@@ -9,6 +9,7 @@ use std::{
     },
     string::FromUtf8Error,
     sync::Arc,
+    time::Instant,
 };
 
 use axum::extract::ws::{
@@ -52,13 +53,20 @@ use telemetry::{
     OpenTelemetrySpanExt,
     prelude::*,
 };
-use telemetry_utils::monotonic;
+use telemetry_utils::{
+    counter,
+    histogram,
+    monotonic,
+};
 use thiserror::Error;
 use tokio::sync::mpsc;
 use tokio_stream::{
     StreamExt,
     adapters::Merge,
-    wrappers::BroadcastStream,
+    wrappers::{
+        BroadcastStream,
+        errors::BroadcastStreamRecvError,
+    },
 };
 use tokio_tungstenite::tungstenite;
 use tokio_util::sync::CancellationToken;
@@ -238,7 +246,9 @@ impl BifrostStarted {
             tokio::select! {
                 // Cancellation token has fired, time to shut down
                 _ = self.token.cancelled() => {
+                    monotonic!(sdf_bifrost_select_branch = 1, branch = "cancellation");
                     trace!("web socket has received cancellation");
+
                     let close_frame = ws::CloseFrame {
                         // Indicates that an endpoint is "going away", such as a server going
                         // down
@@ -258,6 +268,10 @@ impl BifrostStarted {
                             "error while closing websocket connection during graceful shutdown",
                         );
                     }
+
+                    monotonic!(sdf_bifrost_connections_closed = 1, reason = "server_shutdown");
+                    counter!(sdf_bifrost_active_connections = -1);
+
                     return Ok(BifrostClosing {
                         ws_is_closed: true,
                         handle: self.handle,
@@ -265,6 +279,8 @@ impl BifrostStarted {
                 }
                 // Maybe a message from web socket client
                 maybe_ws_client_message = ws_client.recv() => {
+                    monotonic!(sdf_bifrost_select_branch = 1, branch = "ws_client_message");
+
                     match maybe_ws_client_message {
                         // Received web socket text message
                         Some(Ok(ws::Message::Text(payload))) => {
@@ -310,6 +326,9 @@ impl BifrostStarted {
                                 "read web socket client close message; shutting down bifrost",
                             );
 
+                            monotonic!(sdf_bifrost_connections_closed = 1, reason = "client_close");
+                            counter!(sdf_bifrost_active_connections = -1);
+
                             return Ok(BifrostClosing {
                                 ws_is_closed: true,
                                 handle: self.handle,
@@ -320,12 +339,20 @@ impl BifrostStarted {
                             continue;
                         }
                         // Next message was a web socket error
-                        Some(Err(err)) => return Err(err.into()),
+                        Some(Err(err)) => {
+                            monotonic!(sdf_bifrost_connections_closed = 1, reason = "error");
+                            counter!(sdf_bifrost_active_connections = -1);
+
+                            return Err(err.into());
+                        }
                         // Web socket stream has closed
                         None => {
                             debug!(
                                 "web socket client stream has closed; shutting down bifrost",
                             );
+
+                            monotonic!(sdf_bifrost_connections_closed = 1, reason = "stream_closed");
+                            counter!(sdf_bifrost_active_connections = -1);
 
                             return Ok(BifrostClosing {
                                 ws_is_closed: true,
@@ -336,6 +363,8 @@ impl BifrostStarted {
                 }
                 // Maybe a response for the web socket client
                 maybe_response = self.responses_rx.recv() => {
+                    monotonic!(sdf_bifrost_select_branch = 1, branch = "frigg_response");
+
                     match maybe_response {
                         // Received a response
                         Some(response) => {
@@ -350,6 +379,12 @@ impl BifrostStarted {
                                         "before sending response, web socket client has closed; {}",
                                         "shutting down bifrost",
                                     );
+
+                                    monotonic!(
+                                        sdf_bifrost_connections_closed = 1,
+                                        reason = "ws_send_failed",
+                                    );
+                                    counter!(sdf_bifrost_active_connections = -1);
 
                                     return Ok(BifrostClosing {
                                         ws_is_closed: true,
@@ -371,9 +406,13 @@ impl BifrostStarted {
                 }
                 // NATS message from deployment or workspace subject
                 maybe_nats_message_result = self.nats_messages.next() => {
+                    monotonic!(sdf_bifrost_select_branch = 1, branch = "nats_message");
+
                     match maybe_nats_message_result {
                         // We have a message
                         Some(Ok(payload_with_nats_message)) => {
+                            let nats_receive_start = Instant::now();
+
                             let MultiplexerRequestPayload { nats_message, otel_ctx } = payload_with_nats_message;
                             let ws_message = match self.build_ws_message(nats_message).await {
                                 Ok(ws_message) => ws_message,
@@ -394,6 +433,12 @@ impl BifrostStarted {
                                         "shutting down bifrost",
                                     );
 
+                                    monotonic!(
+                                        sdf_bifrost_connections_closed = 1,
+                                        reason = "ws_send_failed",
+                                    );
+                                    counter!(sdf_bifrost_active_connections = -1);
+
                                     return Ok(BifrostClosing {
                                         ws_is_closed: true,
                                         handle: self.handle,
@@ -402,23 +447,43 @@ impl BifrostStarted {
                                 // Error sending message to client
                                 Some(Err(err)) => return Err(err),
                                 // Successfully sent web socket message to client
-                                None => {}
+                                None => {
+                                    let end_to_end_latency = nats_receive_start.elapsed();
+                                    let value_ms = end_to_end_latency.as_secs_f64() * 1000.0;
+
+                                    histogram!(sdf_bifrost_nats_to_ws_latency_ms = value_ms);
+                                }
                             }
                         }
-                        // We have a `RecvError`
+                        // We have a broadcast stream `RecvError`
                         Some(Err(err)) => {
-                            warn!(
-                                si.error.message = ?err,
-                                "encountered a recv error on NATS subscription; skipping",
-                            );
+                            match &err {
+                                BroadcastStreamRecvError::Lagged(skipped_count) => {
+                                    warn!(
+                                        si.error.message = ?err,
+                                        skipped_messages = skipped_count,
+                                        "BROADCAST CHANNEL LAGGING: {}",
+                                        "This WS client is slow and caused message loss",
+                                    );
+                                    monotonic!(
+                                        sdf_bifrost_broadcast_lagged = 1,
+                                        skipped_messages = *skipped_count as i64
+                                    );
+                                }
+                            }
                         }
-                        // We have a `RecvError`
+                        // Merged stream is closed
                         None => {
-                            info!("nats listener has closed; bifrost is probably shutting down");
+                            debug!("broadcast channel closed; multiplexer may be shutting down");
+                            monotonic!(sdf_bifrost_broadcast_closed = 1);
                         }
                     }
                 }
-                else => break,
+                else => {
+                    monotonic!(sdf_bifrost_select_branch = 1, branch = "else");
+
+                    break;
+                }
             }
         }
 
@@ -443,23 +508,49 @@ impl BifrostStarted {
         let payload_buf =
             if header::content_encoding_is(nats_message.headers(), ContentEncoding::DEFLATE) {
                 span.record("bytes.size.compressed", nats_message.payload().len());
-                self.compute_executor
+
+                let decompress_start = Instant::now();
+                let result = self
+                    .compute_executor
                     .spawn(async move {
                         let compressed = nats_message.into_inner().payload;
                         inflate::decompress_to_vec(&compressed)
                     })
                     .await?
-                    .map_err(|decompress_err| Error::Decompress(decompress_err.to_string()))?
+                    .map_err(|decompress_err| Error::Decompress(decompress_err.to_string()))?;
+
+                let decompress_duration = decompress_start.elapsed();
+                histogram!(
+                    sdf_bifrost_decompress_latency_ms = decompress_duration.as_secs_f64() * 1000.0,
+                    encoding = "deflate"
+                );
+                monotonic!(sdf_bifrost_compressed_messages = 1, encoding = "deflate");
+
+                result
             } else if header::content_encoding_is(nats_message.headers(), ContentEncoding::ZLIB) {
                 span.record("bytes.size.compressed", nats_message.payload().len());
-                self.compute_executor
+
+                let decompress_start = std::time::Instant::now();
+                let result = self
+                    .compute_executor
                     .spawn(async move {
                         let compressed = nats_message.into_inner().payload;
                         inflate::decompress_to_vec_zlib(&compressed)
                     })
                     .await?
-                    .map_err(|decompress_err| Error::Decompress(decompress_err.to_string()))?
+                    .map_err(|decompress_err| Error::Decompress(decompress_err.to_string()))?;
+
+                let decompress_duration = decompress_start.elapsed();
+                histogram!(
+                    sdf_bifrost_decompress_latency_ms = decompress_duration.as_secs_f64() * 1000.0,
+                    encoding = "zlib"
+                );
+                monotonic!(sdf_bifrost_compressed_messages = 1, encoding = "zlib");
+
+                result
             } else {
+                monotonic!(sdf_bifrost_compressed_messages = 1, encoding = "none");
+
                 nats_message.into_inner().payload.into()
             };
 
@@ -482,7 +573,15 @@ impl BifrostStarted {
             span.set_parent(otel_ctx);
         }
 
+        let send_start = Instant::now();
+
         if let Err(err) = ws_client.send(ws_message).await {
+            let send_duration = send_start.elapsed();
+            histogram!(
+                sdf_bifrost_ws_send_latency_ms = send_duration.as_secs_f64() * 1000.0,
+                result = "error"
+            );
+
             match err
                 .source()
                 .and_then(|err| err.downcast_ref::<tungstenite::Error>())
@@ -497,6 +596,12 @@ impl BifrostStarted {
                 _ => return Some(Err(BifrostError::WsSendIo(err))),
             }
         }
+
+        let send_duration = send_start.elapsed();
+        histogram!(
+            sdf_bifrost_ws_send_latency_ms = send_duration.as_secs_f64() * 1000.0,
+            result = "success"
+        );
 
         None
     }
