@@ -108,10 +108,12 @@ async function main(component: Input): Promise<Output> {
     url += (url.includes("?") ? "&" : "?") + queryParams.join("&");
   }
 
+  const httpMethod = insertApiPath.httpMethod || "POST";
+
   // Make the API request with retry logic
   const response = await siExec.withRetry(async () => {
     const resp = await fetch(url, {
-      method: "POST", // insert is always POST
+      method: httpMethod,
       headers: {
         "Authorization": `Bearer ${token}`,
         "Content-Type": "application/json",

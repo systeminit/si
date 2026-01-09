@@ -78,6 +78,7 @@ export function addDefaultProps(specs: ExpandedPkgSpec[]): ExpandedPkgSpec[] {
       insertProp.data.hidden = true;
       insertProp.data.defaultValue = JSON.stringify({
         path: gcpSchema.methods.insert.path,
+        httpMethod: gcpSchema.methods.insert.httpMethod,
         parameterOrder: gcpSchema.methods.insert.parameterOrder,
       });
       extraProp.entries.push(insertProp);
