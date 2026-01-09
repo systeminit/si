@@ -52,7 +52,10 @@ use si_frontend_mv_types::{
         component_diff::ComponentDiff as ComponentDiffMv,
         erased_components::ErasedComponents as ErasedComponentsMv,
     },
-    dependent_values::DependentValueComponentList as DependentValueComponentListMv,
+    dependent_values::{
+        DependentValueComponentList as DependentValueComponentListMv,
+        DependentValues as DependentValuesMv,
+    },
     incoming_connections::{
         IncomingConnections as IncomingConnectionsMv,
         IncomingConnectionsList as IncomingConnectionsListMv,
@@ -647,6 +650,23 @@ pub async fn spawn_build_mv_task_for_change_and_mv_kind(
                 workspace_mv_id,
                 DependentValueComponentListMv,
                 dal_materialized_views::dependent_value_component_list::assemble(ctx.clone()),
+                (*maybe_mv_index).clone(),
+            );
+        }
+        ReferenceKind::DependentValues => {
+            let workspace_mv_id = workspace_pk.to_string();
+            metric!(
+                counter.edda.mv_build = 1,
+                label = format!("{workspace_pk}:{change_set_id_for_metrics_only}:{mv_kind}")
+            );
+            spawn_build_mv_task!(
+                build_tasks,
+                ctx,
+                frigg,
+                change,
+                workspace_mv_id,
+                DependentValuesMv,
+                dal_materialized_views::dependent_values::assemble(ctx.clone()),
                 (*maybe_mv_index).clone(),
             );
         }

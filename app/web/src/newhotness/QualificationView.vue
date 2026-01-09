@@ -18,7 +18,12 @@
         :status="qualificationStatus ?? 'unknown'"
         class="break-all"
       >
-        <template v-if="qualificationStatus === 'success'"> Passed! </template>
+        <template v-if="qualification.isDirty">
+          The qualification has not yet run or is actively running.
+        </template>
+        <template v-else-if="qualificationStatus === 'success'">
+          Passed!
+        </template>
         <div
           v-else-if="
             qualificationStatus === 'failure' ||
@@ -38,8 +43,9 @@
             @click="toggleHidden"
           />
         </div>
+        <!-- Note: this should only really happen if it's a new component and the MVs aren't up to date yet -->
         <template v-else>
-          The qualification has not yet ran or is actively running.
+          The qualification has not yet run or is actively running.
         </template>
       </StatusMessageBox>
 

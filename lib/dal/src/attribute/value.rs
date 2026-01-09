@@ -2475,6 +2475,15 @@ impl AttributeValue {
         Ok((child_id, pointer.to_string()))
     }
 
+    pub async fn path_from_component(
+        ctx: &DalContext,
+        child_av_id: AttributeValueId,
+    ) -> AttributeValueResult<(ComponentId, String)> {
+        let (root_av_id, path) = Self::path_from_root(ctx, child_av_id).await?;
+        let component_id = Self::component_id(ctx, root_av_id).await?;
+        Ok((component_id, path))
+    }
+
     /// Get a subscription to this AV, from its root AV.
     pub async fn as_subscription(
         ctx: &DalContext,

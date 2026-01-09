@@ -6,7 +6,7 @@
 ///   * List
 ///   * Detail
 ///
-/// The order of the priorities is determined by the descriminant, largest to smallest.
+/// The order of the priorities is determined by the discriminant, largest to smallest.
 pub enum BuildPriority {
     #[default]
     Detail = 5,

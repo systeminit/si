@@ -52,6 +52,7 @@ pub enum ReferenceKind {
     ComponentInList,
     ComponentList,
     DependentValueComponentList,
+    DependentValues,
     DeploymentMvIndex,
     ErasedComponents,
     IncomingConnections,
