@@ -183,7 +183,7 @@ const setLabel = (obs: Obs, label: string): LabeledObs => {
   };
 };
 
-type ApiContext = Pick<
+export type ApiContext = Pick<
   Context,
   "changeSetId" | "workspacePk" | "onHead" | "user"
 >;
