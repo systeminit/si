@@ -69,6 +69,7 @@ use crate::{
         WorkspaceActorPayload,
         WorkspaceImportApprovalActorPayload,
     },
+    policy::PolicyUploadedPayload,
     prompt_override::PromptUpdatedPayload,
     qualification::QualificationCheckPayload,
     schema::variant::{
@@ -165,6 +166,7 @@ pub enum WsPayload {
     ModuleImported(Vec<si_frontend_types::SchemaVariant>),
     ModulesUpdated(ModulesUpdatedPayload),
     Online(OnlinePayload),
+    PolicyUploaded(PolicyUploadedPayload),
     PromptUpdated(PromptUpdatedPayload),
     ResourceRefreshed(ComponentUpdatedPayload),
     SchemaVariantCloned(SchemaVariantClonedPayload),

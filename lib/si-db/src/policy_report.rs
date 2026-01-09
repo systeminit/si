@@ -206,6 +206,30 @@ impl PolicyReport {
         Self::try_from(row)
     }
 
+    /// Fetches a single [`PolicyReport`](PolicyReport) for the current workspace and change set based on ID in the url path.
+    pub async fn fetch_single(
+        ctx: &impl SiDbContext,
+        id: PolicyReportId,
+    ) -> Result<Option<PolicyReport>> {
+        let rows =
+            ctx.txns().await?.pg()
+                .query(
+                    "SELECT * FROM policy_reports WHERE workspace_id = $1 AND change_set_id = $2 and id = $3",
+                    &[
+                        &ctx.tenancy().workspace_pk()?,
+                        &ctx.change_set_id(),
+                        &id,
+                    ],
+                )
+                .await?;
+        let mut reports = Vec::with_capacity(rows.len());
+        for row in rows {
+            reports.push(Self::try_from(row)?);
+        }
+        let report = reports.into_iter().next();
+        Ok(report)
+    }
+
     /// Fetches a batch of [`PolicyReports`](PolicyReport) for the current workspace and change set via pagination.
     /// Bundles the data into a [`PolicyReportBatch`].
     ///

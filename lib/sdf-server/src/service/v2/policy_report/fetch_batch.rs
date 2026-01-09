@@ -43,6 +43,12 @@ pub(crate) struct Response {
     total_report_count: u64,
 }
 
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct SingleResponse {
+    report: Option<PolicyReport>,
+}
+
 // NOTE(nick): we need this to convert to camelcase and to handle timestamp conversion.
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -108,4 +114,33 @@ pub(crate) async fn fetch_batch(
         total_page_count: batch.total_page_count,
         total_report_count: batch.total_report_count,
     }))
+}
+
+pub(crate) async fn fetch_single(
+    HandlerContext(builder): HandlerContext,
+    AccessBuilder(access_builder): AccessBuilder,
+    tracker: PosthogEventTracker,
+    Path((_workspace_id, change_set_id, policy_id)): Path<(
+        WorkspacePk,
+        ChangeSetId,
+        PolicyReportId,
+    )>,
+) -> PolicyReportResult<Json<SingleResponse>> {
+    let ctx = builder
+        .build(access_builder.build(change_set_id.into()))
+        .await?;
+
+    // Get the reports and calculate the total page count.
+    let report = PolicyReport::fetch_single(&ctx, policy_id).await?;
+
+    tracker.track(
+        &ctx,
+        "policy_report_fetch_single",
+        serde_json::json!({
+            "change_set_id": ctx.change_set_id(),
+            "report_id": policy_id,
+        }),
+    );
+
+    Ok(Json(SingleResponse { report }))
 }

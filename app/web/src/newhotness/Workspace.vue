@@ -140,6 +140,7 @@
       <main v-else class="grow min-h-0">
         <ComponentPage v-if="componentId" :componentId="componentId" />
         <FuncRunDetails v-else-if="funcRunId" :funcRunId="funcRunId" />
+        <PolicyDetails v-else-if="policyId" :policyId="policyId" />
         <LatestFuncRunDetails
           v-else-if="actionId"
           :functionKind="FunctionKind.Action"
@@ -189,6 +190,7 @@ import NavbarPanelRight from "./nav/NavbarPanelRight.vue";
 import Lobby from "./Lobby.vue";
 import Explore, { GroupByUrlQuery, SortByUrlQuery } from "./Explore.vue";
 import FuncRunDetails from "./FuncRunDetails.vue";
+import PolicyDetails from "./PolicyDetail.vue";
 import LatestFuncRunDetails from "./LatestFuncRunDetails.vue";
 import { Context, FunctionKind, AuthApiWorkspace } from "./types";
 import {
@@ -226,6 +228,7 @@ const props = defineProps<{
   secretId?: string;
   funcRunId?: string;
   actionId?: string;
+  policyId?: string;
 }>();
 
 const authStore = useAuthStore();
@@ -928,6 +931,12 @@ realtimeStore.subscribe(
       eventType: "ChangeSetRename",
       callback: () => {
         queryClient.invalidateQueries({ queryKey: ["changesets"] });
+      },
+    },
+    {
+      eventType: "PolicyUploaded",
+      callback: () => {
+        queryClient.invalidateQueries({ queryKey: ["policies"] });
       },
     },
     {

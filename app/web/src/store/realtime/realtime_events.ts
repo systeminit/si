@@ -107,6 +107,7 @@ export type WsEventPayloadMap = {
   };
 
   ChangeSetApprovalStatusChanged: ChangeSetId;
+  PolicyUploaded: Record<string, never>;
 
   ChangeSetApplied: {
     changeSetId: ChangeSetId;

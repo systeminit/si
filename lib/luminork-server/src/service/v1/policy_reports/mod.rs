@@ -32,6 +32,7 @@ use axum::{
     },
     routing::post,
 };
+use dal::WsEventError;
 use thiserror::Error;
 
 use super::common::ErrorIntoResponse;
@@ -51,6 +52,8 @@ pub(crate) enum PolicyReportsError {
     PolicyReport(#[from] si_db::PolicyReportError),
     #[error("transactions error: {0}")]
     Transactions(#[from] dal::TransactionsError),
+    #[error("ws event error: {0}")]
+    WsEvent(#[from] Box<WsEventError>),
 }
 
 pub(crate) type PolicyReportsResult<T> = std::result::Result<T, PolicyReportsError>;
@@ -64,6 +67,12 @@ impl ErrorIntoResponse for PolicyReportsError {
 impl IntoResponse for PolicyReportsError {
     fn into_response(self) -> Response {
         self.to_api_response()
+    }
+}
+
+impl From<WsEventError> for PolicyReportsError {
+    fn from(value: WsEventError) -> Self {
+        Box::new(value).into()
     }
 }
 

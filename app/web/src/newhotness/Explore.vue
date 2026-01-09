@@ -511,6 +511,23 @@
             >
             <FuncRunList :limit="25" />
           </CollapsingGridItem>
+          <CollapsingGridItem
+            v-if="ffStore.SHOW_POLICIES"
+            ref="policyRef"
+            disableScroll
+          >
+            <template #header
+              ><span class="text-sm">Policy history</span></template
+            >
+            <PolicyList
+              :policies="policyReports"
+              :page="page"
+              :maxPages="maxPages"
+              @pageBack="pageBack"
+              @pageForward="pageForward"
+              @select="(p) => navigateToPolicy(p)"
+            />
+          </CollapsingGridItem>
         </div>
         <div
           :class="
@@ -640,6 +657,7 @@ import ExploreGridSkeleton from "@/newhotness/skeletons/ExploreGridSkeleton.vue"
 import ExploreRightColumnSkeleton from "@/newhotness/skeletons/ExploreRightColumnSkeleton.vue";
 import { ChangeSet } from "@/api/sdf/dal/change_set";
 import WelcomeBanner from "@/newhotness/WelcomeBanner.vue";
+import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import MapComponent from "./Map.vue";
 import {
   collapsingGridStyles,
@@ -683,6 +701,8 @@ import { ExploreGridRowData } from "./explore_grid/ExploreGridRow.vue";
 import { useDefaultSubscription } from "./logic_composables/default_subscriptions";
 import { useContext } from "./logic_composables/context";
 import { generateMockActions } from "./logic_composables/mock_data";
+import PolicyList from "./layout_components/PolicyList.vue";
+import { Policy, usePolicy } from "./logic_composables/policy";
 
 const router = useRouter();
 const route = useRoute();
@@ -729,22 +749,51 @@ const retrieveFilterAndGroup = (): SelectionsInQueryString => {
   return qString ? (JSON.parse(qString) as SelectionsInQueryString) : {};
 };
 
+const ffStore = useFeatureFlagsStore();
+
 const defaultSubscriptions = useDefaultSubscription();
 
 const groupRef = ref<InstanceType<typeof TabGroupToggle>>();
 const actionsRef = ref<typeof CollapsingGridItem>();
 const historyRef = ref<typeof CollapsingGridItem>();
+const policyRef = ref<typeof CollapsingGridItem>();
 const mapRef = ref<InstanceType<typeof MapComponent>>();
 const exploreGridRef = ref<InstanceType<typeof ExploreGrid>>();
 const componentContextMenuRef =
   ref<InstanceType<typeof ComponentContextMenu>>();
 
-const collapsingStyles = computed(() =>
-  collapsingGridStyles([
-    actionsRef.value?.openState,
-    historyRef.value?.openState,
-  ]),
-);
+const collapsingStyles = computed(() => {
+  const grids = [actionsRef.value?.openState, historyRef.value?.openState];
+  if (ffStore.SHOW_POLICIES) grids.push(policyRef.value?.openState);
+
+  return collapsingGridStyles(grids);
+});
+
+const { policyReports, page, maxPages } = usePolicy();
+
+const pageBack = () => {
+  if (page.value === 1) page.value = maxPages.value;
+  else page.value -= 1;
+};
+const pageForward = () => {
+  if (page.value === maxPages.value) page.value = 1;
+  else page.value += 1;
+};
+
+const navigateToPolicy = (policy: Policy) => {
+  const params = {
+    workspacePk: route.params.workspacePk,
+    changeSetId: route.params.changeSetId,
+    policyId: policy.id,
+  };
+  router.push({
+    name: "new-hotness-policy",
+    params,
+    query: {
+      page: page.value,
+    },
+  });
+};
 
 const queryOnlyDiff = computed(() => {
   const query: SelectionsInQueryString = {

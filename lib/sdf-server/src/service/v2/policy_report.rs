@@ -47,5 +47,7 @@ impl IntoResponse for PolicyReportError {
 }
 
 pub fn v2_routes() -> Router<AppState> {
-    Router::new().route("/", get(fetch_batch::fetch_batch))
+    Router::new()
+        .route("/", get(fetch_batch::fetch_batch))
+        .route("/:id", get(fetch_batch::fetch_single))
 }
