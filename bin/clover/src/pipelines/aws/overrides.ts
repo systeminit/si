@@ -242,7 +242,7 @@ export const AWS_SCHEMA_OVERRIDES = new Map<string, SchemaOverrideFn>([
         );
       spec.funcs.push(startFunc);
       variant.actionFuncs.push(startActionFuncSpec);
-      
+
       if (domainId) {
         const { func, leafFuncSpec } = attachQualificationFunction(
           "./src/pipelines/aws/funcs/overrides/AWS::EC2::Instance/qualifications/isValidEc2InstanceType.ts",
@@ -528,6 +528,24 @@ export const AWS_SCHEMA_OVERRIDES = new Map<string, SchemaOverrideFn>([
       );
       requestParametersProp.kind = "json";
       requestParametersProp!.data.widgetKind = "CodeEditor";
+    },
+  ],
+  [
+    "AWS::WAFv2::WebACL",
+    (spec: ExpandedPkgSpec) => {
+      const variant = spec.schemas[0].variants[0];
+
+      const rulesProp = arrayPropForOverride(
+        variant.domain,
+        "Rules",
+      );
+      let itemProp = rulesProp.typeProp;
+
+      itemProp.kind = "json";
+      itemProp!.data.widgetKind = "CodeEditor";
+      itemProp.joiValidation = undefined;
+      itemProp.data.validationFormat = null;
+      itemProp.metadata.required = false;
     },
   ],
   [
