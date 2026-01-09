@@ -63,8 +63,8 @@ async function main(component: Input): Promise<Output> {
     for (const paramName of insertApiPath.parameterOrder) {
       let paramValue;
 
-      // Use extracted project_id for project parameter
-      if (paramName === "project") {
+      // Use extracted project_id for project/projectId parameter
+      if (paramName === "project" || paramName === "projectId") {
         paramValue = projectId;
       } else if (paramName === "parent") {
         paramValue = _.get(component.properties, ["domain", "parent"]);
@@ -76,8 +76,8 @@ async function main(component: Input): Promise<Output> {
 
           if (isProjectOnly) {
             const location = _.get(component.properties, ["domain", "location"]) ||
-                            _.get(component.properties, ["domain", "zone"]) ||
-                            _.get(component.properties, ["domain", "region"]);
+              _.get(component.properties, ["domain", "zone"]) ||
+              _.get(component.properties, ["domain", "region"]);
             if (location) {
               paramValue = `projects/${projectId}/locations/${location}`;
             }
@@ -146,8 +146,8 @@ ${errorText}`
   // - GKE/Container API uses "operationType" field
   // - Other APIs (API Keys, etc.) use "name" starting with "operations/"
   const isLRO = (responseJson.kind && responseJson.kind.includes("operation")) ||
-                responseJson.operationType ||
-                (responseJson.name && responseJson.name.startsWith("operations/"));
+    responseJson.operationType ||
+    (responseJson.name && responseJson.name.startsWith("operations/"));
   if (isLRO) {
     console.log(`[CREATE] LRO detected, polling for completion...`);
 
