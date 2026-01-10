@@ -140,7 +140,6 @@ import { Fzf } from "fzf";
 import { useRoute } from "vue-router";
 import { SiSearch, themeClasses } from "@si/vue-lib/design-system";
 import clsx from "clsx";
-import * as _ from "lodash-es";
 import { useMutation, useQueryClient } from "@tanstack/vue-query";
 import {
   AttributeTree,
@@ -162,7 +161,7 @@ import ComponentSecretAttribute from "./layout_components/ComponentSecretAttribu
 import { useWatchedForm } from "./logic_composables/watched_form";
 import { NameFormData } from "./ComponentDetails.vue";
 import EmptyState from "./EmptyState.vue";
-import { findAttributeValueInTree, escapeJsonPointerSegment } from "./util";
+import { escapeJsonPointerSegment, findAttributeValueInTree } from "./util";
 import {
   arrayAttrTreeIntoTree,
   AttrTree,
@@ -302,7 +301,16 @@ const save = async (
     { id: props.component.id },
   );
 
-  value = value?.toString() ?? "";
+  if (propKind === PropKind.Json) {
+    try {
+      value = JSON.parse(value as string);
+    } catch (e) {
+      value = "";
+    }
+  } else {
+    value = value?.toString() ?? "";
+  }
+
   const payload = makeSavePayload(path, value, propKind, connectingComponentId);
 
   const { req, newChangeSetId, errorMessage } =

@@ -327,18 +327,6 @@ async fn update_attributes_inner(
                             continue;
                         }
 
-                        let kind = AttributeValue::prop_kind(ctx, target_av_id).await?;
-
-                        // If we are passed an object or array, to a JSON field, we JSON stringify it
-                        // for the user.
-                        let value = match (kind, &value) {
-                            (
-                                PropKind::Json,
-                                serde_json::Value::Object(_) | serde_json::Value::Array(_),
-                            ) => serde_json::to_string_pretty(&value)?.into(),
-                            _ => value,
-                        };
-
                         let before_value = AttributeValue::get_by_id(ctx, target_av_id)
                             .await?
                             .unprocessed_value(ctx)

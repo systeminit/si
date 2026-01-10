@@ -100,19 +100,18 @@ export const arrayAttrTreeIntoTree = (
 
 export type MakePayload = (
   path: AttributePath,
-  value: string,
+  value: unknown,
   propKind: PropKind,
   connectingComponentId?: ComponentId,
 ) => componentTypes.UpdateComponentAttributesArgs;
 
 export const makeSavePayload: MakePayload = (
   path: AttributePath,
-  value: string,
+  value: unknown,
   propKind: PropKind,
   connectingComponentId?: ComponentId,
 ): componentTypes.UpdateComponentAttributesArgs => {
-  // TODO - Paul there's a better way to handle this for sure!
-  let coercedVal: string | boolean | number | null = value;
+  let coercedVal: unknown = value;
 
   const payload: componentTypes.UpdateComponentAttributesArgs = {};
 
@@ -124,8 +123,15 @@ export const makeSavePayload: MakePayload = (
       // and trigger attribute functions to re-run with the default/schema variant prototype
       payload[path] = { $source: null };
       return payload;
+    } else if (propKind === PropKind.Json) {
+      // For JSON prop kind, accept any value without coercion
+      coercedVal = value;
     } else if (propKind === PropKind.Boolean) {
-      coercedVal = value.toLowerCase() === "true" || value === "1";
+      if (typeof value === "string") {
+        coercedVal = value.toLowerCase() === "true" || value === "1";
+      } else {
+        coercedVal = false;
+      }
     } else if (propKind === PropKind.Integer) {
       coercedVal = Math.trunc(Number(value));
     } else if (propKind === PropKind.Float) {

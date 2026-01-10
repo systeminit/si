@@ -305,7 +305,7 @@
         :prop="attributeTree.prop"
         :validation="attributeTree.attributeValue.validation"
         :component="component"
-        :value="attributeTree.attributeValue.value?.toString() ?? ''"
+        :value="stringifiedAttributeValue(attributeTree)"
         :canDelete="
           attributeTree.isBuildable &&
           !component.toDelete &&
@@ -335,8 +335,8 @@
 <script setup lang="ts">
 import { computed, nextTick, ref } from "vue";
 import {
-  themeClasses,
   NewButton,
+  themeClasses,
   TruncateWithTooltip,
 } from "@si/vue-lib/design-system";
 import clsx from "clsx";
@@ -641,6 +641,15 @@ const headerRef = ref<HTMLDivElement>();
 const addButtonRef = ref<InstanceType<typeof NewButton>>();
 const connectButtonRef = ref<InstanceType<typeof NewButton>>();
 const deleteButtonRef = ref<InstanceType<typeof NewButton>>();
+
+const stringifiedAttributeValue = (a: AttrTree) => {
+  if (a.attributeValue.value === null) return "";
+
+  if (a.prop?.kind === PropKind.Json)
+    return JSON.stringify(a.attributeValue.value, null, 2);
+
+  return a.attributeValue.value.toString();
+};
 
 const onHeaderTab = (e: KeyboardEvent) => {
   handleTab(e, headerRef.value);
