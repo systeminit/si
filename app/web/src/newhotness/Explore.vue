@@ -2300,6 +2300,15 @@ const componentClicked = (
   if (e.button === 0) {
     // Left-click: just navigate, don't affect selections
     componentNavigate(componentId);
+  } else if (e.button === 1) {
+    // Middle-click: open component in new tab
+    const params = { ...route.params };
+    params.componentId = componentId;
+    const routeData = router.resolve({
+      name: "new-hotness-component",
+      params,
+    });
+    window.open(routeData.href, "_blank");
   } else if (e.button === 2) {
     // Right-click: if component isn't already selected, select it first
     if (!isComponentSelected(componentIdx)) {

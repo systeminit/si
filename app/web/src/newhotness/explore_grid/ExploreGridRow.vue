@@ -228,6 +228,15 @@
             dataIndexForTileInRow(row, columnIndex),
           )
       "
+      @click.stop.middle="
+        (e: MouseEvent) =>
+          emit(
+            'childClicked',
+            e,
+            component.id,
+            dataIndexForTileInRow(row, columnIndex),
+          )
+      "
       @click.stop.right="
         (e: MouseEvent) =>
           emit(
