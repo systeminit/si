@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 import { ChargeObject, Client, Country } from "lago-javascript-client";
 import _ from "lodash";
 
@@ -5,13 +6,43 @@ const client = Client(process.env.LAGO_API_KEY as string, {
   baseUrl: "https://api.getlago.com/api/v1",
 });
 
+// Helper to wrap Lago calls with timing
+async function timedLagoCall<T>(operation: string, fn: () => Promise<T>): Promise<T> {
+  const start = Date.now();
+  try {
+    const result = await fn();
+    const duration_ms = Date.now() - start;
+    console.log(JSON.stringify({
+      timestamp: new Date().toISOString(),
+      level: "info",
+      type: "lago",
+      operation,
+      duration_ms,
+      ...(duration_ms > 5000 && { slowCall: true }),
+    }));
+    return result;
+  } catch (error) {
+    const duration_ms = Date.now() - start;
+    console.log(JSON.stringify({
+      timestamp: new Date().toISOString(),
+      level: "error",
+      type: "lago",
+      operation,
+      duration_ms,
+      ...(duration_ms > 5000 && { slowCall: true }),
+      error: error instanceof Error ? error.message : String(error),
+    }));
+    throw error;
+  }
+}
+
 export async function createCustomer(
   userPk: string,
   firstName: string,
   lastName: string,
   email: string,
 ) {
-  return client.customers.createCustomer({
+  return timedLagoCall("createCustomer", () => client.customers.createCustomer({
     customer: {
       external_id: userPk,
       name: `${firstName} ${lastName}`,
@@ -24,7 +55,7 @@ export async function createCustomer(
         provider_payment_methods: ["card", "us_bank_account"],
       },
     },
-  });
+  }));
 }
 
 export async function createTrialSubscription(userPk: string) {
@@ -34,14 +65,14 @@ export async function createTrialSubscription(userPk: string) {
     new Date().getTime() + 30 * 24 * 60 * 60 * 1000,
   );
   trialEndDate.setUTCHours(0, 0, 0, 0);
-  return client.subscriptions.createSubscription({
+  return timedLagoCall("createTrialSubscription", () => client.subscriptions.createSubscription({
     subscription: {
       external_id,
       external_customer_id: userPk,
       ending_at: `${trialEndDate.toISOString().split(".")[0]}Z`,
       plan_code,
     },
-  });
+  }));
 }
 
 export async function createPaidSubscription(userPk: string) {
@@ -51,14 +82,14 @@ export async function createPaidSubscription(userPk: string) {
     new Date().getTime() + 31 * 24 * 60 * 60 * 1000,
   );
   subscriptionStartDate.setUTCHours(0, 0, 0, 0);
-  return client.subscriptions.createSubscription({
+  return timedLagoCall("createPaidSubscription", () => client.subscriptions.createSubscription({
     subscription: {
       external_id,
       external_customer_id: userPk,
       subscription_at: subscriptionStartDate.toISOString(),
       plan_code,
     },
-  });
+  }));
 }
 
 export type CustomerDetail = {
@@ -85,7 +116,7 @@ export type CustomerDetail = {
 };
 
 export async function updateCustomerDetails(customer: CustomerDetail) {
-  return client.customers.createCustomer({
+  return timedLagoCall("updateCustomerDetails", () => client.customers.createCustomer({
     customer: {
       external_id: customer.id,
       name: `${customer.firstName} ${customer.lastName}`,
@@ -109,11 +140,11 @@ export async function updateCustomerDetails(customer: CustomerDetail) {
         provider_payment_methods: ["card", "us_bank_account"],
       },
     },
-  });
+  }));
 }
 
 export async function getCustomerBillingDetails(userPk: string) {
-  const resp = await client.customers.findCustomer(userPk);
+  const resp = await timedLagoCall("getCustomerBillingDetails", () => client.customers.findCustomer(userPk));
   if (resp.ok) {
     return resp.data.customer;
   }
@@ -122,7 +153,7 @@ export async function getCustomerBillingDetails(userPk: string) {
 }
 
 export async function generateCustomerCheckoutUrl(userPk: string) {
-  const resp = await client.customers.generateCustomerCheckoutUrl(userPk);
+  const resp = await timedLagoCall("generateCustomerCheckoutUrl", () => client.customers.generateCustomerCheckoutUrl(userPk));
   if (resp.ok) {
     return resp.data.customer?.checkout_url;
   }
@@ -131,7 +162,7 @@ export async function generateCustomerCheckoutUrl(userPk: string) {
 }
 
 export async function getCustomerPortalUrl(userPk: string) {
-  const resp = await client.customers.getCustomerPortalUrl(userPk);
+  const resp = await timedLagoCall("getCustomerPortalUrl", () => client.customers.getCustomerPortalUrl(userPk));
   if (resp.ok) {
     return resp.data.customer?.portal_url;
   }
@@ -140,9 +171,9 @@ export async function getCustomerPortalUrl(userPk: string) {
 
 export async function getCustomerActiveSubscription(userPk: string) {
   try {
-    const trial_resp = await client.subscriptions.findSubscription(
+    const trial_resp = await timedLagoCall("findSubscription_trial", () => client.subscriptions.findSubscription(
       `${userPk}_launch_trial`,
-    );
+    ));
     if (trial_resp.ok && trial_resp.data.subscription.status === "active") {
       return {
         planCode: trial_resp.data.subscription.plan_code,
@@ -158,9 +189,9 @@ export async function getCustomerActiveSubscription(userPk: string) {
   }
 
   try {
-    const payg_resp = await client.subscriptions.findSubscription(
+    const payg_resp = await timedLagoCall("findSubscription_payg", () => client.subscriptions.findSubscription(
       `${userPk}_launch_pay_as_you_go`,
-    );
+    ));
     if (payg_resp.ok) {
       const charges = _.get(
         payg_resp.data.subscription,
@@ -185,9 +216,9 @@ export async function getCustomerActiveSubscription(userPk: string) {
   }
 
   try {
-    const si_internal_resp = await client.subscriptions.findSubscription(
+    const si_internal_resp = await timedLagoCall("findSubscription_internal", () => client.subscriptions.findSubscription(
       `${userPk}_si_internal`,
-    );
+    ));
     if (si_internal_resp.ok) {
       const charges = _.get(
         si_internal_resp.data.subscription,
