@@ -55,7 +55,11 @@ export const httpRequestLoggingMiddleware: Koa.Middleware = async (ctx, next) =>
   const requestTimeSpent = +new Date() - ctx.state.requestStart;
 
   // skip logs for ping/health checks
-  if (requestInfo.url === "/" && requestInfo.userAgent?.startsWith("Render/")) {
+  const isHealthCheck = requestInfo.url === "/" && (
+    requestInfo.userAgent?.startsWith("ELB-HealthChecker/")
+    || requestInfo.userAgent?.startsWith("Render/")
+  );
+  if (isHealthCheck) {
     return;
   }
 
