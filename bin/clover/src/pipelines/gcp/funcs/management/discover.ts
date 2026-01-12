@@ -65,61 +65,16 @@ async function main({ thisComponent }: Input): Promise<Output> {
     }
   }
 
-  // Build list URL by replacing path parameters
-  let listUrl = `${baseUrl}${listApiPath.path}`;
-  const queryParams: string[] = [];
-
-  if (listApiPath.parameterOrder) {
-    for (const paramName of listApiPath.parameterOrder) {
-      let paramValue;
-
-      if (paramName === "project") {
-        paramValue = projectId;
-      } else if (paramName === "parent") {
-        // Try explicit parent first, otherwise auto-construct from projectId
-        paramValue = _.get(component.properties, ["domain", "parent"]);
-        if (!paramValue && projectId) {
-          // Check if resource requires location in the parent path
-          const location = _.get(component.properties, ["domain", "location"]) ||
-                          _.get(component.properties, ["domain", "zone"]) ||
-                          _.get(component.properties, ["domain", "region"]);
-
-          if (location) {
-            // Resource uses location: projects/{project}/locations/{location}
-            paramValue = `projects/${projectId}/locations/${location}`;
-          } else {
-            // Resource doesn't use location: projects/{project}
-            // This works for both project-only and multi-scope resources
-            // (multi-scope resources default to project scope for discovery)
-            paramValue = `projects/${projectId}`;
-          }
-        }
-      } else {
-        paramValue = _.get(component.properties, ["domain", paramName]);
-      }
-
-      if (paramValue) {
-        if (listUrl.includes(`{+${paramName}}`)) {
-          listUrl = listUrl.replace(`{+${paramName}}`, paramValue);
-        } else if (listUrl.includes(`{${paramName}}`)) {
-          listUrl = listUrl.replace(`{${paramName}}`, encodeURIComponent(paramValue));
-        }
-      }
-    }
-  }
+  // Build list URL using shared utility (forList=true for discovery)
+  let listUrl = buildUrlWithParams(baseUrl, listApiPath, component, projectId, { forList: true });
 
   // Handle parent as query parameter for APIs like Resource Manager Folders
   // that don't use parent in the path but require it as a query parameter
   if (!listUrl.includes("parent=") && !listApiPath.path.includes("{parent}") && !listApiPath.path.includes("{+parent}")) {
-    const parentValue = _.get(component.properties, ["domain", "parent"]);
+    const parentValue = resolveParamValue(component, "parent", projectId, true);
     if (parentValue) {
-      queryParams.push(`parent=${encodeURIComponent(parentValue)}`);
+      listUrl += (listUrl.includes("?") ? "&" : "?") + `parent=${encodeURIComponent(parentValue)}`;
     }
-  }
-
-  // Append query parameters
-  if (queryParams.length > 0) {
-    listUrl += (listUrl.includes("?") ? "&" : "?") + queryParams.join("&");
   }
 
   // Handle pagination with pageToken
@@ -133,27 +88,7 @@ async function main({ thisComponent }: Input): Promise<Output> {
       currentUrl = `${listUrl}${separator}pageToken=${encodeURIComponent(nextPageToken)}`;
     }
 
-    const listResponse = await siExec.withRetry(async () => {
-      const resp = await fetch(currentUrl, {
-        method: "GET",
-        headers: {
-          "Authorization": `Bearer ${token}`,
-        },
-      });
-
-      if (!resp.ok) {
-        const errorText = await resp.text();
-        const error = new Error(`Google Cloud API Error: ${resp.status} ${resp.statusText} - ${errorText}`) as any;
-        error.status = resp.status;
-        error.body = errorText;
-        throw error;
-      }
-
-      return resp;
-    }, {
-      isRateLimitedFn: (error) => error.status === 429
-    }).then((r) => r.result);
-
+    const listResponse = await authenticatedGet(currentUrl, token);
     const listData = await listResponse.json();
 
     // GCP list responses vary in structure:
@@ -197,6 +132,8 @@ async function main({ thisComponent }: Input): Promise<Output> {
     console.log(`Importing ${resourceId}`);
 
     // Build the get URL to fetch full resource details
+    // Note: We can't use buildUrlWithParams here because we need to pull
+    // some parameters from the discovered resource, not from component.properties
     let getUrl = `${baseUrl}${getApiPath.path}`;
 
     if (getApiPath.parameterOrder) {
@@ -206,9 +143,10 @@ async function main({ thisComponent }: Input): Promise<Output> {
         // For the resource identifier, use resourceId
         if (paramName === getApiPath.parameterOrder[getApiPath.parameterOrder.length - 1]) {
           paramValue = resourceId;
-        } else if (paramName === "project") {
+        } else if (paramName === "project" || paramName === "projectId") {
           paramValue = projectId;
         } else {
+          // Try to get from discovered resource first, then fall back to domain
           paramValue = _.get(resource, [paramName]) ||
                        _.get(component.properties, ["domain", paramName]);
         }
@@ -228,24 +166,7 @@ async function main({ thisComponent }: Input): Promise<Output> {
     // Fetch the full resource details with retry
     let resourceResponse;
     try {
-      resourceResponse = await siExec.withRetry(async () => {
-        const resp = await fetch(getUrl, {
-          method: "GET",
-          headers: {
-            "Authorization": `Bearer ${token}`,
-          },
-        });
-
-        if (!resp.ok) {
-          const error = new Error(`Failed to fetch ${resourceId}`) as any;
-          error.status = resp.status;
-          throw error;
-        }
-
-        return resp;
-      }, {
-        isRateLimitedFn: (error) => error.status === 429
-      }).then((r) => r.result);
+      resourceResponse = await authenticatedGet(getUrl, token);
     } catch (error) {
       console.log(`Failed to fetch ${resourceId} after retries, skipping`);
       continue;
@@ -296,44 +217,5 @@ async function main({ thisComponent }: Input): Promise<Output> {
       create,
       actions,
     },
-  };
-}
-
-async function getAccessToken(serviceAccountJson: string): Promise<{ token: string; projectId: string | undefined }> {
-  // Parse service account JSON to extract project_id (optional)
-  let projectId: string | undefined;
-  try {
-    const serviceAccount = JSON.parse(serviceAccountJson);
-    projectId = serviceAccount.project_id;
-  } catch {
-    // If parsing fails or project_id is missing, continue without it
-    projectId = undefined;
-  }
-
-  const activateResult = await siExec.waitUntilEnd("gcloud", [
-    "auth",
-    "activate-service-account",
-    "--key-file=-",
-    "--quiet"
-  ], {
-    input: serviceAccountJson
-  });
-
-  if (activateResult.exitCode !== 0) {
-    throw new Error(`Failed to activate service account: ${activateResult.stderr}`);
-  }
-
-  const tokenResult = await siExec.waitUntilEnd("gcloud", [
-    "auth",
-    "print-access-token"
-  ]);
-
-  if (tokenResult.exitCode !== 0) {
-    throw new Error(`Failed to get access token: ${tokenResult.stderr}`);
-  }
-
-  return {
-    token: tokenResult.stdout.trim(),
-    projectId,
   };
 }

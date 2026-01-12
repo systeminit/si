@@ -72,8 +72,8 @@ To generate all specs containing "ECS" or "S3", you can pass some services as ar
     )
     .env(
       "SI_BEARER_TOKEN=<value:string>",
-      "Auth token for interacting with the module index",
-      { required: true },
+      "Auth token for interacting with the module index (optional for local development)",
+      { required: false },
     )
     .env(
       "SI_MODULE_INDEX_URL=<value:string>",
