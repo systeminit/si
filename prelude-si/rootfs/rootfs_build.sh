@@ -218,6 +218,9 @@ pip3 install --break-system-packages linode-cli
 # Azure CLI
 pip3 install --break-system-packages azure-cli
 
+# Pre-warm CLI cache to avoid first-run initialization penalty
+az version > /dev/null 2>&1 || true
+
 # Clean up build dependencies
 apk del gcc musl-dev python3-dev libffi-dev openssl-dev cargo make
 
