@@ -58,6 +58,7 @@ auth0Api.interceptors.response.use(
       ...(duration_ms && duration_ms > 5000 && { slowCall: true }),
       error_code: error.code,
       error_message: error.message,
+      ...(error.response?.data && { response_body: error.response.data }),
     }));
     throw error;
   },
