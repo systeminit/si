@@ -6,6 +6,28 @@ const client = Client(process.env.LAGO_API_KEY as string, {
   baseUrl: "https://api.getlago.com/api/v1",
 });
 
+// Helper to extract error details from Lago responses
+function extractLagoError(error: unknown): Record<string, unknown> {
+  if (error instanceof Error) {
+    return { error: error.message };
+  }
+  // Lago client returns Response objects with ok, status, and data properties
+  if (error && typeof error === 'object') {
+    const resp = error as { ok?: boolean; status?: number; data?: unknown; statusText?: string };
+    if ('status' in resp) {
+      const result: Record<string, unknown> = {
+        error: resp.statusText || `HTTP ${resp.status}`,
+        status: resp.status,
+      };
+      if (resp.data) {
+        result.details = resp.data;
+      }
+      return result;
+    }
+  }
+  return { error: String(error) };
+}
+
 // Helper to wrap Lago calls with timing
 async function timedLagoCall<T>(operation: string, fn: () => Promise<T>): Promise<T> {
   const start = Date.now();
@@ -23,6 +45,7 @@ async function timedLagoCall<T>(operation: string, fn: () => Promise<T>): Promis
     return result;
   } catch (error) {
     const duration_ms = Date.now() - start;
+    const errorInfo = extractLagoError(error);
     console.log(JSON.stringify({
       timestamp: new Date().toISOString(),
       level: "error",
@@ -30,7 +53,7 @@ async function timedLagoCall<T>(operation: string, fn: () => Promise<T>): Promis
       operation,
       duration_ms,
       ...(duration_ms > 5000 && { slowCall: true }),
-      error: error instanceof Error ? error.message : String(error),
+      ...errorInfo,
     }));
     throw error;
   }
