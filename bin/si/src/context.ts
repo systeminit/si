@@ -453,7 +453,9 @@ function addInterceptors() {
         }`,
       );
 
-      printPayload(error.response, logger);
+      if (error.response) {
+        printPayload(error.response, logger);
+      }
 
       return Promise.reject(error);
     },

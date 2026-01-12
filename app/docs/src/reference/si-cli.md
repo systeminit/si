@@ -665,6 +665,35 @@ si schema contribute <SCHEMA>
 
 ---
 
+### schema upload
+
+Upload a PkgSpec JSON file to install a schema in your workspace. If the schema already exists, it will be upgraded with the new variant.
+
+> Syntax
+
+```bash
+si schema upload --from-file <PATH> [OPTIONS]
+```
+
+#### Parameters
+
+| Name                    | Type   | Required | Description                                                     |
+| ----------------------- | ------ | -------- | --------------------------------------------------------------- |
+| --from-file             | string | true     | Path to the PkgSpec JSON file to upload                         |
+| -c, --change-set        | string | false    | Change set ID or name (creates new change set if not specified) |
+
+#### Examples
+
+```bash
+# Upload a schema spec file (creates a new change set automatically)
+si schema upload --from-file my-schema.json
+
+# Upload to a specific change set
+si schema upload --from-file my-schema.json --change-set my-changeset
+```
+
+---
+
 ### schema overlay
 
 Manage schema overlays: generate overlay functions and push them to remote workspaces.

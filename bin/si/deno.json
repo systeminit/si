@@ -48,7 +48,7 @@
     "@std/path": "jsr:@std/path@^1.1.2",
     "@std/ulid": "jsr:@std/ulid@^1.0.0",
     "@std/yaml": "jsr:@std/yaml@^1.0.5",
-    "@systeminit/api-client": "jsr:@systeminit/api-client@^1.13.0",
+    "@systeminit/api-client": "jsr:@systeminit/api-client@^1.14.0",
     "@types/node": "npm:@types/node@^24.10.1",
     "axios": "npm:axios@^1.13.1",
     "ejs": "npm:ejs@^3.1.10",
