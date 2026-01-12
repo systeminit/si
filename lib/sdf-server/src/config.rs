@@ -145,6 +145,18 @@ pub struct Config {
 
     #[builder(default = "default_service_endpoints_config()")]
     service_endpoints: ServiceEndpointsConfig,
+
+    #[builder(default)]
+    backfill_cutoff_timestamp: Option<String>,
+
+    #[builder(default)]
+    backfill_cache_types: Option<String>,
+
+    #[builder(default = "default_backfill_key_batch_size()")]
+    backfill_key_batch_size: usize,
+
+    #[builder(default = "default_backfill_checkpoint_interval_secs()")]
+    backfill_checkpoint_interval_secs: u64,
 }
 
 impl StandardConfig for Config {
@@ -267,6 +279,22 @@ impl Config {
     pub fn service_endpoints(&self) -> &ServiceEndpointsConfig {
         &self.service_endpoints
     }
+
+    pub fn backfill_cutoff_timestamp(&self) -> &Option<String> {
+        &self.backfill_cutoff_timestamp
+    }
+
+    pub fn backfill_cache_types(&self) -> &Option<String> {
+        &self.backfill_cache_types
+    }
+
+    pub fn backfill_key_batch_size(&self) -> usize {
+        self.backfill_key_batch_size
+    }
+
+    pub fn backfill_checkpoint_interval_secs(&self) -> u64 {
+        self.backfill_checkpoint_interval_secs
+    }
 }
 
 impl ConfigBuilder {
@@ -321,6 +349,14 @@ pub struct ConfigFile {
     audit: AuditDatabaseConfig,
     #[serde(default = "default_service_endpoints_config")]
     service_endpoints: ServiceEndpointsConfig,
+    #[serde(default)]
+    backfill_cutoff_timestamp: Option<String>,
+    #[serde(default)]
+    backfill_cache_types: Option<String>,
+    #[serde(default = "default_backfill_key_batch_size")]
+    backfill_key_batch_size: usize,
+    #[serde(default = "default_backfill_checkpoint_interval_secs")]
+    backfill_checkpoint_interval_secs: u64,
 }
 
 impl Default for ConfigFile {
@@ -346,6 +382,10 @@ impl Default for ConfigFile {
             audit: Default::default(),
             dev_mode: false,
             service_endpoints: default_service_endpoints_config(),
+            backfill_cutoff_timestamp: None,
+            backfill_cache_types: None,
+            backfill_key_batch_size: default_backfill_key_batch_size(),
+            backfill_checkpoint_interval_secs: default_backfill_checkpoint_interval_secs(),
         }
     }
 }
@@ -382,6 +422,10 @@ impl TryFrom<ConfigFile> for Config {
             audit: value.audit,
             dev_mode: value.dev_mode,
             service_endpoints: value.service_endpoints,
+            backfill_cutoff_timestamp: value.backfill_cutoff_timestamp,
+            backfill_cache_types: value.backfill_cache_types,
+            backfill_key_batch_size: value.backfill_key_batch_size,
+            backfill_checkpoint_interval_secs: value.backfill_checkpoint_interval_secs,
         })
     }
 }
@@ -445,6 +489,14 @@ fn default_layer_db_config() -> LayerDbConfig {
 
 fn default_service_endpoints_config() -> ServiceEndpointsConfig {
     ServiceEndpointsConfig::new(0)
+}
+
+fn default_backfill_key_batch_size() -> usize {
+    1000
+}
+
+fn default_backfill_checkpoint_interval_secs() -> u64 {
+    30
 }
 
 #[allow(clippy::disallowed_methods)] // Used to determine if running in development
