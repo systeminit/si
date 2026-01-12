@@ -76,6 +76,7 @@ pub async fn whoami(
             "user_email": user.email().clone(),
         }),
     );
+    dbg!("[whoami] user_id: {}, workspace_id: {}", user.pk(), workspace_id);
     Json(WhoamiResponse {
         workspace_id,
         user_id: user.pk(),
