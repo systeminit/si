@@ -98,6 +98,7 @@ pub async fn search(
             Some(attribute_tree) => Some(attribute_tree.await??),
             None => None,
         };
+        dbg!("[search] matching component {:?}", component_in_list.id);
         // Match the component against the query
         if let Some(result) = match_component(
             component_in_list,
