@@ -12,6 +12,8 @@ import {
   createScalarProp,
   ExpandedPropSpec,
 } from "../../spec/props.ts";
+import { modifyFunc } from "../../spec/funcs.ts";
+import { ACTION_FUNC_SPECS } from "./funcs.ts";
 import { ulid } from "https://deno.land/x/ulid@v0.3.0/mod.ts";
 
 // GCS bucket locations - includes multi-regions, dual-regions, and regions
@@ -485,6 +487,76 @@ export const GCP_SCHEMA_OVERRIDES: Map<
       );
       spec.funcs.push(removeInstancesFunc);
       variant.actionFuncs.push(removeInstancesActionFuncSpec);
+    },
+  ],
+  // Service Networking Connections - set default value for parent prop and add suggestions
+  // The parent for this API is always "services/servicenetworking.googleapis.com"
+  // This resource is list-only and requires custom action functions
+  [
+    "Google Cloud Service Networking Services.Connections",
+    (spec: ExpandedPkgSpec) => {
+      const variant = spec.schemas[0].variants[0];
+
+      // Find the existing parent prop and set its default value
+      const parentProp = propForOverride(variant.domain, "parent");
+      if (parentProp.data) {
+        parentProp.data.hidden = true;
+        parentProp.data.defaultValue = "services/servicenetworking.googleapis.com";
+        parentProp.data.documentation = "The service name for the connection. Always 'services/servicenetworking.googleapis.com' for VPC peering.";
+      }
+
+      // Add suggestion for reservedPeeringRanges items - suggest GlobalAddresses names
+      const reservedPeeringRangesProp = propForOverride(variant.domain, "reservedPeeringRanges");
+      if (reservedPeeringRangesProp.kind === "array" && reservedPeeringRangesProp.typeProp) {
+        addPropSuggestSource(reservedPeeringRangesProp.typeProp, {
+          schema: `${GCP_COMPUTE} GlobalAddresses`,
+          prop: "/resource_value/name",
+        });
+      }
+
+      // Replace generic action functions with Service Networking-specific implementations
+      // This resource is list-only (no get API) and identified by network/peering, not name/id
+      modifyFunc(
+        spec,
+        ACTION_FUNC_SPECS["Refresh Asset"].id,
+        "a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2",
+        "./src/pipelines/gcp/funcs/overrides/Services.Connections/actions/refresh.ts",
+      );
+
+      modifyFunc(
+        spec,
+        ACTION_FUNC_SPECS["Delete Asset"].id,
+        "b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3",
+        "./src/pipelines/gcp/funcs/overrides/Services.Connections/actions/delete.ts",
+      );
+
+      modifyFunc(
+        spec,
+        ACTION_FUNC_SPECS["Update Asset"].id,
+        "c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4",
+        "./src/pipelines/gcp/funcs/overrides/Services.Connections/actions/update.ts",
+      );
+    },
+  ],
+  // Service Networking PeeredDnsDomains - list-only resource
+  // No get API, identified by name field
+  [
+    "Google Cloud Service Networking Services.Projects.Global.Networks.PeeredDnsDomains",
+    (spec: ExpandedPkgSpec) => {
+      // Replace generic action functions with PeeredDnsDomains-specific implementations
+      modifyFunc(
+        spec,
+        ACTION_FUNC_SPECS["Refresh Asset"].id,
+        "a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8",
+        "./src/pipelines/gcp/funcs/overrides/Services.Projects.Global.Networks.PeeredDnsDomains/actions/refresh.ts",
+      );
+
+      modifyFunc(
+        spec,
+        ACTION_FUNC_SPECS["Delete Asset"].id,
+        "b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9",
+        "./src/pipelines/gcp/funcs/overrides/Services.Projects.Global.Networks.PeeredDnsDomains/actions/delete.ts",
+      );
     },
   ],
 ]);
