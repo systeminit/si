@@ -29,6 +29,7 @@ rust_library(
         "//lib/si-jwt-public-key:si-jwt-public-key",
         "//lib/si-layer-cache:si-layer-cache",
         "//lib/si-posthog-rs:si-posthog",
+        "//lib/si-pkg:si-pkg",
         "//lib/si-service-endpoints:si-service-endpoints",
         "//lib/si-settings:si-settings",
         "//lib/si-std:si-std",

@@ -6,7 +6,10 @@ use std::collections::{
 use axum::{
     Json,
     Router,
-    extract::rejection::JsonRejection,
+    extract::{
+        DefaultBodyLimit,
+        rejection::JsonRejection,
+    },
     http::StatusCode,
     response::IntoResponse,
     routing::{
@@ -83,6 +86,7 @@ pub mod find_schema;
 pub mod get_default_variant;
 pub mod get_schema;
 pub mod get_variant;
+pub mod install_from_file;
 pub mod install_schema;
 pub mod list_schemas;
 pub mod search_schemas;
@@ -140,10 +144,16 @@ pub enum SchemaError {
     ModuleIndexClient(#[from] module_index_client::ModuleIndexClientError),
     #[error("module index not configured")]
     ModuleIndexNotConfigured,
+    #[error("multipart error: {0}")]
+    Multipart(#[from] axum::extract::multipart::MultipartError),
     #[error("changes not permitted on HEAD change set")]
     NotPermittedOnHead,
     #[error("output socket error: {0}")]
     OutputSocket(#[from] dal::socket::output::OutputSocketError),
+    #[error("pkg error: {0}")]
+    Pkg(dal::pkg::PkgError),
+    #[error("pkg file error: {0}")]
+    PkgFileError(&'static str),
     #[error("prop error: {0}")]
     Prop(#[from] Box<PropError>),
     #[error("schema error: {0}")]
@@ -158,6 +168,10 @@ pub enum SchemaError {
     SchemaVariantNotFound(SchemaVariantId),
     #[error("schema variant {0} not a variant for the schema {1} error")]
     SchemaVariantNotMemberOfSchema(SchemaId, SchemaVariantId),
+    #[error("serde json error: {0}")]
+    SerdeJson(#[from] serde_json::Error),
+    #[error("si pkg error: {0}")]
+    SiPkg(#[from] si_pkg::SiPkgError),
     #[error("slow runtime error: {0}")]
     SlowRuntime(#[from] dal::slow_rt::SlowRuntimeError),
     #[error("transactions error: {0}")]
@@ -231,6 +245,10 @@ impl crate::service::v1::common::ErrorIntoResponse for SchemaError {
             SchemaError::SchemaVariant(dal::SchemaVariantError::SchemaVariantLocked(_)) => {
                 (StatusCode::NOT_FOUND, self.to_string())
             }
+            SchemaError::PkgFileError(_) => (StatusCode::BAD_REQUEST, self.to_string()),
+            SchemaError::SerdeJson(_) => (StatusCode::BAD_REQUEST, self.to_string()),
+            SchemaError::Multipart(_) => (StatusCode::BAD_REQUEST, self.to_string()),
+            SchemaError::SiPkg(_) => (StatusCode::UNPROCESSABLE_ENTITY, self.to_string()),
             _ => (StatusCode::INTERNAL_SERVER_ERROR, self.to_string()),
         }
     }
@@ -259,12 +277,20 @@ impl From<JsonRejection> for SchemaError {
     }
 }
 
+// 20MB upload limit for module files
+const MAX_UPLOAD_BYTES: usize = 1024 * 1024 * 20;
+
 pub fn routes() -> Router<AppState> {
     Router::new()
         .route("/", get(list_schemas::list_schemas))
         .route("/", post(create_schema::create_schema))
         .route("/find", get(find_schema::find_schema))
         .route("/search", post(search_schemas::search_schemas))
+        .route(
+            "/install_from_file",
+            post(install_from_file::install_from_file)
+                .layer(DefaultBodyLimit::max(MAX_UPLOAD_BYTES)),
+        )
         .nest(
             "/:schema_id",
             Router::new()

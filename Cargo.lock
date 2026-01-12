@@ -4848,6 +4848,7 @@ dependencies = [
  "si-id",
  "si-jwt-public-key",
  "si-layer-cache",
+ "si-pkg",
  "si-posthog",
  "si-service-endpoints",
  "si-settings",
