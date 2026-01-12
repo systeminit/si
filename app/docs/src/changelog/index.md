@@ -2,6 +2,52 @@
 
 All notable changes to System Initiative will be documented in this file.
 
+## January 5th to 11th, 2026
+
+### ✨ Added
+
+- Added the ability to **evaluate compliance policies against a workspace** via
+  the CLI.
+- Enhanced the **Public API components list** to return more detailed component
+  information.
+- Added support for **text area inputs** in credentials within the web app.
+
+### 🔄 Changed
+
+- Updated the **Public API** to only create tokens when explicitly requested
+  after workspace creation.
+- Updated the web app to **display change sets in creation order**.
+- Improved **AI Agent behavior in the CLI** by using multi-file content per
+  provider to reduce API token usage.
+- Improved how the **module index returns the latest schemas**.
+- Updated **schema filtering** when creating new components in the web app.
+- Updated **user profile form validation** and applied consistent input length
+  restrictions in the auth portal.
+
+### 🐞 Fixed
+
+- Fixed inconsistent **reviews screen behavior** for upgraded components in the
+  web app.
+- Fixed **map view card icons** not displaying correctly in the web app.
+- Fixed an issue where **failed or running actions** did not show dependencies
+  in the web app.
+- Fixed multiple **bulk edit issues** in the web app, including resizing,
+  unsetting values, and multi-select menu inconsistencies.
+- Fixed an issue where the **AI Agent in the CLI** could not upgrade old MCP
+  settings.
+- Fixed missing errors when the **AI Agent CLI** was given an incorrect tool.
+- Fixed inconsistent **Azure subscription generation** in the AI Agent.
+- Fixed incorrect **error messaging** when using an abandoned change set via the
+  Public API.
+- Fixed incorrect **management function failure banners** on component details
+  pages.
+- Fixed component details pages failing when **domain attributes were missing**.
+- Fixed an issue where **component subscriptions could create graph cycles**.
+- Fixed an issue where users could be **stuck in the lobby** when multiple
+  workspaces were open in different tabs.
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/QJpladR_IW4?si=Riamy3u0_tbqJZaR" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+
 ## December 22nd 2025 to January 4th, 2026
 
 ### ✨ Added
