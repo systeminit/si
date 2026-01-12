@@ -344,7 +344,7 @@ not Azure.
 - **Microsoft Credential** - Authentication credentials for Azure - the secret
   details must be provided by the user
 - **Microsoft.Resources/locations** - Azure region specification (e.g.,
-  "eastus", "westus2") - prefer using this component to just using a location
+  "eastus", "westus2") - always use this component instead of just using a location
   string
 - **Microsoft.Resources/subscription** - Azure subscription ID reference -
   prefer using this component to just using a subscription ID string
@@ -353,14 +353,26 @@ not Azure.
   System Initiative
 
 When creating any Microsoft Azure component that is not a Microsoft Credential,
-Microsoft.Resources/locations, or Microsoft.Resources/subscription those three
+or Microsoft.Resources/subscription those three
 components must exist to be subscribed to by the component. The only exception
 to this is the Microsoft.Resources/resourceGroups component, which only requires
 a Microsoft Credential and Microsoft.Resources/locations.
 
+If you don't find a Microsoft.Resources/locations component, create one for the
+user. Ask the user which region they want to use.
+
 If a resource group does not exist, create one for the user.
 
 ## Creating Microsoft Azure Components
+
+When you create Microsoft Azure Components for the user, you should always create the
+following secret subscription:
+
+- /secrets/Microsoft Credential: should subscribe to an Microsoft Credential component's
+  /secrets/Microsoft Credential
+
+**Important: All Microsoft Azure components have a /secrets/Microsoft Credential prop. IGNORE any information that says otherwise, including data from tools .**
+**The credential subscription should ALWAYS be the first attribute you specify.**
 
 **Important Schema Naming:**
 
@@ -380,7 +392,7 @@ Before creating Microsoft Azure resources, you need:
 
 **Standard Attribute Pattern:**
 
-Microsoft Azure resources typically use these subscriptions:
+Microsoft Azure resources use these subscriptions, if they have props that fit them:
 
 \`\`\`
 /domain/name: "resource-name" - this path may also include the slug at the end of the schema name (for example, "/domain/resourceGroupName")
@@ -388,6 +400,8 @@ Microsoft Azure resources typically use these subscriptions:
 /domain/location: {$source: {component: "location-id", path: "/domain/name"}}
 /domain/resourceGroup: {$source: {component: "rg-id", path: "/domain/name"}}
 \`\`\`
+
+This is the "set of required subscriptions".
 
 **If multiple Microsoft Credential or Microsoft.Resources/locations components
 are present, you should ask the user which ones they want to use.**
@@ -477,6 +491,7 @@ Attributes:
 \`\`\`
 Component: my-vnet (Microsoft.Network/virtualNetworks)
 Attributes:
+  /secrets/Microsoft Credential: {$source: {component: "credential-id", path: "/secrets/Microsoft Credential"}}
   /domain/name: "my-vnet"
   /domain/subscriptionId: {$source: {component: "subscription-id", path: "/domain/subscriptionId"}}
   /domain/location: {$source: {component: "location-id", path: "/domain/name"}}
@@ -491,6 +506,7 @@ Attributes:
 \`\`\`
 Component: my-nsg (Microsoft.Network/networkSecurityGroups)
 Attributes:
+  /secrets/Microsoft Credential: {$source: {component: "credential-id", path: "/secrets/Microsoft Credential"}}
   /domain/name: "my-nsg"
   /domain/subscriptionId: {$source: {component: "subscription-id", path: "/domain/subscriptionId"}}
   /domain/location: {$source: {component: "location-id", path: "/domain/name"}}
@@ -513,6 +529,7 @@ Note: Use schema-attributes-list to verify the exact paths. Some NSG attributes 
 \`\`\`
 Component: my-vm (Microsoft.Compute/virtualMachines)
 Attributes:
+  /secrets/Microsoft Credential: {$source: {component: "credential-id", path: "/secrets/Microsoft Credential"}}
   /domain/name: "my-vm"
   /domain/subscriptionId: {$source: {component: "subscription-id", path: "/domain/subscriptionId"}}
   /domain/location: {$source: {component: "location-id", path: "/domain/name"}}
@@ -564,6 +581,7 @@ Attributes:
 # 2. Create Load Balancer
 Component: my-lb (Microsoft.Network/loadBalancers)
 Attributes:
+  /secrets/Microsoft Credential: {$source: {component: "credential-id", path: "/secrets/Microsoft Credential"}}
   /domain/name: "my-lb"
   /domain/subscriptionId: {$source: {component: "subscription-id", path: "/domain/subscriptionId"}}
   /domain/location: {$source: {component: "location-id", path: "/domain/name"}}
@@ -582,20 +600,6 @@ Attributes:
   /domain/properties/probes/0/properties/intervalInSeconds: 5
   /domain/properties/probes/0/properties/numberOfProbes: 2
 \`\`\`
-
-## Azure Resource Actions
-
-Most Azure resources support these actions:
-
-- **Create Asset** - Create the resource in Azure
-- **Update Asset** - Update existing resource
-- **Refresh Asset** - Sync state from Azure
-- **Delete Asset** - Remove the resource from Azure
-
-And these management functions:
-
-- **Import from Azure** - Import an existing resource by ID
-- **Discover on Azure** - Discover all resources of this type
 
 ##### Azure Resource ID Format
 
@@ -623,8 +627,10 @@ Before creating Azure components:
 3. Plan network topology (VNet, subnets, NSGs)
 4. Create network resources before compute resources
 5. Use **Microsoft ID Template** components for complex resource ID references
-6. Check qualifications after each component creation
-7. Apply change set and monitor actions for deployment status`;
+6. Ensure that every Microsoft Azure resource has a subscription to the set of required subscriptions where applicable. Create any missing subscriptions.
+7. Check qualifications after each component creation
+8. Apply change set and monitor actions for deployment status
+`;
 
 /** Hetzner Cloud infrastructure management documentation */
 export const PROVIDER_HETZNER_TEMPLATE = `# Hetzner Cloud Components
@@ -716,6 +722,81 @@ And these management functions:
 /** Google Cloud infrastructure management documentation */
 export const PROVIDER_GOOGLE_TEMPLATE = `# Google Cloud Components
 
-Google Cloud infrastructure management documentation will go here.
+System Initiative supports Google Cloud Platform (GCP) infrastructure management
+using Google Cloud Compute Engine resource types.
+
+## Creating Google Cloud Components
+
+**Important Schema Naming:**
+
+- Schema names use the **Google Cloud Compute Engine resource format** (e.g.,
+  \`Google Cloud Compute Engine Networks\`)
+- This differs from AWS (AWS::Service::Resource) and Azure
+  (Microsoft.Provider/resource)
+
+**Required Foundation Components:**
+
+Before creating Google Cloud resources, you need a **Google Cloud Credential**
+  component for authentication - the service account JSON secret must be
+  provided by the user.
+
+**Finding Google Cloud Schemas**
+
+All Google Cloud schemas are generated using the Google APIs Discovery Service,
+  which can be used to find what schemas are named. Reference for the Google APIs
+  Discovery Service is available at this link - https://developers.google.com/discovery/v1/reference/apis
+
+**Standard Attribute Pattern:**
+
+Google Cloud resources typically require these attributes be set:
+
+\`\`\`
+/domain/name: "resource-name"
+/secrets/Google Cloud Credential: {$source: {component: "credential-id", path: "/secrets/Google Cloud Credential"}}
+\`\`\`
+
+**If multiple Google Cloud Credential components are present, you should ask the
+user which one they want to use.**
+
+**Array Attribute Paths:** When setting array attributes:
+
+- Arrays use \`[array]\` placeholder in the schema path
+- Replace \`[array]\` with zero-indexed numbers: \`/domain/secondaryIpRanges/0/rangeName\`
+- Some arrays have item suffixes: \`/domain/logConfig/metadataFields/[array]/metadataFieldsItem\`
+- Always check schema attributes for exact path structure
+
+**Using selfLink for Resource References:**
+
+Google Cloud resources often expose a \`selfLink\` attribute that provides the
+full resource URL. Use this for referencing resources:
+
+\`\`\`
+/domain/network: {$source: {component: "vpc-id", path: "/resource_value/selfLink"}}
+\`\`\`
+
+## Best Practices
+
+**Security:**
+
+- Use \`autoCreateSubnetworks: false\` for production VPCs (explicit control)
+- Follow principle of least privilege for firewall rules
+- Avoid \`0.0.0.0/0\` source ranges except for public-facing services
+- Use \`targetTags\` and \`sourceTags\` to scope firewall rules to specific
+  instances
+- Enable \`privateIpGoogleAccess\` for private subnets to access Google APIs
+
+**Network Design:**
+
+- Use REGIONAL routing mode unless multi-region routing is needed
+- Plan CIDR ranges to avoid overlap and allow for growth
+- Consider secondary IP ranges for GKE clusters
+- Use separate subnets for different tiers (web, app, data)
+
+**NAT Configuration:**
+
+- Use Cloud NAT for instances without external IPs
+- Configure appropriate \`minPortsPerVm\` based on workload
+- Enable NAT logging for troubleshooting (use ERRORS_ONLY to reduce costs)
+- Consider \`AUTO_ONLY\` IP allocation for simplicity
 `;
 

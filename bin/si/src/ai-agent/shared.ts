@@ -70,7 +70,7 @@ const CLOUD_PROVIDERS = [
   { name: "azure", displayName: "Azure" },
   { name: "hetzner", displayName: "Hetzner Cloud" },
   { name: "digitalocean", displayName: "DigitalOcean" },
-  // { name: "google", displayName: "Google Cloud" },
+  { name: "google", displayName: "Google Cloud" },
 ];
 
 // type of CLOUD_PROVIDERS entry
@@ -302,9 +302,10 @@ async function createProviderDocs(
   await ensureDir(docsDir);
 
   const templates = await loadAllProviderTemplates();
+  const PROVIDERS_BASE_ARRAY = ["aws", "azure", "hetzner", "digitalocean", "google"];
   const providers = includeCommon
-    ? ["common", "aws", "azure", "hetzner", "digitalocean"] //, "google"
-    : ["aws", "azure", "hetzner", "digitalocean"]; // , "google"
+    ? ["common", ...PROVIDERS_BASE_ARRAY]
+    : PROVIDERS_BASE_ARRAY;
 
   const createdFiles: string[] = [];
 
@@ -584,11 +585,10 @@ IMPORTANT: Before answering questions about or executing any operations on a spe
 - For Azure/Microsoft questions: Read \`docs/providers/azure.md\`
 - For Hetzner questions: Read \`docs/providers/hetzner.md\`
 - For DigitalOcean questions: Read \`docs/providers/digitalocean.md\`
+- For Google Cloud questions: Read \`docs/providers/google.md\`
 
 Always read the provider documentation BEFORE attempting to answer provider-specific questions or create provider components.
 `;
-
-  //- For Google Cloud questions: Read \`docs/providers/google.md\`
 
   await Deno.writeTextFile(rootAgentsPath, content);
   return rootAgentsPath;
@@ -617,11 +617,10 @@ IMPORTANT: Before answering questions about or executing any operations on a spe
 - For Azure/Microsoft questions: Read \`docs/providers/azure.md\`
 - For Hetzner questions: Read \`docs/providers/hetzner.md\`
 - For DigitalOcean questions: Read \`docs/providers/digitalocean.md\`
+- For Google Cloud questions: Read \`docs/providers/google.md\`
 
 Always read the provider documentation BEFORE attempting to answer provider-specific questions or create provider components.
 `;
-
-  //- For Google Cloud questions: Read \`docs/providers/google.md\`
 
   await Deno.writeTextFile(cursorRulesPath, content);
   return cursorRulesPath;
