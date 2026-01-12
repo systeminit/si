@@ -76,6 +76,7 @@ pub use self::{
         BackfillConfig,
         BackfillError,
         BackfillResult,
+        LayerCacheBackfiller,
     },
     migrations::Migrator,
     nats_multiplexer::CRDT_MULTIPLEXER_SUBJECT,
