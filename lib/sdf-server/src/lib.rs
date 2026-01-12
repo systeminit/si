@@ -25,6 +25,7 @@ mod config;
 mod extract;
 mod garbage_collection;
 mod init;
+mod layer_cache_backfill;
 pub mod key_generation;
 pub mod middleware;
 mod migrations;
@@ -71,6 +72,10 @@ pub use self::{
         WorkspacePermissionsMode,
     },
     garbage_collection::SnapshotGarbageCollector,
+    layer_cache_backfill::{
+        BackfillError,
+        BackfillResult,
+    },
     migrations::Migrator,
     nats_multiplexer::CRDT_MULTIPLEXER_SUBJECT,
     server::{
