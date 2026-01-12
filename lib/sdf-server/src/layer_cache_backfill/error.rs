@@ -1,4 +1,7 @@
-use si_data_pg::PgError;
+use si_data_pg::{
+    PgError,
+    PgPoolError,
+};
 use si_layer_cache::LayerDbError;
 use thiserror::Error;
 
@@ -21,6 +24,8 @@ pub enum BackfillError {
     NoCacheTypesSpecified,
     #[error("PostgreSQL error: {0}")]
     Pg(#[from] PgError),
+    #[error("PostgreSQL pool error: {0}")]
+    PgPool(#[from] PgPoolError),
     #[error("tokio join error: {0}")]
     TokioJoin(#[from] tokio::task::JoinError),
 }
