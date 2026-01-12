@@ -100,7 +100,18 @@ pub async fn find_schema(
                         installed,
                     )
                 }
-                None => return Err(SchemaError::SchemaNotFound(schema_id)),
+                None => {
+                    tracker.track(
+                        ctx,
+                        "api_find_schema",
+                        json!({
+                            "search_term": schema_id.to_string(),
+                            "search_type": "schema_id",
+                            "not_found": "true"
+                        }),
+                    );
+                    return Err(SchemaError::SchemaNotFound(schema_id));
+                }
             },
         },
         SchemaReference::ByName {
@@ -127,7 +138,18 @@ pub async fn find_schema(
                             installed,
                         )
                     }
-                    None => return Err(SchemaError::SchemaNotFoundByName(schema_name)),
+                    None => {
+                        tracker.track(
+                            ctx,
+                            "api_find_schema",
+                            json!({
+                                "search_term": schema_name.clone(),
+                                "search_type": "schema_name",
+                                "not_found": "true"
+                            }),
+                        );
+                        return Err(SchemaError::SchemaNotFoundByName(schema_name));
+                    }
                 }
             }
         },
@@ -137,7 +159,7 @@ pub async fn find_schema(
         ctx,
         "api_find_schema",
         json!({
-            "schema_id": schema_id
+            "schema_id": schema_id,
         }),
     );
 
