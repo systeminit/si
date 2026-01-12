@@ -37,63 +37,71 @@ async function main(component: Input): Promise<Output> {
   const { token, projectId } = await getAccessToken(serviceAccountJson);
 
   // Build the URL by replacing path parameters
-  let url = `${baseUrl}${deleteApiPath.path}`;
+  let url: string;
 
-  // Replace path parameters with values from resource_value or domain
-  // GCP APIs use RFC 6570 URI templates: {param} and {+param} (reserved expansion)
-  if (deleteApiPath.parameterOrder) {
-    for (const paramName of deleteApiPath.parameterOrder) {
-      let paramValue;
+  // If resourceId is already a full path matching the API structure, use it directly
+  // This handles cases where resourceId is "projects/xxx/datasets/yyy/tables/zzz"
+  if (isFullResourcePath(resourceId, deleteApiPath.path)) {
+    url = `${baseUrl}${resourceId}`;
+  } else {
+    url = `${baseUrl}${deleteApiPath.path}`;
 
-      // For the resource identifier, use resourceId
-      if (paramName === deleteApiPath.parameterOrder[deleteApiPath.parameterOrder.length - 1]) {
-        paramValue = resourceId;
-      } else if (paramName === "project") {
-        // Use extracted project_id for project parameter
-        paramValue = projectId;
-      } else if (paramName === "parent") {
-        // "parent" is a common GCP pattern: projects/{project}/locations/{location}
-        paramValue = _.get(component.properties, ["resource", "payload", "parent"]) ||
-                     _.get(component.properties, ["domain", "parent"]);
-        if (!paramValue && projectId) {
-          // Only auto-construct for project-only resources
-          // Multi-scope resources require explicit parent
-          const availableScopesJson = _.get(component.properties, ["domain", "extra", "availableScopes"]);
-          const availableScopes = availableScopesJson ? JSON.parse(availableScopesJson) : [];
-          const isProjectOnly = availableScopes.length === 1 && availableScopes[0] === "projects";
+    // Replace path parameters with values from resource_value or domain
+    // GCP APIs use RFC 6570 URI templates: {param} and {+param} (reserved expansion)
+    if (deleteApiPath.parameterOrder) {
+      for (const paramName of deleteApiPath.parameterOrder) {
+        let paramValue;
 
-          if (isProjectOnly) {
-            const location = _.get(component.properties, ["resource", "payload", "location"]) ||
-                            _.get(component.properties, ["domain", "location"]) ||
-                            _.get(component.properties, ["domain", "zone"]) ||
-                            _.get(component.properties, ["domain", "region"]);
-            if (location) {
-              paramValue = `projects/${projectId}/locations/${location}`;
+        // For the resource identifier, use resourceId
+        if (paramName === deleteApiPath.parameterOrder[deleteApiPath.parameterOrder.length - 1]) {
+          paramValue = resourceId;
+        } else if (paramName === "project" || paramName === "projectId") {
+          // Use extracted project_id for project/projectId parameter
+          paramValue = projectId;
+        } else if (paramName === "parent") {
+          // "parent" is a common GCP pattern: projects/{project}/locations/{location}
+          paramValue = _.get(component.properties, ["resource", "payload", "parent"]) ||
+            _.get(component.properties, ["domain", "parent"]);
+          if (!paramValue && projectId) {
+            // Only auto-construct for project-only resources
+            // Multi-scope resources require explicit parent
+            const availableScopesJson = _.get(component.properties, ["domain", "extra", "availableScopes"]);
+            const availableScopes = availableScopesJson ? JSON.parse(availableScopesJson) : [];
+            const isProjectOnly = availableScopes.length === 1 && availableScopes[0] === "projects";
+
+            if (isProjectOnly) {
+              const location = _.get(component.properties, ["resource", "payload", "location"]) ||
+                _.get(component.properties, ["domain", "location"]) ||
+                _.get(component.properties, ["domain", "zone"]) ||
+                _.get(component.properties, ["domain", "region"]);
+              if (location) {
+                paramValue = `projects/${projectId}/locations/${location}`;
+              }
             }
           }
-        }
-      } else {
-        paramValue = _.get(component.properties, ["resource", "payload", paramName]) ||
-                     _.get(component.properties, ["domain", paramName]);
-
-        // GCP often returns full URLs for reference fields e.g.
-        // region: //www.googleapis.com/compute/v1/projects/myproject/regions/us-central1
-        // network: //www.googleapis.com/compute/v1/projects/myproject/networks/my-network
-
-        // Extract just the resource name from the URL
-        if (paramValue && typeof paramValue === "string" && paramValue.startsWith("https://")) {
-          const urlParts = paramValue.split("/");
-          paramValue = urlParts[urlParts.length - 1];
-        }
-      }
-
-      if (paramValue) {
-        // Handle {+param} (reserved expansion - don't encode, allows slashes)
-        if (url.includes(`{+${paramName}}`)) {
-          url = url.replace(`{+${paramName}}`, paramValue);
         } else {
-          // Handle {param} (simple expansion - encode)
-          url = url.replace(`{${paramName}}`, encodeURIComponent(paramValue));
+          paramValue = _.get(component.properties, ["resource", "payload", paramName]) ||
+            _.get(component.properties, ["domain", paramName]);
+
+          // GCP often returns full URLs for reference fields e.g.
+          // region: //www.googleapis.com/compute/v1/projects/myproject/regions/us-central1
+          // network: //www.googleapis.com/compute/v1/projects/myproject/networks/my-network
+
+          // Extract just the resource name from the URL
+          if (paramValue && typeof paramValue === "string" && paramValue.startsWith("https://")) {
+            const urlParts = paramValue.split("/");
+            paramValue = urlParts[urlParts.length - 1];
+          }
+        }
+
+        if (paramValue) {
+          // Handle {+param} (reserved expansion - don't encode, allows slashes)
+          if (url.includes(`{+${paramName}}`)) {
+            url = url.replace(`{+${paramName}}`, paramValue);
+          } else {
+            // Handle {param} (simple expansion - encode)
+            url = url.replace(`{${paramName}}`, encodeURIComponent(paramValue));
+          }
         }
       }
     }
@@ -161,7 +169,7 @@ ${errorText}`
   // - Compute Engine uses "kind" containing "operation"
   // - GKE/Container API uses "operationType" field
   const isLRO = (responseJson.kind && responseJson.kind.includes("operation")) ||
-                responseJson.operationType;
+    responseJson.operationType;
   if (isLRO) {
     console.log(`[DELETE] LRO detected, polling for completion...`);
 
@@ -231,4 +239,22 @@ async function getAccessToken(serviceAccountJson: string): Promise<{ token: stri
     token: tokenResult.stdout.trim(),
     projectId,
   };
+}
+
+// Check if resourceId is already a full path matching the API path structure
+function isFullResourcePath(resourceId: string, pathTemplate: string): boolean {
+  if (!resourceId.includes('/')) return false;
+
+  // Extract static segments from template (non-parameter parts)
+  // e.g., "projects/{+projectId}/datasets/{+datasetId}/tables/{+tableId}" -> ["projects", "datasets", "tables"]
+  const templateSegments = pathTemplate.split('/').filter(s => !s.startsWith('{'));
+
+  // Check if resourceId contains these segments in order
+  let lastIdx = -1;
+  for (const seg of templateSegments) {
+    const idx = resourceId.indexOf(seg, lastIdx + 1);
+    if (idx === -1) return false;
+    lastIdx = idx;
+  }
+  return true;
 }

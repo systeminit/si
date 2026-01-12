@@ -82,8 +82,7 @@ export function parseGcpDiscoveryDocument(
       }
     } catch (e) {
       logger.error(
-        `Failed to process resource ${resourceSpec.resourcePath.join(".")}: ${
-          e instanceof Error ? e.message : String(e)
+        `Failed to process resource ${resourceSpec.resourcePath.join(".")}: ${e instanceof Error ? e.message : String(e)
         }`,
       );
       // Continue processing other resources
@@ -314,7 +313,9 @@ function buildGcpResourceSpec(
     const listResponse = list.response;
     if (listResponse.properties) {
       // Find the array property that contains the resource items
-      for (const [propName, propDef] of Object.entries(listResponse.properties)) {
+      for (
+        const [propName, propDef] of Object.entries(listResponse.properties)
+      ) {
         if (propDef.type === "array" && propDef.items) {
           resourceSchema = propDef.items;
           break;
@@ -347,30 +348,27 @@ function buildGcpResourceSpec(
     Object.assign(domainProperties, patchProps);
   }
 
-  // Add path parameters (region, zone, etc.) to domain - these are needed to build API URLs
-  // Exclude "project" as it comes from the credential
-  // Only override if the property is readOnly or doesn't exist - some resources (like Subnetwork)
-  // have writable region/zone fields that should be sent in the body too
-  // Track which ones we add as path-only so we can mark them required later
-  const pathParamsToAdd = ["region", "zone", "location"];
+  // Add path parameters from insert.parameterOrder as top-level domain props
+  // These are needed to build API URLs at runtime
+  // Skip project/projectId (extracted from credentials) and parent (special handling below)
+  const skipPathParams = new Set(["project", "projectId", "parent"]);
   const addedPathOnlyParams: string[] = [];
-  for (const paramName of pathParamsToAdd) {
-    if (insert?.parameters?.[paramName]) {
-      const existingProp = domainProperties[paramName];
-      const isReadOnly = existingProp && typeof existingProp === "object" &&
-        existingProp.readOnly;
 
-      if (!existingProp || isReadOnly) {
-        const param = insert.parameters[paramName];
-        domainProperties[paramName] = {
-          type: param.type || "string",
-          description: param.description,
-        };
-        // Track this as path-only if we're overriding a readOnly prop or adding new
-        if (param.required) {
-          addedPathOnlyParams.push(paramName);
-        }
-      }
+  for (const paramName of insert?.parameterOrder || []) {
+    if (skipPathParams.has(paramName)) continue;
+
+    const existingProp = domainProperties[paramName];
+    const isReadOnly = existingProp && typeof existingProp === "object" &&
+      existingProp.readOnly;
+
+    // Add if doesn't exist or is read-only (we need a writable version for the URL)
+    if (!existingProp || isReadOnly) {
+      const param = insert?.parameters?.[paramName];
+      domainProperties[paramName] = {
+        type: param?.type || "string",
+        description: param?.description || `The ${paramName} for this resource`,
+      };
+      addedPathOnlyParams.push(paramName);
     }
   }
 
@@ -421,6 +419,23 @@ function buildGcpResourceSpec(
     };
   }
 
+  // For project-only resources that need parent but aren't global-only and don't have location,
+  // add a location prop so the parent can be auto-constructed as projects/{projectId}/locations/{location}
+  if (
+    isProjectOnly &&
+    apiNeedsParent &&
+    !isGlobalOnly &&
+    !writableDomainProperties["location"] &&
+    !writableDomainProperties["region"] &&
+    !writableDomainProperties["zone"]
+  ) {
+    writableDomainProperties["location"] = {
+      type: "string",
+      description:
+        "The location for this resource (e.g., 'us', 'us-central1', 'europe-west1')",
+    };
+  }
+
   // Determine primary identifier from path parameters
   // Use get method if available, otherwise fall back to list or insert
   const primaryIdentifier = determinePrimaryIdentifier(get || list || insert);
@@ -430,9 +445,9 @@ function buildGcpResourceSpec(
   // Normalize the asset description
   const description = normalizeDescription(
     resourceSchema.description ||
-      get?.description ||
-      list?.description ||
-      `GCP ${doc.name} ${titleCaseResourcePath(resourcePath)} resource`,
+    get?.description ||
+    list?.description ||
+    `GCP ${doc.name} ${titleCaseResourcePath(resourcePath)} resource`,
   )!;
 
   // Detect required properties for creation

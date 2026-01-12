@@ -30,18 +30,18 @@ function resolveParamValue(
   projectId: string | undefined,
   forList: boolean = false
 ): string | undefined {
-  if (paramName === "project") {
+  if (paramName === "project" || paramName === "projectId") {
     return projectId;
   }
 
   if (paramName === "parent") {
     let parentValue = _.get(component.properties, ["resource", "payload", "parent"]) ||
-                      _.get(component.properties, ["domain", "parent"]);
+      _.get(component.properties, ["domain", "parent"]);
     if (!parentValue && projectId) {
       const location = _.get(component.properties, ["resource", "payload", "location"]) ||
-                      _.get(component.properties, ["domain", "location"]) ||
-                      _.get(component.properties, ["domain", "zone"]) ||
-                      _.get(component.properties, ["domain", "region"]);
+        _.get(component.properties, ["domain", "location"]) ||
+        _.get(component.properties, ["domain", "zone"]) ||
+        _.get(component.properties, ["domain", "region"]);
 
       if (forList) {
         // List operations: always auto-construct, fallback to project-only
@@ -61,7 +61,7 @@ function resolveParamValue(
   }
 
   let paramValue = _.get(component.properties, ["resource", "payload", paramName]) ||
-                   _.get(component.properties, ["domain", paramName]);
+    _.get(component.properties, ["domain", paramName]);
 
   // GCP often returns full URLs for reference fields - extract just the resource name
   if (paramValue && typeof paramValue === "string" && paramValue.startsWith("https://")) {
@@ -72,6 +72,24 @@ function resolveParamValue(
   return paramValue;
 }
 
+// Check if resourceId is already a full path matching the API path structure
+function isFullResourcePath(resourceId: string, pathTemplate: string): boolean {
+  if (!resourceId.includes('/')) return false;
+
+  // Extract static segments from template (non-parameter parts)
+  // e.g., "projects/{+projectId}/datasets/{+datasetId}/tables/{+tableId}" -> ["projects", "datasets", "tables"]
+  const templateSegments = pathTemplate.split('/').filter(s => !s.startsWith('{'));
+
+  // Check if resourceId contains these segments in order
+  let lastIdx = -1;
+  for (const seg of templateSegments) {
+    const idx = resourceId.indexOf(seg, lastIdx + 1);
+    if (idx === -1) return false;
+    lastIdx = idx;
+  }
+  return true;
+}
+
 // Build URL by replacing path parameters using RFC 6570 URI templates
 function buildUrlWithParams(
   baseUrl: string,
@@ -80,6 +98,12 @@ function buildUrlWithParams(
   projectId: string | undefined,
   options: { resourceId?: string; forList?: boolean } = {}
 ): string {
+  // If resourceId is already a full path matching the API structure, use it directly
+  // This handles cases where resourceId is "projects/xxx/datasets/yyy/tables/zzz"
+  if (options.resourceId && isFullResourcePath(options.resourceId, apiPath.path)) {
+    return `${baseUrl}${options.resourceId}`;
+  }
+
   let url = `${baseUrl}${apiPath.path}`;
 
   if (apiPath.parameterOrder) {
