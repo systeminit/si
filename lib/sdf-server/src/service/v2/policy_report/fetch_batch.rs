@@ -46,7 +46,7 @@ pub(crate) struct Response {
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct SingleResponse {
-    report: Option<PolicyReport>,
+    report: Option<PolicyReportView>,
 }
 
 // NOTE(nick): we need this to convert to camelcase and to handle timestamp conversion.
@@ -142,5 +142,7 @@ pub(crate) async fn fetch_single(
         }),
     );
 
-    Ok(Json(SingleResponse { report }))
+    Ok(Json(SingleResponse {
+        report: report.map(|r| r.into()),
+    }))
 }
