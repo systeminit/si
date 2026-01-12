@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 import Axios from "axios";
 import { nanoid } from "nanoid";
 import { ManagementClient } from "auth0";
@@ -19,7 +20,48 @@ const LOGOUT_CALLBACK_URL = `${process.env.AUTH_API_URL}/auth/logout-callback`;
 
 const auth0Api = Axios.create({
   baseURL: `https://${process.env.AUTH0_DOMAIN}`,
+  timeout: 30000, // 30 second timeout
 });
+
+// Add request/response interceptors for timing
+auth0Api.interceptors.request.use((config) => {
+  (config as any).metadata = { startTime: Date.now() };
+  return config;
+});
+
+auth0Api.interceptors.response.use(
+  (response) => {
+    const duration_ms = Date.now() - (response.config as any).metadata.startTime;
+    console.log(JSON.stringify({
+      timestamp: new Date().toISOString(),
+      level: "info",
+      type: "auth0",
+      method: response.config.method?.toUpperCase(),
+      url: response.config.url,
+      status: response.status,
+      duration_ms,
+      ...(duration_ms > 5000 && { slowCall: true }),
+    }));
+    return response;
+  },
+  (error) => {
+    const startTime = (error.config as any)?.metadata?.startTime;
+    const duration_ms = startTime ? Date.now() - startTime : null;
+    console.log(JSON.stringify({
+      timestamp: new Date().toISOString(),
+      level: "error",
+      type: "auth0",
+      method: error.config?.method?.toUpperCase(),
+      url: error.config?.url,
+      status: error.response?.status,
+      duration_ms,
+      ...(duration_ms && duration_ms > 5000 && { slowCall: true }),
+      error_code: error.code,
+      error_message: error.message,
+    }));
+    throw error;
+  },
+);
 
 export async function getAuth0UserCredential(username: string, password: string) {
   const authResult = await auth0Api.request({
