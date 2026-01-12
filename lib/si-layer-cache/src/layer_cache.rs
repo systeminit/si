@@ -661,4 +661,31 @@ where
     pub fn evict_from_cache_updates(&self, key: Arc<str>) {
         self.cache.remove(&key);
     }
+
+    /// Check if key exists in S3 using HEAD request (for backfill operations)
+    pub async fn s3_head(&self, key: &str) -> LayerDbResult<bool> {
+        let s3_layers = self
+            .s3_layers
+            .as_ref()
+            .ok_or(LayerDbError::S3NotConfigured)?;
+        let s3_layer = s3_layers
+            .get(self.name.as_str())
+            .ok_or(LayerDbError::S3NotConfigured)?;
+
+        s3_layer.head(key).await
+    }
+
+    /// Direct write to S3 for backfill operations only
+    /// Bypasses queue system - use only for migration tools
+    pub async fn s3_put_direct(&self, key: &str, value: Vec<u8>) -> LayerDbResult<()> {
+        let s3_layers = self
+            .s3_layers
+            .as_ref()
+            .ok_or(LayerDbError::S3NotConfigured)?;
+        let s3_layer = s3_layers
+            .get(self.name.as_str())
+            .ok_or(LayerDbError::S3NotConfigured)?;
+
+        s3_layer.put_direct(key, value).await
+    }
 }
