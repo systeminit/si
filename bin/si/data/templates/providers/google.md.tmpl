@@ -1,3 +1,84 @@
 # Google Cloud Components
 
-Google Cloud infrastructure management documentation will go here.
+System Initiative supports Google Cloud Platform (GCP) infrastructure management
+using Google Cloud Compute Engine resource types.
+
+## Creating Google Cloud Components
+
+**Important Schema Naming:**
+
+- Schema names for Google Cloud schemas all start with "Google Cloud " and are then
+  categorized by service (e.g. `Google Cloud Compute`, `Google Cloud Run`, `Google Cloud BigQuery`, etc)
+- Schema names are formed of words separated by spaces or dots (e.g., `Google Cloud Pub/Sub Projects.Snapshots`)
+- Schema names are **plural** (e.g., `Google Cloud Compute Engine Networks`)
+
+**Required Foundation Components:**
+
+Before creating Google Cloud resources, you need a **Google Cloud Credential**
+  component for authentication - the service account key secret must be
+  provided by the user.
+
+If no Google Cloud Credential component is present, you should tell the user to
+create it first, as it cannot be created via the agent.
+
+If multiple Google Cloud Credential components are present, you should ask the
+user which one they want to use.
+
+**Finding Google Cloud Schemas**
+
+All Google Cloud schemas are generated using the Google APIs Discovery Service,
+  which can be used to find what schemas are named. Reference for the Google APIs
+  Discovery Service is available at this link - https://developers.google.com/discovery/v1/reference/apis
+
+**Standard Attribute Pattern:**
+
+Google Cloud resources typically require these attributes be set:
+
+```
+/domain/name: "resource-name"
+/secrets/Google Cloud Credential: {$source: {component: "credential-id", path: "/secrets/Google Cloud Credential"}}
+```
+
+**If multiple Google Cloud Credential components are present, you should ask the
+user which one they want to use.**
+
+**Array Attribute Paths:** When setting array attributes:
+
+- Arrays use `[array]` placeholder in the schema path
+- Replace `[array]` with zero-indexed numbers: `/domain/secondaryIpRanges/0/rangeName`
+- Some arrays have item suffixes: `/domain/logConfig/metadataFields/[array]/metadataFieldsItem`
+- Always check schema attributes for exact path structure
+
+**Using selfLink for Resource References:**
+
+Google Cloud resources often expose a `selfLink` attribute that provides the
+full resource URL. Use this for referencing resources:
+
+```
+/domain/network: {$source: {component: "vpc-id", path: "/resource_value/selfLink"}}
+```
+
+## Best Practices
+
+**Security:**
+
+- Use `autoCreateSubnetworks: false` for production VPCs (explicit control)
+- Follow principle of least privilege for firewall rules
+- Avoid `0.0.0.0/0` source ranges except for public-facing services
+- Use `targetTags` and `sourceTags` to scope firewall rules to specific
+  instances
+- Enable `privateIpGoogleAccess` for private subnets to access Google APIs
+
+**Network Design:**
+
+- Use REGIONAL routing mode unless multi-region routing is needed
+- Plan CIDR ranges to avoid overlap and allow for growth
+- Consider secondary IP ranges for GKE clusters
+- Use separate subnets for different tiers (web, app, data)
+
+**NAT Configuration:**
+
+- Use Cloud NAT for instances without external IPs
+- Configure appropriate `minPortsPerVm` based on workload
+- Enable NAT logging for troubleshooting (use ERRORS_ONLY to reduce costs)
+- Consider `AUTO_ONLY` IP allocation for simplicity

@@ -147,7 +147,7 @@ export async function loadAllProviderTemplates(): Promise<
     "azure",
     "hetzner",
     "digitalocean",
-    // "google",
+    "google",
   ];
   const templates: Record<string, string> = {};
 
