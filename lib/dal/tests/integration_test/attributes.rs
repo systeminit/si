@@ -328,9 +328,7 @@ async fn update_attributes_serializes_json(ctx: &mut DalContext) -> Result<()> {
     )
     .await?;
     assert_eq!(
-        r#"{
-  "foo": "bar"
-}"#,
+        json!({ "foo": "bar" }),
         value::get(ctx, ("test", "/domain/Json")).await?
     );
 
@@ -346,10 +344,7 @@ async fn update_attributes_serializes_json(ctx: &mut DalContext) -> Result<()> {
     )
     .await?;
     assert_eq!(
-        r#"[
-  1,
-  2
-]"#,
+        json!([ 1, 2 ]),
         value::get(ctx, ("test", "/domain/Json")).await?
     );
     Ok(())
