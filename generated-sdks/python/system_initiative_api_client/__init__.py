@@ -127,6 +127,7 @@ __all__ = [
     "GetSchemaVariantV1Response",
     "HashMapValue",
     "InitialApiToken",
+    "InstallFromFileV1Response",
     "InviteMemberRequest",
     "ListChangeSetV1Response",
     "ListComponentsV1Response",
@@ -308,6 +309,7 @@ from system_initiative_api_client.models.get_schema_v1_response import GetSchema
 from system_initiative_api_client.models.get_schema_variant_v1_response import GetSchemaVariantV1Response as GetSchemaVariantV1Response
 from system_initiative_api_client.models.hash_map_value import HashMapValue as HashMapValue
 from system_initiative_api_client.models.initial_api_token import InitialApiToken as InitialApiToken
+from system_initiative_api_client.models.install_from_file_v1_response import InstallFromFileV1Response as InstallFromFileV1Response
 from system_initiative_api_client.models.invite_member_request import InviteMemberRequest as InviteMemberRequest
 from system_initiative_api_client.models.list_change_set_v1_response import ListChangeSetV1Response as ListChangeSetV1Response
 from system_initiative_api_client.models.list_components_v1_response import ListComponentsV1Response as ListComponentsV1Response

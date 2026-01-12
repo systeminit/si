@@ -152,6 +152,13 @@ class TestSchemasApi(unittest.TestCase):
         """
         pass
 
+    def test_install_from_file(self) -> None:
+        """Test case for install_from_file
+
+        Install a schema from a PkgSpec file
+        """
+        pass
+
     def test_install_schema(self) -> None:
         """Test case for install_schema
 
