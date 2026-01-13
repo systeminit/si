@@ -1,6 +1,6 @@
 import { PropOverrideFn, SchemaOverrideFn } from "../types.ts";
 import { ExpandedPkgSpec } from "../../spec/pkgs.ts";
-import { ACTION_FUNC_SPECS, MANAGEMENT_FUNCS } from "./funcs.ts";
+import { ACTION_FUNC_SPECS, CODE_GENERATION_FUNC_SPECS, MANAGEMENT_FUNCS } from "./funcs.ts";
 import { ulid } from "https://deno.land/x/ulid@v0.3.0/mod.ts";
 import { FuncArgumentSpec } from "../../bindings/FuncArgumentSpec.ts";
 import {
@@ -546,6 +546,35 @@ export const AWS_SCHEMA_OVERRIDES = new Map<string, SchemaOverrideFn>([
       itemProp.joiValidation = undefined;
       itemProp.data.validationFormat = null;
       itemProp.metadata.required = false;
+
+      // Override codegen functions to transform Rules array from JSON strings to objects
+      const createTargetId = CODE_GENERATION_FUNC_SPECS.awsCloudControlCreate.id;
+      const newCreateId = "1140f42ffa057a13c3639cb159e988a22e6e4f43c40649c71bf501d3ef6e2586";
+      const createPath = "./src/pipelines/aws/funcs/overrides/AWS::WAFv2::WebACL/code-gen/awsCloudControlCodeGenCreate.ts";
+      modifyFunc(spec, createTargetId, newCreateId, createPath);
+
+      const updateTargetId = CODE_GENERATION_FUNC_SPECS.awsCloudControlUpdate.id;
+      const newUpdateId = "a15308352ecbfbeb5aa476b2ddbeb134f19dc008c957fec9193dc8b73f379b24";
+      const updatePath = "./src/pipelines/aws/funcs/overrides/AWS::WAFv2::WebACL/code-gen/awsCloudControlCodeGenUpdate.ts";
+      modifyFunc(spec, updateTargetId, newUpdateId, updatePath);
+
+      // Override discover function to transform Rules array from objects to JSON strings
+      const discoverTargetId = MANAGEMENT_FUNCS["Discover on AWS"].id;
+      const newDiscoverId = "b62e9bb810fe54937abe86c12a95b3855d222d61ce28cf19fa778af8329d4442";
+      const discoverPath = "./src/pipelines/aws/funcs/overrides/AWS::WAFv2::WebACL/management/discover.ts";
+      modifyFunc(spec, discoverTargetId, newDiscoverId, discoverPath);
+
+      // Override import function to transform Rules array from objects to JSON strings
+      const importTargetId = MANAGEMENT_FUNCS["Import from AWS"].id;
+      const newImportId = "c4f4ee0b529ac971a84dee1eecf1876d7c43356086c38db75e47f2c4789f3b70";
+      const importPath = "./src/pipelines/aws/funcs/overrides/AWS::WAFv2::WebACL/management/import.ts";
+      modifyFunc(spec, importTargetId, newImportId, importPath);
+
+      // Override lint codegen function to transform Rules array from JSON strings to objects
+      const lintTargetId = CODE_GENERATION_FUNC_SPECS.awsCloudFormationLint.id;
+      const newLintId = "43fa1b2c5eafbe4b39d2e4d49bef7130a08edb2396b6c35c2392d422ba26d064";
+      const lintPath = "./src/pipelines/aws/funcs/overrides/AWS::WAFv2::WebACL/code-gen/awsCloudFormationLint.ts";
+      modifyFunc(spec, lintTargetId, newLintId, lintPath);
     },
   ],
   [
