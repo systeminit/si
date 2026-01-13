@@ -139,16 +139,34 @@ pub async fn find_schema(
                         )
                     }
                     None => {
+                        // Fetch similar schema names for suggestions
+                        let suggestions =
+                            CachedModule::search_similar_schema_names(ctx, &schema_name, 5)
+                                .await
+                                .unwrap_or_default()
+                                .into_iter()
+                                .map(|(name, _id)| name)
+                                .collect::<Vec<_>>();
+
                         tracker.track(
                             ctx,
                             "api_find_schema",
                             json!({
                                 "search_term": schema_name.clone(),
                                 "search_type": "schema_name",
-                                "not_found": "true"
+                                "not_found": "true",
+                                "suggestions": suggestions.clone()
                             }),
                         );
-                        return Err(SchemaError::SchemaNotFoundByName(schema_name));
+
+                        if suggestions.is_empty() {
+                            return Err(SchemaError::SchemaNotFoundByName(schema_name));
+                        } else {
+                            return Err(SchemaError::SchemaNotFoundByNameWithSuggestions {
+                                name: schema_name,
+                                suggestions,
+                            });
+                        }
                     }
                 }
             }

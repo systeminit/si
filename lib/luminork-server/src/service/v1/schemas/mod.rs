@@ -162,6 +162,11 @@ pub enum SchemaError {
     SchemaNotFound(SchemaId),
     #[error("schema not found by name: {0}")]
     SchemaNotFoundByName(String),
+    #[error("schema not found by name: {name}. Similar schemas: {suggestions:?}")]
+    SchemaNotFoundByNameWithSuggestions {
+        name: String,
+        suggestions: Vec<String>,
+    },
     #[error("schema variant error: {0}")]
     SchemaVariant(#[from] dal::SchemaVariantError),
     #[error("schema variant not found error: {0}")]
@@ -231,6 +236,9 @@ impl crate::service::v1::common::ErrorIntoResponse for SchemaError {
         match self {
             SchemaError::SchemaNotFound(_) => (StatusCode::NOT_FOUND, self.to_string()),
             SchemaError::SchemaNotFoundByName(_) => (StatusCode::NOT_FOUND, self.to_string()),
+            SchemaError::SchemaNotFoundByNameWithSuggestions { .. } => {
+                (StatusCode::NOT_FOUND, self.to_string())
+            }
             SchemaError::SchemaVariantNotFound(_) => (StatusCode::NOT_FOUND, self.to_string()),
             SchemaError::SchemaVariantNotMemberOfSchema(_, _) => {
                 (StatusCode::PRECONDITION_REQUIRED, self.to_string())
