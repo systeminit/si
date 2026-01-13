@@ -19,6 +19,7 @@ export interface FuncSpecInfo {
   displayName: string;
   path: string;
   requiredHandlers?: string[]; // Optional: which handlers must exist for this func to apply
+  sharedUtilsPath?: string; // Optional: path to shared utilities to prepend to the function code
 }
 
 export function createFunc(
@@ -73,7 +74,32 @@ export function createDefaultFuncSpec(
     }
   }
 
-  const code = Deno.readTextFileSync(resolvedPath);
+  let code = Deno.readTextFileSync(resolvedPath);
+  
+  // Prepend shared utilities if specified
+  if (spec.sharedUtilsPath) {
+    let sharedPath = spec.sharedUtilsPath;
+    // Apply the same path resolution logic for shared utils
+    try {
+      Deno.statSync(sharedPath);
+    } catch {
+      const pathFromRoot = spec.sharedUtilsPath.replace(/^\.\//, "bin/clover/");
+      try {
+        Deno.statSync(pathFromRoot);
+        sharedPath = pathFromRoot;
+      } catch {
+        // Use original path and let readTextFileSync throw the error
+      }
+    }
+    
+    try {
+      const sharedCode = Deno.readTextFileSync(sharedPath);
+      code = sharedCode + "\n\n" + code;
+    } catch (error) {
+      console.error(`Could not load shared utilities: ${sharedPath}`, error);
+    }
+  }
+  
   const codeBase64: string = strippedBase64(code);
 
   return createFunc(
