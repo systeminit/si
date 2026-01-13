@@ -165,39 +165,4 @@ const onTab = (e: KeyboardEvent) => {
 };
 </script>
 
-<style scoped>
-/*
- * Mask text in secret textareas
- *
- * Primary method: -webkit-text-security (works in Chrome, Safari, Edge)
- * Fallback: text-security font (works in Firefox and other browsers)
- *
- * The -webkit-text-security property is nonstandard but widely supported in WebKit/Blink browsers.
- * For browsers that don't support it (mainly Firefox), we use a custom font that renders all
- * characters as bullets.
- *
- * Font source: https://github.com/noppa/text-security
- */
-@font-face {
-  font-family: "text-security-disc";
-  src: url("data:font/woff2;base64,d09GMgABAAAAAAMoAA0AAAAAB2QAAALcAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAP0ZGVE0cGh4GYACCahEICjx3CzoAATYCJAMgBCAFhAoHIBuHBhEVnJ3Ifhy4MbWEhv/////nxv+dyv83k8mJCZiYmYnZ/yGBgYGBgYGBwYP///////+h0f8/xv8f/H+H/R+y/z/h/z/+/w/+P+H/H/x/m/0////7/1/+P/j/4P/Z/z/+/7f/f/v/l/8/+v/w/+H/w/8P/z/8f/L/r/9/+v/w/+H/w/8P/z/8f/L/r/9/+//X/7/9/+v/X/4/+f/k/5P/T/4/+f/k/5P/T/4/+f/k/5P/T/4/+f/k/5P/T/4/+f/k/5P/T/4/+f/k/xP/T/g/8f/E/xP/T/w/8f/E/xP/T/w/8f/E/xP/T/w/8f/E/xP/T/w/8f/E/xP+T/g/8f/E/xP/T/w/8f/E/xP/T/w/8f/E/xP/T/w/8f/E/xP+T/g/8f/E/xP/T/w/8f/E/xP/T/w/8f/E/xP/T/w/8f/E/xP+T/g/8f/E/xP/T/w/8f/E/xP/T/w/8f/E/xP/T/w/8f/E/xP+T/g/8f/E/xP/T/w/8f/E/xP/T/w/8f/E/xP/T/w/8f/E/xP+T/g/8f/E/xP/T/w/8f/E/xP/T/w/8f/E/xP/T/w/8f/E/xP+T/g/8f/E/xP/T/w/8f/E/xAAC")
-    format("woff2");
-}
-
-.secret-masked-textarea {
-  /* Primary: WebKit/Blink browsers (Chrome, Safari, Edge) */
-  -webkit-text-security: disc;
-  text-security: disc;
-
-  /* Fallback: Font-based masking for Firefox and other browsers */
-  /* This font renders all characters as bullet points */
-  font-family: "text-security-disc", monospace;
-}
-
-/* Override font-family when -webkit-text-security is supported */
-@supports (-webkit-text-security: disc) {
-  .secret-masked-textarea {
-    font-family: inherit;
-  }
-}
-</style>
+<!-- CSS styles for secret-masked-textarea are in App.vue since they are used in multiple places -->

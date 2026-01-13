@@ -119,35 +119,26 @@ export const DEBUG_PROVIDER_CHOICE = undefined;
                   beta
                   @select="pickProvider"
                 />
-                <template v-if="windowWidthReactive >= 1100">
-                  <OnboardingProviderTile
-                    provider="Hetzner"
-                    beta
-                    @select="pickProvider"
-                  />
-                  <OnboardingProviderTile
-                    provider="DigitalOcean"
-                    beta
-                    @select="pickProvider"
-                  />
-                </template>
+                <OnboardingProviderTile
+                  provider="Google Cloud Platform"
+                  beta
+                  @select="pickProvider"
+                />
               </div>
               <div :class="onboardingTileRowClasses">
                 <!-- Secondary Providers -->
-                <template v-if="windowWidthReactive < 1100">
-                  <OnboardingProviderTile
-                    provider="Hetzner"
-                    beta
-                    variant="secondary"
-                    @select="pickProvider"
-                  />
-                  <OnboardingProviderTile
-                    provider="DigitalOcean"
-                    beta
-                    variant="secondary"
-                    @select="pickProvider"
-                  />
-                </template>
+                <OnboardingProviderTile
+                  provider="Hetzner"
+                  beta
+                  variant="secondary"
+                  @select="pickProvider"
+                />
+                <OnboardingProviderTile
+                  provider="DigitalOcean"
+                  beta
+                  variant="secondary"
+                  @select="pickProvider"
+                />
               </div>
 
               <!-- TODO(Wendy) - when we have more providers, we will put a search here -->
@@ -263,7 +254,14 @@ export const DEBUG_PROVIDER_CHOICE = undefined;
                             field, title
                           ) in secretFormFieldsForSelectedProvider"
                           :key="title"
-                          :class="'flex flex-row justify-between items-center text-sm mb-[-1px]'"
+                          :class="
+                            clsx(
+                              'flex flex-row justify-between text-sm mb-[-1px]',
+                              field.type.includes('textarea')
+                                ? 'items-start'
+                                : 'items-center',
+                            )
+                          "
                         >
                           <label
                             class="basis-0 grow flex flex-row items-center gap-2xs"
@@ -272,13 +270,25 @@ export const DEBUG_PROVIDER_CHOICE = undefined;
                             <RequiredAsterisk v-if="field.required" />
                           </label>
                           <div class="flex flex-row basis-0 grow relative">
-                            <input
+                            <component
+                              :is="
+                                field.type.includes('textarea')
+                                  ? 'textarea'
+                                  : 'input'
+                              "
                               v-model="field.ref"
                               :type="field.type"
                               :class="
                                 clsx(
-                                  'h-lg p-xs pr-7 text-sm border font-mono cursor-text grow',
+                                  'p-xs pr-7 text-sm border font-mono cursor-text grow',
                                   'focus:outline-none focus:ring-0 focus:z-20',
+                                  field.type.includes('textarea')
+                                    ? [
+                                        'h-[120px]',
+                                        field.type.includes('password') &&
+                                          'secret-masked-textarea',
+                                      ]
+                                    : 'h-lg',
                                   themeClasses(
                                     'text-black bg-white border-neutral-400 focus:border-action-500',
                                     'text-white bg-black border-neutral-600 focus:border-action-300',
@@ -286,7 +296,7 @@ export const DEBUG_PROVIDER_CHOICE = undefined;
                                 )
                               "
                               :placeholder="
-                                field.type === 'password'
+                                field.type.includes('password')
                                   ? '*****'
                                   : 'Value will be visible'
                               "
@@ -294,6 +304,7 @@ export const DEBUG_PROVIDER_CHOICE = undefined;
                               data-1p-ignore
                               data-bwignore
                               data-form-type="other"
+                              @input="(event: KeyboardEvent) => field.ref = (event.target as HTMLInputElement | HTMLTextAreaElement).value"
                               @paste="
                                 (ev: ClipboardEvent) => tryMatchOnPaste(ev)
                               "
@@ -305,17 +316,31 @@ export const DEBUG_PROVIDER_CHOICE = undefined;
                                 )
                               "
                             />
-                            <Icon
-                              v-tooltip="
-                                field.type === 'password'
-                                  ? 'Show Value'
-                                  : 'Hide Value'
+                            <div
+                              :class="
+                                clsx(
+                                  'absolute right-xs cursor-pointer z-20',
+                                  field.type.includes('textarea')
+                                    ? 'h-full flex flex-row items-center'
+                                    : 'top-[10px]',
+                                )
                               "
-                              :name="field.type === 'password' ? 'eye' : 'hide'"
-                              size="xs"
-                              class="absolute right-xs top-[10px] cursor-pointer z-20"
-                              @click="toggleVisibility(field)"
-                            />
+                            >
+                              <Icon
+                                v-tooltip="
+                                  field.type.includes('password')
+                                    ? 'Show Value'
+                                    : 'Hide Value'
+                                "
+                                :name="
+                                  field.type.includes('password')
+                                    ? 'eye'
+                                    : 'hide'
+                                "
+                                size="xs"
+                                @click="toggleVisibility(field)"
+                              />
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -531,6 +556,7 @@ export const DEBUG_PROVIDER_CHOICE = undefined;
                       :tooltip="'Choose a different provider'"
                       label="Previous"
                       tone="neutral"
+                      :disabled="submitOnboardingInProgress"
                       @click="decrementOnboardingStep"
                     />
                     <NewButton
@@ -1323,6 +1349,17 @@ const incrementOnboardingStep = () => {
     OnboardingStep.SETUP_AI,
     currentStep.value + 1,
   ) as OnboardingStep;
+
+  if (
+    currentStep.value === OnboardingStep.INITIALIZE &&
+    secretFormFieldsForSelectedProvider.value
+  ) {
+    for (const item of Object.values(
+      secretFormFieldsForSelectedProvider.value,
+    )) {
+      item.ref = "";
+    }
+  }
 };
 const decrementOnboardingStep = () => {
   currentStep.value = Math.max(
@@ -1390,6 +1427,14 @@ const secretFormFieldsHetznerOrDigitalOcean = reactive({
   },
 });
 
+const secretFormFieldsGoogleCloud = reactive({
+  ServiceAccountKey: {
+    ref: "",
+    type: "password textarea",
+    required: true,
+  },
+});
+
 // NEW_PROVIDER_STEPS - Add the secret form fields as a reactive above
 // Then add it to the secretFormFieldsForSelectedProvider below
 
@@ -1400,6 +1445,7 @@ const secretFormFieldsForSelectedProvider = computed(() => {
     Azure: secretFormFieldsAzure,
     Hetzner: secretFormFieldsHetznerOrDigitalOcean,
     DigitalOcean: secretFormFieldsHetznerOrDigitalOcean,
+    "Google Cloud Platform": secretFormFieldsGoogleCloud,
   }[providerChoice.value] as SecretFormFields;
 });
 
@@ -1450,7 +1496,12 @@ const tryMatchOnPaste = (ev: ClipboardEvent) => {
 };
 
 const toggleVisibility = (field: SecretFormField) => {
-  field.type = field.type === "password" ? "text" : "password";
+  if (field.type === "password" || field.type === "text") {
+    field.type = field.type === "password" ? "text" : "password";
+  } else if (field.type.includes("textarea")) {
+    field.type =
+      field.type === "password textarea" ? "textarea" : "password textarea";
+  }
 };
 const someFieldsVisible = computed(() => {
   const formFields = secretFormFieldsForSelectedProvider.value;
@@ -1477,10 +1528,17 @@ const toggleAll = () => {
 const providerChoice = ref<Provider | undefined>(
   DEBUG_MODE ? DEBUG_PROVIDER_CHOICE : undefined,
 );
+const providerTrackingName = computed(() => {
+  if (providerChoice.value === "Google Cloud Platform") {
+    return "gcp";
+  } else {
+    return providerChoice.value?.toLowerCase();
+  }
+});
 const pickProvider = (provider: Provider) => {
   providerChoice.value = provider;
   credentialName.value = `My ${provider} Credential`;
-  onboardingTracking(`picked_provider_${provider.toLowerCase()}`);
+  onboardingTracking(`picked_provider_${providerTrackingName.value}`);
   incrementOnboardingStep();
 };
 const aOrAn = computed(() =>
@@ -1496,6 +1554,7 @@ const providerTitleText = computed(() => {
     Azure: "Enter an Azure Credential",
     Hetzner: "Enter a Hetzner API Token",
     DigitalOcean: "Enter a DigitalOcean API Token",
+    "Google Cloud Platform": "Enter a Google Cloud Platform Credential",
   }[providerChoice.value];
 });
 
@@ -1618,9 +1677,7 @@ const submitOnboardRequest = async () => {
   if (!providerChoice.value) return;
 
   // Tracking
-  onboardingTracking(
-    `finish_step_1_submit_${providerChoice.value.toLowerCase()}_info`,
-  );
+  onboardingTracking(`finish_step_1_submit_${providerTrackingName.value}_info`);
 
   // Disable button
   submitOnboardingInProgress.value = true;
@@ -1692,6 +1749,12 @@ const submitOnboardRequest = async () => {
       },
       secretFormFieldsHetznerOrDigitalOcean,
     ),
+    "Google Cloud Platform": generateCredValue(
+      {
+        ServiceAccountKey: "ServiceAccountKey",
+      },
+      secretFormFieldsGoogleCloud,
+    ),
   }[providerChoice.value];
 
   const crypted = await encryptMessage(credValue, publicKey);
@@ -1716,6 +1779,9 @@ const submitOnboardRequest = async () => {
     },
     DigitalOcean: {
       type: "Digitalocean",
+    },
+    "Google Cloud Platform": {
+      type: "Gcp",
     },
   }[providerChoice.value];
 
@@ -1823,11 +1889,15 @@ const onboardingTracking = (eventName: string) => {
   }
 };
 
-const onboardingTileRowClasses = computed(
-  () => tw`flex flex-row items-center gap-lg`,
+const onboardingTileRowClasses = computed(() =>
+  clsx(
+    tw`flex flex-row items-center gap-lg justify-between`,
+    windowWidthReactive.value > 900 ? tw`w-[720px]` : tw`w-[640px]`,
+  ),
 );
 </script>
 
+<!-- CSS styles for secret-masked-textarea are in App.vue since they are used in multiple places -->
 <style lang="css" scoped>
 .steps {
   grid-template-columns: 32px 1fr;
