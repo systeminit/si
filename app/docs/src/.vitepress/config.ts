@@ -134,6 +134,10 @@ export default withMermaid(defineConfig({
             text: "Use the Public API",
             link: "/how-tos/use-public-api",
           },
+          {
+            text: "Deploy an Application to Azure Container Apps",
+            link: "/how-tos/azure-container-apps",
+          },
         ],
       },
       {
