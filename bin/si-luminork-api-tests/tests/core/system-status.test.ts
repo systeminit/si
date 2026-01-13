@@ -5,7 +5,7 @@
  */
 
 import { assertEquals } from 'https://deno.land/std@0.220.1/assert/mod.ts';
-import { ConfigError, createTestClient } from '../src/test-utils.ts';
+import { ConfigError, createTestClient } from '../../src/test-utils.ts';
 
 Deno.test('API Server System Status', async () => {
   try {

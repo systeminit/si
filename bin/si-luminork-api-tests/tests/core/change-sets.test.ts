@@ -10,8 +10,8 @@ import {
   ConfigError,
   createTestClient,
   generateTestName,
-} from '../src/test-utils.ts';
-import { ApiError } from '../src/client.ts';
+} from '../../src/test-utils.ts';
+import { ApiError } from '../../src/client.ts';
 
 Deno.test('Change Sets API - CRUD Operations', async () => {
   try {

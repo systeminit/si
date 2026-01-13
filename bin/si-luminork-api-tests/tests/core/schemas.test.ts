@@ -5,9 +5,9 @@
  */
 
 import { assertEquals, assertExists } from 'https://deno.land/std@0.220.1/assert/mod.ts';
-import { cleanupTestResources, ConfigError, createTestClient } from '../src/test-utils.ts';
-import type { SchemaView } from '../src/api/schemas.ts';
-import { LuminorkApi } from '../src/api/index.ts';
+import { cleanupTestResources, ConfigError, createTestClient } from '../../src/test-utils.ts';
+import type { SchemaView } from '../../src/api/schemas.ts';
+import { LuminorkApi } from '../../src/api/index.ts';
 
 /**
  * Helper function to find the first installed schema in a change set

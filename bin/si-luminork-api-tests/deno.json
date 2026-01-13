@@ -20,11 +20,14 @@
     "proseWrap": "preserve"
   },
   "test": {
-    "include": ["tests/"]
+    "include": ["tests/core/"]
   },
   "tasks": {
     "test": "deno test --allow-env --allow-net --allow-read",
     "test:watch": "deno test --allow-env --allow-net --allow-read --watch",
+    "test:core": "deno test --allow-env --allow-net --allow-read tests/core/",
+    "soak": "deno test --allow-env --allow-net --allow-read tests/soak/",
+    "soak:components": "deno test --allow-env --allow-net --allow-read tests/soak/component-creation.test.ts",
     "debug": "deno run --allow-env --allow-net --allow-read debug-api.ts",
     "format": "deno fmt",
     "lint": "deno lint"

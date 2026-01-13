@@ -10,8 +10,8 @@ import {
   ConfigError,
   createTestClient,
   generateTestName,
-} from '../src/test-utils.ts';
-import { ApiError } from '../src/client.ts';
+} from '../../src/test-utils.ts';
+import { ApiError } from '../../src/client.ts';
 
 Deno.test('Components API - Create and Update Components', async () => {
   try {
