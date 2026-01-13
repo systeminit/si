@@ -1095,7 +1095,7 @@ Policy management operations.
 
 Evaluate policies against infrastructure components.
 
-This command evaluates one or more compliance policies written in markdown format against your System Initiative infrastructure. The evaluation process uses Claude AI to:
+This command evaluates one or more policies written in markdown format against your System Initiative infrastructure. The evaluation process uses Claude AI to:
 1. Extract policy structure from the markdown document(s)
 2. Collect infrastructure data from System Initiative based on queries
 3. Evaluate components against the policy requirements

@@ -105,18 +105,12 @@ export default withMermaid(defineConfig({
         collapsed: false,
         items: [
           {
-            text: "AWS VPC",
-            collapsed: false,
-            items: [
-              {
-                text: "AI Agent",
-                link: "/how-tos/aws-vpc-ai-agent",
-              },
-              {
-                text: "CLI or Web Application",
-                link: "/how-tos/aws-vpc-cli-web-application",
-              },
-            ],
+            text: "AWS VPC via AI Agent",
+            link: "/how-tos/aws-vpc-ai-agent",
+          },
+          {
+            text: "AWS VPC via CLI or Web Application",
+            link: "/how-tos/aws-vpc-cli-web-application",
           },
           {
             text: "AWS Service Control Policy for Cost Control",
@@ -131,12 +125,16 @@ export default withMermaid(defineConfig({
             link: "/how-tos/create-templates",
           },
           {
-            text: "Use the Public API",
-            link: "/how-tos/use-public-api",
-          },
-          {
             text: "Deploy an Application to Azure Container Apps",
             link: "/how-tos/azure-container-apps",
+          },
+          {
+            text: "Evaluate Policy",
+            link: "/how-tos/evaluate-policy",
+          },
+          {
+            text: "Use the Public API",
+            link: "/how-tos/use-public-api",
           },
         ],
       },
