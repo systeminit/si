@@ -174,6 +174,10 @@ pub(crate) struct Args {
     )]
     pub(crate) backfill_checkpoint_interval_secs: u64,
 
+    /// Maximum concurrent uploads per cache type during backfill
+    #[arg(long, default_value = "5", env = "SI_BACKFILL_MAX_CONCURRENT_UPLOADS")]
+    pub(crate) backfill_max_concurrent_uploads: usize,
+
     /// Veritech encryption key file location [default: /run/sdf/veritech_encryption.key]
     #[arg(long)]
     pub(crate) veritech_encryption_key_path: Option<PathBuf>,
@@ -490,6 +494,10 @@ fn build_config_map(args: Args, config_map: &mut ConfigMap) -> &ConfigMap {
     config_map.set(
         "backfill_checkpoint_interval_secs",
         i64::try_from(args.backfill_checkpoint_interval_secs).unwrap_or(30),
+    );
+    config_map.set(
+        "backfill_max_concurrent_uploads",
+        i64::try_from(args.backfill_max_concurrent_uploads).unwrap_or(5),
     );
 
     config_map.set("nats.connection_name", NAME);

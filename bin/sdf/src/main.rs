@@ -318,6 +318,7 @@ async fn backfill_layer_cache(
         config.backfill_cache_types().clone(),
         config.backfill_key_batch_size(),
         config.backfill_checkpoint_interval_secs(),
+        config.backfill_max_concurrent_uploads(),
     )?;
 
     let backfiller = LayerCacheBackfiller::new(

@@ -29,6 +29,7 @@ pub struct BackfillConfig {
     pub cache_types: Vec<String>,
     pub key_batch_size: usize,
     pub checkpoint_interval: Duration,
+    pub max_concurrent_uploads: usize,
 }
 
 impl BackfillConfig {
@@ -37,6 +38,7 @@ impl BackfillConfig {
         cache_types: Option<String>,
         key_batch_size: usize,
         checkpoint_interval_secs: u64,
+        max_concurrent_uploads: usize,
     ) -> BackfillResult<Self> {
         // Parse cutoff timestamp (required)
         let cutoff_str = cutoff_timestamp.ok_or(BackfillError::MissingCutoffTimestamp)?;
@@ -77,6 +79,7 @@ impl BackfillConfig {
             cache_types: types,
             key_batch_size,
             checkpoint_interval: Duration::from_secs(checkpoint_interval_secs),
+            max_concurrent_uploads,
         })
     }
 }
