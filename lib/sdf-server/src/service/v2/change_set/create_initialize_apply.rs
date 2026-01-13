@@ -43,6 +43,7 @@ pub enum Provider {
     },
     Hetzner {},      // No other data for Hetzner besides the credential!
     Digitalocean {}, // No other data for DigitalOcean besides the credential!
+    Gcp {},          // No other data for Google Cloud Platform besides the credential!
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -163,6 +164,15 @@ async fn initialize_and_apply(ctx: &mut DalContext, request: Request) -> Result<
             "",
             None,
         ),
+        Provider::Gcp {} => (
+            "Google Cloud Credential",
+            "/secrets/Google Cloud Credential",
+            None,
+            "".to_string(),
+            "",
+            "",
+            None,
+        ),
     };
 
     // Create the credential component
@@ -230,7 +240,7 @@ async fn initialize_and_apply(ctx: &mut DalContext, request: Request) -> Result<
         component
     };
 
-    // creating a region or schema, skip this section for Hetzner and DigitalOcean
+    // creating a region or schema, skip this section for GCP, Hetzner, and DigitalOcean
     if let Some(schema_to_create) = region_or_location_schema {
         if let Some(sub_id) = subscription_id {
             let comp_name = "SubscriptionIdComponent".to_string();

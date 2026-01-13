@@ -24,6 +24,18 @@ export const getAssetColor = (name: string) => {
     : BRAND_COLOR_FILTER_HEX_CODES.Custom; // fallback to Custom
 };
 
+// This version allows for "azure" or "gcp" as strings
+export const pickBrandIconByStringPermissive = (name: string): IconNames => {
+  if (name.toLowerCase().includes("azure")) {
+    return pickBrandIconByString("microsoft");
+  } else if (name.toLowerCase().includes("gcp")) {
+    return pickBrandIconByString("google cloud");
+  } else {
+    return pickBrandIconByString(name);
+  }
+};
+
+// This is the default version which will get the right icon for any schema
 export const pickBrandIconByString = (name: string): IconNames => {
   if (name.toLowerCase().startsWith("microsoft")) {
     return "logo-azure";

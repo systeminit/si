@@ -4,8 +4,8 @@
       clsx(
         'flex items-center relative p-sm',
         'border rounded cursor-pointer',
-        variant === 'primary' && 'w-[220px] h-[280px] flex-col gap-sm',
-        variant === 'secondary' && 'w-[220px] h-[80px] flex-row gap-xs',
+        variant === 'primary' && primaryClasses,
+        variant === 'secondary' && 'grow h-[80px] flex-row gap-xs',
         themeClasses(
           'text-neutral-800 bg-neutral-100 border-neutral-300 hover:text-black hover:border-black',
           'text-neutral-200 bg-neutral-900 border-neutral-600 hover:text-white hover:border-white',
@@ -32,9 +32,15 @@ import { Icon, TextPill, themeClasses } from "@si/vue-lib/design-system";
 import clsx from "clsx";
 import { computed } from "vue";
 import { tw } from "@si/vue-lib";
-import { pickBrandIconByString } from "./util";
+import { pickBrandIconByStringPermissive } from "./util";
+import { windowWidthReactive } from "./logic_composables/emitters";
 
-export type Provider = "AWS" | "Azure" | "Hetzner" | "DigitalOcean";
+export type Provider =
+  | "AWS"
+  | "Azure"
+  | "Hetzner"
+  | "DigitalOcean"
+  | "Google Cloud Platform";
 
 export type OnboardingProviderTileVariant = "primary" | "secondary";
 
@@ -55,7 +61,7 @@ const icon = computed(() => {
     return "hetzner-logotype";
   }
 
-  return pickBrandIconByString(props.provider);
+  return pickBrandIconByStringPermissive(props.provider);
 });
 
 const iconClasses = computed(() => {
@@ -74,12 +80,21 @@ const iconClasses = computed(() => {
 
 const betaClasses = computed(() =>
   clsx(
-    props.variant === "primary" && tw`absolute top-xs left-xs`,
+    props.variant === "primary"
+      ? tw`absolute top-xs left-xs`
+      : tw`order-last ml-auto`,
     tw`border text-xs`,
     themeClasses(
       tw`border-action-300 bg-action-100`,
       tw`border-action-500 bg-action-900`,
     ),
+  ),
+);
+
+const primaryClasses = computed(() =>
+  clsx(
+    tw`h-[280px] flex-col gap-sm`,
+    windowWidthReactive.value > 900 ? tw`w-[220px]` : tw`w-[200px]`,
   ),
 );
 
