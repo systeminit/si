@@ -8,6 +8,7 @@ System Initiative currently supports the following cloud providers:
 
 - [AWS (Amazon Web Services)](./aws.md) - Full support with multiple authentication methods
 - [Azure (Microsoft Azure)](./azure.md) - Beta support with Service Principal authentication
+- [Google Cloud Platform](./gcp.md) - Beta support with ???
 - [DigitalOcean](./digital-ocean.md) - Beta support with API token authentication
 - [Hetzner Cloud](./hetzner.md) - Beta support with API token authentication
 
