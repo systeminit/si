@@ -1589,6 +1589,48 @@ Schemas management endpoints
 |404|[Not Found](https://tools.ietf.org/html/rfc7231#section-6.5.4)|Schema not found|None|
 |500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
 
+## Install a schema from a PkgSpec file
+
+<a id="opIdinstall_from_file"></a>
+
+> Request format
+
+`POST /v1/w/{workspace_id}/change-sets/{change_set_id}/schemas/install_from_file`
+
+Accepts a multipart form with a `pkg_spec` field containing the JSON PkgSpec.
+If the schema already exists, it will be upgraded with the new variant.
+
+<h3 id="install-a-schema-from-a-pkgspec-file-parameters">Parameters</h3>
+
+|Name|In|Type|Required|Description|
+|---|---|---|---|---|
+|workspace_id|path|string|true|Workspace identifier|
+|change_set_id|path|string|true|Change Set identifier|
+
+> Example responses
+
+> 200 Response
+
+```json
+{
+  "category": "AWS::EC2",
+  "displayName": "EC2 Instance",
+  "schemaId": "01H9ZQD35JPMBGHH69BT0Q79VZ",
+  "schemaName": "AWS::EC2::Instance",
+  "schemaVariantId": "01H9ZQD35JPMBGHH69BT0Q79VY"
+}
+```
+
+<h3 id="install-a-schema-from-a-pkgspec-file-responses">Responses</h3>
+
+|Status|Meaning|Description|Schema|
+|---|---|---|---|
+|200|[OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)|Schema installed successfully|[InstallFromFileV1Response](#schemainstallfromfilev1response)|
+|400|[Bad Request](https://tools.ietf.org/html/rfc7231#section-6.5.1)|Bad request - Invalid or missing pkg_spec|[ApiError](#schemaapierror)|
+|401|[Unauthorized](https://tools.ietf.org/html/rfc7235#section-3.1)|Unauthorized - Invalid or missing token|None|
+|422|[Unprocessable Entity](https://tools.ietf.org/html/rfc2518#section-10.3)|Validation error - Invalid PkgSpec data|[ApiError](#schemaapierror)|
+|500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
+
 ## Complex search for schemas
 
 <a id="opIdsearch_schemas"></a>
@@ -6634,6 +6676,34 @@ continued
 |---|---|---|---|---|
 |expiresAt|string,null|false|none|none|
 |token|string|true|none|none|
+
+## [InstallFromFileV1Response](#tocS_InstallFromFileV1Response)
+
+<a id="schemainstallfromfilev1response"></a>
+<a id="schema_InstallFromFileV1Response"></a>
+<a id="tocSinstallfromfilev1response"></a>
+<a id="tocsinstallfromfilev1response"></a>
+
+```json
+{
+  "category": "AWS::EC2",
+  "displayName": "EC2 Instance",
+  "schemaId": "01H9ZQD35JPMBGHH69BT0Q79VZ",
+  "schemaName": "AWS::EC2::Instance",
+  "schemaVariantId": "01H9ZQD35JPMBGHH69BT0Q79VY"
+}
+
+```
+
+### [Properties](#installfromfilev1response-properties)
+
+|Name|Type|Required|Restrictions|Description|
+|---|---|---|---|---|
+|category|string|true|none|none|
+|displayName|string|true|none|none|
+|schemaId|string|true|none|none|
+|schemaName|string|true|none|none|
+|schemaVariantId|string|true|none|none|
 
 ## [InviteMemberRequest](#tocS_InviteMemberRequest)
 
