@@ -124,6 +124,7 @@ import {
   callPolicyEvaluate,
   type PolicyEvaluateOptions,
 } from "./policy/evaluate.ts";
+import { callSchemaUpload, type SchemaUploadOptions } from "./schema/upload.ts";
 
 /**
  * Global options available to all commands
@@ -373,6 +374,29 @@ function buildSchemaCommand() {
           await callSchemaContribute({
             schema: schema as string,
           } as SchemaContributeOptions);
+        }),
+    )
+    .command(
+      "upload",
+      createSubCommand(true)
+        .description(
+          "Upload a PkgSpec JSON file to install a schema in your workspace. " +
+            "If the schema already exists, it will be upgraded with the new variant.",
+        )
+        .option(
+          "--from-file <path:string>",
+          "Path to the PkgSpec JSON file to upload",
+          { required: true },
+        )
+        .option(
+          "-c, --change-set <id-or-name:string>",
+          "Change set ID or name (creates new change set if not specified)",
+        )
+        .action(async (options) => {
+          await callSchemaUpload({
+            filePath: options.fromFile as string,
+            changeSet: options.changeSet as string | undefined,
+          } as SchemaUploadOptions);
         }),
     );
 }
