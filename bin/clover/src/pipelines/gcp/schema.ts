@@ -38,6 +38,8 @@ export type NormalizedGcpSchema = Extend<
     annotations?: {
       required?: string[];
     };
+    // GCP marks deprecated fields with this flag
+    deprecated?: boolean;
   }
 >;
 
@@ -87,6 +89,7 @@ export interface GcpParameter {
   minimum?: string;
   maximum?: string;
   default?: string;
+  deprecated?: boolean;
 }
 
 export interface GcpAuth {

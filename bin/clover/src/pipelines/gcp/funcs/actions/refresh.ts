@@ -90,10 +90,12 @@ async function refreshViaList(
       }
     }
 
-    // Find resource matching our resourceId
+    // Find resource matching our resourceId or domain.name (fallback for SQL Users, etc.)
+    const domainName = _.get(component.properties, ["domain", "name"]);
     for (const resource of items || []) {
       const resourceName = resource.name || resource.id;
-      if (resourceName === resourceId || resourceName?.endsWith(`/${resourceId}`) || resourceId.endsWith(`/${resourceName}`)) {
+      if (resourceName === resourceId || resourceName === domainName ||
+          resourceName?.endsWith(`/${resourceId}`) || resourceId.endsWith(`/${resourceName}`)) {
         return { payload: normalizeGcpResourceValues(resource), status: "ok" };
       }
     }

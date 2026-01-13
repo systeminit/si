@@ -90,3 +90,81 @@ export function detectCreateOnlyProperties(
 
   return createOnlyProps;
 }
+
+/**
+ * Detects output-only properties from their descriptions or well-known names.
+ *
+ * GCP Discovery Documents don't consistently mark output-only fields with readOnly: true,
+ * so we pattern-match descriptions and check for well-known output-only property names.
+ *
+ * @param schema - The schema to check for output-only properties
+ * @returns Array of property names that are output-only
+ */
+export function detectOutputOnlyProperties(
+  schema: NormalizedGcpSchema | undefined,
+): string[] {
+  const outputOnlyProps: string[] = [];
+
+  // Well-known properties that are always output-only
+  const KNOWN_OUTPUT_ONLY = new Set(["kind", "etag", "selfLink"]);
+
+  if (!schema?.properties) {
+    return outputOnlyProps;
+  }
+
+  for (
+    const [propName, propDef] of Object.entries(schema.properties)
+  ) {
+    // Check well-known output-only property names
+    if (KNOWN_OUTPUT_ONLY.has(propName)) {
+      outputOnlyProps.push(propName);
+      continue;
+    }
+
+    const rawDescription = propDef?.description || "";
+    // Normalize newlines to spaces so patterns work across line breaks
+    const description = rawDescription.replace(/\n/g, " ");
+
+    // Match patterns that indicate output-only:
+    // 1. "[Output Only]" - explicit GCP marker (common in Compute API)
+    // 2. "Output only." at start - prefix style marker (most common)
+    // 3. "is a read only" / "read only property" - descriptive style
+    // 4. "output only" anywhere - mid-sentence mentions
+    const isOutputOnly =
+      /\[Output Only\]|^Output only\.|is (a )?read only|read only property|\boutput only\b/i.test(description);
+
+    if (isOutputOnly) {
+      outputOnlyProps.push(propName);
+    }
+  }
+
+  return outputOnlyProps;
+}
+
+/**
+ * Detects deprecated properties from their schema.
+ *
+ * Only checks for the explicit "deprecated": true property flag.
+ *
+ * @param schema - The schema to check for deprecated properties
+ * @returns Array of property names that are deprecated
+ */
+export function detectDeprecatedProperties(
+  schema: NormalizedGcpSchema | undefined,
+): string[] {
+  const deprecatedProps: string[] = [];
+
+  if (!schema?.properties) {
+    return deprecatedProps;
+  }
+
+  for (
+    const [propName, propDef] of Object.entries(schema.properties)
+  ) {
+    if (propDef?.deprecated === true) {
+      deprecatedProps.push(propName);
+    }
+  }
+
+  return deprecatedProps;
+}
