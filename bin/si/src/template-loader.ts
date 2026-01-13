@@ -10,6 +10,7 @@ import {
   PROVIDER_AZURE_TEMPLATE,
   PROVIDER_COMMON_TEMPLATE,
   PROVIDER_DIGITALOCEAN_TEMPLATE,
+  PROVIDER_GOOGLE_TEMPLATE,
   PROVIDER_HETZNER_TEMPLATE,
   TEMPLATE_SHELL,
 } from "./embedded-templates.ts";
@@ -82,7 +83,7 @@ function getEmbeddedProviderTemplate(provider: string): string | undefined {
     azure: PROVIDER_AZURE_TEMPLATE,
     hetzner: PROVIDER_HETZNER_TEMPLATE,
     digitalocean: PROVIDER_DIGITALOCEAN_TEMPLATE,
-    // google: PROVIDER_GOOGLE_TEMPLATE,
+    google: PROVIDER_GOOGLE_TEMPLATE,
   };
   return templates[provider];
 }
