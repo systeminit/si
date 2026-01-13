@@ -78,6 +78,7 @@ veritech-client = { path = "../../lib/veritech-client" }
 
 [dev-dependencies]
 dal-materialized-views = { path = "../../lib/dal-materialized-views" }
+dal-summary-generator = { path = "../../lib/dal-summary-generator" }
 dal-test = { path = "../../lib/dal-test" }
 derive_more = { workspace = true }
 pretty_assertions_sorted = { workspace = true }

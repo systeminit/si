@@ -95,6 +95,7 @@ rust_test(
         "//lib/audit-database:audit-database",
         "//lib/audit-logs-stream:audit-logs-stream",
         "//lib/dal-materialized-views:dal-materialized-views",
+        "//lib/dal-summary-generator:dal-summary-generator",
         "//lib/dal-test:dal-test",
         "//lib/pending-events:pending-events",
         "//lib/rebaser-server:rebaser-server",

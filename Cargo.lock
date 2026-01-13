@@ -2231,6 +2231,7 @@ dependencies = [
  "convert_case 0.6.0",
  "dal-macros",
  "dal-materialized-views",
+ "dal-summary-generator",
  "dal-test",
  "dashmap",
  "derive_more",
@@ -2327,6 +2328,21 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.104",
+]
+
+[[package]]
+name = "dal-summary-generator"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "dal",
+ "remain",
+ "serde_json",
+ "si-events",
+ "si-id",
+ "si-layer-cache",
+ "telemetry",
+ "thiserror 2.0.12",
 ]
 
 [[package]]
@@ -4818,6 +4834,7 @@ dependencies = [
  "color-eyre",
  "dal",
  "dal-materialized-views",
+ "dal-summary-generator",
  "derive_builder",
  "edda-client",
  "edda-core",

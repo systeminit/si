@@ -7,6 +7,7 @@ rust_library(
         "//lib/buck2-resources:buck2-resources",
         "//lib/dal:dal",
         "//lib/dal-materialized-views:dal-materialized-views",
+        "//lib/dal-summary-generator:dal-summary-generator",
         "//lib/si-db:si-db",
         "//lib/edda-client:edda-client",
         "//lib/edda-core:edda-core",

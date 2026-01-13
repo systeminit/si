@@ -119,6 +119,8 @@ pub enum ComponentsError {
     ComponentNotRestorable(ComponentId),
     #[error("dal change set error: {0}")]
     DalChangeSet(#[from] dal::ChangeSetError),
+    #[error("dal summary generator error: {0}")]
+    DalSummaryGenerator(#[from] dal_summary_generator::Error),
     #[error("diagram error: {0}")]
     Diagram(#[from] dal::diagram::DiagramError),
     #[error(
