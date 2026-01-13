@@ -16,7 +16,7 @@ import { Context } from "../../../context.ts";
 
 const name = "exec-debug-func";
 const title = "Run a debug func inside a change set";
-const description = `<description>Runs a one-off function inside a change set intended to troubleshoot problems building infrastructure in the cloud. Returns arbitrary json data that should provide information about problems encountered when building infrastructure. Requires a component that has credentials and other settings necessary for making API calls within the cloud environment. The component SHOULD be connected to READ ONLY CREDENTIALS to prevent making changes to infrastructure. Optionally accepts arbitrary JSON debugInput with any additional context required for troubleshooting the problem.</description>`;
+const description = `<description>Runs a one-off function inside a change set intended to troubleshoot problems building infrastructure in the cloud. Returns arbitrary json data that should provide information about problems encountered when building infrastructure. Requires a component that has credentials and other settings necessary for making API calls within the cloud environment. The component SHOULD be connected to READ ONLY CREDENTIALS to prevent making changes to infrastructure. Optionally accepts arbitrary JSON debugInput with any additional context required for troubleshooting the problem. Debug functions should not be used for discovery or import of assets.</description>`;
 
 const debugFuncDescription =
   "<description>A typescript debug function. The function should *ALWAYS* have the form of `async function debug({ component, debugInput }) { /* debug code here */ }`. The function name should *ALWAYS* be `debug`</description>";
