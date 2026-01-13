@@ -436,6 +436,85 @@ impl CachedModule {
         row.map(TryInto::try_into).transpose()
     }
 
+    /// Search for schema names matching a pattern using full-text search with trigram fallback.
+    /// Returns a lightweight list of (schema_name, schema_id) tuples for suggestions.
+    pub async fn search_similar_schema_names(
+        ctx: &DalContext,
+        search_term: &str,
+        limit: i64,
+    ) -> CachedModuleResult<Vec<(String, SchemaId)>> {
+        // First, try full-text search which handles word matching well.
+        // This converts the search term into a tsquery where all words must match (AND).
+        // For "Google Cloud IAM Policies" it will find schemas containing all those words.
+        let fts_query = "
+            SELECT schema_name, schema_id
+            FROM (
+                SELECT DISTINCT ON (schema_name)
+                    schema_name,
+                    schema_id
+                FROM cached_modules
+                WHERE to_tsvector('english', schema_name) @@ plainto_tsquery('english', $1)
+                ORDER BY schema_name, created_at DESC
+            ) sub
+            ORDER BY length(schema_name)
+            LIMIT $2
+        ";
+
+        let rows = ctx
+            .txns()
+            .await?
+            .pg()
+            .query(fts_query, &[&search_term, &limit])
+            .await?;
+
+        if !rows.is_empty() {
+            let results = rows
+                .into_iter()
+                .map(|row| {
+                    let schema_name: String = row.try_get("schema_name")?;
+                    let schema_id: SchemaId = row.try_get("schema_id")?;
+                    Ok((schema_name, schema_id))
+                })
+                .collect::<Result<Vec<_>, PgError>>()?;
+            return Ok(results);
+        }
+
+        // Fallback to trigram word similarity for typos and partial matches.
+        // The <% operator uses the GIN trigram index for efficient candidate filtering.
+        let trgm_query = "
+            SELECT schema_name, schema_id, sim
+            FROM (
+                SELECT DISTINCT ON (schema_name)
+                    schema_name,
+                    schema_id,
+                    word_similarity($1, schema_name) as sim
+                FROM cached_modules
+                WHERE $1 <% schema_name
+                ORDER BY schema_name, created_at DESC
+            ) sub
+            ORDER BY sim DESC
+            LIMIT $2
+        ";
+
+        let rows = ctx
+            .txns()
+            .await?
+            .pg()
+            .query(trgm_query, &[&search_term, &limit])
+            .await?;
+
+        let results = rows
+            .into_iter()
+            .map(|row| {
+                let schema_name: String = row.try_get("schema_name")?;
+                let schema_id: SchemaId = row.try_get("schema_id")?;
+                Ok((schema_name, schema_id))
+            })
+            .collect::<Result<Vec<_>, PgError>>()?;
+
+        Ok(results)
+    }
+
     pub async fn list_for_schema_id(
         ctx: &DalContext,
         schema_id: SchemaId,
