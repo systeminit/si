@@ -7,6 +7,12 @@ on:
         description: "Version to publish (e.g., 1.0.0)"
         required: true
         type: string
+  workflow_call:
+    inputs:
+      version:
+        description: "Version to publish (e.g., 1.0.0)"
+        required: true
+        type: string
 
 jobs:
   build-and-publish:
@@ -32,11 +38,11 @@ jobs:
 
       - name: Update version in setup.py
         run: |
-          sed -i "s/VERSION = ['\"].*['\"]/VERSION = '${{ github.event.inputs.version }}'/g" setup.py
+          sed -i "s/VERSION = ['\"].*['\"]/VERSION = '${{ inputs.version }}'/g" setup.py
     
       - name: Update version in pyproject.toml
         run: |
-          sed -i "s/version = ['\"].*['\"]/version = '${{ github.event.inputs.version }}'/g" pyproject.toml
+          sed -i "s/version = ['\"].*['\"]/version = '${{ inputs.version }}'/g" pyproject.toml
 
       - name: Build package
         run: python -m build

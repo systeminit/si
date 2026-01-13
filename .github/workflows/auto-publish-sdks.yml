@@ -1,0 +1,147 @@
+name: Auto Publish SDKs
+
+on:
+  workflow_call:
+
+jobs:
+  check-python:
+    runs-on: ubuntu-latest
+    outputs:
+      needs_publish: ${{ steps.check.outputs.needs_publish }}
+      version: ${{ steps.check.outputs.version }}
+      checksum: ${{ steps.check.outputs.checksum }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check if Python SDK needs publishing
+        id: check
+        run: |
+          if [ ! -f "generated-sdks/python/.source-checksum" ]; then
+            echo "No .source-checksum file found for Python SDK"
+            echo "needs_publish=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          SOURCE_CHECKSUM=$(cat generated-sdks/python/.source-checksum)
+          echo "Source checksum: $SOURCE_CHECKSUM"
+
+          if git tag -l | grep -q "^sdk-python-v.*-${SOURCE_CHECKSUM}$"; then
+            echo "Tag with checksum already exists, skipping publish"
+            echo "needs_publish=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "No tag found with this checksum, will publish"
+            echo "needs_publish=true" >> "$GITHUB_OUTPUT"
+            echo "checksum=$SOURCE_CHECKSUM" >> "$GITHUB_OUTPUT"
+
+            PUBLISHED_VERSION=$(curl -sf https://pypi.org/pypi/system-initiative-api-client/json | jq -r '.info.version')
+            if [ -z "$PUBLISHED_VERSION" ] || [ "$PUBLISHED_VERSION" == "null" ]; then
+              echo "::error::Failed to get published version from PyPI"
+              exit 1
+            fi
+            echo "Published version: $PUBLISHED_VERSION"
+
+            IFS='.' read -r MAJOR MINOR PATCH <<< "$PUBLISHED_VERSION"
+            NEW_VERSION="${MAJOR}.${MINOR}.$((PATCH + 1))"
+            echo "New version: $NEW_VERSION"
+            echo "version=$NEW_VERSION" >> "$GITHUB_OUTPUT"
+          fi
+
+  publish-python:
+    needs: check-python
+    if: needs.check-python.outputs.needs_publish == 'true'
+    uses: ./.github/workflows/publish-python-sdk.yml
+    with:
+      version: ${{ needs.check-python.outputs.version }}
+    secrets: inherit
+
+  tag-python:
+    runs-on: ubuntu-latest
+    needs: [check-python, publish-python]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.SYSTEMINIT_BOT_TOKEN }}
+
+      - name: Create tag
+        run: |
+          TAG_NAME="sdk-python-v${{ needs.check-python.outputs.version }}-${{ needs.check-python.outputs.checksum }}"
+          git config user.name "systeminitbot"
+          git config user.email "systeminitbot@systeminit.com"
+          git tag -a "$TAG_NAME" -m "Python SDK v${{ needs.check-python.outputs.version }} published"
+          git push origin "$TAG_NAME"
+          echo "Created tag: $TAG_NAME"
+
+  check-typescript:
+    runs-on: ubuntu-latest
+    outputs:
+      needs_publish: ${{ steps.check.outputs.needs_publish }}
+      version: ${{ steps.check.outputs.version }}
+      checksum: ${{ steps.check.outputs.checksum }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check if TypeScript SDK needs publishing
+        id: check
+        run: |
+          if [ ! -f "generated-sdks/typescript/.source-checksum" ]; then
+            echo "No .source-checksum file found for TypeScript SDK"
+            echo "needs_publish=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          SOURCE_CHECKSUM=$(cat generated-sdks/typescript/.source-checksum)
+          echo "Source checksum: $SOURCE_CHECKSUM"
+
+          if git tag -l | grep -q "^sdk-typescript-v.*-${SOURCE_CHECKSUM}$"; then
+            echo "Tag with checksum already exists, skipping publish"
+            echo "needs_publish=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "No tag found with this checksum, will publish"
+            echo "needs_publish=true" >> "$GITHUB_OUTPUT"
+            echo "checksum=$SOURCE_CHECKSUM" >> "$GITHUB_OUTPUT"
+
+            PUBLISHED_VERSION=$(npm view system-initiative-api-client version)
+            if [ -z "$PUBLISHED_VERSION" ]; then
+              echo "::error::Failed to get published version from NPM"
+              exit 1
+            fi
+            echo "Published version: $PUBLISHED_VERSION"
+
+            IFS='.' read -r MAJOR MINOR PATCH <<< "$PUBLISHED_VERSION"
+            NEW_VERSION="${MAJOR}.${MINOR}.$((PATCH + 1))"
+            echo "New version: $NEW_VERSION"
+            echo "version=$NEW_VERSION" >> "$GITHUB_OUTPUT"
+          fi
+
+  publish-typescript:
+    needs: check-typescript
+    if: needs.check-typescript.outputs.needs_publish == 'true'
+    uses: ./.github/workflows/publish-typescript-sdk.yml
+    with:
+      version: ${{ needs.check-typescript.outputs.version }}
+    secrets: inherit
+
+  tag-typescript:
+    runs-on: ubuntu-latest
+    needs: [check-typescript, publish-typescript]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.SYSTEMINIT_BOT_TOKEN }}
+
+      - name: Create tag
+        run: |
+          TAG_NAME="sdk-typescript-v${{ needs.check-typescript.outputs.version }}-${{ needs.check-typescript.outputs.checksum }}"
+          git config user.name "systeminitbot"
+          git config user.email "systeminitbot@systeminit.com"
+          git tag -a "$TAG_NAME" -m "TypeScript SDK v${{ needs.check-typescript.outputs.version }} published"
+          git push origin "$TAG_NAME"
+          echo "Created tag: $TAG_NAME"

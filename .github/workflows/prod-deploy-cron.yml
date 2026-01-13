@@ -11,3 +11,8 @@ jobs:
       environment: production
       wait_duration: 0
     secrets: inherit
+
+  auto-publish-sdks:
+    needs: deploy-production
+    uses: ./.github/workflows/auto-publish-sdks.yml
+    secrets: inherit

@@ -7,6 +7,12 @@ on:
         description: "Version to publish (e.g., 1.0.0)"
         required: true
         type: string
+  workflow_call:
+    inputs:
+      version:
+        description: "Version to publish (e.g., 1.0.0)"
+        required: true
+        type: string
 
 jobs:
   build-and-publish-npm:
@@ -29,7 +35,7 @@ jobs:
       - name: Update version in package.json
         working-directory: generated-sdks/typescript
         run: |
-          sed -i "s/\"version\": \".*\"/\"version\": \"${{ github.event.inputs.version }}\"/g" package.json
+          sed -i "s/\"version\": \".*\"/\"version\": \"${{ inputs.version }}\"/g" package.json
           cat package.json
 
       - name: Build package
@@ -69,7 +75,7 @@ jobs:
       - name: Update version in deno.json
         working-directory: generated-sdks/typescript
         run: |
-          sed -i "s/\"version\": \".*\"/\"version\": \"${{ github.event.inputs.version }}\"/g" deno.json
+          sed -i "s/\"version\": \".*\"/\"version\": \"${{ inputs.version }}\"/g" deno.json
           cat deno.json
 
       - name: Build package
