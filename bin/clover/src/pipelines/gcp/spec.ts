@@ -15,6 +15,8 @@ import logger from "../../logger.ts";
 import {
   buildGcpTypeName,
   detectCreateOnlyProperties,
+  detectDeprecatedProperties,
+  detectOutputOnlyProperties,
   titleCaseResourcePath,
 } from "./utils.ts";
 
@@ -357,13 +359,17 @@ function buildGcpResourceSpec(
   for (const paramName of insert?.parameterOrder || []) {
     if (skipPathParams.has(paramName)) continue;
 
+    const param = insert?.parameters?.[paramName];
+
+    // Skip deprecated path parameters
+    if (param?.deprecated === true) continue;
+
     const existingProp = domainProperties[paramName];
     const isReadOnly = existingProp && typeof existingProp === "object" &&
       existingProp.readOnly;
 
     // Add if doesn't exist or is read-only (we need a writable version for the URL)
     if (!existingProp || isReadOnly) {
-      const param = insert?.parameters?.[paramName];
       domainProperties[paramName] = {
         type: param?.type || "string",
         description: param?.description || `The ${paramName} for this resource`,
@@ -373,9 +379,31 @@ function buildGcpResourceSpec(
   }
 
   // Remove read-only properties from domain
-  const writableDomainProperties = Object.fromEntries(
+  const nonReadOnlyDomainProperties = Object.fromEntries(
     Object.entries(domainProperties).filter(([_, prop]) =>
       typeof prop === "object" && prop !== null && !prop.readOnly
+    ),
+  );
+
+  // Remove output-only properties from domain (they belong in resourceValue only)
+  // GCP doesn't consistently mark these with readOnly, so we detect via description patterns
+  const outputOnlyProps = new Set(detectOutputOnlyProperties(insert?.request));
+  const nonOutputOnlyDomainProperties = Object.fromEntries(
+    Object.entries(nonReadOnlyDomainProperties).filter(([name]) =>
+      !outputOnlyProps.has(name)
+    ),
+  );
+
+  // Remove deprecated properties from domain
+  // Check all request schemas since we merge props from insert, update, and patch
+  const deprecatedProps = new Set([
+    ...detectDeprecatedProperties(insert?.request),
+    ...detectDeprecatedProperties(update?.request),
+    ...detectDeprecatedProperties(patch?.request),
+  ]);
+  const writableDomainProperties = Object.fromEntries(
+    Object.entries(nonOutputOnlyDomainProperties).filter(([name]) =>
+      !deprecatedProps.has(name)
     ),
   );
 

@@ -489,6 +489,26 @@ export const GCP_SCHEMA_OVERRIDES: Map<
       variant.actionFuncs.push(removeInstancesActionFuncSpec);
     },
   ],
+  // SQL Admin Users - use list-only mode because GET requires `host` query parameter
+  // Without the host param, MySQL users (which have host like '%') return 404
+  [
+    "Google Cloud SQL Admin Users",
+    (spec: ExpandedPkgSpec) => {
+      const variant = spec.schemas[0].variants[0];
+
+      // Set listOnly flag so refresh uses the list API instead of GET
+      const extraProp = objectPropForOverride(variant.domain, "extra");
+      const listOnlyProp = createScalarProp(
+        "listOnly",
+        "string",
+        extraProp.metadata.propPath,
+        false,
+      );
+      listOnlyProp.data.hidden = true;
+      listOnlyProp.data.defaultValue = "true";
+      extraProp.entries.push(listOnlyProp);
+    },
+  ],
   // Service Networking Connections - set default value for parent prop and add suggestions
   // The parent for this API is always "services/servicenetworking.googleapis.com"
   // This resource is list-only and requires custom action functions
