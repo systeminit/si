@@ -79,8 +79,8 @@ function normalizeGcpResourceValues<T>(obj: T): T {
 
 function getLocation(component: Input): string | undefined {
   return _.get(component.properties, ["domain", "location"]) ||
-         _.get(component.properties, ["domain", "zone"]) ||
-         _.get(component.properties, ["domain", "region"]);
+    _.get(component.properties, ["domain", "zone"]) ||
+    _.get(component.properties, ["domain", "region"]);
 }
 
 function resolveParamValue(
@@ -137,21 +137,21 @@ function resolveParamValue(
 function isFullResourcePath(resourceId: string, pathTemplate: string): boolean {
   // Count path segments in the template (excluding empty strings)
   const templateSegments = pathTemplate.split("/").filter(seg => seg && !seg.includes("{"));
-  
+
   // Count matching segments in the resourceId
   const resourceSegments = resourceId.split("/").filter(Boolean);
-  
+
   if (resourceSegments.length < templateSegments.length) {
     return false;
   }
-  
+
   let templateIdx = 0;
   for (const seg of resourceSegments) {
     if (templateIdx < templateSegments.length && seg === templateSegments[templateIdx]) {
       templateIdx++;
     }
   }
-  
+
   return templateIdx === templateSegments.length;
 }
 
@@ -204,6 +204,19 @@ function buildUrlWithParams(
     }
   }
 
+  // Fail fast if URL still contains unresolved placeholders
+  // This catches cases where required parameters (like location in parent) are missing
+  const unresolvedMatches = [...url.matchAll(/\{[+]?([^}]+)\}/g)];
+  if (unresolvedMatches.length > 0) {
+    const unresolvedParams = unresolvedMatches.map(m => m[1]);
+    const paramList = unresolvedParams.join(", ");
+    throw new Error(
+      `Cannot build API URL - unresolved parameters: ${paramList}\n` +
+      `URL template result: ${url}\n` +
+      `Please set the required properties (${paramList}) before running this operation.`
+    );
+  }
+
   return url;
 }
 
@@ -221,10 +234,15 @@ async function authenticatedGet(url: string, token: string, allow404 = false): P
 
     if (!resp.ok) {
       const errorText = await resp.text();
-      throw new Error(`HTTP ${resp.status}: ${errorText}`);
+      const error = new Error(`HTTP ${resp.status}: ${errorText}`) as any;
+      error.status = resp.status;
+      throw error;
     }
 
     return resp;
+  }, {
+    maxAttempts: 5,
+    isRateLimitedFn: (error) => error.status === 429 || error.status === 503
   });
   return retryResult.result;
 }
@@ -234,7 +252,7 @@ async function authenticatedPost(url: string, token: string, body?: string): Pro
   const retryResult = await siExec.withRetry(async () => {
     const resp = await fetch(url, {
       method: "POST",
-      headers: { 
+      headers: {
         "Authorization": `Bearer ${token}`,
         "Content-Type": "application/json"
       },
@@ -243,10 +261,15 @@ async function authenticatedPost(url: string, token: string, body?: string): Pro
 
     if (!resp.ok) {
       const errorText = await resp.text();
-      throw new Error(`HTTP ${resp.status}: ${errorText}`);
+      const error = new Error(`HTTP ${resp.status}: ${errorText}`) as any;
+      error.status = resp.status;
+      throw error;
     }
 
     return resp;
+  }, {
+    maxAttempts: 5,
+    isRateLimitedFn: (error) => error.status === 429 || error.status === 503
   });
   return retryResult.result;
 }
@@ -256,7 +279,7 @@ async function authenticatedPatch(url: string, token: string, body?: string): Pr
   const retryResult = await siExec.withRetry(async () => {
     const resp = await fetch(url, {
       method: "PATCH",
-      headers: { 
+      headers: {
         "Authorization": `Bearer ${token}`,
         "Content-Type": "application/json"
       },
@@ -265,10 +288,15 @@ async function authenticatedPatch(url: string, token: string, body?: string): Pr
 
     if (!resp.ok) {
       const errorText = await resp.text();
-      throw new Error(`HTTP ${resp.status}: ${errorText}`);
+      const error = new Error(`HTTP ${resp.status}: ${errorText}`) as any;
+      error.status = resp.status;
+      throw error;
     }
 
     return resp;
+  }, {
+    maxAttempts: 5,
+    isRateLimitedFn: (error) => error.status === 429 || error.status === 503
   });
   return retryResult.result;
 }
@@ -283,10 +311,15 @@ async function authenticatedDelete(url: string, token: string): Promise<Response
 
     if (!resp.ok) {
       const errorText = await resp.text();
-      throw new Error(`HTTP ${resp.status}: ${errorText}`);
+      const error = new Error(`HTTP ${resp.status}: ${errorText}`) as any;
+      error.status = resp.status;
+      throw error;
     }
 
     return resp;
+  }, {
+    maxAttempts: 5,
+    isRateLimitedFn: (error) => error.status === 429 || error.status === 503
   });
   return retryResult.result;
 }
