@@ -256,18 +256,6 @@ impl CachedModule {
             .try_collect()?)
     }
 
-    pub async fn create_private_module(
-        ctx: &DalContext,
-        module_details: ModuleDetailsResponse,
-        payload: Vec<u8>,
-    ) -> CachedModuleResult<Option<Self>> {
-        let user_pk: UserPk = module_details.owner_user_id.parse()?;
-        let maybe_module =
-            Self::insert(ctx, &module_details, Arc::new(payload), Some(user_pk)).await?;
-
-        Ok(maybe_module)
-    }
-
     /// Calls out to the module index server to fetch the latest module set, and
     /// updates the cache for any new builtin modules
     pub async fn update_cached_modules(

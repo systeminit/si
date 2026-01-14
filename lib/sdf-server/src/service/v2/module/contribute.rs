@@ -10,7 +10,6 @@ use axum::{
 use dal::{
     ChangeSetId,
     WorkspacePk,
-    cached_module::CachedModule,
     module::Module,
 };
 use module_index_client::ModuleIndexClient;
@@ -77,12 +76,9 @@ pub async fn contribute(
             payload.clone(),
             Some(request.schema_variant_id.to_string()),
             Some(schema_variant_version.clone()),
-            Some(request.is_private_module),
+            None,
         )
         .await?;
-    if request.is_private_module {
-        CachedModule::create_private_module(&ctx, response.clone(), payload).await?;
-    };
 
     ctx.write_audit_log(
         AuditLogKind::ContributeModule {

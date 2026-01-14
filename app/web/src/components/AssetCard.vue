@@ -108,32 +108,17 @@
       size="sm"
       title="Contribution sent"
     >
-      <template v-if="isPrivateModuleContribution">
-        <p>
-          This module will be available on every workspace that you log into. If
-          you have any questions please reach out on our
-          <a
-            class="text-action-500"
-            href="https://discord.com/invite/system-init"
-            target="_blank"
-            >Discord Server</a
-          >
-          if you have any questions.
-        </p>
-      </template>
-      <template v-else>
-        <p>
-          Thanks for contributing! We will review your contribution, and reach
-          out via email or on our
-          <a
-            class="text-action-500"
-            href="https://discord.com/invite/system-init"
-            target="_blank"
-            >Discord Server</a
-          >
-          if you have any questions.
-        </p>
-      </template>
+      <p>
+        Thanks for contributing! We will review your contribution, and reach out
+        via email or on our
+        <a
+          class="text-action-500"
+          href="https://discord.com/invite/system-init"
+          target="_blank"
+          >Discord Server</a
+        >
+        if you have any questions.
+      </p>
     </Modal>
   </div>
 </template>
@@ -178,12 +163,9 @@ const contributeAssetModalRef =
 const contributeAssetSuccessModalRef = ref<InstanceType<typeof Modal>>();
 
 const contributeAsset = () => contributeAssetModalRef.value?.open();
-const onContributeAsset = (isPrivate: boolean) => {
-  isPrivateModuleContribution.value = isPrivate;
+const onContributeAsset = () => {
   contributeAssetSuccessModalRef.value?.open();
 };
-
-const isPrivateModuleContribution = ref(false);
 
 const contributeRequest = computed((): ModuleContributeRequest | null => {
   if (asset.value) {
@@ -192,7 +174,7 @@ const contributeRequest = computed((): ModuleContributeRequest | null => {
       name: `${asset.value.schemaName} ${version}`,
       version,
       schemaVariantId: asset.value.schemaVariantId,
-      isPrivateModule: false, // This is the default value - we don't want to default to private modules!
+      isPrivateModule: false,
     };
   } else return null;
 });
