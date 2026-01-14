@@ -24,6 +24,7 @@ import {
   DependentValues,
 } from "@/workers/types/entity_kind_types";
 import QualificationView from "@/newhotness/QualificationView.vue";
+import { AttributePath } from "@/api/sdf/dal/component";
 import { AttributeValueId } from "./types";
 import { findAvsAtPropPath } from "./util";
 import EmptyState from "./EmptyState.vue";
@@ -48,18 +49,34 @@ const props = defineProps<{
   dependentValues?: DependentValues | null;
 }>();
 
-const qualifications = computed<Qualification[]>(() => {
+function attributeIsDirty(path: AttributePath) {
+  const root = props.attributeTree;
+  if (!root) return false;
+  return (
+    props.dependentValues?.componentAttributes[root.id]?.includes(path) ?? false
+  );
+}
+
+/// Actual qualification results (excludes validations)
+const componentQualifications = computed<Qualification[]>(() => {
   const root = props.attributeTree;
   if (!root) return [];
 
-  const qualificationItems = findAvsAtPropPath(root, [
+  // Get the actual qualification results from the tree
+  const qualificationItems = findAvsAtPropPath(props.attributeTree, [
     "root",
     "qualification",
     "qualificationItem",
   ]);
   if (!qualificationItems) return [];
-  const items = qualificationItems.attributeValues.map((av) => {
-    const qualification = { avId: av.id, name: av.key } as Qualification;
+
+  return qualificationItems.attributeValues.map((av) => {
+    const qualification: Qualification = {
+      avId: av.id,
+      name: av.key,
+      isDirty: attributeIsDirty(av.path),
+    };
+
     // Set result and message based on the AttributeTree
     for (const avId of root.treeInfo[av.id]?.children ?? []) {
       const child = root.attributeValues[avId];
@@ -69,22 +86,29 @@ const qualifications = computed<Qualification[]>(() => {
       else if (child?.path?.endsWith("message"))
         qualification.message = child.value as string;
     }
-    // Set isDirty based on dependentValues
-    qualification.isDirty = props.dependentValues?.componentAttributes[
-      props.component.id
-    ]?.includes(av.path);
+
     return qualification;
   });
+});
+
+/// A qualification representing the validation status of all attribute values
+const validationsQualification = computed<Qualification | undefined>(() => {
+  const root = props.attributeTree;
+  if (!root) return undefined;
 
   // Since we have all the data locally, we compute the validation rollup qualification over here
   // The qualification also gets computed in the backed for the old UI and luminork, so at some point we may
   // revisit this, but this works well.
   let hasValidations = false;
+  let isDirty = false;
   const validationOutput: string[] = [];
   Object.values(root.attributeValues).forEach((av) => {
     const prop = root.props[av.propId ?? ""];
     if (!av.validation || !prop) return;
     hasValidations = true;
+
+    // If any of the values are dirty, mark the qualifications as dirty too
+    isDirty ||= attributeIsDirty(av.path);
 
     // We believe that if we are connected to a subscription and that subscription
     // has yet to propagate a value, then it's a computed value and we should mark
@@ -104,18 +128,28 @@ const qualifications = computed<Qualification[]>(() => {
     );
   });
 
-  if (hasValidations) {
-    const status = validationOutput.length > 0 ? "failure" : "success";
+  if (!hasValidations) return undefined;
 
-    const message = `Component has ${validationOutput.length} invalid value(s).`;
-    const output = validationOutput.length > 0 ? validationOutput : undefined;
+  const status = validationOutput.length > 0 ? "failure" : "success";
+  const message = `Component has ${validationOutput.length} invalid value(s).`;
+  const output = validationOutput.length > 0 ? validationOutput : undefined;
 
-    items.push({
-      name: "Prop Validations",
-      status,
-      message,
-      output,
-    });
+  return {
+    name: "Prop Validations",
+    status,
+    message,
+    output,
+    isDirty,
+  };
+});
+
+const qualifications = computed<Qualification[]>(() => {
+  // Grab the component qualifications
+  let items = componentQualifications.value;
+
+  // If there are validations, show them as a qualification as well
+  if (validationsQualification.value) {
+    items = [...items, validationsQualification.value];
   }
 
   // Sort qualifications with failed first, then warning, then success, then unknown
