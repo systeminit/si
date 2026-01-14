@@ -240,6 +240,6 @@ function extractResourceId(resource: any, useFullPath: boolean): string | undefi
     }
   }
 
-  // For Compute Engine style APIs or fallback, use simple name/id
-  return resource.name || resource.id;
+  // For Compute Engine style APIs or fallback, use simple id/name
+  return resource.id || resource.name;
 }
