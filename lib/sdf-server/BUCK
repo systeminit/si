@@ -43,6 +43,7 @@ rust_library(
         "//lib/si-tls:si-tls",
         "//lib/telemetry-http-rs:telemetry-http",
         "//lib/telemetry-rs:telemetry",
+        "//lib/telemetry-utils-rs:telemetry-utils",
         "//lib/veritech-client:veritech-client",
         "//third-party/rust:async-trait",
         "//third-party/rust:axum",

@@ -650,6 +650,54 @@ impl S3Layer {
         }
     }
 
+    /// Check if object exists in S3 using HEAD request (for backfill operations)
+    /// More efficient than get() as it doesn't fetch the object body
+    pub async fn head(&self, key: &str) -> LayerDbResult<bool> {
+        use aws_sdk_s3::{
+            error::SdkError,
+            operation::head_object::HeadObjectError,
+        };
+
+        let s3_key = self.transform_and_prefix_key(key);
+
+        match self
+            .client
+            .head_object()
+            .bucket(&self.bucket_name)
+            .key(s3_key)
+            .send()
+            .await
+        {
+            Ok(_) => Ok(true),
+            Err(SdkError::ServiceError(err)) => {
+                if matches!(err.err(), HeadObjectError::NotFound(_)) {
+                    Ok(false)
+                } else {
+                    Err(LayerDbError::S3Head(format!("{err:?}")))
+                }
+            }
+            Err(e) => Err(LayerDbError::S3Head(format!("{e:?}"))),
+        }
+    }
+
+    /// Direct write for backfill operations only
+    /// Bypasses queue system - use only for migration tools
+    /// Normal code should use insert() with full LayeredEvent
+    pub async fn put_direct(&self, key: &str, value: Vec<u8>) -> LayerDbResult<()> {
+        let s3_key = self.transform_and_prefix_key(key);
+
+        self.client
+            .put_object()
+            .bucket(&self.bucket_name)
+            .key(s3_key)
+            .body(value.into())
+            .send()
+            .await
+            .map_err(|e| LayerDbError::S3Put(e.to_string()))?;
+
+        Ok(())
+    }
+
     /// Insert an event into S3 via the write queue
     ///
     /// Transforms the key according to the configured strategy and prefix before queueing.

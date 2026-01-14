@@ -148,6 +148,36 @@ pub(crate) struct Args {
     #[arg(long, value_parser = PossibleValuesParser::new(MigrationMode::variants()))]
     pub(crate) migration_mode: Option<String>,
 
+    /// Timestamp cutoff for layer cache backfill (RFC 3339 format, e.g., 2025-01-14T15:30:45.123456Z)
+    /// Only backfill data created before this timestamp. Copy from checkpoint logs.
+    #[arg(long, env = "SI_BACKFILL_CUTOFF_TIMESTAMP")]
+    pub(crate) backfill_cutoff_timestamp: Option<String>,
+
+    /// Comma-separated cache types to backfill (REQUIRED when using BackfillLayerCache mode)
+    /// Specify only caches that need historical data migrated to S3.
+    /// Valid types: cas,workspace_snapshot,encrypted_secret,rebase_batch,
+    ///              change_batch,split_snapshot_subgraph,split_snapshot_supergraph,
+    ///              split_snapshot_rebase_batch
+    /// Example: --backfill-cache-types="cas,workspace_snapshot,encrypted_secret"
+    #[arg(long, env = "SI_BACKFILL_CACHE_TYPES")]
+    pub(crate) backfill_cache_types: Option<String>,
+
+    /// Key batch size for PostgreSQL queries during backfill
+    #[arg(long, default_value = "1000", env = "SI_BACKFILL_KEY_BATCH_SIZE")]
+    pub(crate) backfill_key_batch_size: usize,
+
+    /// Checkpoint interval in seconds for progress logging
+    #[arg(
+        long,
+        default_value = "30",
+        env = "SI_BACKFILL_CHECKPOINT_INTERVAL_SECS"
+    )]
+    pub(crate) backfill_checkpoint_interval_secs: u64,
+
+    /// Maximum concurrent uploads per cache type during backfill
+    #[arg(long, default_value = "5", env = "SI_BACKFILL_MAX_CONCURRENT_UPLOADS")]
+    pub(crate) backfill_max_concurrent_uploads: usize,
+
     /// Veritech encryption key file location [default: /run/sdf/veritech_encryption.key]
     #[arg(long)]
     pub(crate) veritech_encryption_key_path: Option<PathBuf>,
@@ -450,6 +480,25 @@ fn build_config_map(args: Args, config_map: &mut ConfigMap) -> &ConfigMap {
             args.create_workspace_allowlist,
         );
     }
+
+    if let Some(backfill_cutoff_timestamp) = args.backfill_cutoff_timestamp {
+        config_map.set("backfill_cutoff_timestamp", backfill_cutoff_timestamp);
+    }
+    if let Some(backfill_cache_types) = args.backfill_cache_types {
+        config_map.set("backfill_cache_types", backfill_cache_types);
+    }
+    config_map.set(
+        "backfill_key_batch_size",
+        i64::try_from(args.backfill_key_batch_size).unwrap_or(1000),
+    );
+    config_map.set(
+        "backfill_checkpoint_interval_secs",
+        i64::try_from(args.backfill_checkpoint_interval_secs).unwrap_or(30),
+    );
+    config_map.set(
+        "backfill_max_concurrent_uploads",
+        i64::try_from(args.backfill_max_concurrent_uploads).unwrap_or(5),
+    );
 
     config_map.set("nats.connection_name", NAME);
     config_map.set("pg.application_name", NAME);

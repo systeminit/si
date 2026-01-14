@@ -312,8 +312,12 @@ pub enum LayerDbError {
     S3(Box<S3Error>),
     #[error("S3 disk store error: {0}")]
     S3DiskStore(String),
+    #[error("S3 HEAD operation failed: {0}")]
+    S3Head(String),
     #[error("S3 not configured")]
     S3NotConfigured,
+    #[error("S3 PUT operation failed: {0}")]
+    S3Put(String),
     #[error("S3 queue processor error: {0}")]
     S3QueueProcessor(String),
     #[error("serde json error: {0}")]
