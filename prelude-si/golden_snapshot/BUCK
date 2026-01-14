@@ -1,0 +1,35 @@
+load(
+    "@prelude-si//:macros.bzl",
+    "export_file",
+    "shellcheck",
+    "shfmt_check",
+    "test_suite",
+)
+
+export_file(
+    name = "golden_snapshot_build.sh",
+)
+
+shfmt_check(
+    name = "check-format-shell",
+    srcs = glob(["**/*.sh"]),
+)
+
+shellcheck(
+    name = "check-lint-shell",
+    srcs = glob(["**/*.sh"]),
+)
+
+test_suite(
+    name = "check-format",
+    tests = [
+        ":check-format-shell",
+    ],
+)
+
+test_suite(
+    name = "check-lint",
+    tests = [
+        ":check-lint-shell",
+    ],
+)

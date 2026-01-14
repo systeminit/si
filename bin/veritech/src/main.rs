@@ -48,7 +48,7 @@ async fn async_main(args: args::Args) -> Result<()> {
             .service_name(BIN_NAME)
             .service_namespace("si")
             .log_env_var_prefix("SI")
-            .app_modules(vec![BIN_NAME, LIB_NAME])
+            .app_modules(vec![BIN_NAME, LIB_NAME, "si_firecracker"])
             .interesting_modules(vec!["naxum", "si_data_nats", "si_service"])
             .build()?;
 

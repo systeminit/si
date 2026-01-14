@@ -4,8 +4,11 @@ rust_library(
     name = "si-firecracker",
     deps = [
         "//lib/cyclone-core:cyclone-core",
-        "//third-party/rust:remain",
+        "//lib/telemetry-utils-rs:telemetry-utils",
         "//third-party/rust:nix",
+        "//third-party/rust:remain",
+        "//third-party/rust:serde",
+        "//third-party/rust:serde_json",
         "//third-party/rust:thiserror",
         "//third-party/rust:tokio",
         "//third-party/rust:tracing",

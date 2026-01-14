@@ -116,6 +116,10 @@ pub(crate) struct Args {
     #[arg(long)]
     pub(crate) cyclone_local_firecracker: bool,
 
+    /// Cyclone runtime type: LocalFirecrackerSnapshot (faster VM restore from snapshot)
+    #[arg(long)]
+    pub(crate) cyclone_local_firecracker_snapshot: bool,
+
     /// Cyclone firecracker connect timeout
     #[arg(long)]
     pub(crate) cyclone_connect_timeout: Option<u64>,
@@ -183,6 +187,9 @@ fn build_config_map(args: Args, config_map: &mut ConfigMap) -> &ConfigMap {
 
     if args.cyclone_local_firecracker {
         config_map.set("cyclone.runtime_strategy", "LocalFirecracker");
+    }
+    if args.cyclone_local_firecracker_snapshot {
+        config_map.set("cyclone.runtime_strategy", "LocalFirecrackerSnapshot");
     }
     if args.cyclone_local_docker {
         config_map.set("cyclone.runtime_strategy", "LocalDocker");

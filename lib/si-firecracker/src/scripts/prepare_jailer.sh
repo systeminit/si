@@ -2,18 +2,13 @@
 
 set -euo pipefail
 
-########## ############################# #########
-##########          Helper Funcs         #########
-########## ############################# #########
-
 # retry to passed command every 5 seconds for up to 30 seconds
 function retry() {
   n=0
-  until [ "$n" -ge 30 ]
-  do
-     $1 && break
-     n=$((n+1))
-     sleep 1
+  until [ "$n" -ge 30 ]; do
+    $1 && break
+    n=$((n + 1))
+    sleep 1
   done
 }
 
@@ -104,7 +99,8 @@ if ! test -f "$JAIL/$KERNEL"; then
 fi
 
 OVERLAY="rootfs-overlay-$SB_ID"
-if ! dmsetup info $OVERLAY &> /dev/null; then
+
+if ! dmsetup info $OVERLAY &>/dev/null; then
   retry rootfs_prep
 fi
 
@@ -127,12 +123,12 @@ if ! test -f /run/netns/$JAILER_NS; then
   VETH_DEV="veth-jailer$SB_ID"
 
   # Setup TAP device that uses proxy ARP
-  ip netns exec $JAILER_NS ip link del "$TAP_DEV" 2> /dev/null || true
+  ip netns exec $JAILER_NS ip link del "$TAP_DEV" 2>/dev/null || true
   ip netns exec $JAILER_NS ip tuntap add dev "$TAP_DEV" mode tap
 
   # Disable ipv6, enable Proxy ARP
-  ip netns exec $JAILER_NS sysctl -w net.ipv4.conf.${TAP_DEV}.proxy_arp=1 > /dev/null
-  ip netns exec $JAILER_NS sysctl -w net.ipv6.conf.${TAP_DEV}.disable_ipv6=1 > /dev/null
+  ip netns exec $JAILER_NS sysctl -w net.ipv4.conf.${TAP_DEV}.proxy_arp=1 >/dev/null
+  ip netns exec $JAILER_NS sysctl -w net.ipv6.conf.${TAP_DEV}.disable_ipv6=1 >/dev/null
 
   # Add IP to TAP for micro-vm
   ip netns exec $JAILER_NS ip addr add "${TAP_IP}${MASK_SHORT}" dev "$TAP_DEV"
@@ -162,7 +158,7 @@ fi
 ########## ############################# #########
 
 {
-cat << EOF
+  cat <<EOF
 {
   "boot-source": {
     "kernel_image_path": "./$KERNEL",
@@ -177,9 +173,9 @@ cat << EOF
     }
 EOF
 
-if [ -e $JAIL/$SCRIPTS ]; then
+  if [ -e $JAIL/$SCRIPTS ]; then
 
-cat << EOF
+    cat <<EOF
     ,{
       "drive_id": "2",
       "is_root_device": false,
@@ -187,9 +183,9 @@ cat << EOF
       "path_on_host": "./scripts"
     }
 EOF
-fi
+  fi
 
-cat << EOF
+  cat <<EOF
   ],
   "machine-config": {
     "vcpu_count": 1,
@@ -215,4 +211,4 @@ cat << EOF
   }
 }
 EOF
-} > $JAIL/firecracker.conf
+} >$JAIL/firecracker.conf

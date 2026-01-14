@@ -6,7 +6,10 @@ use std::{
     },
     result,
     sync::Arc,
-    time::Duration,
+    time::{
+        Duration,
+        Instant,
+    },
 };
 
 use async_trait::async_trait;
@@ -65,8 +68,12 @@ use serde::{
 #[cfg(target_os = "linux")]
 use si_firecracker::{
     errors::FirecrackerJailError,
-    firecracker::FirecrackerJail,
+    firecracker::{
+        FirecrackerJail,
+        SpawnStrategy,
+    },
 };
+use telemetry_utils::metric;
 use tempfile::{
     NamedTempFile,
     TempPath,
@@ -86,6 +93,7 @@ use tokio::{
 };
 use tracing::{
     debug,
+    info,
     trace,
 };
 
@@ -202,7 +210,11 @@ impl Instance for LocalUdsInstance {
     type Error = LocalUdsInstanceError;
 
     async fn terminate(&mut self) -> result::Result<(), Self::Error> {
-        self.runtime.terminate().await
+        let start = Instant::now();
+        let result = self.runtime.terminate().await;
+        let duration_ms = start.elapsed().as_millis() as u64;
+        metric!(histogram.pool_noodle.lifecycle.terminate_duration_ms = duration_ms);
+        result
     }
 
     async fn ensure_healthy(&mut self) -> result::Result<(), Self::Error> {
@@ -366,7 +378,10 @@ impl Spec for LocalUdsInstanceSpec {
             LocalUdsRuntimeStrategy::LocalDocker => Ok(()),
             LocalUdsRuntimeStrategy::LocalProcess => Ok(()),
             #[cfg(target_os = "linux")]
-            LocalUdsRuntimeStrategy::LocalFirecracker => LocalFirecrackerRuntime::clean(id).await,
+            LocalUdsRuntimeStrategy::LocalFirecracker
+            | LocalUdsRuntimeStrategy::LocalFirecrackerSnapshot => {
+                LocalFirecrackerRuntime::clean(id).await
+            }
         }
     }
 
@@ -377,6 +392,10 @@ impl Spec for LocalUdsInstanceSpec {
             LocalUdsRuntimeStrategy::LocalProcess => Ok(()),
             #[cfg(target_os = "linux")]
             LocalUdsRuntimeStrategy::LocalFirecracker => LocalFirecrackerRuntime::prepare(id).await,
+            #[cfg(target_os = "linux")]
+            LocalUdsRuntimeStrategy::LocalFirecrackerSnapshot => {
+                LocalFirecrackerRuntime::prepare_for_snapshot(id).await
+            }
         }
     }
 
@@ -386,7 +405,8 @@ impl Spec for LocalUdsInstanceSpec {
             LocalUdsRuntimeStrategy::LocalDocker => Ok(()),
             LocalUdsRuntimeStrategy::LocalProcess => Ok(()),
             #[cfg(target_os = "linux")]
-            LocalUdsRuntimeStrategy::LocalFirecracker => {
+            LocalUdsRuntimeStrategy::LocalFirecracker
+            | LocalUdsRuntimeStrategy::LocalFirecrackerSnapshot => {
                 LocalFirecrackerRuntime::setup_firecracker(self).await
             }
         }
@@ -398,6 +418,7 @@ impl Spec for LocalUdsInstanceSpec {
         let mut runtime = runtime_instance_from_spec(self, &socket, id).await?;
 
         runtime.spawn().await?;
+
         //TODO(scott): Firecracker requires the client to add a special connection detail. We
         //should find a better way to handle this.
         let mut firecracker_connect = false;
@@ -406,6 +427,7 @@ impl Spec for LocalUdsInstanceSpec {
             firecracker_connect = matches!(
                 self.runtime_strategy,
                 LocalUdsRuntimeStrategy::LocalFirecracker
+                    | LocalUdsRuntimeStrategy::LocalFirecrackerSnapshot
             );
         }
 
@@ -563,8 +585,12 @@ pub enum LocalUdsRuntimeStrategy {
     /// Run Docker containers on the local machine
     LocalDocker,
     #[cfg(target_os = "linux")]
-    /// Run processes on firecracker
+    /// Run processes on firecracker (cold boot)
     LocalFirecracker,
+    #[cfg(target_os = "linux")]
+    /// Run processes on firecracker using snapshot restore (faster startup)
+    /// Requires golden snapshot to be created first via create_golden_snapshot.sh
+    LocalFirecrackerSnapshot,
     /// Run processes on the local machine
     LocalProcess,
 }
@@ -780,13 +806,22 @@ impl LocalInstanceRuntime for LocalDockerRuntime {
 struct LocalFirecrackerRuntime {
     jail: FirecrackerJail,
     vm_id: u32,
+    spawn_strategy: SpawnStrategy,
 }
 
 #[cfg(target_os = "linux")]
 impl LocalFirecrackerRuntime {
-    async fn build(_spec: LocalUdsInstanceSpec, id: u32) -> Result<Box<dyn LocalInstanceRuntime>> {
-        let jail = FirecrackerJail::build(id).await?;
-        Ok(Box::new(LocalFirecrackerRuntime { jail, vm_id: id }))
+    async fn build(
+        _spec: LocalUdsInstanceSpec,
+        id: u32,
+        spawn_strategy: SpawnStrategy,
+    ) -> Result<Box<dyn LocalInstanceRuntime>> {
+        let jail = FirecrackerJail::build_with_strategy(id, spawn_strategy).await?;
+        Ok(Box::new(LocalFirecrackerRuntime {
+            jail,
+            vm_id: id,
+            spawn_strategy,
+        }))
     }
 }
 
@@ -801,7 +836,10 @@ impl LocalInstanceRuntime for LocalFirecrackerRuntime {
     }
 
     async fn spawn(&mut self) -> Result<()> {
-        Ok(self.jail.spawn().await?)
+        match self.spawn_strategy {
+            SpawnStrategy::ColdBoot => Ok(self.jail.spawn().await?),
+            SpawnStrategy::SnapshotRestore => Ok(self.jail.spawn_from_snapshot().await?),
+        }
     }
 
     async fn terminate(&mut self) -> Result<()> {
@@ -817,6 +855,10 @@ impl LocalFirecrackerRuntime {
 
     async fn prepare(id: u32) -> Result<()> {
         Ok(FirecrackerJail::prepare(id).await?)
+    }
+
+    async fn prepare_for_snapshot(id: u32) -> Result<()> {
+        Ok(FirecrackerJail::prepare_for_snapshot(id).await?)
     }
 
     async fn setup_firecracker(spec: &LocalUdsInstanceSpec) -> Result<()> {
@@ -839,7 +881,11 @@ async fn runtime_instance_from_spec(
         }
         #[cfg(target_os = "linux")]
         LocalUdsRuntimeStrategy::LocalFirecracker => {
-            LocalFirecrackerRuntime::build(spec.clone(), id).await
+            LocalFirecrackerRuntime::build(spec.clone(), id, SpawnStrategy::ColdBoot).await
+        }
+        #[cfg(target_os = "linux")]
+        LocalUdsRuntimeStrategy::LocalFirecrackerSnapshot => {
+            LocalFirecrackerRuntime::build(spec.clone(), id, SpawnStrategy::SnapshotRestore).await
         }
     }
 }
