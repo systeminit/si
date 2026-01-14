@@ -491,6 +491,7 @@ export const GCP_SCHEMA_OVERRIDES: Map<
   ],
   // SQL Admin Users - use list-only mode because GET requires `host` query parameter
   // Without the host param, MySQL users (which have host like '%') return 404
+  // Also requires custom delete because 'name' must be passed as query param
   [
     "Google Cloud SQL Admin Users",
     (spec: ExpandedPkgSpec) => {
@@ -507,6 +508,14 @@ export const GCP_SCHEMA_OVERRIDES: Map<
       listOnlyProp.data.hidden = true;
       listOnlyProp.data.defaultValue = "true";
       extraProp.entries.push(listOnlyProp);
+
+      // Custom delete function - SQL Admin Users delete requires 'name' as query param
+      modifyFunc(
+        spec,
+        ACTION_FUNC_SPECS["Delete Asset"].id,
+        "ba09ff02407b6672fe49be0183974cf3f3e6aeb62af0ca9847f7d6dca6ff1cc9",
+        "./src/pipelines/gcp/funcs/overrides/Users/actions/delete.ts",
+      );
     },
   ],
   // Service Networking Connections - set default value for parent prop and add suggestions
