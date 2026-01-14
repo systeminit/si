@@ -8,6 +8,7 @@ System Initiative currently supports the following cloud providers:
 
 - [AWS (Amazon Web Services)](./aws.md) - Full support with multiple authentication methods
 - [Azure (Microsoft Azure)](./azure.md) - Beta support with Service Principal authentication
+- [Google Cloud](./google.md) - Beta support with Service Account authentication
 - [DigitalOcean](./digital-ocean.md) - Beta support with API token authentication
 - [Hetzner Cloud](./hetzner.md) - Beta support with API token authentication
 
@@ -15,7 +16,7 @@ System Initiative currently supports the following cloud providers:
 
 System Initiative connects to cloud providers through their official APIs:
 
-- **API Integration**: Each provider uses its native API (AWS Cloud Control API, Azure ARM REST API, or OpenAPI specifications)
+- **API Integration**: Each provider uses its native API (AWS Cloud Control API, Azure ARM REST API, Google APIs, or OpenAPI specifications)
 - **Authentication**: Credentials are managed through secure credential components in your workspace
 - **Discovery**: You can discover existing infrastructure from your cloud accounts
 - **Management**: Create, update, and delete resources through System Initiative's unified interface

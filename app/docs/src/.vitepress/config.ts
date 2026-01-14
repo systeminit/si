@@ -294,6 +294,10 @@ export default withMermaid(defineConfig({
                 link: "/explanation/cloud-providers/azure",
               },
               {
+                text: "Google Cloud",
+                link: "/explanation/cloud-providers/google",
+              },
+              {
                 text: "DigitalOcean",
                 link: "/explanation/cloud-providers/digital-ocean",
               },
