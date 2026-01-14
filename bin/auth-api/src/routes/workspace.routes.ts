@@ -121,7 +121,7 @@ automationApiRouter.delete("/workspaces/:workspaceId", async (ctx) => {
   const workspace = await getWorkspaceById(workspaceId);
   if (!workspace) throw new ApiError("Conflict", "Workspace doesn't exist");
 
-  const workspaceOwner = await getUserById(workspace.creatorUserId)!;
+  const workspaceOwner = await getUserById(workspace.creatorUserId);
 
   await deleteWorkspace(workspace.id);
 

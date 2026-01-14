@@ -1,15 +1,7 @@
 import { createPinia } from "pinia";
 
-import {
-  piniaHooksPlugin,
-  initPiniaApiToolkitPlugin,
-  registerApi,
-} from "@si/vue-lib/pinia";
-import {
-  sdfApiInstance,
-  authApiInstance,
-  moduleIndexApiInstance,
-} from "./apis.web";
+import { piniaHooksPlugin, initPiniaApiToolkitPlugin, registerApi } from "@si/vue-lib/pinia";
+import { sdfApiInstance, authApiInstance, moduleIndexApiInstance } from "./apis.web";
 
 // initialize root pinia store/instance
 const pinia = createPinia();

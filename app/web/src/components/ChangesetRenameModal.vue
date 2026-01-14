@@ -1,10 +1,5 @@
 <template>
-  <Modal
-    ref="modal"
-    title="Rename change set"
-    size="sm"
-    @click="inputRef?.focus()"
-  >
+  <Modal ref="modal" title="Rename change set" size="sm" @click="inputRef?.focus()">
     <div class="flex flex-col gap-sm">
       <VormInput
         ref="inputRef"
@@ -16,23 +11,13 @@
         type="text"
         @enterPressed="submit"
       />
-      <ErrorMessage
-        v-if="apiErrorMessage"
-        class="rounded-md text-md p-xs"
-        icon="x-circle"
-        variant="block"
-      >
+      <ErrorMessage v-if="apiErrorMessage" class="rounded-md text-md p-xs" icon="x-circle" variant="block">
         <b>Error renaming change set:</b> <br />
         {{ apiErrorMessage }}
       </ErrorMessage>
 
       <div class="flex flex-row items-center justify-end w-full gap-xs">
-        <VButton
-          :loading="loading"
-          size="xs"
-          tone="neutral"
-          @click="modal?.close()"
-        >
+        <VButton :loading="loading" size="xs" tone="neutral" @click="modal?.close()">
           Cancel <TextPill tighter variant="key">Esc</TextPill>
         </VButton>
         <VButton :loading="loading" size="xs" @click="submit"> Rename </VButton>
@@ -43,18 +28,8 @@
 
 <script lang="ts" setup>
 import { nextTick, ref } from "vue";
-import {
-  ErrorMessage,
-  Modal,
-  TextPill,
-  VButton,
-  VormInput,
-} from "@si/vue-lib/design-system";
-import {
-  apiContextForChangeSet,
-  routes,
-  useApi,
-} from "@/newhotness/api_composables";
+import { ErrorMessage, Modal, TextPill, VButton, VormInput } from "@si/vue-lib/design-system";
+import { apiContextForChangeSet, routes, useApi } from "@/newhotness/api_composables";
 import { useContext } from "@/newhotness/logic_composables/context";
 
 const modal = ref<InstanceType<typeof Modal>>();
@@ -68,12 +43,7 @@ const apiErrorMessage = ref<string | undefined>();
 const ctx = useContext();
 
 const submit = async () => {
-  if (
-    inputRef.value?.validationState.isError ||
-    !changesetName.value ||
-    !changesetIdRef.value
-  )
-    return;
+  if (inputRef.value?.validationState.isError || !changesetName.value || !changesetIdRef.value) return;
 
   const apiCtx = apiContextForChangeSet(ctx, changesetIdRef.value);
   const renameChangesetApi = useApi(apiCtx);

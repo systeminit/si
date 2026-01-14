@@ -4,12 +4,7 @@
     <Icon :name="currentTheme === 'light' ? 'sun' : 'moon'" />
 
     <template #dropdownContent>
-      <DropdownMenuItem
-        checkable
-        :checked="!userOverrideTheme"
-        icon="bolt"
-        @select="userOverrideTheme = null"
-      >
+      <DropdownMenuItem checkable :checked="!userOverrideTheme" icon="bolt" @select="userOverrideTheme = null">
         System theme
       </DropdownMenuItem>
       <DropdownMenuItem
@@ -34,12 +29,7 @@
 
 <script setup lang="ts">
 import { computed } from "vue";
-import {
-  Icon,
-  DropdownMenuItem,
-  userOverrideTheme,
-  useTheme,
-} from "@si/vue-lib/design-system";
+import { Icon, DropdownMenuItem, userOverrideTheme, useTheme } from "@si/vue-lib/design-system";
 import NavbarButton from "./NavbarButton.vue";
 
 const { theme } = useTheme();

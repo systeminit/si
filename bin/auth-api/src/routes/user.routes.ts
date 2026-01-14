@@ -369,7 +369,7 @@ router.post("/users/:userId/complete-profile", async (ctx) => {
   user.onboardingDetails ||= {};
   _.assign(user.onboardingDetails, ctx.request.body);
 
-  if (!(user?.onboardingDetails as any)?.reviewedProfile) {
+  if (!(user?.onboardingDetails)?.reviewedProfile) {
     _.set(user, ["onboardingDetails", "reviewedProfile"], new Date());
   }
 
@@ -477,7 +477,7 @@ router.post("/users/:userId/dismissFirstTimeModal", async (ctx) => {
   await saveUser(user);
 
   ctx.body = {
-    firstTimeModal: (user?.onboardingDetails as any)?.firstTimeModal,
+    firstTimeModal: (user?.onboardingDetails)?.firstTimeModal,
   };
 });
 
@@ -485,7 +485,7 @@ router.get("/users/:userId/firstTimeModal", async (ctx) => {
   const user = await extractOwnUserIdParam(ctx);
 
   ctx.body = {
-    firstTimeModal: (user?.onboardingDetails as any)?.firstTimeModal,
+    firstTimeModal: (user?.onboardingDetails)?.firstTimeModal,
   };
 });
 

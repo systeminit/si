@@ -8,41 +8,21 @@
       )
     "
   >
-    <Icon
-      :name="pickBrandIconByString(component.schemaCategory)"
-      size="lg"
-      class="flex-none"
-    />
+    <Icon :name="pickBrandIconByString(component.schemaCategory)" size="lg" class="flex-none" />
     <div class="flex-1 min-w-0">
-      <TruncateWithTooltip :lineClamp="3" class="text-sm font-semibold">{{
-        component.name
-      }}</TruncateWithTooltip>
-      <TruncateWithTooltip class="text-xs">{{
-        component.schemaName
-      }}</TruncateWithTooltip>
+      <TruncateWithTooltip :lineClamp="3" class="text-sm font-semibold">{{ component.name }}</TruncateWithTooltip>
+      <TruncateWithTooltip class="text-xs">{{ component.schemaName }}</TruncateWithTooltip>
     </div>
     <ComponentTileQualificationStatus :component="component" hideTitle />
-    <StatusIndicatorIcon
-      v-if="component.hasResource"
-      type="resource"
-      size="sm"
-      status="exists"
-    />
+    <StatusIndicatorIcon v-if="component.hasResource" type="resource" size="sm" status="exists" />
     <slot name="endItems" />
   </div>
 </template>
 
 <script setup lang="ts">
-import {
-  Icon,
-  themeClasses,
-  TruncateWithTooltip,
-} from "@si/vue-lib/design-system";
+import { Icon, themeClasses, TruncateWithTooltip } from "@si/vue-lib/design-system";
 import clsx from "clsx";
-import {
-  BifrostComponent,
-  ComponentInList,
-} from "@/workers/types/entity_kind_types";
+import { BifrostComponent, ComponentInList } from "@/workers/types/entity_kind_types";
 import StatusIndicatorIcon from "@/components/StatusIndicatorIcon.vue";
 import { pickBrandIconByString, getAssetColor } from "./util";
 import ComponentTileQualificationStatus from "./ComponentTileQualificationStatus.vue";

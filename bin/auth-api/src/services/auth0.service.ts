@@ -45,7 +45,7 @@ auth0Api.interceptors.response.use(
     return response;
   },
   (error) => {
-    const startTime = (error.config as any)?.metadata?.startTime;
+    const startTime = (error.config)?.metadata?.startTime;
     const duration_ms = startTime ? Date.now() - startTime : null;
     console.log(JSON.stringify({
       timestamp: new Date().toISOString(),

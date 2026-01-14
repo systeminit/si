@@ -1,15 +1,7 @@
 <template>
   <div class="flex flex-row justify-between">
-    <div
-      :class="
-        clsx('flex flex-row items-center gap-xs', props.hideTitle && 'mr-xs')
-      "
-    >
-      <StatusIndicatorIcon
-        type="qualification"
-        size="sm"
-        :status="qualificationStatus"
-      />
+    <div :class="clsx('flex flex-row items-center gap-xs', props.hideTitle && 'mr-xs')">
+      <StatusIndicatorIcon type="qualification" size="sm" :status="qualificationStatus" />
       <div v-if="!props.hideTitle" class="text-sm">Qualifications</div>
     </div>
     <div class="flex flex-row items-center gap-xs">
@@ -33,10 +25,7 @@
         Unknown
       </TextPill>
       <TextPill
-        v-else-if="
-          component.qualificationTotals.failed === 0 &&
-          component.qualificationTotals.warned === 0
-        "
+        v-else-if="component.qualificationTotals.failed === 0 && component.qualificationTotals.warned === 0"
         tighter
         :class="
           clsx(
@@ -88,10 +77,7 @@
 import { themeClasses, TextPill } from "@si/vue-lib/design-system";
 import clsx from "clsx";
 import { computed } from "vue";
-import {
-  ComponentInList,
-  BifrostComponent,
-} from "@/workers/types/entity_kind_types";
+import { ComponentInList, BifrostComponent } from "@/workers/types/entity_kind_types";
 import StatusIndicatorIcon from "@/components/StatusIndicatorIcon.vue";
 
 const props = defineProps<{
@@ -99,15 +85,11 @@ const props = defineProps<{
   hideTitle?: boolean;
 }>();
 
-const qualificationStatus = computed(() =>
-  getQualificationStatus(props.component),
-);
+const qualificationStatus = computed(() => getQualificationStatus(props.component));
 </script>
 
 <script lang="ts">
-export function getQualificationStatus(
-  component: BifrostComponent | ComponentInList,
-) {
+export function getQualificationStatus(component: BifrostComponent | ComponentInList) {
   if (component.qualificationTotals.failed > 0) return "failure";
   if (component.qualificationTotals.warned > 0) return "warning";
   if (component.qualificationTotals.succeeded > 0) return "success";

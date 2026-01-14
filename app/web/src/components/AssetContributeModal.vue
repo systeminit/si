@@ -1,29 +1,19 @@
 <template>
   <Modal ref="modalRef" title="Contribute Assets">
     <Stack>
-      <div
-        v-if="enableContributeButton"
-        class="flex flex-col gap-2xs max-h-72 overflow-auto"
-      >
+      <div v-if="enableContributeButton" class="flex flex-col gap-2xs max-h-72 overflow-auto">
         {{ props.contributeRequest.name }}
       </div>
-      <ErrorMessage
-        v-if="contributeModuleReqStatus.isError"
-        :requestStatus="contributeModuleReqStatus"
-      />
+      <ErrorMessage v-if="contributeModuleReqStatus.isError" :requestStatus="contributeModuleReqStatus" />
       <p>
-        Everything you contribute will receive a code review, and we will reach
-        out if we have any questions or concerns. Assuming things look good, we
-        will then include your asset in a future version of System Initiative!
+        Everything you contribute will receive a code review, and we will reach out if we have any questions or
+        concerns. Assuming things look good, we will then include your asset in a future version of System Initiative!
       </p>
       <p>
-        By clicking the 'Contribute to System Initiative' button, you agree to
-        license any code submitted under the terms of the
-        <a
-          class="text-action-500"
-          href="https://www.apache.org/licenses/LICENSE-2.0"
-          >Apache License, Version 2.0</a
-        >, and that you intend for System Initiative, Inc. to distribute it.
+        By clicking the 'Contribute to System Initiative' button, you agree to license any code submitted under the
+        terms of the
+        <a class="text-action-500" href="https://www.apache.org/licenses/LICENSE-2.0">Apache License, Version 2.0</a>,
+        and that you intend for System Initiative, Inc. to distribute it.
       </p>
 
       <VButton
@@ -42,13 +32,7 @@
 
 <script lang="ts" setup>
 import { ref, computed } from "vue";
-import {
-  Modal,
-  VButton,
-  useModal,
-  Stack,
-  ErrorMessage,
-} from "@si/vue-lib/design-system";
+import { Modal, VButton, useModal, Stack, ErrorMessage } from "@si/vue-lib/design-system";
 import * as _ from "lodash-es";
 import { useModuleStore } from "@/store/module.store";
 import { ModuleContributeRequest } from "@/api/sdf/dal/module";

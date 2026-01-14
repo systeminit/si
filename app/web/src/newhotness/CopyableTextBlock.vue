@@ -13,15 +13,9 @@
           'flex flex-row gap-sm items-center justify-between border rounded-sm cursor-pointer select-none',
           !expandable && 'h-full',
           tiny ? 'px-2xs' : [prompt ? 'p-sm' : 'p-xs'],
-          themeClasses(
-            'bg-neutral-100 border-neutral-400',
-            'bg-neutral-900 border-neutral-600',
-          ),
+          themeClasses('bg-neutral-100 border-neutral-400', 'bg-neutral-900 border-neutral-600'),
           !hoverSubIcon &&
-            themeClasses(
-              'hover:bg-neutral-300 active:bg-neutral-400',
-              'hover:bg-neutral-600 active:bg-neutral-700',
-            ),
+            themeClasses('hover:bg-neutral-300 active:bg-neutral-400', 'hover:bg-neutral-600 active:bg-neutral-700'),
         )
       "
       @click="copyText(text)"
@@ -33,10 +27,7 @@
         :class="
           clsx(
             'flex-none',
-            themeClasses(
-              'hover:bg-neutral-400 active:bg-neutral-500',
-              'hover:bg-neutral-600 active:bg-neutral-700',
-            ),
+            themeClasses('hover:bg-neutral-400 active:bg-neutral-500', 'hover:bg-neutral-600 active:bg-neutral-700'),
           )
         "
         @click.stop.prevent="onClickExpand"
@@ -49,30 +40,21 @@
             'flex-grow',
             tiny ? 'text-2xs' : 'text-sm',
             breakWords && 'break-all',
-            !prompt &&
-              'overflow-hidden text-ellipsis whitespace-nowrap font-mono',
+            !prompt && 'overflow-hidden text-ellipsis whitespace-nowrap font-mono',
             !tiny && !prompt && 'py-2xs',
           )
         "
       >
         {{ text }}
       </div>
-      <Icon
-        v-tooltip="'Copy'"
-        name="copy"
-        class="flex-none"
-        :size="tiny ? '2xs' : 'sm'"
-      />
+      <Icon v-tooltip="'Copy'" name="copy" class="flex-none" :size="tiny ? '2xs' : 'sm'" />
     </div>
     <div
       v-if="expandable && expanded"
       :class="
         clsx(
           'rounded-sm border p-xs text-sm leading-4 break-all font-mono',
-          themeClasses(
-            'bg-neutral-100 border-neutral-400',
-            'bg-neutral-900 border-neutral-600',
-          ),
+          themeClasses('bg-neutral-100 border-neutral-400', 'bg-neutral-900 border-neutral-600'),
         )
       "
     >

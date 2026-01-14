@@ -48,9 +48,7 @@ export const useAdminStore = () => {
         updatingModuleCacheOperationError: undefined as string | undefined,
         updatingModuleCacheOperationRunning: false as boolean,
         clearingInnitCacheOperationRunning: false as boolean,
-        validateSnapshotResponse: undefined as
-          | ValidateSnapshotResponse
-          | undefined,
+        validateSnapshotResponse: undefined as ValidateSnapshotResponse | undefined,
       }),
       getters: {},
       actions: {
@@ -88,11 +86,7 @@ export const useAdminStore = () => {
             url: `${API_PREFIX}/workspaces/${workspaceId}/change_sets/${changeSetId}/get_snapshot`,
           });
         },
-        async SET_SNAPSHOT(
-          workspaceId: string,
-          changeSetId: string,
-          snapshot: Blob,
-        ) {
+        async SET_SNAPSHOT(workspaceId: string, changeSetId: string, snapshot: Blob) {
           const formData = new FormData();
           formData.append("snapshot", snapshot);
 
@@ -108,11 +102,7 @@ export const useAdminStore = () => {
             url: `${API_PREFIX}/workspaces/${workspaceId}/change_sets/${changeSetId}/get_cas_data`,
           });
         },
-        async UPLOAD_CAS_DATA(
-          workspaceId: string,
-          changeSetId: string,
-          casData: Blob,
-        ) {
+        async UPLOAD_CAS_DATA(workspaceId: string, changeSetId: string, casData: Blob) {
           const formData = new FormData();
           formData.append("cas_data", casData);
 
@@ -122,14 +112,8 @@ export const useAdminStore = () => {
             formData,
           });
         },
-        async SET_CONCURRENCY_LIMIT(
-          workspaceId: string,
-          concurrencyLimit?: number,
-        ) {
-          return new ApiRequest<
-            { concurrencyLimit?: number },
-            { concurrencyLimit?: number }
-          >({
+        async SET_CONCURRENCY_LIMIT(workspaceId: string, concurrencyLimit?: number) {
+          return new ApiRequest<{ concurrencyLimit?: number }, { concurrencyLimit?: number }>({
             method: "post",
             url: `${API_PREFIX}/workspaces/${workspaceId}/set_concurrency_limit`,
             params: { concurrencyLimit },
@@ -171,11 +155,7 @@ export const useAdminStore = () => {
             },
           });
         },
-        async VALIDATE_SNAPSHOT(
-          workspaceId: string,
-          changeSetId: string,
-          options?: { fixIssues?: boolean },
-        ) {
+        async VALIDATE_SNAPSHOT(workspaceId: string, changeSetId: string, options?: { fixIssues?: boolean }) {
           return new ApiRequest<ValidateSnapshotResponse>({
             method: options?.fixIssues ? "post" : "get",
             url: `v2/admin/workspaces/${workspaceId}/change_sets/${changeSetId}/validate_snapshot`,

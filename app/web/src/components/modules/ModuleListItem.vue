@@ -44,9 +44,7 @@ const moduleSummary = computed(() => {
     moduleStore.builtinModuleSummaryByHash[props.moduleSlug]
   );
 });
-const isSelected = computed(
-  () => moduleSummary.value?.hash === moduleStore.urlSelectedModuleSlug,
-);
+const isSelected = computed(() => moduleSummary.value?.hash === moduleStore.urlSelectedModuleSlug);
 
 const onClick = () => {
   if (moduleSummary.value) {

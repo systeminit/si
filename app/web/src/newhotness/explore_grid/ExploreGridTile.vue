@@ -10,10 +10,7 @@
           selected || focused
             ? [
                 themeClasses('border-neutral-600', 'border-neutral-400'),
-                themeClasses(
-                  'outline outline-1 outline-neutral-600',
-                  'outline outline-1 outline-neutral-400',
-                ),
+                themeClasses('outline outline-1 outline-neutral-600', 'outline outline-1 outline-neutral-400'),
               ]
             : hasFailedActions
             ? themeClasses('border-destructive-500', 'border-destructive-400')
@@ -42,9 +39,7 @@
           noIconShowing && '!grid-cols-[20px_minmax(0,_1fr)]',
         )
       "
-      :style="
-        noIconShowing ? `grid-template-areas: 'logo h2' 'logo h3';` : undefined
-      "
+      :style="noIconShowing ? `grid-template-areas: 'logo h2' 'logo h3';` : undefined"
     >
       <Icon
         :name="pickBrandIconByString(component.schemaCategory)"
@@ -66,12 +61,7 @@
         v-tooltip="'This component is set for deletion'"
         name="trash"
         size="sm"
-        :class="
-          clsx(
-            themeClasses('text-destructive-600', 'text-destructive-300'),
-            'mt-[7px]',
-          )
-        "
+        :class="clsx(themeClasses('text-destructive-600', 'text-destructive-300'), 'mt-[7px]')"
       />
       <Icon
         v-else-if="component.hasSocketConnections"
@@ -91,9 +81,7 @@
         v-tooltip="'This component can be upgraded'"
         name="bolt-outline"
         size="sm"
-        :class="
-          clsx(themeClasses('text-success-500', 'text-success-400'), 'mt-[7px]')
-        "
+        :class="clsx(themeClasses('text-success-500', 'text-success-400'), 'mt-[7px]')"
       />
     </header>
     <ol
@@ -114,26 +102,14 @@
             size="sm"
             status="exists"
           />
-          <StatusIndicatorIcon
-            v-else
-            type="resource"
-            size="sm"
-            status="exists"
-          />
-          <TruncateWithTooltip
-            v-if="component.resourceId"
-            class="text-xs py-xs opacity-75"
-          >
+          <StatusIndicatorIcon v-else type="resource" size="sm" status="exists" />
+          <TruncateWithTooltip v-if="component.resourceId" class="text-xs py-xs opacity-75">
             {{ component.resourceId }}
           </TruncateWithTooltip>
           <div v-else class="text-sm">Resource</div>
         </template>
         <template v-else-if="rowContent === 'diff'">
-          <Icon
-            name="tilde-circle"
-            :class="themeClasses('text-warning-500', 'text-warning-300')"
-            size="sm"
-          />
+          <Icon name="tilde-circle" :class="themeClasses('text-warning-500', 'text-warning-300')" size="sm" />
           <div class="text-sm">Diff</div>
           <TextPill
             v-if="component.diffStatus === 'Added'"
@@ -176,11 +152,7 @@
         <li>
           <Icon name="input-connection" size="sm" />
           <div class="text-sm">Incoming</div>
-          <PillCounter
-            :count="component.inputCount"
-            size="sm"
-            class="ml-auto"
-          />
+          <PillCounter :count="component.inputCount" size="sm" class="ml-auto" />
         </li>
         <li>
           <Icon name="output-connection" size="sm" />
@@ -211,24 +183,13 @@
       @click.stop.prevent.left="toggleSelection($event)"
       @click.stop.prevent.right="toggleSelection($event)"
     >
-      <Icon
-        v-if="selected"
-        name="check"
-        size="xs"
-        class="absolute top-[-1px] left-[-1px] text-white"
-      />
+      <Icon v-if="selected" name="check" size="xs" class="absolute top-[-1px] left-[-1px] text-white" />
     </div>
   </div>
 </template>
 
 <script lang="ts" setup>
-import {
-  Icon,
-  PillCounter,
-  TextPill,
-  themeClasses,
-  TruncateWithTooltip,
-} from "@si/vue-lib/design-system";
+import { Icon, PillCounter, TextPill, themeClasses, TruncateWithTooltip } from "@si/vue-lib/design-system";
 import clsx from "clsx";
 import { computed, inject, ref, watch } from "vue";
 import { ComponentInList } from "@/workers/types/entity_kind_types";
@@ -250,9 +211,7 @@ const props = defineProps<{
 }>();
 
 const isHovering = ref(false);
-const showSelectionCheckbox = computed(
-  () => isHovering.value || props.selected,
-);
+const showSelectionCheckbox = computed(() => isHovering.value || props.selected);
 
 const handleMouseEnter = (event: MouseEvent) => {
   isHovering.value = true;
@@ -270,23 +229,16 @@ assertIsDefined(ctx);
 const explore = inject<ExploreContext>("EXPLORE_CONTEXT");
 assertIsDefined<ExploreContext>(explore);
 
-const outgoing = computed(
-  () => ctx.outgoingCounts.value[props.component.id] ?? 0,
-);
+const outgoing = computed(() => ctx.outgoingCounts.value[props.component.id] ?? 0);
 
 const gridTile = ref<HTMLElement | undefined>();
 
-const canBeUpgraded = computed(() =>
-  explore.upgradeableComponents.value.has(props.component.id),
-);
+const canBeUpgraded = computed(() => explore.upgradeableComponents.value.has(props.component.id));
 
 const dynamicRows = computed(() => {
   const rows: (string | null)[] = [];
-  const hasPendingActions =
-    props.pendingActionCounts &&
-    Object.keys(props.pendingActionCounts).length > 0;
-  const hasDiff =
-    props.component.diffStatus && props.component.diffStatus !== "None";
+  const hasPendingActions = props.pendingActionCounts && Object.keys(props.pendingActionCounts).length > 0;
+  const hasDiff = props.component.diffStatus && props.component.diffStatus !== "None";
 
   // Row 2: Resource if exists, otherwise diff if exists, otherwise empty
   if (props.component.hasResource) {
@@ -322,20 +274,13 @@ const toggleSelection = (event: MouseEvent) => {
 };
 
 const noIconShowing = computed(
-  () =>
-    !props.component.toDelete &&
-    !props.component.hasSocketConnections &&
-    !canBeUpgraded.value,
+  () => !props.component.toDelete && !props.component.hasSocketConnections && !canBeUpgraded.value,
 );
 
 watch(
   () => [explore.focusedComponentIdx, gridTile],
   () => {
-    if (
-      gridTile.value &&
-      gridTile.value.dataset.index ===
-        explore.focusedComponentIdx.value?.toString()
-    ) {
+    if (gridTile.value && gridTile.value.dataset.index === explore.focusedComponentIdx.value?.toString()) {
       explore.focusedComponentRef.value = gridTile.value;
     }
   },
@@ -371,13 +316,7 @@ export const GRID_TILE_HEIGHT = 269;
 
 .spinning-border {
   border: 1px solid;
-  border-image: conic-gradient(
-      from var(--angle),
-      #06b6d4,
-      #06b6d4 0.95turn,
-      #0891b288 1turn
-    )
-    1;
+  border-image: conic-gradient(from var(--angle), #06b6d4, #06b6d4 0.95turn, #0891b288 1turn) 1;
   animation: borderRotate 3000ms linear infinite forwards;
   mask-image: radial-gradient(#000 0, #000 0);
   outline: 1px solid #06b6d4;

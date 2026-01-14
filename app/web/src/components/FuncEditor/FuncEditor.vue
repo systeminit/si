@@ -4,21 +4,13 @@
     :loadingMessage="`Loading function &quot;${selectedFuncSummary?.name}&quot;`"
     :requestStatus="loadFuncDetailsReq"
   />
-  <ErrorMessage
-    v-else-if="loadFuncDetailsReq.isError"
-    :requestStatus="loadFuncDetailsReq"
-  />
+  <ErrorMessage v-else-if="loadFuncDetailsReq.isError" :requestStatus="loadFuncDetailsReq" />
   <ScrollArea
-    v-else-if="
-      selectedAsset && selectedFuncCode && typeof editingFunc === 'string'
-    "
+    v-else-if="selectedAsset && selectedFuncCode && typeof editingFunc === 'string'"
     class="flex flex-col h-full border border-t-0 border-neutral-300 dark:border-neutral-600"
   >
     <template #top>
-      <AssetEditorHeader
-        :selectedAsset="selectedAsset"
-        :selectedFunc="selectedFuncSummary"
-      />
+      <AssetEditorHeader :selectedAsset="selectedAsset" :selectedFunc="selectedFuncSummary" />
     </template>
 
     <CodeEditor
@@ -38,12 +30,7 @@
 <script lang="ts" setup>
 import { PropType, computed, ref, watch, ComputedRef } from "vue";
 import { ApiRequestStatus } from "@si/vue-lib/pinia";
-import {
-  LoadingMessage,
-  ErrorMessage,
-  RequestStatusMessage,
-  ScrollArea,
-} from "@si/vue-lib/design-system";
+import { LoadingMessage, ErrorMessage, RequestStatusMessage, ScrollArea } from "@si/vue-lib/design-system";
 import { FuncId } from "@/api/sdf/dal/func";
 import { useFuncStore } from "@/store/func/funcs.store";
 import { useChangeSetsStore } from "@/store/change_sets.store";
@@ -119,8 +106,7 @@ const updateFuncCode = (funcId: string, code: string, debounce: boolean) => {
   if (!funcId) return; // protecting empty string, should never happen
   if (selectedFuncSummary.value?.isLocked) return;
   if (selectedFuncSummary.value?.funcId !== funcId) return;
-  updatedHead.value =
-    changeSetsStore.selectedChangeSetId === changeSetsStore.headChangeSetId;
+  updatedHead.value = changeSetsStore.selectedChangeSetId === changeSetsStore.headChangeSetId;
   funcStore.updateFuncCode(funcId, code, debounce);
 };
 

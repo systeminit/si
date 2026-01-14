@@ -22,13 +22,7 @@
         :paddingX="displayCount > 10 ? '2xs' : 'xs'"
         noColorStyles
         :class="
-          clsx(
-            'text-xl font-bold',
-            themeClasses(
-              'bg-success-600 text-shade-0',
-              'bg-success-300 text-success-900',
-            ),
-          )
+          clsx('text-xl font-bold', themeClasses('bg-success-600 text-shade-0', 'bg-success-300 text-success-900'))
         "
       />
     </template>
@@ -40,12 +34,7 @@
 <script lang="ts" setup>
 import { computed, ref } from "vue";
 import * as _ from "lodash-es";
-import {
-  VButton,
-  Icon,
-  PillCounter,
-  themeClasses,
-} from "@si/vue-lib/design-system";
+import { VButton, Icon, PillCounter, themeClasses } from "@si/vue-lib/design-system";
 import clsx from "clsx";
 import { useChangeSetsStore } from "@/store/change_sets.store";
 import { useStatusStore } from "@/store/status.store";
@@ -59,19 +48,14 @@ const statusStore = useStatusStore();
 
 const displayCount = computed(() => actionsStore.proposedActions.length);
 
-const applyChangeSetReqStatus =
-  changeSetsStore.getRequestStatus("APPLY_CHANGE_SET");
+const applyChangeSetReqStatus = changeSetsStore.getRequestStatus("APPLY_CHANGE_SET");
 
-const approvalFlowModalRef = ref<InstanceType<typeof ApprovalFlowModal> | null>(
-  null,
-);
+const approvalFlowModalRef = ref<InstanceType<typeof ApprovalFlowModal> | null>(null);
 const openApprovalFlowModal = () => {
   approvalFlowModalRef.value?.open();
 };
 
-const disableApplyButton = computed(
-  () => changeSetsStore.selectedChangeSet?.status !== ChangeSetStatus.Open,
-);
+const disableApplyButton = computed(() => changeSetsStore.selectedChangeSet?.status !== ChangeSetStatus.Open);
 
 const statusStoreUpdating = computed(() => {
   if (statusStore.globalStatus) {

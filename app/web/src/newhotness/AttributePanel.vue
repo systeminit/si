@@ -1,9 +1,5 @@
 <template>
-  <div
-    v-if="attributeTree && root"
-    data-testid="attribute-panel"
-    class="p-xs flex flex-col gap-xs"
-  >
+  <div v-if="attributeTree && root" data-testid="attribute-panel" class="p-xs flex flex-col gap-xs">
     <div class="grid grid-cols-2 items-center gap-2xs text-sm h-lg">
       <nameForm.Field
         :validators="{
@@ -82,11 +78,7 @@
       />
     </div>
     <AttributeChildLayout
-      v-if="
-        'children' in filtered.tree &&
-        filtered.tree.children.length > 0 &&
-        visibleDomainProps
-      "
+      v-if="'children' in filtered.tree && filtered.tree.children.length > 0 && visibleDomainProps"
       defaultOpen
     >
       <template #header><span class="text-sm">domain</span></template>
@@ -100,9 +92,7 @@
         @save="save"
         @delete="remove"
         @remove-subscription="removeSubscription"
-        @set-default-subscription-source="
-          (path, setTo) => setDefaultSubscriptionSourceStatus(path, setTo)
-        "
+        @set-default-subscription-source="(path, setTo) => setDefaultSubscriptionSourceStatus(path, setTo)"
         @add="add"
         @set-key="setKey"
         @focused="(path) => emit('focused', path)"
@@ -116,9 +106,7 @@
         :component="component"
         :attributeTree="secret"
         data-testid="secret"
-        @set-default-subscription-source="
-          (path, setTo) => setDefaultSubscriptionSourceStatus(path, setTo)
-        "
+        @set-default-subscription-source="(path, setTo) => setDefaultSubscriptionSourceStatus(path, setTo)"
       />
     </AttributeChildLayout>
   </div>
@@ -126,16 +114,7 @@
 </template>
 
 <script lang="ts" setup>
-import {
-  computed,
-  onBeforeUnmount,
-  onMounted,
-  provide,
-  reactive,
-  Ref,
-  ref,
-  watch,
-} from "vue";
+import { computed, onBeforeUnmount, onMounted, provide, reactive, Ref, ref, watch } from "vue";
 import { Fzf } from "fzf";
 import { useRoute } from "vue-router";
 import { SiSearch, themeClasses } from "@si/vue-lib/design-system";
@@ -154,21 +133,14 @@ import { PropKind } from "@/api/sdf/dal/prop";
 import { useMakeKey } from "@/store/realtime/heimdall";
 import { AttributePath, ComponentId } from "@/api/sdf/dal/component";
 import { componentTypes, routes, UseApi, useApi } from "./api_composables";
-import ComponentAttribute, {
-  NewChildValue,
-} from "./layout_components/ComponentAttribute.vue";
+import ComponentAttribute, { NewChildValue } from "./layout_components/ComponentAttribute.vue";
 import { keyEmitter } from "./logic_composables/emitters";
 import ComponentSecretAttribute from "./layout_components/ComponentSecretAttribute.vue";
 import { useWatchedForm } from "./logic_composables/watched_form";
 import { NameFormData } from "./ComponentDetails.vue";
 import EmptyState from "./EmptyState.vue";
 import { findAttributeValueInTree, escapeJsonPointerSegment } from "./util";
-import {
-  arrayAttrTreeIntoTree,
-  AttrTree,
-  makeAvTree,
-  makeSavePayload,
-} from "./logic_composables/attribute_tree";
+import { arrayAttrTreeIntoTree, AttrTree, makeAvTree, makeSavePayload } from "./logic_composables/attribute_tree";
 import AttributeChildLayout from "./layout_components/AttributeChildLayout.vue";
 import { AttributeInputContext } from "./types";
 import { FuncRun } from "./api_composables/func_run";
@@ -197,7 +169,6 @@ const root = computed<AttrTree>(() => {
 
   // find the root node in the tree, the only one with parent null
   const rootId = Object.keys(raw.treeInfo).find((avId) => {
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const av = raw.treeInfo[avId]!;
     if (!av.parent) return true;
     return false;
@@ -208,13 +179,9 @@ const root = computed<AttrTree>(() => {
   return tree;
 });
 
-const domain = computed(() =>
-  root.value?.children.find((c) => c.prop?.name === "domain"),
-);
+const domain = computed(() => root.value?.children.find((c) => c.prop?.name === "domain"));
 
-const secrets = computed(() =>
-  root.value?.children.find((c) => c.prop?.name === "secrets"),
-);
+const secrets = computed(() => root.value?.children.find((c) => c.prop?.name === "secrets"));
 
 const filtered = reactive<{ tree: AttrTree | object }>({
   tree: {},
@@ -246,8 +213,7 @@ watch(
 
     const fzf = new Fzf(Object.values(map), {
       casing: "case-insensitive",
-      selector: (p) =>
-        `${p.id} ${p.prop?.name} ${p.prop?.path} ${p.attributeValue.key} ${p.attributeValue.value}`,
+      selector: (p) => `${p.id} ${p.prop?.name} ${p.prop?.path} ${p.attributeValue.key} ${p.attributeValue.value}`,
     });
 
     const results = fzf.find(q.value);
@@ -291,34 +257,21 @@ const errorContext = computed<AttributeErrors>(() => {
 });
 provide("ATTRIBUTE_ERRORS", errorContext);
 
-const save = async (
-  path: AttributePath,
-  value: JsonValue,
-  propKind: PropKind,
-  connectingComponentId?: ComponentId,
-) => {
-  const call = saveApi.endpoint<{ success: boolean }>(
-    routes.UpdateComponentAttributes,
-    { id: props.component.id },
-  );
+const save = async (path: AttributePath, value: JsonValue, propKind: PropKind, connectingComponentId?: ComponentId) => {
+  const call = saveApi.endpoint<{ success: boolean }>(routes.UpdateComponentAttributes, { id: props.component.id });
 
   value = value?.toString() ?? "";
   const payload = makeSavePayload(path, value, propKind, connectingComponentId);
 
-  const { req, newChangeSetId, errorMessage } =
-    await call.put<componentTypes.UpdateComponentAttributesArgs>(payload);
+  const { req, newChangeSetId, errorMessage } = await call.put<componentTypes.UpdateComponentAttributesArgs>(payload);
 
   const key = `${props.component.id}-${path}`;
   if (!saveApi.ok(req)) {
-    if (
-      req.status === 400 &&
-      errorMessage?.includes("Type mismatch on subscription")
-    ) {
+    if (req.status === 400 && errorMessage?.includes("Type mismatch on subscription")) {
       // Bad request error due to type mismatch
       saveErrors.value[key] = "Subscription failed due to type mismatch.";
     } else if (req.status === 400 && errorMessage?.includes("cycle")) {
-      saveErrors.value[key] =
-        "Subscription failed because it would create a cycle.";
+      saveErrors.value[key] = "Subscription failed because it would create a cycle.";
     } else {
       // All other errors go here
       saveErrors.value[key] = `\`${value}\` failed to save`;
@@ -344,15 +297,8 @@ const save = async (
 };
 
 const keyApi = useApi();
-const setKey = async (
-  attributeTree: AttrTree,
-  key: string,
-  value: NewChildValue,
-) => {
-  const call = keyApi.endpoint<{ success: boolean }>(
-    routes.UpdateComponentAttributes,
-    { id: props.component.id },
-  );
+const setKey = async (attributeTree: AttrTree, key: string, value: NewChildValue) => {
+  const call = keyApi.endpoint<{ success: boolean }>(routes.UpdateComponentAttributes, { id: props.component.id });
 
   // Track the current children count before making the API call
   const initialChildrenCount = attributeTree.children.length;
@@ -364,13 +310,11 @@ const setKey = async (
   // Escape the key according to RFC 6901 (JSON Pointer spec)
   // This ensures special characters like '/' and '~' are properly escaped
   const escapedKey = escapeJsonPointerSegment(key);
-  const childPath =
-    `${attributeTree.attributeValue.path}/${escapedKey}` as AttributePath;
+  const childPath = `${attributeTree.attributeValue.path}/${escapedKey}` as AttributePath;
   const payload = {
     [childPath]: value,
   };
-  const { req, newChangeSetId } =
-    await call.put<componentTypes.UpdateComponentAttributesArgs>(payload);
+  const { req, newChangeSetId } = await call.put<componentTypes.UpdateComponentAttributesArgs>(payload);
   if (newChangeSetId && keyApi.ok(req)) {
     keyApi.navigateToNewChangeSet(
       {
@@ -386,18 +330,11 @@ const setKey = async (
   }
 };
 
-const add = async (
-  addApi: UseApi,
-  attributeTree: AttrTree,
-  value: NewChildValue,
-) => {
+const add = async (addApi: UseApi, attributeTree: AttrTree, value: NewChildValue) => {
   if (props.component.toDelete) return;
   if (!props.attributeTree) return;
 
-  const call = addApi.endpoint<{ success: boolean }>(
-    routes.UpdateComponentAttributes,
-    { id: props.component.id },
-  );
+  const call = addApi.endpoint<{ success: boolean }>(routes.UpdateComponentAttributes, { id: props.component.id });
 
   // Track the current children count before making the API call
   const initialChildrenCount = attributeTree.children.length;
@@ -412,8 +349,7 @@ const add = async (
   const payload = {
     [appendPath]: value,
   };
-  const { req, newChangeSetId } =
-    await call.put<componentTypes.UpdateComponentAttributesArgs>(payload);
+  const { req, newChangeSetId } = await call.put<componentTypes.UpdateComponentAttributesArgs>(payload);
   if (addApi.ok(req) && newChangeSetId) {
     addApi.navigateToNewChangeSet(
       {
@@ -432,14 +368,10 @@ const add = async (
 const removeApi = useApi();
 
 const remove = async (path: AttributePath) => {
-  const call = removeApi.endpoint<{ success: boolean }>(
-    routes.UpdateComponentAttributes,
-    { id: props.component.id },
-  );
+  const call = removeApi.endpoint<{ success: boolean }>(routes.UpdateComponentAttributes, { id: props.component.id });
   const payload: componentTypes.UpdateComponentAttributesArgs = {};
   payload[path] = { $source: null };
-  const { req, newChangeSetId } =
-    await call.put<componentTypes.UpdateComponentAttributesArgs>(payload);
+  const { req, newChangeSetId } = await call.put<componentTypes.UpdateComponentAttributesArgs>(payload);
   if (removeApi.ok(req) && newChangeSetId) {
     removeApi.navigateToNewChangeSet(
       {
@@ -461,18 +393,16 @@ const makeKey = useMakeKey();
 
 const removeSubscriptionMutation = useMutation({
   mutationFn: async (path: AttributePath) => {
-    const call = removeSubscriptionApi.endpoint<{ success: boolean }>(
-      routes.UpdateComponentAttributes,
-      { id: props.component.id },
-    );
+    const call = removeSubscriptionApi.endpoint<{ success: boolean }>(routes.UpdateComponentAttributes, {
+      id: props.component.id,
+    });
 
     const payload: componentTypes.UpdateComponentAttributesArgs = {};
     payload[path] = {
       $source: null,
     };
 
-    const { req, newChangeSetId } =
-      await call.put<componentTypes.UpdateComponentAttributesArgs>(payload);
+    const { req, newChangeSetId } = await call.put<componentTypes.UpdateComponentAttributesArgs>(payload);
 
     if (removeSubscriptionApi.ok(req) && newChangeSetId) {
       removeSubscriptionApi.navigateToNewChangeSet(
@@ -493,32 +423,27 @@ const removeSubscriptionMutation = useMutation({
   onMutate: async (path: AttributePath) => {
     const queryKey = makeKey(EntityKind.AttributeTree, props.component.id);
 
-    const previousData = queryClient.getQueryData<AttributeTree>(
-      queryKey.value,
-    );
+    const previousData = queryClient.getQueryData<AttributeTree>(queryKey.value);
 
-    queryClient.setQueryData(
-      queryKey.value,
-      (cachedData: AttributeTree | undefined) => {
-        if (!cachedData) {
-          return cachedData;
-        }
+    queryClient.setQueryData(queryKey.value, (cachedData: AttributeTree | undefined) => {
+      if (!cachedData) {
+        return cachedData;
+      }
 
-        const found = findAttributeValueInTree(cachedData, path);
-        if (!found) {
-          return cachedData;
-        }
+      const found = findAttributeValueInTree(cachedData, path);
+      if (!found) {
+        return cachedData;
+      }
 
-        const updatedData = { ...cachedData };
-        const updatedFound = findAttributeValueInTree(updatedData, path);
-        if (updatedFound) {
-          updatedFound.attributeValue.externalSources = undefined;
-          updatedFound.attributeValue.value = null;
-        }
+      const updatedData = { ...cachedData };
+      const updatedFound = findAttributeValueInTree(updatedData, path);
+      if (updatedFound) {
+        updatedFound.attributeValue.externalSources = undefined;
+        updatedFound.attributeValue.value = null;
+      }
 
-        return updatedData;
-      },
-    );
+      return updatedData;
+    });
 
     return { previousData };
   },
@@ -532,20 +457,13 @@ const removeSubscriptionMutation = useMutation({
 
 const setDefaultSubscriptionSourceApi = useApi();
 const deleteDefaultSubscriptionSourceApi = useApi();
-const setDefaultSubscriptionSourceStatus = async (
-  path: AttributePath,
-  isDefaultSource: boolean,
-) => {
-  const defaultSourceApi = isDefaultSource
-    ? setDefaultSubscriptionSourceApi
-    : deleteDefaultSubscriptionSourceApi;
+const setDefaultSubscriptionSourceStatus = async (path: AttributePath, isDefaultSource: boolean) => {
+  const defaultSourceApi = isDefaultSource ? setDefaultSubscriptionSourceApi : deleteDefaultSubscriptionSourceApi;
   const call = defaultSourceApi.endpoint(routes.SetDefaultSubscriptionSource, {
     id: props.component.id,
   });
 
-  const { req, newChangeSetId } = isDefaultSource
-    ? await call.put(path)
-    : await call.delete(path);
+  const { req, newChangeSetId } = isDefaultSource ? await call.put(path) : await call.delete(path);
 
   if (defaultSourceApi.ok(req) && newChangeSetId) {
     defaultSourceApi.navigateToNewChangeSet(
@@ -575,9 +493,7 @@ const resourceIdAttr = computed(() => {
   return siTree?.children.find((p) => p.prop?.name === "resourceId");
 });
 
-const resourceIdValue = computed(
-  () => resourceIdAttr.value?.attributeValue.value ?? null,
-);
+const resourceIdValue = computed(() => resourceIdAttr.value?.attributeValue.value ?? null);
 const resourceIdFormValue = ref<string>();
 
 const bifrostingResourceId = ref(false);
@@ -617,17 +533,13 @@ const doImport = async (resourceId: string) => {
 
   spawningFunc.value = true;
 
-  const call = runMgmtFuncApi.endpoint<{ success: boolean }>(
-    routes.MgmtFuncRun,
-    {
-      prototypeId: func.id,
-      componentId: props.component.id,
-      viewId: "DEFAULT",
-    },
-  );
+  const call = runMgmtFuncApi.endpoint<{ success: boolean }>(routes.MgmtFuncRun, {
+    prototypeId: func.id,
+    componentId: props.component.id,
+    viewId: "DEFAULT",
+  });
 
-  const { req, newChangeSetId } =
-    await call.post<componentTypes.UpdateComponentAttributesArgs>({});
+  const { req, newChangeSetId } = await call.post<componentTypes.UpdateComponentAttributesArgs>({});
 
   setTimeout(() => {
     spawningFunc.value = false;
@@ -653,9 +565,7 @@ const importing = computed(
   () =>
     spawningFunc.value ||
     bifrostingResourceId.value ||
-    ["Created", "Dispatched", "Running", "Postprocessing"].includes(
-      props.importFuncRun?.state ?? "",
-    ),
+    ["Created", "Dispatched", "Running", "Postprocessing"].includes(props.importFuncRun?.state ?? ""),
 );
 
 onMounted(() => {
@@ -682,9 +592,7 @@ onBeforeUnmount(() => {
 const onNameInputTab = (e: KeyboardEvent) => {
   if (e.shiftKey) {
     e.preventDefault();
-    const focusable = Array.from(
-      document.querySelectorAll('[tabindex="0"]'),
-    ) as HTMLElement[];
+    const focusable = Array.from(document.querySelectorAll<HTMLElement>('[tabindex="0"]'));
     if (focusable) {
       focusable[focusable.length - 1]?.focus();
     }
@@ -716,10 +624,7 @@ const resetNameInput = () => {
 };
 
 const blurNameInput = () => {
-  if (
-    nameForm.fieldInfo.name.instance?.state.meta.isDirty &&
-    !props.component.toDelete
-  ) {
+  if (nameForm.fieldInfo.name.instance?.state.meta.isDirty && !props.component.toDelete) {
     // don't double submit if you were `select()'d'`
     if (!nameForm.baseStore.state.isSubmitted) nameForm.handleSubmit();
   } else {
@@ -734,14 +639,10 @@ const handleNameInput = (e: Event, field: any) => {
 
 const nameIsDefault = computed(() => props.component.name.startsWith("si-"));
 const namePlaceholder = computed(() =>
-  nameIsDefault.value
-    ? props.component.name
-    : "You must give the component a name!",
+  nameIsDefault.value ? props.component.name : "You must give the component a name!",
 );
 
-const wForm = useWatchedForm<NameFormData>(
-  `component.name.${props.component.id}`,
-);
+const wForm = useWatchedForm<NameFormData>(`component.name.${props.component.id}`);
 
 const nameFormData = computed<NameFormData>(() => {
   return { name: nameIsDefault.value ? "" : props.component.name };
@@ -755,10 +656,9 @@ const nameForm = wForm.newForm({
     if (name) {
       const id = props.component.id;
       const call = api.endpoint(routes.UpdateComponentName, { id });
-      const { req, newChangeSetId } =
-        await call.put<componentTypes.UpdateComponentNameArgs>({
-          name,
-        });
+      const { req, newChangeSetId } = await call.put<componentTypes.UpdateComponentNameArgs>({
+        name,
+      });
       if (newChangeSetId && api.ok(req)) {
         api.navigateToNewChangeSet(
           {

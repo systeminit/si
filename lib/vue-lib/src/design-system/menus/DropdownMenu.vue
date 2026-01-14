@@ -70,38 +70,6 @@
   </Teleport>
 </template>
 
-<script lang="ts">
-type DropdownMenuContext = {
-  variant: DropdownMenuVariant;
-  isOpen: Ref<boolean>;
-  isCheckable: Ref<boolean>;
-  focusedItemId: Ref<string | undefined>;
-  search: boolean;
-  navigatingSubmenu: Ref<boolean>;
-
-  registerItem(id: string, component: ComponentInternalInstance): void;
-  unregisterItem(id: string): void;
-
-  open(e?: MouseEvent, anchorToMouse?: boolean): void;
-  close(shouldClose: boolean): void;
-  focusOnItem(id?: string): void;
-  openSubmenu(id?: string): void;
-};
-
-export const DropdownMenuContextInjectionKey: InjectionKey<DropdownMenuContext> =
-  Symbol("DropdownMenuContext");
-
-export function useDropdownMenuContext() {
-  const ctx = inject(DropdownMenuContextInjectionKey, null);
-  if (!ctx)
-    throw new Error(
-      "<DropdownMenuItem> should only be used within a <DropdownMenu>",
-    );
-  return ctx;
-}
-</script>
-
-<!-- eslint-disable vue/component-tags-order,import/first -->
 <script lang="ts" setup>
 import * as _ from "lodash-es";
 import clsx from "clsx";
@@ -117,6 +85,7 @@ import {
   Ref,
   ref,
   unref,
+  CSSProperties,
 } from "vue";
 import DropdownMenuItem from "./DropdownMenuItem.vue";
 import { themeClasses, useThemeContainer } from "../utils/theme_tools";
@@ -499,8 +468,7 @@ const getWindowWidth = () => {
   else return APP_MINIMUM_WIDTH;
 };
 
-// eslint-disable-next-line @typescript-eslint/ban-types
-const computedStyle: Object = computed(() => ({
+const computedStyle = computed<CSSProperties>(() => ({
   ...(hAlign.value === "left" && { left: `${posX.value}px` }),
   ...(hAlign.value === "right" && { right: `${posX.value}px` }),
   ...(vAlign.value === "below" && { top: `${posY.value}px` }),
@@ -764,6 +732,38 @@ defineExpose({
   elementIsInsideMenu,
   focusFirstItem,
 });
+</script>
+
+<!-- eslint-disable vue/component-tags-order,import/first -->
+<script lang="ts">
+type DropdownMenuContext = {
+  variant: DropdownMenuVariant;
+  isOpen: Ref<boolean>;
+  isCheckable: Ref<boolean>;
+  focusedItemId: Ref<string | undefined>;
+  search: boolean;
+  navigatingSubmenu: Ref<boolean>;
+
+  registerItem(id: string, component: ComponentInternalInstance): void;
+  unregisterItem(id: string): void;
+
+  open(e?: MouseEvent, anchorToMouse?: boolean): void;
+  close(shouldClose: boolean): void;
+  focusOnItem(id?: string): void;
+  openSubmenu(id?: string): void;
+};
+
+export const DropdownMenuContextInjectionKey: InjectionKey<DropdownMenuContext> =
+  Symbol("DropdownMenuContext");
+
+export function useDropdownMenuContext() {
+  const ctx = inject(DropdownMenuContextInjectionKey, null);
+  if (!ctx)
+    throw new Error(
+      "<DropdownMenuItem> should only be used within a <DropdownMenu>",
+    );
+  return ctx;
+}
 </script>
 
 <style lang="less">

@@ -22,10 +22,7 @@ type EventTypeAndCallback = {
   [K in keyof WsEventPayloadMap]: {
     eventType: K;
     debounce?: boolean | number;
-    callback: (
-      payload: WsEventPayloadMap[K],
-      metadata: RealtimeEventMetadata,
-    ) => unknown;
+    callback: (payload: WsEventPayloadMap[K], metadata: RealtimeEventMetadata) => unknown;
   };
 }[keyof WsEventPayloadMap];
 
@@ -70,8 +67,7 @@ export const useRealtimeStore = defineStore("realtime", () => {
   // ReconnectingWebsocket is a small wrapper around the native Websocket that should
   // handle basic reconnection logic
   const socket = new ReconnectingWebSocket(
-    () =>
-      `${API_WS_URL}/workspace_updates?token=Bearer+${authStore.selectedWorkspaceToken}`,
+    () => `${API_WS_URL}/workspace_updates?token=Bearer+${authStore.selectedWorkspaceToken}`,
     [],
     {
       // see options https://www.npmjs.com/package/reconnecting-websocket#available-options
@@ -83,9 +79,7 @@ export const useRealtimeStore = defineStore("realtime", () => {
   // boolean tracking whether we are expecting connection to be active
   // currently only logic is if user is logged in
   const connectionShouldBeEnabled = computed(
-    () =>
-      authStore.userIsLoggedInAndInitialized &&
-      authStore.selectedWorkspaceToken,
+    () => authStore.userIsLoggedInAndInitialized && authStore.selectedWorkspaceToken,
   );
 
   // trigger connect / close as necessary
@@ -125,9 +119,7 @@ export const useRealtimeStore = defineStore("realtime", () => {
   // status-data.systeminit.com
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   async function fetchStatusPage(): Promise<any> {
-    const response = await fetch(
-      "https://nhzefkyp7l.execute-api.us-east-1.amazonaws.com/data/payload.json",
-    );
+    const response = await fetch("https://nhzefkyp7l.execute-api.us-east-1.amazonaws.com/data/payload.json");
     if (response.status === 200) {
       const data = await response.json();
       return data;
@@ -176,9 +168,7 @@ export const useRealtimeStore = defineStore("realtime", () => {
             // Check if the incident is unresolved and its severity is relevant
             if (
               !resolvedTimestamp &&
-              ["UNAVAILABLE", "DEGRADED", "MAINTENANCE"].includes(
-                component.condition.toUpperCase(),
-              )
+              ["UNAVAILABLE", "DEGRADED", "MAINTENANCE"].includes(component.condition.toUpperCase())
             ) {
               applicationStatus.value = component.condition.toLowerCase(); // Return the lowercased version of severity and break the loop
               break;
@@ -196,12 +186,8 @@ export const useRealtimeStore = defineStore("realtime", () => {
   // track subscriptions w/ topics, subscribers, etc
   let subCounter = 0;
   // const topicSubscriptionCounter = {} as Record<SubscriptionTopic, number>;
-  const subscriptions = reactive(
-    {} as Record<SubscriptionId, TrackedSubscription>,
-  );
-  const subscriptionsBySubscriberId = computed(() =>
-    _.groupBy(subscriptions, "subscriberId"),
-  );
+  const subscriptions = reactive({} as Record<SubscriptionId, TrackedSubscription>);
+  const subscriptionsBySubscriberId = computed(() => _.groupBy(subscriptions, "subscriberId"));
 
   function setupSingleSubscription(
     subscriberId: SubscriberId,
@@ -221,11 +207,8 @@ export const useRealtimeStore = defineStore("realtime", () => {
       subCounter++, // im not quite sure the value of this, with it, we need the `subscriptionsBySubscriberId` indirection
     ].join("%");
 
-    const debounceMs =
-      typeAndCallback.debounce === true ? 500 : typeAndCallback.debounce || 0;
-    const wrappedCallback = debounceMs
-      ? _.debounce(typeAndCallback.callback, debounceMs)
-      : typeAndCallback.callback;
+    const debounceMs = typeAndCallback.debounce === true ? 500 : typeAndCallback.debounce || 0;
+    const wrappedCallback = debounceMs ? _.debounce(typeAndCallback.callback, debounceMs) : typeAndCallback.callback;
 
     subscriptions[subscriptionId] = {
       id: subscriptionId,
@@ -244,14 +227,12 @@ export const useRealtimeStore = defineStore("realtime", () => {
     topic: SubscriptionTopic,
     _subscriptions: EventTypeAndCallback | EventTypeAndCallback[],
   ) {
-    _.forEach(
-      _.isArray(_subscriptions) ? _subscriptions : [_subscriptions],
-      (sub) => setupSingleSubscription(subscriberId, topic, sub),
+    _.forEach(_.isArray(_subscriptions) ? _subscriptions : [_subscriptions], (sub) =>
+      setupSingleSubscription(subscriberId, topic, sub),
     );
 
     // keys are IDs which are sortable, oldest first
     for (const evtId of Object.keys(wsEventBuffer.value).sort()) {
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
       const bufferedEvent = wsEventBuffer.value[evtId]!;
       if (bufferedEvent.ttl <= Date.now()) {
         // even though its not run, we're using this to clear out the data
@@ -321,8 +302,7 @@ export const useRealtimeStore = defineStore("realtime", () => {
     // Set the "VITE_LOG_WS" environment variable to true if you want to see logs for received WsEvents (excluding cursor events).
     // Set the "VITE_LOG_WS_CURSOR" environment variable to true if you want to see logs for received cursor WsEvents.
     if (
-      (import.meta.env.VITE_LOG_WS &&
-        !["Cursor", "Online"].includes(eventKind)) ||
+      (import.meta.env.VITE_LOG_WS && !["Cursor", "Online"].includes(eventKind)) ||
       (import.meta.env.VITE_LOG_WS_CURSOR && eventKind === "Cursor") ||
       (import.meta.env.VITE_LOG_WS_ONLINE && eventKind === "Online")
     ) {
@@ -330,19 +310,13 @@ export const useRealtimeStore = defineStore("realtime", () => {
       console.log("WS message", eventKind, eventData, eventMetadata);
     }
 
-    const topics: SubscriptionTopic[] = [
-      "all",
-      `workspace/${eventMetadata.workspace_pk}`,
-    ];
+    const topics: SubscriptionTopic[] = ["all", `workspace/${eventMetadata.workspace_pk}`];
     if (eventMetadata.change_set_id) {
       topics.push(`changeset/${eventMetadata.change_set_id}`);
     }
     // guaranteed to happen before data mutations in this changeset
     if (eventKind === "ChangeSetCreated") {
-      if (
-        eventMetadata.actor !== "System" &&
-        eventMetadata.actor.User === authStore.userPk
-      ) {
+      if (eventMetadata.actor !== "System" && eventMetadata.actor.User === authStore.userPk) {
         bufferWatchList.push(eventData.changeSetId);
       }
     }
@@ -366,9 +340,7 @@ export const useRealtimeStore = defineStore("realtime", () => {
     if (!dispatched && eventKind !== "Cursor" && eventKind !== "Online") {
       if (
         // should we buffer an incoming event because we just created a changeset and the stores aren't set up yet?
-        bufferWatchList.some(
-          (changeSetId) => eventMetadata.change_set_id === changeSetId,
-        )
+        bufferWatchList.some((changeSetId) => eventMetadata.change_set_id === changeSetId)
       ) {
         const id = ulid();
         wsEventBuffer.value[id] = {

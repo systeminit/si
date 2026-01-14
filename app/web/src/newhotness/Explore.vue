@@ -20,15 +20,9 @@
         "
       >
         <TruncateWithTooltip class="py-2xs text-sm flex-1">
-          A faster, smarter experience is here. Some component settings may be
-          incompatible.
+          A faster, smarter experience is here. Some component settings may be incompatible.
         </TruncateWithTooltip>
-        <NewButton
-          size="sm"
-          tone="action"
-          label="Learn more"
-          @click="openWorkspaceMigrationDocumentation"
-        />
+        <NewButton size="sm" tone="action" label="Learn more" @click="openWorkspaceMigrationDocumentation" />
       </div>
 
       <!-- Search and filters -->
@@ -72,14 +66,9 @@
           <div class="grow relative">
             <InstructiveVormInput
               :class="clsx('rounded cursor-text')"
-              :activeClasses="
-                themeClasses('border-action-500', 'border-action-300')
-              "
+              :activeClasses="themeClasses('border-action-500', 'border-action-300')"
               :inactiveClasses="
-                themeClasses(
-                  'border-neutral-400 hover:border-black',
-                  'border-neutral-600 hover:border-white',
-                )
+                themeClasses('border-neutral-400 hover:border-black', 'border-neutral-600 hover:border-white')
               "
               :pills="showGrid ? ['Tab'] : undefined"
               :instructions="showGrid ? 'to navigate' : undefined"
@@ -147,10 +136,7 @@
                   :class="
                     clsx(
                       'cursor-pointer underline',
-                      themeClasses(
-                        'text-neutral-600 hover:text-black',
-                        'text-neutral-300 hover:text-white',
-                      ),
+                      themeClasses('text-neutral-600 hover:text-black', 'text-neutral-300 hover:text-white'),
                     )
                   "
                 >
@@ -161,26 +147,12 @@
           </div>
         </div>
         <div class="flex-none flex flex-row flex-wrap items-center gap-xs">
-          <TabGroupToggle
-            ref="groupRef"
-            :aOrB="urlGridOrMap === 'grid'"
-            @toggle="storeViewMode"
-          >
+          <TabGroupToggle ref="groupRef" :aOrB="urlGridOrMap === 'grid'" @toggle="storeViewMode">
             <template #a="{ selected, toggle }">
-              <ExploreModeTile
-                icon="grid"
-                label="Grid"
-                :selected="selected"
-                @toggle="toggle"
-              />
+              <ExploreModeTile icon="grid" label="Grid" :selected="selected" @toggle="toggle" />
             </template>
             <template #b="{ selected, toggle }">
-              <ExploreModeTile
-                icon="map"
-                label="Map"
-                :selected="selected"
-                @toggle="toggle"
-              />
+              <ExploreModeTile icon="map" label="Map" :selected="selected" @toggle="toggle" />
             </template>
           </TabGroupToggle>
           <template v-if="!showGrid">
@@ -202,11 +174,7 @@
               "
               @click="toggleOnlyDiff"
             >
-              <Icon
-                name="tilde-circle"
-                :class="themeClasses('text-warning-500', 'text-warning-300')"
-                size="xs"
-              />
+              <Icon name="tilde-circle" :class="themeClasses('text-warning-500', 'text-warning-300')" size="xs" />
               <span>See only diffs</span>
             </button>
             <button
@@ -274,12 +242,8 @@
               minWidthToAnchor
               checkable
               alwaysShowPlaceholder
-              :highlightWhenModelValue="
-                sortBySelection !== SortByCriteria.LatestToOldest
-              "
-              @update:modelValue="
-                (val) => (sortBySelection = sortByFromString(val))
-              "
+              :highlightWhenModelValue="sortBySelection !== SortByCriteria.LatestToOldest"
+              @update:modelValue="(val) => (sortBySelection = sortByFromString(val))"
             />
           </div>
         </div>
@@ -289,39 +253,21 @@
         <ExploreGridSkeleton v-if="showSkeleton" />
         <template v-else>
           <DefaultSubscriptionsEmptyState
-            v-if="
-              gridMode.mode === 'defaultSubscriptions' &&
-              defaultSubscriptions.defaultSubscriptions.size === 0
-            "
+            v-if="gridMode.mode === 'defaultSubscriptions' && defaultSubscriptions.defaultSubscriptions.size === 0"
           />
           <div
-            v-else-if="
-              componentList.length === 0 && componentListQuery.isSuccess.value
-            "
+            v-else-if="componentList.length === 0 && componentListQuery.isSuccess.value"
             class="flex-1 gap-sm scrollable flex flex-col items-center"
           >
             <div class="grow flex items-center justify-center">
-              <EmptyState
-                icon="logo-si"
-                iconSize="lg"
-                iconNoBg
-                text="Your data will be shown here"
-              >
+              <EmptyState icon="logo-si" iconSize="lg" iconNoBg text="Your data will be shown here">
                 <template #secondary>
-                  <div
-                    v-if="!hasUsedAiAgent"
-                    class="flex flex-row text-neutral-400"
-                  >
-                    Finish setting up your AI agent to see the platform in
-                    action.
+                  <div v-if="!hasUsedAiAgent" class="flex flex-row text-neutral-400">
+                    Finish setting up your AI agent to see the platform in action.
                   </div>
 
                   <div class="flex flex-row gap-sm">
-                    <NewButton
-                      label="Restart Workspace Setup"
-                      tone="action"
-                      @click="ctx.reopenOnboarding"
-                    />
+                    <NewButton label="Restart Workspace Setup" tone="action" @click="ctx.reopenOnboarding" />
                     <NewButton
                       label="How-to guide"
                       tone="neutral"
@@ -341,18 +287,12 @@
               :class="
                 clsx(
                   'shrink-0 flex flex-col items-center py-md px-lg w-full max-w-6xl mb-sm gap-3 border text-center rounded-sm',
-                  themeClasses(
-                    'bg-neutral-200 border-neutral-400',
-                    'bg-neutral-800 border-neutral-600',
-                  ),
+                  themeClasses('bg-neutral-200 border-neutral-400', 'bg-neutral-800 border-neutral-600'),
                 )
               "
             >
               <span class="font-bold">Explore other ways to get started</span>
-              <span>
-                Prefer a different starting point? Here are a few other ways to
-                jump in and explore:
-              </span>
+              <span> Prefer a different starting point? Here are a few other ways to jump in and explore: </span>
               <div
                 :class="
                   clsx(
@@ -364,19 +304,9 @@
                   )
                 "
               >
-                <a
-                  href="https://www.systeminit.com/?modal=demo"
-                  target="_blank"
-                >
-                  Schedule a demo
-                </a>
-                <a href="https://discord.gg/system-init" target="_blank">
-                  Join the community
-                </a>
-                <a
-                  :href="`https://auth.systeminit.com/workspace/${ctx?.workspacePk.value}`"
-                  target="_blank"
-                >
+                <a href="https://www.systeminit.com/?modal=demo" target="_blank"> Schedule a demo </a>
+                <a href="https://discord.gg/system-init" target="_blank"> Join the community </a>
+                <a :href="`https://auth.systeminit.com/workspace/${ctx?.workspacePk.value}`" target="_blank">
                   Invite a teammate
                 </a>
               </div>
@@ -425,10 +355,7 @@
             :class="
               clsx(
                 'flex-none h-12 px-xs border-t flex flex-row items-center gap-sm',
-                themeClasses(
-                  'bg-neutral-100 border-neutral-400',
-                  'bg-neutral-800 border-neutral-600',
-                ),
+                themeClasses('bg-neutral-100 border-neutral-400', 'bg-neutral-800 border-neutral-600'),
               )
             "
           >
@@ -481,44 +408,27 @@
       :class="
         clsx(
           'right flex flex-col border-l',
-          themeClasses(
-            'bg-neutral-100 border-neutral-400',
-            'bg-neutral-800 border-neutral-600',
-          ),
+          themeClasses('bg-neutral-100 border-neutral-400', 'bg-neutral-800 border-neutral-600'),
         )
       "
     >
       <!-- Skeleton -->
       <ExploreRightColumnSkeleton v-if="showSkeleton" />
       <template v-else>
-        <div
-          class="grow grid grid-rows-subgrid min-h-0"
-          :style="collapsingStyles"
-        >
+        <div class="grow grid grid-rows-subgrid min-h-0" :style="collapsingStyles">
           <CollapsingGridItem ref="actionsRef">
             <template #header><span class="text-sm">Actions</span></template>
             <template #headerIconsRight>
               <PillCounter :count="actionViewList.length" class="text-sm" />
             </template>
-            <ActionQueueList
-              :actionViewList="actionViewList"
-              :highlightedActionIds="highlightedActionIds"
-            />
+            <ActionQueueList :actionViewList="actionViewList" :highlightedActionIds="highlightedActionIds" />
           </CollapsingGridItem>
           <CollapsingGridItem ref="historyRef" disableScroll>
-            <template #header
-              ><span class="text-sm">Recent function runs</span></template
-            >
+            <template #header><span class="text-sm">Recent function runs</span></template>
             <FuncRunList :limit="25" />
           </CollapsingGridItem>
-          <CollapsingGridItem
-            v-if="ffStore.SHOW_POLICIES"
-            ref="policyRef"
-            disableScroll
-          >
-            <template #header
-              ><span class="text-sm">Policy history</span></template
-            >
+          <CollapsingGridItem v-if="ffStore.SHOW_POLICIES" ref="policyRef" disableScroll>
+            <template #header><span class="text-sm">Policy history</span></template>
             <PolicyList
               :policies="policyReports"
               :page="page"
@@ -539,11 +449,7 @@
         >
           <!-- Top row with counts -->
           <div class="flex flex-row items-center gap-xs">
-            <TextPill
-              v-tooltip="componentCountTooltip"
-              class="flex-none rounded p-xs text-sm"
-              variant="key2"
-            >
+            <TextPill v-tooltip="componentCountTooltip" class="flex-none rounded p-xs text-sm" variant="key2">
               Total: {{ componentList.length }}
             </TextPill>
             <TextPill
@@ -559,11 +465,7 @@
                 )
               "
             >
-              <Icon
-                :class="themeClasses('text-success-600', 'text-success-400')"
-                name="check-hex-outline"
-                size="xs"
-              />
+              <Icon :class="themeClasses('text-success-600', 'text-success-400')" name="check-hex-outline" size="xs" />
               {{ resourceCount }}
             </TextPill>
           </div>
@@ -576,10 +478,7 @@
     <!-- MODALS -->
     <ShortcutModal ref="shortcutModalRef" />
     <AddComponentModal ref="addComponentModalRef" />
-    <AddViewModal
-      ref="addViewModalRef"
-      :views="viewListQuery.data.value ?? []"
-    />
+    <AddViewModal ref="addViewModalRef" :views="viewListQuery.data.value ?? []" />
     <!-- For the edit view modals, upon delete, change back to "All Views" -->
     <EditViewModal
       ref="editViewModalRef"
@@ -606,16 +505,7 @@
 
 <script lang="ts" setup>
 import * as _ from "lodash-es";
-import {
-  computed,
-  nextTick,
-  onBeforeUnmount,
-  onMounted,
-  provide,
-  reactive,
-  ref,
-  watch,
-} from "vue";
+import { computed, nextTick, onBeforeUnmount, onMounted, provide, reactive, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import {
   NewButton,
@@ -633,12 +523,7 @@ import clsx from "clsx";
 import { useQuery } from "@tanstack/vue-query";
 import { tw } from "@si/vue-lib";
 import { useToast } from "vue-toastification";
-import {
-  bifrost,
-  bifrostList,
-  useMakeArgs,
-  useMakeKey,
-} from "@/store/realtime/heimdall";
+import { bifrost, bifrostList, useMakeArgs, useMakeKey } from "@/store/realtime/heimdall";
 import {
   BifrostActionViewList,
   ComponentInList,
@@ -659,19 +544,12 @@ import { ChangeSet } from "@/api/sdf/dal/change_set";
 import WelcomeBanner from "@/newhotness/WelcomeBanner.vue";
 import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import MapComponent from "./Map.vue";
-import {
-  collapsingGridStyles,
-  openWorkspaceMigrationDocumentation,
-} from "./util";
+import { collapsingGridStyles, openWorkspaceMigrationDocumentation } from "./util";
 import CollapsingGridItem from "./layout_components/CollapsingGridItem.vue";
 import InstructiveVormInput from "./layout_components/InstructiveVormInput.vue";
 import { getQualificationStatus } from "./ComponentTileQualificationStatus.vue";
 import FuncRunList from "./FuncRunList.vue";
-import {
-  ComponentsHaveActionsWithState,
-  ExploreContext,
-  GridMode,
-} from "./types";
+import { ComponentsHaveActionsWithState, ExploreContext, GridMode } from "./types";
 import {
   KeyDetails,
   keyEmitter,
@@ -708,16 +586,13 @@ const router = useRouter();
 const route = useRoute();
 const ctx = useContext();
 
-const hasUsedAiAgent = computed(
-  () => ctx.userWorkspaceFlags.value.executedAgent ?? false,
-);
+const hasUsedAiAgent = computed(() => ctx.userWorkspaceFlags.value.executedAgent ?? false);
 
 const key = useMakeKey();
 const args = useMakeArgs();
 
 const VIEW_MODE_LOCAL_STORAGE_KEY = "newhotness-view-mode";
-const viewModeStorageKey = () =>
-  `${VIEW_MODE_LOCAL_STORAGE_KEY}: ${ctx.changeSetId}`;
+const viewModeStorageKey = () => `${VIEW_MODE_LOCAL_STORAGE_KEY}: ${ctx.changeSetId}`;
 const storeViewMode = () => {
   if (!groupRef.value) return;
 
@@ -733,8 +608,7 @@ const storeViewMode = () => {
 };
 
 const FILTER_AND_GROUP_STORAGE_KEY = "newhotness-filter-and-grouping";
-const filterAndGroupStorageKey = () =>
-  `${FILTER_AND_GROUP_STORAGE_KEY}: ${ctx.changeSetId.value}`;
+const filterAndGroupStorageKey = () => `${FILTER_AND_GROUP_STORAGE_KEY}: ${ctx.changeSetId.value}`;
 const storeFilterAndGroup = (query: SelectionsInQueryString) => {
   // Do not store retainSessionState, since when this query comes we're supposed to read stored data. Skipping this would always reset the storage
   if (query.retainSessionState) {
@@ -759,8 +633,7 @@ const historyRef = ref<typeof CollapsingGridItem>();
 const policyRef = ref<typeof CollapsingGridItem>();
 const mapRef = ref<InstanceType<typeof MapComponent>>();
 const exploreGridRef = ref<InstanceType<typeof ExploreGrid>>();
-const componentContextMenuRef =
-  ref<InstanceType<typeof ComponentContextMenu>>();
+const componentContextMenuRef = ref<InstanceType<typeof ComponentContextMenu>>();
 
 const collapsingStyles = computed(() => {
   const grids = [actionsRef.value?.openState, historyRef.value?.openState];
@@ -847,9 +720,7 @@ const urlGridOrMap = computed((): "grid" | "map" => {
 
 // Since we won't always have the group ref, let the url control showGrid
 const showGrid = computed(() => urlGridOrMap.value === "grid");
-const gridMapSwitcherValue = computed(
-  () => groupRef.value && groupRef.value.isA,
-);
+const gridMapSwitcherValue = computed(() => groupRef.value && groupRef.value.isA);
 // TODO — if youre on HEAD and you start bulk editing, create a change set right away
 const bulkEditing = ref(false);
 
@@ -945,9 +816,7 @@ const viewListOptions = computed(() => {
   const list = viewListQuery.data.value ?? [];
 
   // This is ID-sorted in the backend, not name-sorted.
-  return list
-    .map((l) => ({ value: l.id, label: l.name }))
-    .sort((a, b) => a.label.localeCompare(b.label));
+  return list.map((l) => ({ value: l.id, label: l.name })).sort((a, b) => a.label.localeCompare(b.label));
 });
 const viewsDropdownRef = ref<InstanceType<typeof DropdownMenuButton>>();
 const filteredViewListOptions = computed(() => {
@@ -964,9 +833,7 @@ const filteredViewListOptions = computed(() => {
   );
 });
 
-const defaultView = computed(() =>
-  viewListQuery.data.value?.find((v) => v.isDefault),
-);
+const defaultView = computed(() => viewListQuery.data.value?.find((v) => v.isDefault));
 const selectedViewId = ref<string | undefined>(undefined);
 const selectedViewOrDefaultId = computed(() => {
   if (selectedViewId.value) return selectedViewId.value;
@@ -983,10 +850,7 @@ watch([selectedViewId], () => {
     ...router.currentRoute.value?.query,
   };
   delete query.viewId;
-  if (
-    selectedViewId.value !== "" &&
-    selectedViewId.value !== defaultView.value?.id
-  ) {
+  if (selectedViewId.value !== "" && selectedViewId.value !== defaultView.value?.id) {
     query.viewId = selectedViewOrDefaultId.value;
   }
 
@@ -1002,10 +866,7 @@ watch([selectedViewId], () => {
 watch(
   ctx?.changeSetId,
   () => {
-    if (
-      !viewListQuery.data.value ||
-      !viewListQuery.data.value.find((v) => v.id === selectedViewId.value)
-    ) {
+    if (!viewListQuery.data.value || !viewListQuery.data.value.find((v) => v.id === selectedViewId.value)) {
       selectedViewId.value = "";
     }
   },
@@ -1015,13 +876,9 @@ watch(
 // ================================================================================================
 // ALL COMPONENTS AVAILABLE FOR USE, INCLUDING VIEWS AND PINNING
 const componentListQueryKind = computed(() =>
-  selectedViewId.value
-    ? EntityKind.ViewComponentList
-    : EntityKind.ComponentList,
+  selectedViewId.value ? EntityKind.ViewComponentList : EntityKind.ComponentList,
 );
-const componentListQueryId = computed(() =>
-  selectedViewId.value ? selectedViewId.value : ctx.workspacePk.value,
-);
+const componentListQueryId = computed(() => (selectedViewId.value ? selectedViewId.value : ctx.workspacePk.value));
 const componentQueryKey = key(componentListQueryKind, componentListQueryId);
 const componentListQuery = useQuery<ComponentInList[]>({
   queryKey: componentQueryKey,
@@ -1034,10 +891,7 @@ const componentListQuery = useQuery<ComponentInList[]>({
     return list ?? [];
   },
 });
-const placeholderSearchText = computed(
-  () =>
-    `Search across ${componentListQuery.data.value?.length ?? 0} Components`,
-);
+const placeholderSearchText = computed(() => `Search across ${componentListQuery.data.value?.length ?? 0} Components`);
 const componentList = computed(() => {
   return componentListQuery.data.value ?? [];
 });
@@ -1138,22 +992,15 @@ const clearGroupBy = () => {
   gridMode.value = { mode: "default", label: "" };
 };
 
-watch(
-  [hasSocketConnections, gridMode],
-  ([newHasSocketConnections, newGridMode]) => {
-    // Only new socket connections with incompatible components group by when in grid view.
-    if (!showGrid.value) return;
+watch([hasSocketConnections, gridMode], ([newHasSocketConnections, newGridMode]) => {
+  // Only new socket connections with incompatible components group by when in grid view.
+  if (!showGrid.value) return;
 
-    // If groupBy is set to IncompatibleComponents but there are no socket connections, clear it
-    if (
-      !newHasSocketConnections &&
-      newGridMode.mode === "groupBy" &&
-      newGridMode.criteria === "incompatibleComponents"
-    ) {
-      gridMode.value = { mode: "default", label: "" };
-    }
-  },
-);
+  // If groupBy is set to IncompatibleComponents but there are no socket connections, clear it
+  if (!newHasSocketConnections && newGridMode.mode === "groupBy" && newGridMode.criteria === "incompatibleComponents") {
+    gridMode.value = { mode: "default", label: "" };
+  }
+});
 
 watch(gridMode, (newMode, oldMode) => {
   // Ignore the grid mode in map view.
@@ -1216,10 +1063,7 @@ const upgradeableComponentIds = computed(() => {
   for (const component of filteredComponents.value ?? []) {
     // This needs to be split out into a variable for reactivity. Keep this here or drown in
     // sorrow and suffering. Relevant pull request: https://github.com/systeminit/si/pull/6483
-    const canUpgrade = upgrade(
-      component.schemaId,
-      component.schemaVariantId,
-    ).value;
+    const canUpgrade = upgrade(component.schemaId, component.schemaVariantId).value;
     if (canUpgrade) {
       set.add(component.id);
     }
@@ -1231,9 +1075,7 @@ const upgradeableComponentIds = computed(() => {
 // SKELETON BEHAVIOR
 
 const showSkeleton = computed(
-  () =>
-    componentListQuery.isLoading.value ||
-    (!_.isNil(mapRef.value) && mapRef.value.isLoading),
+  () => componentListQuery.isLoading.value || (!_.isNil(mapRef.value) && mapRef.value.isLoading),
 );
 
 // ================================================================================================
@@ -1282,8 +1124,7 @@ const bulkDone = () => {
 const DEBUG_USE_MOCK_ACTIONS = false;
 const actionViewListRaw = useQuery<BifrostActionViewList | null>({
   queryKey: key(EntityKind.ActionViewList),
-  queryFn: async () =>
-    await bifrost<BifrostActionViewList>(args(EntityKind.ActionViewList)),
+  queryFn: async () => await bifrost<BifrostActionViewList>(args(EntityKind.ActionViewList)),
 });
 const actionViewList = computed(() => {
   if (DEBUG_USE_MOCK_ACTIONS) {
@@ -1310,17 +1151,14 @@ const componentsHaveActionsWithState = computed(() => {
 
 // Map component IDs to their pending action counts by type (can be multiple)
 const componentsPendingActionNames = computed(() => {
-  const results = new Map<
-    ComponentId,
-    Record<string, { count: number; hasFailed: boolean }>
-  >();
+  const results = new Map<ComponentId, Record<string, { count: number; hasFailed: boolean }>>();
   for (const action of actionViewList.value) {
     if (!action.componentId) continue;
     // All action states are considered "pending" and should be shown
     if (!results.has(action.componentId)) {
       results.set(action.componentId, {});
     }
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+
     const actionCounts = results.get(action.componentId)!;
 
     // Group Other actions with Manual
@@ -1333,12 +1171,10 @@ const componentsPendingActionNames = computed(() => {
       actionCounts[actionName] = { count: 0, hasFailed: false };
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     actionCounts[actionName]!.count += 1;
 
     // Track if any action in this group has failed
     if (action.state === ActionState.Failed) {
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
       actionCounts[actionName]!.hasFailed = true;
     }
   }
@@ -1351,10 +1187,7 @@ const highlightedActionIds = computed(() => {
 
   const highlightedIds = new Set<string>();
   for (const action of actionViewList.value) {
-    if (
-      action.componentId === hoveredComponentId.value &&
-      action.state === ActionState.Failed
-    ) {
+    if (action.componentId === hoveredComponentId.value && action.state === ActionState.Failed) {
       highlightedIds.add(action.id);
     }
   }
@@ -1372,26 +1205,18 @@ const connectionsGetter = useConnections();
 const pinnedComponentConnections = computed(() =>
   // This is critical. We only want to get the connections if we found the pinned component. The ID
   // could have been provided via URL and the component may not exist anymore.
-  pinnedComponent.value
-    ? connectionsGetter(pinnedComponent.value.id).value
-    : undefined,
+  pinnedComponent.value ? connectionsGetter(pinnedComponent.value.id).value : undefined,
 );
 const pinnedComponentConnectionSets = computed(() => {
-  const incoming = new Set(
-    pinnedComponentConnections.value?.incoming.map((c) => c.componentId) ?? [],
-  );
-  const outgoing = new Set(
-    pinnedComponentConnections.value?.outgoing.map((c) => c.componentId) ?? [],
-  );
+  const incoming = new Set(pinnedComponentConnections.value?.incoming.map((c) => c.componentId) ?? []);
+  const outgoing = new Set(pinnedComponentConnections.value?.outgoing.map((c) => c.componentId) ?? []);
   return {
     incoming,
     outgoing,
   };
 });
 
-const resourceCount = computed(
-  () => componentList.value.filter((c) => c.hasResource).length ?? 0,
-);
+const resourceCount = computed(() => componentList.value.filter((c) => c.hasResource).length ?? 0);
 const resourceCountTooltip = "Components with resources";
 const componentCountTooltip = "Total components in selected view";
 
@@ -1411,9 +1236,7 @@ const sortedAndGroupedComponents = computed(() => {
   // NOTE: We also do this to get a new array, so that later sort() calls do not mutate the
   // filteredComponents array.
   // NOTE: we reverse this because we want descending order, but sortBy only does ascending.
-  let components = _.reverse(
-    _.sortBy(filteredComponents.value ?? [], (c) => c.id),
-  );
+  let components = _.reverse(_.sortBy(filteredComponents.value ?? [], (c) => c.id));
 
   // Second, perform any secondary sorts, if applicable. This relies on the fact that the
   // components are already sorted.
@@ -1485,10 +1308,7 @@ const sortedAndGroupedComponents = computed(() => {
         "No Diffs": [],
       };
       for (const component of components) {
-        const title =
-          component.diffStatus && component.diffStatus !== "None"
-            ? "With Diffs"
-            : "No Diffs";
+        const title = component.diffStatus && component.diffStatus !== "None" ? "With Diffs" : "No Diffs";
         groups[title]?.push(component);
       }
     } else if (gridMode.value.criteria === "qualification") {
@@ -1509,9 +1329,7 @@ const sortedAndGroupedComponents = computed(() => {
         "Up to date": [],
       };
       for (const component of components) {
-        const title = upgradeableComponentIds.value.has(component.id)
-          ? "Upgradeable"
-          : "Up to date";
+        const title = upgradeableComponentIds.value.has(component.id) ? "Upgradeable" : "Up to date";
         groups[title]?.push(component);
       }
     } else if (gridMode.value.criteria === "resource") {
@@ -1529,9 +1347,7 @@ const sortedAndGroupedComponents = computed(() => {
         "Compatible Components": [],
       };
       for (const component of components) {
-        const title = component.hasSocketConnections
-          ? "Incompatible Components"
-          : "Compatible Components";
+        const title = component.hasSocketConnections ? "Incompatible Components" : "Compatible Components";
         groups[title]?.push(component);
       }
     } else if (gridMode.value.criteria === "schemaName") {
@@ -1541,16 +1357,11 @@ const sortedAndGroupedComponents = computed(() => {
         (unsortedGroups[schemaName] ??= []).push(component);
       }
 
-      groups = Object.fromEntries(
-        Object.entries(unsortedGroups).sort(([a], [b]) => a.localeCompare(b)),
-      );
+      groups = Object.fromEntries(Object.entries(unsortedGroups).sort(([a], [b]) => a.localeCompare(b)));
     }
   } else if (gridMode.value.mode === "defaultSubscriptions") {
     const defaultSubs = defaultSubscriptions.value;
-    groups = calculateDefaultSubscriptionGroups(
-      componentsById.value,
-      defaultSubs,
-    );
+    groups = calculateDefaultSubscriptionGroups(componentsById.value, defaultSubs);
   } else {
     groups[""] = components;
   }
@@ -1651,10 +1462,7 @@ const virtualizerLanes = computed(() => {
   // Our grid is based on the minimum tile width... so how many tiles can we fit?
   let newLanes = 0;
   let availableSpace = scrollRef.value?.getBoundingClientRect().width ?? 0;
-  if (
-    scrollRef.value &&
-    scrollRef.value.scrollHeight > scrollRef.value.clientHeight
-  ) {
+  if (scrollRef.value && scrollRef.value.scrollHeight > scrollRef.value.clientHeight) {
     // need to account for the width of the scrollbar!
     availableSpace -= getScrollbarWidth();
   }
@@ -1671,17 +1479,12 @@ const virtualizerLanes = computed(() => {
 // This is how we show no headers when "group by" functionality is in use. This relies on the
 // fact that using "group by" will create at least two groups. If you find yourself working on
 // "group by", but only wanting to show one group, this is why you're not seeing any headers.
-const hasMultipleSections = computed(
-  () => _.keys(sortedAndGroupedComponents.value).length > 1,
-);
+const hasMultipleSections = computed(() => _.keys(sortedAndGroupedComponents.value).length > 1);
 
 const collapseTracker = ref<Record<string, boolean>>({});
 
 // Helper function to check if all components in a section are selected
-const areAllComponentsInSectionSelected = (
-  components: ComponentInList[],
-  startIndex: number,
-): boolean => {
+const areAllComponentsInSectionSelected = (components: ComponentInList[], startIndex: number): boolean => {
   if (components.length === 0) return false;
   for (let i = 0; i < components.length; i++) {
     if (!selectedComponentIndexes.has(startIndex + i)) {
@@ -1729,15 +1532,9 @@ const gridRows = computed(() => {
     }
 
     // Check if all components in this section are selected
-    const allSelected = areAllComponentsInSectionSelected(
-      components,
-      dataIndex,
-    );
+    const allSelected = areAllComponentsInSectionSelected(components, dataIndex);
 
-    if (
-      hasMultipleSections.value &&
-      gridMode.value.mode !== "defaultSubscriptions"
-    ) {
+    if (hasMultipleSections.value && gridMode.value.mode !== "defaultSubscriptions") {
       rows.push({
         type: "header",
         title: groupName,
@@ -1746,11 +1543,10 @@ const gridRows = computed(() => {
         allSelected,
       });
     } else if (gridMode.value.mode === "defaultSubscriptions") {
-      const defaultSub: DefaultSubscription =
-        defaultSubscriptions.value.defaultSubscriptions.get(groupName) ?? {
-          componentId: "",
-          path: "unknown",
-        };
+      const defaultSub: DefaultSubscription = defaultSubscriptions.value.defaultSubscriptions.get(groupName) ?? {
+        componentId: "",
+        path: "unknown",
+      };
 
       const {
         name: componentName,
@@ -1788,9 +1584,7 @@ const gridRows = computed(() => {
             type: "contentRow",
             components,
             chunkInitialId: dataIndex,
-            insideSection:
-              hasMultipleSections.value ||
-              gridMode.value.mode === "defaultSubscriptions",
+            insideSection: hasMultipleSections.value || gridMode.value.mode === "defaultSubscriptions",
           });
 
           // We need to increase the current index by the length of the row for the next iteration.
@@ -1800,18 +1594,13 @@ const gridRows = computed(() => {
         rows.push({
           type: "emptyRow",
           groupName,
-          insideSection:
-            hasMultipleSections.value ||
-            gridMode.value.mode === "defaultSubscriptions",
+          insideSection: hasMultipleSections.value || gridMode.value.mode === "defaultSubscriptions",
         });
       }
     }
 
     // Whether or not we collapse the group, we need the footer.
-    if (
-      hasMultipleSections.value ||
-      gridMode.value.mode === "defaultSubscriptions"
-    ) {
+    if (hasMultipleSections.value || gridMode.value.mode === "defaultSubscriptions") {
       rows.push({
         type: "footer",
       });
@@ -1827,8 +1616,7 @@ const gridRows = computed(() => {
     filteredComponents.value !== undefined &&
     componentList.value.length !== undefined
   ) {
-    const hiddenCount =
-      componentList.value.length - filteredComponents.value.length;
+    const hiddenCount = componentList.value.length - filteredComponents.value.length;
     if (hiddenCount > 0) {
       rows.push({
         type: "filteredCounterRow",
@@ -1853,9 +1641,7 @@ const allVisibleComponents = computed(() => {
   return components;
 });
 
-const focusedComponent = computed(
-  () => allVisibleComponents.value[focusedComponentIdx.value ?? -1],
-);
+const focusedComponent = computed(() => allVisibleComponents.value[focusedComponentIdx.value ?? -1]);
 const selectedComponentsMap = computed(() => {
   const selected: Record<number, ComponentInList> = {};
 
@@ -1903,10 +1689,7 @@ provide("EXPLORE_CONTEXT", exploreContext.value);
 // searchString can be null because VormInput sets the value to null onBlur if it's an empty string
 const searchString = ref<string | null>("");
 const showSearchFooter = ref(false);
-const filteredComponentsRaw = useComponentSearch(
-  () => searchString.value ?? "",
-  componentList,
-);
+const filteredComponentsRaw = useComponentSearch(() => searchString.value ?? "", componentList);
 const filteredComponents = computed(() => filteredComponentsRaw.value ?? []);
 const componentsById = computed(
   () =>
@@ -1920,12 +1703,8 @@ const componentsById = computed(
 const isScrolledToBottom = ref(false);
 const shouldShowFilteredCounter = computed(() => {
   const hasFilteredComponents =
-    filteredComponents.value &&
-    componentList.value.length > filteredComponents.value.length;
-  return (
-    hasFilteredComponents &&
-    (isScrolledToBottom.value || (searchString.value ?? "").trim() !== "")
-  );
+    filteredComponents.value && componentList.value.length > filteredComponents.value.length;
+  return hasFilteredComponents && (isScrolledToBottom.value || (searchString.value ?? "").trim() !== "");
 });
 
 const resetFilter = () => {
@@ -2085,9 +1864,7 @@ const allSelectedComponentsAreUpgradeable = computed(() => {
 const allSelectedComponentsAreRestorable = computed(() => {
   if (!selectionComponentsForAction.value) return false;
 
-  const notRestorable = selectionComponentsForAction.value.find(
-    (component) => !component.toDelete,
-  );
+  const notRestorable = selectionComponentsForAction.value.find((component) => !component.toDelete);
   return notRestorable === undefined;
 });
 
@@ -2132,16 +1909,10 @@ const clearSelection = () => {
 const selectComponent = (componentIdx: number, event?: MouseEvent) => {
   if (event?.shiftKey) {
     // Shift key behavior takes priority first
-    if (
-      focusedComponentIdx.value !== undefined &&
-      selectedComponentIndexes.size === 0
-    ) {
+    if (focusedComponentIdx.value !== undefined && selectedComponentIndexes.size === 0) {
       // If a component is focused but nothing is selected, add it to the selection
       selectedComponentIndexes.add(focusedComponentIdx.value);
-    } else if (
-      event.button === 0 &&
-      selectedComponentIndexes.has(componentIdx)
-    ) {
+    } else if (event.button === 0 && selectedComponentIndexes.has(componentIdx)) {
       // If shift left click and clicked component is already selected, deselect it
       deselectComponent(componentIdx);
       return; // do not continue in this case!
@@ -2191,10 +1962,7 @@ const deselectComponent = (componentIdx: number | string) => {
 
   // If we're deselecting the currently focused component and there are still other selections,
   // we need to transfer focus to another selected component
-  if (
-    focusedComponentIdx.value === componentIdx &&
-    selectedComponentIndexes.size > 0
-  ) {
+  if (focusedComponentIdx.value === componentIdx && selectedComponentIndexes.size > 0) {
     // Find the highest index from remaining selections to focus on
     const remainingIndexes = Array.from(selectedComponentIndexes);
     const newFocusedIdx = Math.max(...remainingIndexes);
@@ -2209,14 +1977,11 @@ const deselectComponent = (componentIdx: number | string) => {
 
   // If we still have selected components, fix the menu's selection accordingly
   if (selectionComponentsForAction.value) {
-    componentContextMenuRef.value?.setSelectedComponents(
-      selectionComponentsForAction.value,
-    );
+    componentContextMenuRef.value?.setSelectedComponents(selectionComponentsForAction.value);
   }
 };
 
-const isComponentSelected = (componentIdx: number) =>
-  selectedComponentIndexes.has(componentIdx);
+const isComponentSelected = (componentIdx: number) => selectedComponentIndexes.has(componentIdx);
 
 const selectAllInSection = (sectionKey: string) => {
   // Find all components in the section by looking at gridRows
@@ -2284,11 +2049,7 @@ const findSectionKeyForDataIndex = (dataIndex: number): string | undefined => {
 
 // ================================================================================================
 // CLICKING AND NAVIGATION
-const componentClicked = (
-  e: MouseEvent,
-  componentId: ComponentId,
-  componentIdx: number,
-) => {
+const componentClicked = (e: MouseEvent, componentId: ComponentId, componentIdx: number) => {
   e.preventDefault();
   if (e.shiftKey || e.metaKey || e.ctrlKey) {
     // Complex selection logic here!
@@ -2346,14 +2107,13 @@ const onArrow = () => {
   componentContextMenuRef.value?.focusFirstItem(true);
 };
 
+// eslint-disable-next-line @typescript-eslint/no-duplicate-type-constituents
 const onBackspace = (e: KeyDetails["Backspace"] | KeyDetails["Delete"]) => {
   e.preventDefault();
 
   if (showGrid.value) {
     if (!selectionComponentsForAction.value) return;
-    componentContextMenuRef.value?.componentsStartDelete(
-      selectionComponentsForAction.value,
-    );
+    componentContextMenuRef.value?.componentsStartDelete(selectionComponentsForAction.value);
   } else {
     mapRef.value?.onBackspace(e);
   }
@@ -2415,11 +2175,7 @@ const shortcuts: { [Key in string]: (e: KeyDetails[Key]) => void } = {
   b: (e) => {
     if (e.metaKey || e.ctrlKey) return;
     e.preventDefault();
-    if (
-      showGrid.value &&
-      selectionComponentsForAction.value &&
-      selectionComponentsForAction.value.length > 1
-    ) {
+    if (showGrid.value && selectionComponentsForAction.value && selectionComponentsForAction.value.length > 1) {
       startBulkEdit();
     }
   },
@@ -2434,9 +2190,7 @@ const shortcuts: { [Key in string]: (e: KeyDetails[Key]) => void } = {
 
     if (showGrid.value) {
       if (!selectionComponentsForActionIds.value) return;
-      componentContextMenuRef.value?.duplicateComponentStart(
-        selectionComponentsForActionIds.value,
-      );
+      componentContextMenuRef.value?.duplicateComponentStart(selectionComponentsForActionIds.value);
     } else {
       mapRef.value?.onD(e);
     }
@@ -2447,9 +2201,7 @@ const shortcuts: { [Key in string]: (e: KeyDetails[Key]) => void } = {
     if (showGrid.value) {
       if (!selectionComponentsForAction.value) return;
 
-      componentContextMenuRef.value?.componentsStartErase(
-        selectionComponentsForAction.value,
-      );
+      componentContextMenuRef.value?.componentsStartErase(selectionComponentsForAction.value);
     } else {
       mapRef.value?.onE(e);
     }
@@ -2459,9 +2211,7 @@ const shortcuts: { [Key in string]: (e: KeyDetails[Key]) => void } = {
     if (showGrid.value) {
       if (!selectionComponentsForActionIds.value) return;
       if (allSelectedComponentsAreRestorable.value) {
-        componentContextMenuRef.value?.componentsRestore(
-          selectionComponentsForActionIds.value,
-        );
+        componentContextMenuRef.value?.componentsRestore(selectionComponentsForActionIds.value);
       }
     } else {
       mapRef.value?.onR(e);
@@ -2510,8 +2260,7 @@ const shortcuts: { [Key in string]: (e: KeyDetails[Key]) => void } = {
 
     e.preventDefault();
     if (showGrid.value) {
-      if (!focusedComponent.value || selectedComponents.value.length > 1)
-        return;
+      if (!focusedComponent.value || selectedComponents.value.length > 1) return;
 
       // We do not need the context menu to pin and unpin.
       if (focusedComponentIsPinned.value) {
@@ -2551,9 +2300,7 @@ const shortcuts: { [Key in string]: (e: KeyDetails[Key]) => void } = {
       if (!selectionComponentsForActionIds.value) return;
 
       if (allSelectedComponentsAreUpgradeable.value) {
-        componentContextMenuRef.value?.componentsUpgrade(
-          selectionComponentsForActionIds.value,
-        );
+        componentContextMenuRef.value?.componentsUpgrade(selectionComponentsForActionIds.value);
       }
     } else {
       mapRef.value?.onU(e);
@@ -2676,8 +2423,7 @@ const onClick = (e: MouseDetails["click"]) => {
   if (bulkEditing.value) return;
 
   if (showGrid.value) {
-    const inside =
-      componentContextMenuRef.value?.contextMenuRef?.elementIsInsideMenu;
+    const inside = componentContextMenuRef.value?.contextMenuRef?.elementIsInsideMenu;
     if (inside && e.target instanceof Node && inside(e.target)) {
       return;
     }
@@ -2792,11 +2538,7 @@ const setSelectionsFromQuery = async () => {
     const idx = [...indexes].pop();
     // NOTE: Only set focus when actually loading from URL on mount, not during checkbox interactions
     // Don't set focus if we already have selections (indicating this is a checkbox interaction, not URL load)
-    if (
-      idx !== undefined &&
-      focusedComponentIdx.value === undefined &&
-      selectedComponentIndexes.size === 0
-    ) {
+    if (idx !== undefined && focusedComponentIdx.value === undefined && selectedComponentIndexes.size === 0) {
       // when we're on mount, we need to wait until the next tick for the ref
       // yes, there are 2 on purpose
       await nextTick();
@@ -2805,8 +2547,7 @@ const setSelectionsFromQuery = async () => {
     }
   } else delete query.s;
 
-  if (query.b && query.b === "1" && selectedComponentIndexes.size > 0)
-    bulkEditing.value = true;
+  if (query.b && query.b === "1" && selectedComponentIndexes.size > 0) bulkEditing.value = true;
   else {
     bulkEditing.value = false;
     delete query.b;
@@ -2881,6 +2622,7 @@ export type SortByUrlQuery = "failingactions" | "runningactions";
 
 const sortByFromString = (s: string): SortByCriteria => {
   const key = (_.keys(SortByCriteria) as (keyof typeof SortByCriteria)[]).find(
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-enum-comparison
     (k) => SortByCriteria[k] === s,
   );
 

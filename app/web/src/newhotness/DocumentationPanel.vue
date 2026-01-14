@@ -3,11 +3,7 @@
     <template #header><span class="text-sm">Documentation</span></template>
     <div class="flex flex-col items-center p-xs gap-xs [&>.prose]:w-full">
       <EmptyState
-        v-if="
-          !docs &&
-          !component.schemaVariantDocLink &&
-          !component.schemaVariantDescription
-        "
+        v-if="!docs && !component.schemaVariantDocLink && !component.schemaVariantDescription"
         text="No documentation available"
         icon="docs"
       />
@@ -18,19 +14,13 @@
             target="_blank"
             tabindex="-1"
             :class="
-              clsx(
-                'no-underline hover:underline font-bold text-lg',
-                themeClasses('text-action-500', 'text-action-300'),
-              )
+              clsx('no-underline hover:underline font-bold text-lg', themeClasses('text-action-500', 'text-action-300'))
             "
           >
             {{ component.schemaVariantName }}
           </a>
         </div>
-        <MarkdownRender
-          :source="component.schemaVariantDescription ?? ''"
-          disableMaxWidth
-        />
+        <MarkdownRender :source="component.schemaVariantDescription ?? ''" disableMaxWidth />
       </template>
       <template v-else>
         <div class="flex flex-row items-center gap-xs w-full">

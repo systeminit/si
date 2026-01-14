@@ -56,17 +56,12 @@ export function useComponentSearch(
     return comps;
   });
 
-  async function search(
-    components: ComponentInList[],
-    term: SearchTerms,
-  ): Promise<ComponentInList[]> {
+  async function search(components: ComponentInList[], term: SearchTerms): Promise<ComponentInList[]> {
     // NOTE: this does an exhaustiveness check
     switch (term.op) {
       case "not": {
         // Find the matches, then pick everything else
-        const removeComponents = new Set(
-          (await search(components, term.condition)).map((c) => c.id),
-        );
+        const removeComponents = new Set((await search(components, term.condition)).map((c) => c.id));
         return components.filter((c) => !removeComponents.has(c.id));
       }
       case "and": {
@@ -116,8 +111,7 @@ export function useComponentSearch(
         // Regular fuzzy search across all fields
         const fzf = new Fzf(components, {
           casing: "case-insensitive",
-          selector: (c) =>
-            `${c.name} ${c.schemaCategory} ${c.schemaName} ${c.id}`,
+          selector: (c) => `${c.name} ${c.schemaCategory} ${c.schemaName} ${c.id}`,
         });
         return fzf.find(term.value).map((fz) => fz.item);
       }
@@ -144,9 +138,7 @@ export function useComponentSearch(
           });
         }
 
-        const componentIds = new Set(
-          await queryAttributes(ctx, [...startTerms, ...exactTerms]),
-        );
+        const componentIds = new Set(await queryAttributes(ctx, [...startTerms, ...exactTerms]));
         return components.filter((c) => componentIds.has(c.id));
       }
       default:
@@ -158,24 +150,15 @@ export function useComponentSearch(
 /**
  * Function that can be used to reactively query attributes of all components.
  */
-export async function queryAttributes(
-  ctx: Context,
-  terms: MaybeRefOrGetter<QueryAttributesTerm[]>,
-) {
-  return await bifrostQueryAttributes(
-    ctx.workspacePk.value,
-    ctx.changeSetId.value,
-    toValue(terms),
-  );
+export async function queryAttributes(ctx: Context, terms: MaybeRefOrGetter<QueryAttributesTerm[]>) {
+  return await bifrostQueryAttributes(ctx.workspacePk.value, ctx.changeSetId.value, toValue(terms));
 }
 
 /**
  * Parse search string into an expression tree supporting boolean operators, (), attr: and "exact"
  */
 export function parseSearchTerms(search: string): SearchTerms;
-export function parseSearchTerms(
-  search: string | undefined,
-): SearchTerms | undefined;
+export function parseSearchTerms(search: string | undefined): SearchTerms | undefined;
 export function parseSearchTerms(search: string | undefined) {
   if (search === undefined) return undefined;
   return new SearchParser(search).parse();
@@ -224,9 +207,7 @@ class SearchParser {
     // If we're not at end of string, something is wrong with the parser (it's designed to parse
     // the entire search string, even if it's malformed).
     if (!this.eof()) {
-      throw new Error(
-        `Search parse error at ${this.index}: ${this.search.slice(this.index)}`,
-      );
+      throw new Error(`Search parse error at ${this.index}: ${this.search.slice(this.index)}`);
     }
 
     // If there were extra parens, we want to honor all the conditions, so stuff them together
@@ -341,16 +322,7 @@ class SearchParser {
           }
         } else {
           // No quotes, it will match any value that starts with this string
-          const val = this.consumeUntil([
-            " ",
-            "(",
-            ")",
-            "&",
-            "!",
-            '"',
-            "|",
-            ",",
-          ]);
+          const val = this.consumeUntil([" ", "(", ")", "&", "!", '"', "|", ","]);
           startsWith.push(val);
         }
       } while (this.consume("|") || this.consume(","));

@@ -3,10 +3,7 @@ import { ulid } from "ulidx";
 import * as Auth0 from "auth0";
 import { InstanceEnvType, Prisma, PrismaClient } from "@prisma/client";
 
-import {
-  createWorkspace,
-  SAAS_WORKSPACE_URL,
-} from "./workspaces.service";
+import { createWorkspace, SAAS_WORKSPACE_URL } from "./workspaces.service";
 import { tracker } from "../lib/tracker";
 import { fetchAuth0Profile } from "./auth0.service";
 import { ApiError } from "../lib/api-error";
@@ -23,7 +20,7 @@ export type UserId = string;
 export type Auth0User = Auth0.GetUsers200ResponseOneOfInner;
 export type ApiResponse<T> = Auth0.ApiResponse<T>;
 
-export async function getUserById(id: UserId) {
+export async function getUserById(id: UserId): Promise<any> {
   const userWithTosAgreement = await prisma.user.findUnique({
     where: { id },
     include: {
@@ -40,11 +37,13 @@ export async function getUserById(id: UserId) {
   });
   if (!userWithTosAgreement) return null;
 
-  const agreedTosVersion = userWithTosAgreement?.TosAgreement?.[0]?.tosVersionId;
+  const agreedTosVersion =
+    userWithTosAgreement?.TosAgreement?.[0]?.tosVersionId;
 
   const latestTosVersion = await findLatestTosForUser(userWithTosAgreement);
 
-  const needsTosUpdate = !agreedTosVersion || agreedTosVersion < latestTosVersion;
+  const needsTosUpdate =
+    !agreedTosVersion || agreedTosVersion < latestTosVersion;
 
   return {
     ..._.omit(userWithTosAgreement, "TosAgreement"),
@@ -53,8 +52,12 @@ export async function getUserById(id: UserId) {
   };
 }
 
-export type User = NonNullable<Awaited<ReturnType<typeof prisma.user.findUnique>>>;
-export type UserWithTosStatus = NonNullable<Awaited<ReturnType<typeof getUserById>>>;
+export type User = NonNullable<
+  Awaited<ReturnType<typeof prisma.user.findUnique>>
+>;
+export type UserWithTosStatus = NonNullable<
+  Awaited<ReturnType<typeof getUserById>>
+>;
 
 export async function getUserByAuth0Id(auth0Id: string) {
   return prisma.user.findUnique({ where: { auth0Id } });

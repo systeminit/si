@@ -4,10 +4,7 @@
     :class="
       clsx(
         'flex flex-col gap-md border rounded-sm p-sm mt-xs leading-snug',
-        themeClasses(
-          'bg-neutral-200 border-neutral-400',
-          'bg-neutral-800 border-neutral-600',
-        ),
+        themeClasses('bg-neutral-200 border-neutral-400', 'bg-neutral-800 border-neutral-600'),
       )
     "
   >
@@ -15,17 +12,12 @@
       <div class="flex flex-row justify-between">
         <span v-if="hasUsedAiAgent" class="font-medium">
           Get started with these prompts in our
-          <a
-            class="font-medium underline"
-            href="https://github.com/systeminit/si-ai-agent"
-            target="_blank"
-          >
+          <a class="font-medium underline" href="https://github.com/systeminit/si-ai-agent" target="_blank">
             AI Agent:
           </a>
         </span>
         <span v-else class="font-medium">
-          Set up the AI agent and run these prompts to see System Initiative in
-          action:
+          Set up the AI agent and run these prompts to see System Initiative in action:
         </span>
         <Icon
           v-if="hasUsedAiAgent"
@@ -35,28 +27,13 @@
           @click="closed = true"
         />
         <div v-else class="flex flex-row gap-sm">
-          <NewButton
-            label="Learn More"
-            href="https://docs.systeminit.com/tutorials/getting-started"
-            target="_blank"
-          />
-          <NewButton
-            aria-label="Go to Onboarding"
-            label="Get started"
-            tone="action"
-            @click="ctx.reopenOnboarding"
-          />
+          <NewButton label="Learn More" href="https://docs.systeminit.com/tutorials/getting-started" target="_blank" />
+          <NewButton aria-label="Go to Onboarding" label="Get started" tone="action" @click="ctx.reopenOnboarding" />
         </div>
       </div>
     </div>
     <div class="flex desktop:flex-row flex-col desktop:gap-md gap-xs">
-      <CopyableTextBlock
-        v-for="(prompt, index) in prompts"
-        :key="index"
-        :text="prompt"
-        prompt
-        class="basis-1/3"
-      />
+      <CopyableTextBlock v-for="(prompt, index) in prompts" :key="index" :text="prompt" prompt class="basis-1/3" />
     </div>
   </div>
 </template>
@@ -71,9 +48,7 @@ import CopyableTextBlock from "./CopyableTextBlock.vue";
 
 const ctx = useContext();
 
-const hasUsedAiAgent = computed(
-  () => ctx.userWorkspaceFlags.value.executedAgent ?? false,
-);
+const hasUsedAiAgent = computed(() => ctx.userWorkspaceFlags.value.executedAgent ?? false);
 
 const HAS_DISMISSED_WELCOME_BANNER_KEY = "dismissed-welcome-banner";
 

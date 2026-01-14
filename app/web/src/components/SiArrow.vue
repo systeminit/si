@@ -1,9 +1,5 @@
 <template>
-  <Icon
-    name="chevron--down"
-    size="xs"
-    :class="props.nudge ? 'translate-y-0.5' : ''"
-  />
+  <Icon name="chevron--down" size="xs" :class="props.nudge ? 'translate-y-0.5' : ''" />
 </template>
 
 <script setup lang="ts">

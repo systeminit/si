@@ -6,12 +6,7 @@ import { useWorkspacesStore } from "./workspaces.store";
 import { useChangeSetsStore } from "./change_sets.store";
 import handleStoreError from "./errors";
 import { useRealtimeStore } from "./realtime/realtime.store";
-import {
-  FuncRun,
-  FuncRunId,
-  FuncRunState,
-  useFuncRunsStore,
-} from "./func_runs.store";
+import { FuncRun, FuncRunId, FuncRunState, useFuncRunsStore } from "./func_runs.store";
 
 export interface ManagementHistoryItem {
   id: FuncRunId;
@@ -48,11 +43,8 @@ export const useManagementRunsStore = () => {
         managementRunHistory: [] as ManagementHistoryItem[],
       }),
       getters: {
-        latestManagementRun:
-          (state) => (prototypeId: string, componentId: ComponentId) =>
-            state.managementRunByPrototypeAndComponentId[
-              `${prototypeId}-${componentId}`
-            ],
+        latestManagementRun: (state) => (prototypeId: string, componentId: ComponentId) =>
+          state.managementRunByPrototypeAndComponentId[`${prototypeId}-${componentId}`],
       },
       actions: {
         async GET_MANAGEMENT_RUN_HISTORY() {
@@ -68,10 +60,7 @@ export const useManagementRunsStore = () => {
           });
         },
 
-        async GET_LATEST_FOR_MGMT_PROTO_AND_COMPONENT(
-          prototypeId: string,
-          componentId: ComponentId,
-        ) {
+        async GET_LATEST_FOR_MGMT_PROTO_AND_COMPONENT(prototypeId: string, componentId: ComponentId) {
           return new ApiRequest<FuncRun | null>({
             url: `${API_PREFIX}/management/prototype/${prototypeId}/${componentId}/latest`,
             headers: { accept: "application/json" },
@@ -80,25 +69,15 @@ export const useManagementRunsStore = () => {
             },
             onSuccess: (funcRun) => {
               if (funcRun) {
-                this.setLatestManagementRun(
-                  prototypeId,
-                  componentId,
-                  funcRun.id,
-                );
+                this.setLatestManagementRun(prototypeId, componentId, funcRun.id);
                 funcRunsStore.funcRuns[funcRun.id] = funcRun;
               }
             },
           });
         },
 
-        setLatestManagementRun(
-          prototypeId: string,
-          componentId: string,
-          funcRunId: string,
-        ) {
-          this.managementRunByPrototypeAndComponentId[
-            `${prototypeId}-${componentId}`
-          ] = funcRunId;
+        setLatestManagementRun(prototypeId: string, componentId: string, funcRunId: string) {
+          this.managementRunByPrototypeAndComponentId[`${prototypeId}-${componentId}`] = funcRunId;
         },
 
         registerRequestsBegin(requestUlid: string, actionName: string) {
@@ -118,11 +97,7 @@ export const useManagementRunsStore = () => {
           {
             eventType: "ManagementFuncExecuted",
             callback: (payload) => {
-              this.setLatestManagementRun(
-                payload.prototypeId,
-                payload.managerComponentId,
-                payload.funcRunId,
-              );
+              this.setLatestManagementRun(payload.prototypeId, payload.managerComponentId, payload.funcRunId);
 
               this.GET_MANAGEMENT_RUN_HISTORY();
             },

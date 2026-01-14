@@ -13,15 +13,9 @@ export const useUpgrade = () => {
     return computed(() => {
       const members = ctx.schemaMembers.value[unref(schemaId)];
       if (!members) return false;
-      if (
-        members.editingVariantId &&
-        unref(schemaVariantId) !== members.editingVariantId
-      ) {
+      if (members.editingVariantId && unref(schemaVariantId) !== members.editingVariantId) {
         return true;
-      } else if (
-        !members.editingVariantId &&
-        unref(schemaVariantId) !== members.defaultVariantId
-      ) {
+      } else if (!members.editingVariantId && unref(schemaVariantId) !== members.defaultVariantId) {
         return true;
       }
       return false;

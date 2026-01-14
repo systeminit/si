@@ -9,12 +9,7 @@
   >
     <li
       v-if="edges.length > 0"
-      :class="
-        clsx(
-          'text-sm font-bold border-b',
-          themeClasses('border-neutral-400', 'border-neutral-600'),
-        )
-      "
+      :class="clsx('text-sm font-bold border-b', themeClasses('border-neutral-400', 'border-neutral-600'))"
     >
       {{ titleText }}
     </li>
@@ -26,11 +21,7 @@
       :parentComponentId="parentComponentId"
     />
     <template v-if="edges.length > 0">
-      <ManagementConnectionCard
-        v-for="edge in edges"
-        :key="edge.key"
-        :componentId="edge.componentId"
-      />
+      <ManagementConnectionCard v-for="edge in edges" :key="edge.key" :componentId="edge.componentId" />
     </template>
   </ul>
 </template>

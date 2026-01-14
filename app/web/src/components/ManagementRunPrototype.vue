@@ -21,20 +21,12 @@
       icon="play"
       :requestStatus="request"
       :disabled="isLoading"
-      :tooltip="
-        isLoading ? `Wait for component finish updating` : `Run Function`
-      "
+      :tooltip="isLoading ? `Wait for component finish updating` : `Run Function`"
       @click="runClick"
     />
 
-    <TruncateWithTooltip class="grow">{{
-      `Run ${props.prototype.label}`
-    }}</TruncateWithTooltip>
-    <StatusIndicatorIcon
-      v-if="lastExecutionState"
-      type="management"
-      :status="lastExecutionState"
-    />
+    <TruncateWithTooltip class="grow">{{ `Run ${props.prototype.label}` }}</TruncateWithTooltip>
+    <StatusIndicatorIcon v-if="lastExecutionState" type="management" :status="lastExecutionState" />
 
     <FuncRunTabDropdown
       :funcRunId="latestRunId"
@@ -57,21 +49,13 @@ import {
 } from "@si/vue-lib/design-system";
 import { useRouter } from "vue-router";
 import { useFuncStore, MgmtPrototype } from "@/store/func/funcs.store";
-import {
-  FuncRun,
-  FuncRunId,
-  funcRunStatus,
-  useFuncRunsStore,
-} from "@/store/func_runs.store";
+import { FuncRun, FuncRunId, funcRunStatus, useFuncRunsStore } from "@/store/func_runs.store";
 import { useManagementRunsStore } from "@/store/management_runs.store";
 import { useStatusStore } from "@/store/status.store";
 import { useViewsStore } from "@/store/views.store";
 import { ViewId } from "@/api/sdf/dal/views";
 import { ComponentType } from "@/api/sdf/dal/schema";
-import {
-  DiagramGroupData,
-  DiagramNodeData,
-} from "./ModelingDiagram/diagram_types";
+import { DiagramGroupData, DiagramNodeData } from "./ModelingDiagram/diagram_types";
 import StatusIndicatorIcon from "./StatusIndicatorIcon.vue";
 import FuncRunTabDropdown from "./FuncRunTabDropdown.vue";
 
@@ -100,28 +84,22 @@ const request = funcStore.getRequestStatus(
   props.component.def.id,
 );
 
-const isLoading = computed(() =>
-  statusStore.componentIsLoading(props.component.def.id),
-);
+const isLoading = computed(() => statusStore.componentIsLoading(props.component.def.id));
 
 const historicalFuncRun = ref<FuncRun | null>(null);
 
 onMounted(async () => {
-  const resp =
-    await managementRunsStore.GET_LATEST_FOR_MGMT_PROTO_AND_COMPONENT(
-      props.prototype.managementPrototypeId,
-      props.component.def.id,
-    );
+  const resp = await managementRunsStore.GET_LATEST_FOR_MGMT_PROTO_AND_COMPONENT(
+    props.prototype.managementPrototypeId,
+    props.component.def.id,
+  );
   if (resp.result.success) {
     historicalFuncRun.value = resp.result.data;
   }
 });
 
 const latestRunId = computed(() =>
-  managementRunsStore.latestManagementRun(
-    props.prototype.managementPrototypeId,
-    props.component.def.id,
-  ),
+  managementRunsStore.latestManagementRun(props.prototype.managementPrototypeId, props.component.def.id),
 );
 
 const componentViews = computed(() =>
@@ -144,11 +122,7 @@ const lastExecution = computed<FuncRun | null>(() => {
 
 const lastExecutionState = computed(() => funcRunStatus(lastExecution.value));
 const runPrototype = async (viewId: ViewId) => {
-  funcStore.RUN_MGMT_PROTOTYPE(
-    props.prototype.managementPrototypeId,
-    props.component.def.id,
-    viewId,
-  );
+  funcStore.RUN_MGMT_PROTOTYPE(props.prototype.managementPrototypeId, props.component.def.id, viewId);
 };
 
 const runClick = async (e?: MouseEvent) => {

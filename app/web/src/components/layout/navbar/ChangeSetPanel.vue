@@ -1,18 +1,14 @@
 <template>
   <div class="flex flex-row gap-xs items-end flex-1 min-w-[172px] max-w-fit">
     <label class="flex flex-col flex-1 min-w-0 max-w-fit">
-      <div
-        class="text-[11px] mt-[1px] mb-[5px] capsize font-medium text-neutral-300 whitespace-nowrap"
-      >
+      <div class="text-[11px] mt-[1px] mb-[5px] capsize font-medium text-neutral-300 whitespace-nowrap">
         CHANGE SET:
       </div>
       <DropdownMenuButton
         ref="dropdownMenuRef"
         v-model="selectedChangeSetId"
         :options="changeSetSearchFilteredOptions"
-        :search="
-          changeSetDropdownOptions.length > DEFAULT_DROPDOWN_SEARCH_THRESHOLD
-        "
+        :search="changeSetDropdownOptions.length > DEFAULT_DROPDOWN_SEARCH_THRESHOLD"
         placeholder="-- select a change set --"
         checkable
         variant="navbar"
@@ -62,8 +58,7 @@
         !selectedChangeSetName ||
         changeSetsStore.headSelected ||
         changeSetsStore.creatingChangeSet ||
-        changeSetsStore.selectedChangeSet?.status ===
-          ChangeSetStatus.NeedsApproval
+        changeSetsStore.selectedChangeSet?.status === ChangeSetStatus.NeedsApproval
       "
       icon="trash"
       tone="destructive"
@@ -76,14 +71,10 @@
         <Stack>
           <p>
             Modeling a configuration or extending SI happens within
-            <b>Change Sets</b>. Think of these like light-weight branches,
-            allowing you to experiment freely without risk of impacting
-            production systems.
+            <b>Change Sets</b>. Think of these like light-weight branches, allowing you to experiment freely without
+            risk of impacting production systems.
           </p>
-          <p>
-            Please give your <b>Change Set</b> a name below, and click the
-            Create button.
-          </p>
+          <p>Please give your <b>Change Set</b> a name below, and click the Create button.</p>
           <VormInput
             v-model="createChangeSetName"
             :regex="CHANGE_SET_NAME_REGEX"
@@ -141,9 +132,7 @@ const CHANGE_SET_NAME_REGEX = /^(?!head).*$/i;
 const changeSetsStore = useChangeSetsStore();
 const openChangeSets = computed(() => changeSetsStore.openChangeSets);
 const selectedChangeSetId = computed(() => changeSetsStore.selectedChangeSetId);
-const selectedChangeSetName = computed(
-  () => changeSetsStore.selectedChangeSet?.name,
-);
+const selectedChangeSetName = computed(() => changeSetsStore.selectedChangeSet?.name);
 
 const dropdownMenuRef = ref<InstanceType<typeof DropdownMenuButton>>();
 
@@ -174,32 +163,25 @@ const route = useRoute();
 
 // NOTE(victor): The changeset modal uses the new api lib, so we're not enabling the rename on the old ui
 // TODO: Remove this when the old ui is deprecated
-const enableChangesetRename = computed(() =>
-  route.name?.toString().startsWith("new-hotness"),
-);
+const enableChangesetRename = computed(() => route.name?.toString().startsWith("new-hotness"));
 
 const calculateShowSecondaryAction = (option: { label: string }) => {
   return enableChangesetRename.value && option.label.toUpperCase() !== "HEAD";
 };
 
-const abandonModalRef = ref<InstanceType<typeof AbandonChangeSetModal> | null>(
-  null,
-);
+const abandonModalRef = ref<InstanceType<typeof AbandonChangeSetModal> | null>(null);
 const openAbandonConfirmationModal = () => {
   abandonModalRef.value?.open();
 };
 
-const renameModalRef = ref<InstanceType<typeof ChangesetRenameModal> | null>(
-  null,
-);
+const renameModalRef = ref<InstanceType<typeof ChangesetRenameModal> | null>(null);
 function openRenameModal(option: { value: string; label: string }) {
   renameModalRef.value?.open(option.value, option.label);
 }
 
 const createModalRef = ref<InstanceType<typeof Modal>>();
 
-const changeSetsReqStatus =
-  changeSetsStore.getRequestStatus("FETCH_CHANGE_SETS");
+const changeSetsReqStatus = changeSetsStore.getRequestStatus("FETCH_CHANGE_SETS");
 
 const checkFirstLoad = () => {
   if (!changeSetsReqStatus.value.isSuccess || !createModalRef.value) return;
@@ -223,10 +205,7 @@ const createChangeSetName = ref("");
 
 const { validationState, validationMethods } = useValidatedInputGroup();
 
-const waitForChangeSetExists = (
-  workspaceId: string,
-  changeSetId: string,
-): Promise<void> => {
+const waitForChangeSetExists = (workspaceId: string, changeSetId: string): Promise<void> => {
   const INTERVAL_MS = 50;
   const MAX_WAIT_IN_SEC = 10;
   const MAX_RETRIES = (MAX_WAIT_IN_SEC * 1000) / INTERVAL_MS;
@@ -236,6 +215,7 @@ const waitForChangeSetExists = (
     const interval = setInterval(async () => {
       if (retry >= MAX_RETRIES) {
         clearInterval(interval);
+        // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors
         reject();
       }
 
@@ -258,10 +238,7 @@ async function onSelectChangeSet(newVal: string) {
     // keep everything in the current route except the change set id
     // note - we use push here, so there is a new browser history entry
 
-    if (
-      route.name?.toString().startsWith("new-hotness") &&
-      typeof route.params.workspacePk === "string"
-    ) {
+    if (route.name?.toString().startsWith("new-hotness") && typeof route.params.workspacePk === "string") {
       const workspaceId = route.params.workspacePk;
       await waitForChangeSetExists(workspaceId, newVal);
     }
@@ -282,9 +259,7 @@ async function onSelectChangeSet(newVal: string) {
 async function onCreateChangeSet() {
   if (validationMethods.hasError()) return;
 
-  const createReq = await changeSetsStore.CREATE_CHANGE_SET(
-    createChangeSetName.value,
-  );
+  const createReq = await changeSetsStore.CREATE_CHANGE_SET(createChangeSetName.value);
 
   if (createReq.result.success && createReq.result.data?.id) {
     const newChangeSetId = createReq.result.data.id;
@@ -293,8 +268,7 @@ async function onCreateChangeSet() {
   }
 }
 
-const createChangeSetReqStatus =
-  changeSetsStore.getRequestStatus("CREATE_CHANGE_SET");
+const createChangeSetReqStatus = changeSetsStore.getRequestStatus("CREATE_CHANGE_SET");
 
 function openCreateModal() {
   if (createModalRef.value?.isOpen) return;

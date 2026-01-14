@@ -1,9 +1,4 @@
-import {
-  ActionId,
-  ActionKind,
-  ActionPrototypeId,
-  ActionResultState,
-} from "@/api/sdf/dal/action";
+import { ActionId, ActionKind, ActionPrototypeId, ActionResultState } from "@/api/sdf/dal/action";
 import { ChangeSetId } from "@/api/sdf/dal/change_set";
 import { ComponentId } from "@/api/sdf/dal/component";
 import { ManagementState } from "./management_func_job_state";
@@ -12,13 +7,7 @@ export type FuncRunId = string;
 export type FuncRunLogId = string;
 export type ContentHash = string;
 
-export type FuncRunState =
-  | "Created"
-  | "Dispatched"
-  | "Running"
-  | "Postprocessing"
-  | "Failure"
-  | "Success";
+export type FuncRunState = "Created" | "Dispatched" | "Running" | "Postprocessing" | "Failure" | "Success";
 
 export enum FuncKind {
   Action = "Action",
@@ -128,16 +117,12 @@ export function funcRunStatus(
   if (!funcRun) return null;
 
   // If the management job is in flight, we are "running".
-  if (
-    managementState === "executing" ||
-    managementState === "operating" ||
-    managementState === "pending"
-  )
+  if (managementState === "executing" || managementState === "operating" || managementState === "pending")
     return "Running";
 
   // If the qualification ran successfully, but it resulted in failure, then the state is a failure state.
   if (
-    funcRun.functionKind === "Qualification" &&
+    funcRun.functionKind === FuncKind.Qualification &&
     funcRun.state === "Success" &&
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (funcRun.unprocessedResultValue as any)?.result !== "success"
@@ -147,7 +132,7 @@ export function funcRunStatus(
 
   // Check both the management func and its operations for terminating state.
   if (
-    funcRun.functionKind === "Management" &&
+    funcRun.functionKind === FuncKind.Management &&
     funcRun.state === "Success" &&
     (managementState === "failure" ||
       funcRun.actionResultState === "Failure" ||
@@ -156,11 +141,7 @@ export function funcRunStatus(
   ) {
     return "Failure";
   }
-  if (
-    funcRun.functionKind === "Management" &&
-    funcRun.state === "Success" &&
-    managementState === "success"
-  ) {
+  if (funcRun.functionKind === FuncKind.Management && funcRun.state === "Success" && managementState === "success") {
     return "Success";
   }
 

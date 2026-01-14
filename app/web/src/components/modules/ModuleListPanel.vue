@@ -14,18 +14,9 @@
         />
       </div>
     </SidebarSubpanelTitle>
-    <input
-      ref="specFileSelectorRef"
-      class="hidden"
-      type="file"
-      @change="handleFileChange"
-    />
+    <input ref="specFileSelectorRef" class="hidden" type="file" @change="handleFileChange" />
 
-    <SiSearch
-      v-model="textSearch"
-      class="flex-none"
-      placeholder="search modules"
-    />
+    <SiSearch v-model="textSearch" class="flex-none" placeholder="search modules" />
 
     <ModuleList
       :loading="loadBuiltinsReqStatus"
@@ -56,14 +47,10 @@ import SidebarSubpanelTitle from "../SidebarSubpanelTitle.vue";
 
 const moduleStore = useModuleStore();
 const loadBuiltinsReqStatus = moduleStore.getRequestStatus("LIST_BUILTINS");
-const searchRemoteModulesReqStatus = moduleStore.getRequestStatus(
-  "GET_REMOTE_MODULES_LIST",
-);
+const searchRemoteModulesReqStatus = moduleStore.getRequestStatus("GET_REMOTE_MODULES_LIST");
 
 const specFileSelectorRef = ref();
-const installModuleFromFileReqStatus = moduleStore.getRequestStatus(
-  "INSTALL_MODULE_FROM_FILE",
-);
+const installModuleFromFileReqStatus = moduleStore.getRequestStatus("INSTALL_MODULE_FROM_FILE");
 const openFilePicker = () => {
   specFileSelectorRef.value.click();
 };
@@ -87,15 +74,11 @@ const textSearch = ref("");
 const filteredBuiltins = computed(() => {
   if (!textSearch.value) return moduleStore.builtins;
 
-  return _.filter(moduleStore.builtins, (m) =>
-    m.name.toLowerCase().includes(textSearch.value.toLowerCase()),
-  );
+  return _.filter(moduleStore.builtins, (m) => m.name.toLowerCase().includes(textSearch.value.toLowerCase()));
 });
 
 const filteredRemoteList = computed(() => {
-  return _.filter(moduleStore.remoteModuleList, (m) =>
-    m.name.toLowerCase().includes(textSearch.value.toLowerCase()),
-  );
+  return _.filter(moduleStore.remoteModuleList, (m) => m.name.toLowerCase().includes(textSearch.value.toLowerCase()));
 });
 
 onMounted(() => {

@@ -3,13 +3,8 @@
     v-if="!loadAssetReqStatus || loadAssetReqStatus.isPending"
     :requestStatus="loadAssetReqStatus"
   />
-  <div
-    v-else-if="loadAssetReqStatus.isError"
-    class="p-2 text-center text-neutral-400 dark:text-neutral-300"
-  >
-    <template v-if="schemaVariantId">
-      Asset "{{ schemaVariantId }}" Function does not exist!
-    </template>
+  <div v-else-if="loadAssetReqStatus.isError" class="p-2 text-center text-neutral-400 dark:text-neutral-300">
+    <template v-if="schemaVariantId"> Asset "{{ schemaVariantId }}" Function does not exist! </template>
     <template v-else>Select an asset to view it.</template>
   </div>
   <ScrollArea
@@ -22,9 +17,7 @@
 
     <CodeEditor
       :id="
-        changeSetsStore.headChangeSetId === changeSetsStore.selectedChangeSetId
-          ? undefined
-          : `asset-${schemaVariantId}`
+        changeSetsStore.headChangeSetId === changeSetsStore.selectedChangeSetId ? undefined : `asset-${schemaVariantId}`
       "
       v-model="editingAsset"
       :disabled="selectedAsset.isLocked"
@@ -40,11 +33,7 @@
 import { ref, watch, computed, onMounted, ComputedRef } from "vue";
 import { ApiRequestStatus } from "@si/vue-lib/pinia";
 import * as _ from "lodash-es";
-import {
-  RequestStatusMessage,
-  ScrollArea,
-  LoadingMessage,
-} from "@si/vue-lib/design-system";
+import { RequestStatusMessage, ScrollArea, LoadingMessage } from "@si/vue-lib/design-system";
 import { useAssetStore } from "@/store/asset.store";
 import { useFuncStore } from "@/store/func/funcs.store";
 import { useChangeSetsStore } from "@/store/change_sets.store";
@@ -63,9 +52,7 @@ const props = defineProps<{
 const assetStore = useAssetStore();
 const funcStore = useFuncStore();
 const selectedAsset = computed(() =>
-  props.schemaVariantId
-    ? assetStore.variantFromListById[props.schemaVariantId]
-    : undefined,
+  props.schemaVariantId ? assetStore.variantFromListById[props.schemaVariantId] : undefined,
 );
 
 const selectedAssetFuncCode = computed(() => {
@@ -81,10 +68,7 @@ let loadAssetReqStatus: ComputedRef<ApiRequestStatus>;
 watch(
   () => selectedAsset.value,
   () => {
-    loadAssetReqStatus = funcStore.getRequestStatus(
-      "FETCH_CODE",
-      selectedAsset.value?.assetFuncId,
-    );
+    loadAssetReqStatus = funcStore.getRequestStatus("FETCH_CODE", selectedAsset.value?.assetFuncId);
   },
   { immediate: true },
 );
@@ -107,11 +91,7 @@ watch(
   },
 );
 
-const onChange = (
-  _schemaVariantId: string,
-  code: string,
-  debounce: boolean,
-) => {
+const onChange = (_schemaVariantId: string, code: string, debounce: boolean) => {
   if (
     !selectedAsset.value ||
     selectedAsset.value.isLocked ||
@@ -120,8 +100,7 @@ const onChange = (
   ) {
     return;
   }
-  updatedHead.value =
-    changeSetsStore.selectedChangeSetId === changeSetsStore.headChangeSetId;
+  updatedHead.value = changeSetsStore.selectedChangeSetId === changeSetsStore.headChangeSetId;
   if (!updatedHead.value) {
     const asset = _.cloneDeep(selectedAsset.value);
     assetStore.enqueueVariantSave(

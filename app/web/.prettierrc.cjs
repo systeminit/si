@@ -3,4 +3,5 @@ module.exports = {
   trailingComma: "all",
   tabWidth: 2,
   bracketSpacing: true,
+  printWidth: 120,
 };

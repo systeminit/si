@@ -39,10 +39,7 @@
         </Stack>
         <Stack class="max-w-xl">
           <h2 class="font-bold text-lg">KILL FUNCTION EXECUTION</h2>
-          <VormInput
-            v-model="funcRunId"
-            label="FuncRunId for function execution"
-          />
+          <VormInput v-model="funcRunId" label="FuncRunId for function execution" />
           <div class="flex flex-row-reverse gap-sm">
             <VButton
               :disabled="!funcRunId"
@@ -61,22 +58,10 @@
           <div
             v-for="flag in featureFlags"
             :key="flag.name"
-            :class="
-              clsx(
-                'flex flex-row p-2xs',
-                themeClasses('', 'odd:bg-neutral-600'),
-              )
-            "
+            :class="clsx('flex flex-row p-2xs', themeClasses('', 'odd:bg-neutral-600'))"
           >
             <div class="flex-1">{{ flag.name }}:</div>
-            <div
-              :class="
-                clsx(
-                  flag.value ? 'text-success-500' : 'text-destructive-500',
-                  'uppercase flex-none',
-                )
-              "
-            >
+            <div :class="clsx(flag.value ? 'text-success-500' : 'text-destructive-500', 'uppercase flex-none')">
               {{ flag.value }}
             </div>
           </div>
@@ -90,12 +75,7 @@
 <script lang="ts" setup>
 import * as _ from "lodash-es";
 import { computed, onBeforeMount, ref } from "vue";
-import {
-  Stack,
-  VormInput,
-  VButton,
-  themeClasses,
-} from "@si/vue-lib/design-system";
+import { Stack, VormInput, VButton, themeClasses } from "@si/vue-lib/design-system";
 import { useRouter } from "vue-router";
 import clsx from "clsx";
 import { useAdminStore } from "@/store/admin.store";

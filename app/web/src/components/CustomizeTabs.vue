@@ -57,8 +57,7 @@ function onTabChange(tabSlug?: string) {
     const params = {
       name: `workspace-lab-${tabSlug}`,
     } as RouteLocationNamedRaw;
-    if (tabSlug !== "packages")
-      params.query = assetStore.syncSelectionIntoUrl(true);
+    if (tabSlug !== "packages") params.query = assetStore.syncSelectionIntoUrl(true);
     router.push(params);
   }
 }

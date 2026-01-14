@@ -3,11 +3,7 @@
     <div
       :class="
         clsx(
-          !iconNoBg && [
-            !noTopMargin && 'mt-sm',
-            'p-sm rounded-full',
-            themeClasses('bg-neutral-200', 'bg-neutral-700'),
-          ],
+          !iconNoBg && [!noTopMargin && 'mt-sm', 'p-sm rounded-full', themeClasses('bg-neutral-200', 'bg-neutral-700')],
         )
       "
     >
@@ -44,10 +40,7 @@
         :class="
           clsx(
             'cursor-pointer hover:underline',
-            themeClasses(
-              'hover:text-action-500 text-neutral-600',
-              'hover:text-action-300 text-neutral-400',
-            ),
+            themeClasses('hover:text-action-500 text-neutral-600', 'hover:text-action-300 text-neutral-400'),
           )
         "
         @click="emit('final')"
@@ -59,12 +52,7 @@
 </template>
 
 <script setup lang="ts">
-import {
-  Icon,
-  IconNames,
-  IconSizes,
-  themeClasses,
-} from "@si/vue-lib/design-system";
+import { Icon, IconNames, IconSizes, themeClasses } from "@si/vue-lib/design-system";
 import clsx from "clsx";
 import { PropType } from "vue";
 

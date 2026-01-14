@@ -12,13 +12,9 @@ export type ViewId = string;
 export type EntityId = string; // TODO - "entity" can refer to most things in the system, currently we use this mostly just for views
 
 export type Components = Record<ComponentId, IRect>;
-export type Groups = Record<
-  ComponentId,
-  IRect & { size: number; zIndex: number }
->;
+export type Groups = Record<ComponentId, IRect & { size: number; zIndex: number }>;
 export type Sockets = Record<DiagramElementUniqueKey, SocketLocationInfo>;
-export type ViewNode = ViewDescription &
-  IRect & { componentType: ComponentType.View };
+export type ViewNode = ViewDescription & IRect & { componentType: ComponentType.View };
 export type ViewNodes = Record<ViewId, DiagramViewData>;
 
 export interface View {

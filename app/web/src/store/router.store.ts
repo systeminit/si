@@ -1,9 +1,6 @@
 import { defineStore } from "pinia";
 import * as _ from "lodash-es";
-import {
-  RouteLocationNormalizedLoaded,
-  RouteLocationAsRelativeGeneric,
-} from "vue-router";
+import { RouteLocationNormalizedLoaded, RouteLocationAsRelativeGeneric } from "vue-router";
 import router from "@/router";
 import { ChangeSetId } from "@/api/sdf/dal/change_set";
 
@@ -20,28 +17,18 @@ import { ChangeSetId } from "@/api/sdf/dal/change_set";
  */
 export const useRouterStore = defineStore("router", {
   state: () => ({
-    currentRoute: null as
-      | RouteLocationNormalizedLoaded
-      | RouteLocationAsRelativeGeneric
-      | null,
+    currentRoute: null as RouteLocationNormalizedLoaded | RouteLocationAsRelativeGeneric | null,
   }),
   actions: {
-    replace(
-      originChangeSetId: ChangeSetId | undefined,
-      location: RouteLocationAsRelativeGeneric,
-    ) {
+    replace(originChangeSetId: ChangeSetId | undefined, location: RouteLocationAsRelativeGeneric) {
       // if you're not operating on the same change set we are viewing, you can't change the router/URL
-      if (!location.name && this.currentRoute)
-        location.name = this.currentRoute.name;
+      if (!location.name && this.currentRoute) location.name = this.currentRoute.name;
       if (this.currentRoute?.params?.changeSetId === originChangeSetId) {
         router.replace(location);
         this.currentRoute = location;
       }
     },
-    push(
-      originChangeSetId: ChangeSetId | undefined,
-      location: RouteLocationAsRelativeGeneric,
-    ) {
+    push(originChangeSetId: ChangeSetId | undefined, location: RouteLocationAsRelativeGeneric) {
       // if you're not operating on the same change set we are viewing, you can't change the router/URL
       if (this.currentRoute?.params?.changeSetId === originChangeSetId) {
         router.push(location);

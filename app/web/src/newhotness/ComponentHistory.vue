@@ -7,11 +7,7 @@
   >
     <div class="flex flex-row justify-between items-center gap-xs pb-xs">
       <NewButton class="grow" label="Expand All" @click="handleAll('expand')" />
-      <NewButton
-        class="grow"
-        label="Collapse All"
-        @click="handleAll('collapse')"
-      />
+      <NewButton class="grow" label="Collapse All" @click="handleAll('collapse')" />
     </div>
     <div ref="wrapperRef" class="grid gap-sm relative">
       <!-- Single continuous timeline line behind all items -->
@@ -32,9 +28,7 @@
         :key="identifier(auditLog)"
         class="grid grid-cols-[10px_1fr] gap-2xs items-stretch"
       >
-        <div
-          class="relative flex flex-row justify-center items-start h-full pt-sm self-stretch"
-        >
+        <div class="relative flex flex-row justify-center items-start h-full pt-sm self-stretch">
           <div class="w-2.5 h-2.5 rounded-full bg-neutral-500 flex-shrink-0" />
         </div>
         <div
@@ -42,26 +36,16 @@
             clsx(
               'group/historylog',
               'p-xs border rounded-sm min-h-[2.5rem] min-w-0 break-words cursor-pointer',
-              themeClasses(
-                'border-neutral-400 hover:bg-neutral-100',
-                'border-neutral-600 hover:bg-neutral-700',
-              ),
+              themeClasses('border-neutral-400 hover:bg-neutral-100', 'border-neutral-600 hover:bg-neutral-700'),
             )
           "
           @click="toggleExpand(auditLog)"
         >
           <div class="flex flex-col gap-2xs">
-            <div
-              class="flex flex-row gap-xs items-center justify-between text-sm"
-            >
+            <div class="flex flex-row gap-xs items-center justify-between text-sm">
               <TruncateWithTooltip
                 class="py-2xs"
-                :class="
-                  clsx(
-                    'py-2xs',
-                    themeClasses('text-neutral-800', 'text-neutral-100'),
-                  )
-                "
+                :class="clsx('py-2xs', themeClasses('text-neutral-800', 'text-neutral-100'))"
               >
                 {{ auditLog.title }}
               </TruncateWithTooltip>
@@ -77,33 +61,18 @@
                 />
               </div>
             </div>
-            <div
-              v-if="auditLog.beforeValue && auditLog.afterValue"
-              class="flex flex-col text-xs"
-            >
+            <div v-if="auditLog.beforeValue && auditLog.afterValue" class="flex flex-col text-xs">
               <div class="flex flex-row items-center gap-2xs">
                 <span class="text-neutral-500 font-bold w-14">Previous:</span>
                 <TruncateWithTooltip
-                  :class="
-                    clsx(
-                      'py-2xs line-through',
-                      themeClasses('text-neutral-500', 'text-neutral-400'),
-                    )
-                  "
+                  :class="clsx('py-2xs line-through', themeClasses('text-neutral-500', 'text-neutral-400'))"
                 >
                   {{ auditLog.beforeValue }}
                 </TruncateWithTooltip>
               </div>
               <div class="flex flex-row items-center gap-2xs">
                 <span class="text-neutral-500 font-bold w-14">Now:</span>
-                <TruncateWithTooltip
-                  :class="
-                    clsx(
-                      'py-2xs',
-                      themeClasses('text-neutral-800', 'text-neutral-100'),
-                    )
-                  "
-                >
+                <TruncateWithTooltip :class="clsx('py-2xs', themeClasses('text-neutral-800', 'text-neutral-100'))">
                   {{ auditLog.afterValue }}
                 </TruncateWithTooltip>
               </div>
@@ -122,10 +91,7 @@
             @afterLeave="finishUpdateTimeline"
           >
             <div v-if="shouldExpand(auditLog)" class="mt-xs transition-all">
-              <CodeViewer
-                :code="JSON.stringify(auditLog.inner, null, 2)"
-                @click.stop
-              />
+              <CodeViewer :code="JSON.stringify(auditLog.inner, null, 2)" @click.stop />
             </div>
           </Transition>
         </div>
@@ -229,54 +195,45 @@ type AuditLogsForComponentResponse = {
 };
 
 const auditLogsApi = useApi(ctx);
-const { data, fetchNextPage, hasNextPage, isFetchingNextPage } =
-  useInfiniteQuery({
-    queryKey: key(EntityKind.AuditLogsForComponent, componentId),
-    enabled: computed(() => props.enabled ?? true),
-    queryFn: async ({ pageParam = pageSize }) => {
-      const call = auditLogsApi.endpoint<AuditLogsForComponentResponse>(
-        routes.AuditLogsForComponent,
-        { componentId: componentId.value },
-      );
-      const response = await call.get(
-        new URLSearchParams({
-          size: `${pageParam}`,
-          sort_ascending: "false",
-        }),
-      );
-      if (auditLogsApi.ok(response)) {
-        return response.data;
-      }
-      return { logs: [], canLoadMore: false };
-    },
-    staleTime: 60 * 2 * 1000,
-    initialPageParam: pageSize,
-    getNextPageParam: (lastPage: AuditLogsForComponentResponse) => {
-      if (!lastPage.canLoadMore) return undefined;
-      return lastPage.logs.length + increaseSize;
-    },
-    maxPages: 1,
-  });
+const { data, fetchNextPage, hasNextPage, isFetchingNextPage } = useInfiniteQuery({
+  queryKey: key(EntityKind.AuditLogsForComponent, componentId),
+  enabled: computed(() => props.enabled ?? true),
+  queryFn: async ({ pageParam = pageSize }) => {
+    const call = auditLogsApi.endpoint<AuditLogsForComponentResponse>(routes.AuditLogsForComponent, {
+      componentId: componentId.value,
+    });
+    const response = await call.get(
+      new URLSearchParams({
+        size: `${pageParam}`,
+        sort_ascending: "false",
+      }),
+    );
+    if (auditLogsApi.ok(response)) {
+      return response.data;
+    }
+    return { logs: [], canLoadMore: false };
+  },
+  staleTime: 60 * 2 * 1000,
+  initialPageParam: pageSize,
+  getNextPageParam: (lastPage: AuditLogsForComponentResponse) => {
+    if (!lastPage.canLoadMore) return undefined;
+    return lastPage.logs.length + increaseSize;
+  },
+  maxPages: 1,
+});
 
 // Flatten all pages and filter out socket-related audit logs
 const auditLogs = computed((): ProcessedAuditLog[] | undefined => {
   if (!data.value) return undefined;
 
   // There should only be one page!
-  const allLogs = data.value.pages.flatMap(
-    (page: AuditLogsForComponentResponse) => page.logs,
-  );
+  const allLogs = data.value.pages.flatMap((page: AuditLogsForComponentResponse) => page.logs);
 
   return allLogs
     .filter((auditLog: AuditLog) => {
       // NOTE(nick,paul,brit): this is intentionally omega hacked. We expect this to change over time.
       if (auditLog.kind === "UpdateDependentProperty") {
-        if (
-          ["codeItem", "qualificationItem", "resource_value"].includes(
-            auditLog.entityName,
-          )
-        )
-          return false;
+        if (["codeItem", "qualificationItem", "resource_value"].includes(auditLog.entityName)) return false;
 
         // End my suffering.
         const beforeValue = (auditLog.metadata.beforeValue as string) ?? "null";
@@ -285,10 +242,7 @@ const auditLogs = computed((): ProcessedAuditLog[] | undefined => {
       }
 
       // Filter out sockets.
-      if (
-        auditLog.kind === "UpdateDependentOutputSocket" ||
-        auditLog.kind === "UpdateDependentInputSocket"
-      )
+      if (auditLog.kind === "UpdateDependentOutputSocket" || auditLog.kind === "UpdateDependentInputSocket")
         return false;
 
       // We made it!
@@ -297,43 +251,25 @@ const auditLogs = computed((): ProcessedAuditLog[] | undefined => {
     .map((filteredAuditLog: AuditLog): ProcessedAuditLog => {
       // Now that we have filtered the audit logs to only those that are relevant to the user, we
       // can change how they are displayed based on the kind.
-      if (
-        ["UpdateDependentProperty", "SetAttribute", "UnsetAttribute"].includes(
-          filteredAuditLog.kind,
-        )
-      ) {
+      if (["UpdateDependentProperty", "SetAttribute", "UnsetAttribute"].includes(filteredAuditLog.kind)) {
         if (filteredAuditLog.kind === "UpdateDependentProperty") {
           return {
             inner: filteredAuditLog,
             title: `${filteredAuditLog.entityName} changed`,
-            beforeValue:
-              (filteredAuditLog.metadata.beforeValue as string) ?? "<empty>",
-            afterValue:
-              (filteredAuditLog.metadata.afterValue as string) ?? "<empty>",
+            beforeValue: (filteredAuditLog.metadata.beforeValue as string) ?? "<empty>",
+            afterValue: (filteredAuditLog.metadata.afterValue as string) ?? "<empty>",
           };
         } else {
-          const beforeValue = filteredAuditLog.metadata.beforeValue as Record<
-            string,
-            unknown
-          > | null;
-          const afterValue = filteredAuditLog.metadata.afterValue as Record<
-            string,
-            unknown
-          > | null;
+          const beforeValue = filteredAuditLog.metadata.beforeValue as Record<string, unknown> | null;
+          const afterValue = filteredAuditLog.metadata.afterValue as Record<string, unknown> | null;
 
-          const getDisplayValue = (
-            value: Record<string, unknown> | null,
-          ): string => {
+          const getDisplayValue = (value: Record<string, unknown> | null): string => {
             if (!value) return "<empty>";
 
             if (value.Subscription) {
-              const subscription = value.Subscription as Record<
-                string,
-                unknown
-              >;
+              const subscription = value.Subscription as Record<string, unknown>;
               const compId = subscription.source_component_id as string;
-              const componentName =
-                ctx.componentDetails.value[compId]?.name || "UnknownComponent";
+              const componentName = ctx.componentDetails.value[compId]?.name || "UnknownComponent";
               const subscriptionValue = subscription.value;
               const path =
                 subscriptionValue !== null && subscriptionValue !== undefined

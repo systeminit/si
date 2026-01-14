@@ -27,11 +27,7 @@
           )
         "
       >
-        <Timestamp
-          :date="changeSet.mergeRequestedAt"
-          showTimeIfToday
-          size="extended"
-        />
+        <Timestamp :date="changeSet.mergeRequestedAt" showTimeIfToday size="extended" />
 
         by {{ changeSet.mergeRequestedByUser }}
       </div>

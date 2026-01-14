@@ -48,7 +48,7 @@ export const generateMockActions = (changeSetId: ChangeSetId) => {
     };
     out.push(parent);
     id++;
-    for (const kind in ActionKind) {
+    Object.values(ActionKind).forEach((kind) => {
       const child = {
         id: `${id}`,
         prototypeId: `${id}`,
@@ -87,7 +87,7 @@ export const generateMockActions = (changeSetId: ChangeSetId) => {
         out.push(child2);
         id++;
       }
-    }
+    });
   }
 
   debugConsoleLog(`${id - 1} mock actions generated`);

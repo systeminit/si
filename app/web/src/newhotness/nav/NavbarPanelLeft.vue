@@ -1,22 +1,14 @@
 <template>
-  <div
-    class="flex flex-row flex-1 basis-1/2 items-center min-w-[340px] h-full overflow-hidden"
-  >
+  <div class="flex flex-row flex-1 basis-1/2 items-center min-w-[340px] h-full overflow-hidden">
     <SiLogo class="block h-[44px] w-[44px] ml-[12px] mr-[12px] flex-none" />
 
     <label class="flex flex-col flex-1 min-w-0 max-w-fit">
-      <div
-        class="text-[11px] mt-[1px] mb-[5px] capsize font-medium text-neutral-300"
-      >
-        WORKSPACE:
-      </div>
+      <div class="text-[11px] mt-[1px] mb-[5px] capsize font-medium text-neutral-300">WORKSPACE:</div>
       <DropdownMenuButton
         ref="dropdownMenuRef"
         v-model="selectedWorkspaceId"
         :options="searchFilteredWorkspaceDropdownOptions"
-        :search="
-          workspaceDropdownOptions.length > DEFAULT_DROPDOWN_SEARCH_THRESHOLD
-        "
+        :search="workspaceDropdownOptions.length > DEFAULT_DROPDOWN_SEARCH_THRESHOLD"
         placeholder="-- select a workspace --"
         checkable
         variant="navbar"
@@ -31,18 +23,9 @@
     </label>
 
     <template v-if="!invalidWorkspace && ctx?.queriesEnabled.value">
-      <Icon
-        name="chevron--right"
-        size="xs"
-        tone="neutral"
-        class="mt-[14px] flex-none"
-      />
+      <Icon name="chevron--right" size="xs" tone="neutral" class="mt-[14px] flex-none" />
 
-      <ChangeSetPanel
-        ref="changeSetPanelRef"
-        :workspaceId="props.workspaceId"
-        :changeSetId="changeSetId"
-      />
+      <ChangeSetPanel ref="changeSetPanelRef" :workspaceId="props.workspaceId" :changeSetId="changeSetId" />
     </template>
 
     <StatusPanel />
@@ -72,9 +55,7 @@ const props = defineProps<{
   invalidWorkspace?: boolean;
 }>();
 
-const selectedWorkspaceId = ref(
-  props.invalidWorkspace ? undefined : props.workspaceId,
-);
+const selectedWorkspaceId = ref(props.invalidWorkspace ? undefined : props.workspaceId);
 watch(
   () => props.workspaceId,
   () => {
@@ -88,14 +69,10 @@ const changeSetPanelRef = ref<InstanceType<typeof ChangeSetPanel>>();
 const updateRoute = (newWorkspacePk: string) => {
   if (props.workspaceId === newWorkspacePk) return;
 
-  window.location.href = `${
-    import.meta.env.VITE_AUTH_API_URL
-  }/workspaces/${newWorkspacePk}/go`;
+  window.location.href = `${import.meta.env.VITE_AUTH_API_URL}/workspaces/${newWorkspacePk}/go`;
 };
 
-const workspaceDropdownOptions = computed<
-  Array<{ value: string; label: string }>
->(() => {
+const workspaceDropdownOptions = computed<Array<{ value: string; label: string }>>(() => {
   if (!workspaces?.workspaces?.value) return [];
   return _.map(
     _.filter(workspaces.workspaces.value, (w) => !w.isHidden),

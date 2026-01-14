@@ -10,12 +10,7 @@
     "
   >
     <div
-      :class="
-        clsx(
-          'text-xl flex-none w-sm text-center',
-          !old && themeClasses('text-success-600', 'text-success-500'),
-        )
-      "
+      :class="clsx('text-xl flex-none w-sm text-center', !old && themeClasses('text-success-600', 'text-success-500'))"
     >
       {{ old ? "-" : "+" }}
     </div>
@@ -29,17 +24,7 @@
           )
         "
       >
-        <div
-          :class="
-            clsx(
-              !old &&
-                themeClasses(
-                  'text-newhotness-purplelight',
-                  'text-newhotness-purpledark',
-                ),
-            )
-          "
-        >
+        <div :class="clsx(!old && themeClasses('text-newhotness-purplelight', 'text-newhotness-purpledark'))">
           {{ $source.componentName }}
         </div>
         <div class="flex-none">/</div>

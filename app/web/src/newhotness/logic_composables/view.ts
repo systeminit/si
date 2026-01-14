@@ -1,10 +1,6 @@
 import { computed, ComputedRef } from "vue";
 import { useQuery } from "@tanstack/vue-query";
-import {
-  getComponentsInViews,
-  getComponentsInOnlyOneView,
-  useMakeKey,
-} from "@/store/realtime/heimdall";
+import { getComponentsInViews, getComponentsInOnlyOneView, useMakeKey } from "@/store/realtime/heimdall";
 import { EntityKind } from "@/workers/types/entity_kind_types";
 import { ViewId } from "@/api/sdf/dal/views";
 import { ComponentId } from "@/api/sdf/dal/component";
@@ -34,9 +30,7 @@ export const useComponentsAndViews = () => {
 
   return {
     componentsInViews: computed(() => componentsInViewsQuery.data.value ?? {}),
-    componentsInOnlyOneView: computed(
-      () => componentsInOnlyOneViewQuery.data.value ?? {},
-    ),
+    componentsInOnlyOneView: computed(() => componentsInOnlyOneViewQuery.data.value ?? {}),
   };
 };
 
@@ -52,19 +46,15 @@ export const availableViewListOptionsForComponentIds = (
   showInvalidOptions = false,
 ) => {
   const unprocessedOptions = viewListOptions;
-  unprocessedOptions.sort((a, b) =>
-    a.label.toLowerCase().localeCompare(b.label.toLowerCase()),
-  );
+  unprocessedOptions.sort((a, b) => a.label.toLowerCase().localeCompare(b.label.toLowerCase()));
   const options: AvailableViewListOptions = {
     addToView: [],
     removeFromView: [],
   };
   for (const unprocessedOption of unprocessedOptions) {
     const viewId = unprocessedOption.value;
-    const componentsInView =
-      componentsAndViews.componentsInViews.value[viewId] ?? new Set();
-    if (showViewInAddToViewMenuOptions(componentsInView, componentIds))
-      options.addToView.push(unprocessedOption);
+    const componentsInView = componentsAndViews.componentsInViews.value[viewId] ?? new Set();
+    if (showViewInAddToViewMenuOptions(componentsInView, componentIds)) options.addToView.push(unprocessedOption);
     if (
       showViewInRemoveFromViewMenuOptions(
         componentsInView,
@@ -78,10 +68,7 @@ export const availableViewListOptionsForComponentIds = (
   }
   return options;
 };
-const showViewInAddToViewMenuOptions = (
-  componentIdsInView: Set<ComponentId>,
-  componentIds: Array<ComponentId>,
-) => {
+const showViewInAddToViewMenuOptions = (componentIdsInView: Set<ComponentId>, componentIds: Array<ComponentId>) => {
   // If there's nothing in the view, you always add to it.
   if (componentIdsInView.size < 1) return true;
 
@@ -108,12 +95,8 @@ const showViewInRemoveFromViewMenuOptions = (
   // For the selected components, only show the option if all of them are in the view and that view
   // isn't the final view for any of the components.
   for (const componentId of componentIds) {
-    const soleViewIdForCurrentComponent =
-      componentsAndViews.componentsInOnlyOneView.value[componentId];
-    if (
-      !componentIdsInView.has(componentId) ||
-      (soleViewIdForCurrentComponent === viewId && !showInvalidOptions)
-    )
+    const soleViewIdForCurrentComponent = componentsAndViews.componentsInOnlyOneView.value[componentId];
+    if (!componentIdsInView.has(componentId) || (soleViewIdForCurrentComponent === viewId && !showInvalidOptions))
       return false;
   }
 

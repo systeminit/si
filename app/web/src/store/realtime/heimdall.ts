@@ -88,9 +88,7 @@ let sharedWorker = spawnSharedWorker(sharedWebWorkerName);
 let db: Comlink.Remote<SharedDBInterface> = Comlink.wrap(sharedWorker.port);
 
 const WORKER_URL =
-  import.meta.env.VITE_SI_ENV === "local"
-    ? "../../workers/webworker.ts"
-    : `webworker.js?v=${__WEBWORKER_HASH__}`;
+  import.meta.env.VITE_SI_ENV === "local" ? "../../workers/webworker.ts" : `webworker.js?v=${__WEBWORKER_HASH__}`;
 
 const tabWorker = new Worker(new URL(WORKER_URL, import.meta.url), {
   type: "module",
@@ -106,9 +104,7 @@ watch(cachedAppNotificationIsOpen, (isOpen) => {
   }
 });
 
-const onSharedWorkerBootBroadcastChannel = new BroadcastChannel(
-  SHARED_BROADCAST_CHANNEL_NAME,
-);
+const onSharedWorkerBootBroadcastChannel = new BroadcastChannel(SHARED_BROADCAST_CHANNEL_NAME);
 
 onSharedWorkerBootBroadcastChannel.onmessage = async (msg) => {
   const name = msg.data as string;
@@ -146,9 +142,7 @@ const detectLockAcquiredByOtherTab = async () => {
   }
 };
 
-const forceLeaderElectionBroadcastChannel = new BroadcastChannel(
-  FORCE_LEADER_ELECTION,
-);
+const forceLeaderElectionBroadcastChannel = new BroadcastChannel(FORCE_LEADER_ELECTION);
 
 window.onbeforeunload = () => {
   db.unregisterRemote(tabDbId);
@@ -224,14 +218,9 @@ export const init = async (
   }, 2000);
 };
 
-export const initCompleted = computed(
-  () => ranInit.value && lockAcquired.value,
-);
+export const initCompleted = computed(() => ranInit.value && lockAcquired.value);
 
-export const showInterest = async (
-  workspaceId: string,
-  changeSetId: ChangeSetId,
-) => {
+export const showInterest = async (workspaceId: string, changeSetId: ChangeSetId) => {
   await db.showInterest(workspaceId, changeSetId);
 };
 
@@ -264,11 +253,7 @@ const bustTanStackCache: BustCacheFn = (
   }
 };
 
-const inFlight = (
-  changeSetId: ChangeSetId,
-  label: string,
-  noBroadcast?: boolean,
-) => {
+const inFlight = (changeSetId: ChangeSetId, label: string, noBroadcast?: boolean) => {
   rainbow.add(changeSetId, label);
   if (!noBroadcast) {
     db.broadcastMessage({
@@ -278,11 +263,7 @@ const inFlight = (
   }
 };
 
-const returned = (
-  changeSetId: ChangeSetId,
-  label: string,
-  noBroadcast?: boolean,
-) => {
+const returned = (changeSetId: ChangeSetId, label: string, noBroadcast?: boolean) => {
   rainbow.remove(changeSetId, label);
 
   if (!noBroadcast) {
@@ -377,37 +358,17 @@ const atomUpdated: UpdateFn = (
   noBroadcast?: boolean,
 ) => {
   if (kind === EntityKind.View) {
-    const queryKey = [
-      workspaceId,
-      changeSetId,
-      EntityKind.ViewList,
-      workspaceId,
-    ];
+    const queryKey = [workspaceId, changeSetId, EntityKind.ViewList, workspaceId];
     updateCache(queryKey, id, data, removed);
   } else if (kind === EntityKind.IncomingConnections) {
-    const queryKey = [
-      workspaceId,
-      changeSetId,
-      EntityKind.IncomingConnectionsList,
-      workspaceId,
-    ];
+    const queryKey = [workspaceId, changeSetId, EntityKind.IncomingConnectionsList, workspaceId];
     updateCache(queryKey, id, data, removed);
   } else if (kind === EntityKind.ComponentInList) {
-    const queryKey = [
-      workspaceId,
-      changeSetId,
-      EntityKind.ComponentList,
-      workspaceId,
-    ];
+    const queryKey = [workspaceId, changeSetId, EntityKind.ComponentList, workspaceId];
     updateCache(queryKey, id, data, removed);
     if (listIds.length > 0) {
       listIds.forEach((viewId) => {
-        const queryKey = [
-          workspaceId,
-          changeSetId,
-          EntityKind.ViewComponentList,
-          viewId,
-        ];
+        const queryKey = [workspaceId, changeSetId, EntityKind.ViewComponentList, viewId];
         updateCache(queryKey, id, data, removed);
       });
     }
@@ -423,11 +384,7 @@ const atomUpdated: UpdateFn = (
 export const indexFailures = reactive(new Set<string>());
 export const indexTouches = reactive(new Map<string, number>());
 
-const lobbyExit: LobbyExitFn = async (
-  workspaceId: WorkspacePk,
-  changeSetId: ChangeSetId,
-  noBroadcast?: boolean,
-) => {
+const lobbyExit: LobbyExitFn = async (workspaceId: WorkspacePk, changeSetId: ChangeSetId, noBroadcast?: boolean) => {
   // keep track of each change set's index touch
   indexTouches.set(changeSetId, Date.now());
 
@@ -496,12 +453,7 @@ export const bifrost = async <T>(args: {
   if (!initCompleted.value) throw new Error("You must wait for initialization");
 
   const start = performance.now();
-  const maybeAtomDoc = await db.get(
-    args.workspaceId,
-    args.changeSetId,
-    args.kind,
-    args.id,
-  );
+  const maybeAtomDoc = await db.get(args.workspaceId, args.changeSetId, args.kind, args.id);
   const end = performance.now();
   // eslint-disable-next-line no-console
   console.log("🌈 bifrost query", args.kind, args.id, end - start, "ms");
@@ -519,12 +471,7 @@ export const bifrostExists = async (args: {
   if (!initCompleted.value) throw new Error("You must wait for initialization");
 
   const start = performance.now();
-  const exists = await db.getExists(
-    args.workspaceId,
-    args.changeSetId,
-    args.kind,
-    args.id,
-  );
+  const exists = await db.getExists(args.workspaceId, args.changeSetId, args.kind, args.id);
   const end = performance.now();
   // eslint-disable-next-line no-console
   console.log("🌈 bifrost exists", args.kind, args.id, end - start, "ms");
@@ -540,12 +487,7 @@ export const bifrostList = async <T>(args: {
   if (!initCompleted.value) throw new Error("You must wait for initialization");
 
   const start = performance.now();
-  const maybeAtomDoc = await db.getList(
-    args.workspaceId,
-    args.changeSetId,
-    args.kind,
-    args.id,
-  );
+  const maybeAtomDoc = await db.getList(args.workspaceId, args.changeSetId, args.kind, args.id);
   const end = performance.now();
   // eslint-disable-next-line no-console
   console.log("🌈 bifrost queryList", args.kind, args.id, end - start, "ms");
@@ -561,11 +503,7 @@ export const getKind = async <T>(args: {
   if (!initCompleted.value) throw new Error("You must wait for initialization");
 
   const start = performance.now();
-  const records = await db.getKind(
-    args.workspaceId,
-    args.changeSetId,
-    args.kind,
-  );
+  const records = await db.getKind(args.workspaceId, args.changeSetId, args.kind);
   const end = performance.now();
   // eslint-disable-next-line no-console
   console.log("🌈 bifrost getKind", end - start, "ms");
@@ -595,54 +533,31 @@ export const bifrostQueryAttributes = async (
   return components;
 };
 
-export const getPossibleConnections = async (args: {
-  workspaceId: WorkspacePk;
-  changeSetId: ChangeSetId;
-}) => {
+export const getPossibleConnections = async (args: { workspaceId: WorkspacePk; changeSetId: ChangeSetId }) => {
   return await db.getPossibleConnections(args.workspaceId, args.changeSetId);
 };
 
-export const linkNewChangeset = async (
-  workspaceId: WorkspacePk,
-  changeSetId: ChangeSetId,
-  headChangeSetId: string,
-) => {
+export const linkNewChangeset = async (workspaceId: WorkspacePk, changeSetId: ChangeSetId, headChangeSetId: string) => {
   await db.linkNewChangeset(workspaceId, headChangeSetId, changeSetId);
 };
 
-export const getOutgoingConnectionsCounts = async (args: {
-  workspaceId: WorkspacePk;
-  changeSetId: ChangeSetId;
-}) => {
+export const getOutgoingConnectionsCounts = async (args: { workspaceId: WorkspacePk; changeSetId: ChangeSetId }) => {
   if (!initCompleted.value) throw new Error("You must wait for initialization");
 
   const start = performance.now();
-  const connectionsCounts = await db.getOutgoingConnectionsCounts(
-    args.workspaceId,
-    args.changeSetId,
-  );
+  const connectionsCounts = await db.getOutgoingConnectionsCounts(args.workspaceId, args.changeSetId);
   const end = performance.now();
   // eslint-disable-next-line no-console
-  console.log(
-    "🌈 bifrost query getOutgoingConnectionsCounts",
-    end - start,
-    "ms",
-  );
+  console.log("🌈 bifrost query getOutgoingConnectionsCounts", end - start, "ms");
   if (connectionsCounts) return reactive(connectionsCounts);
   else return {};
 };
 
-export const getComponentDetails = async (args: {
-  workspaceId: WorkspacePk;
-  changeSetId: ChangeSetId;
-}) => {
+export const getComponentDetails = async (args: { workspaceId: WorkspacePk; changeSetId: ChangeSetId }) => {
   if (!initCompleted.value) throw new Error("You must wait for initialization");
 
   const start = performance.now();
-  const componentNames = await db.getComponentDetails(
-    args.workspaceId,
-    args.changeSetId,
-  );
+  const componentNames = await db.getComponentDetails(args.workspaceId, args.changeSetId);
   const end = performance.now();
   // eslint-disable-next-line no-console
   console.log("🌈 bifrost query componentNames", end - start, "ms");
@@ -650,17 +565,11 @@ export const getComponentDetails = async (args: {
   else return {};
 };
 
-export const getComponentsInViews = async (args: {
-  workspaceId: WorkspacePk;
-  changeSetId: ChangeSetId;
-}) => {
+export const getComponentsInViews = async (args: { workspaceId: WorkspacePk; changeSetId: ChangeSetId }) => {
   if (!initCompleted.value) throw new Error("You must wait for initialization");
 
   const start = performance.now();
-  const componentsInViews = await db.getComponentsInViews(
-    args.workspaceId,
-    args.changeSetId,
-  );
+  const componentsInViews = await db.getComponentsInViews(args.workspaceId, args.changeSetId);
   const end = performance.now();
   // eslint-disable-next-line no-console
   console.log("🌈 bifrost query componentsInViews", end - start, "ms");
@@ -668,17 +577,11 @@ export const getComponentsInViews = async (args: {
   else return {};
 };
 
-export const getComponentsInOnlyOneView = async (args: {
-  workspaceId: WorkspacePk;
-  changeSetId: ChangeSetId;
-}) => {
+export const getComponentsInOnlyOneView = async (args: { workspaceId: WorkspacePk; changeSetId: ChangeSetId }) => {
   if (!initCompleted.value) throw new Error("You must wait for initialization");
 
   const start = performance.now();
-  const componentsInOnlyOneView = await db.getComponentsInOnlyOneView(
-    args.workspaceId,
-    args.changeSetId,
-  );
+  const componentsInOnlyOneView = await db.getComponentsInOnlyOneView(args.workspaceId, args.changeSetId);
   const end = performance.now();
   // eslint-disable-next-line no-console
   console.log("🌈 bifrost query componentsInOnlyOneView", end - start, "ms");
@@ -693,10 +596,7 @@ export const getSchemaMembers = async (args: {
   if (!initCompleted.value) throw new Error("You must wait for initialization");
 
   const start = performance.now();
-  const schemaMembers = await db.getSchemaMembers(
-    args.workspaceId,
-    args.changeSetId,
-  );
+  const schemaMembers = await db.getSchemaMembers(args.workspaceId, args.changeSetId);
   const end = performance.now();
   // eslint-disable-next-line no-console
   console.log("🌈 bifrost query getSchemaMembers", end - start, "ms");
@@ -704,17 +604,11 @@ export const getSchemaMembers = async (args: {
   else return [];
 };
 
-export const getDefaultSubscriptions = async (args: {
-  workspaceId: WorkspacePk;
-  changeSetId: ChangeSetId;
-}) => {
+export const getDefaultSubscriptions = async (args: { workspaceId: WorkspacePk; changeSetId: ChangeSetId }) => {
   if (!initCompleted.value) throw new Error("You must wait for initialization");
 
   const start = performance.now();
-  const defaultSubscriptions = await db.getDefaultSubscriptions(
-    args.workspaceId,
-    args.changeSetId,
-  );
+  const defaultSubscriptions = await db.getDefaultSubscriptions(args.workspaceId, args.changeSetId);
   const end = performance.now();
   // eslint-disable-next-line no-console
   console.log("🌈 bifrost query defaultSubscriptions", end - start, "ms");
@@ -722,30 +616,18 @@ export const getDefaultSubscriptions = async (args: {
   return defaultSubscriptions;
 };
 
-export const getOutgoingConnections = async (args: {
-  workspaceId: WorkspacePk;
-  changeSetId: ChangeSetId;
-}) => {
+export const getOutgoingConnections = async (args: { workspaceId: WorkspacePk; changeSetId: ChangeSetId }) => {
   if (!initCompleted.value) throw new Error("You must wait for initialization");
 
-  const connectionsById = await db.getOutgoingConnectionsByComponentId(
-    args.workspaceId,
-    args.changeSetId,
-  );
+  const connectionsById = await db.getOutgoingConnectionsByComponentId(args.workspaceId, args.changeSetId);
   if (connectionsById) return reactive(connectionsById);
   return new DefaultMap<string, Record<string, Connection>>(() => ({}));
 };
 
-export const getIncomingManagement = async (args: {
-  workspaceId: WorkspacePk;
-  changeSetId: ChangeSetId;
-}) => {
+export const getIncomingManagement = async (args: { workspaceId: WorkspacePk; changeSetId: ChangeSetId }) => {
   if (!initCompleted.value) throw new Error("You must wait for initialization");
 
-  const connectionsById = await db.getIncomingManagementByComponentId(
-    args.workspaceId,
-    args.changeSetId,
-  );
+  const connectionsById = await db.getIncomingManagementByComponentId(args.workspaceId, args.changeSetId);
   if (connectionsById) return reactive(connectionsById);
   return new DefaultMap<string, Record<string, Connection>>(() => ({}));
 };
@@ -802,9 +684,7 @@ watch(
   { deep: true },
 );
 
-const fetchOpenChangeSets = async (
-  workspaceId: WorkspacePk,
-): Promise<WorkspaceMetadata> => {
+const fetchOpenChangeSets = async (workspaceId: WorkspacePk): Promise<WorkspaceMetadata> => {
   try {
     const resp = await sdf<WorkspaceMetadata>({
       method: "GET",
@@ -835,8 +715,7 @@ export const muspelheim = async (workspaceId: WorkspacePk, force?: boolean) => {
   // eslint-disable-next-line no-console
   console.log("🔥 MUSPELHEIM 🔥");
   const niflheimQueue = new PQueue({ concurrency: MUSPELHEIM_CONCURRENCY });
-  const { changeSets: openChangeSets, defaultChangeSetId: baseChangeSetId } =
-    await fetchOpenChangeSets(workspaceId);
+  const { changeSets: openChangeSets, defaultChangeSetId: baseChangeSetId } = await fetchOpenChangeSets(workspaceId);
   if (!baseChangeSetId) {
     throw new ChangeSetRetrievalError("No HEAD changeset found");
   }
@@ -869,19 +748,13 @@ export const muspelheim = async (workspaceId: WorkspacePk, force?: boolean) => {
   return true;
 };
 
-export const registerBearerToken = async (
-  workspaceId: WorkspacePk,
-  bearerToken: string,
-) => {
+export const registerBearerToken = async (workspaceId: WorkspacePk, bearerToken: string) => {
   await db.setBearer(workspaceId, bearerToken);
 };
 
-export const syncAtoms = async (
-  workspaceId: WorkspacePk,
-  changeSetId: ChangeSetId,
-): Promise<void> => {
+export const syncAtoms = async (workspaceId: WorkspacePk, changeSetId: ChangeSetId): Promise<void> => {
   await waitForInitCompletion();
-  // eslint-disable-next-line no-console
+
   await db.syncAtoms(workspaceId, changeSetId);
 };
 
@@ -918,13 +791,7 @@ export const niflheim = async (
       // to prevent a user from being stuck in the lobby perpetually
       if (retryOnBuilding) {
         const interval = setInterval(async () => {
-          const success = await niflheim(
-            workspaceId,
-            changeSetId,
-            force,
-            lobbyOnFailure,
-            false,
-          );
+          const success = await niflheim(workspaceId, changeSetId, force, lobbyOnFailure, false);
           if (success === 1) {
             const interval = buildingRetryIntervals[changeSetId];
             clearInterval(interval);
@@ -960,10 +827,7 @@ export const vanaheim = async (workspaceId: WorkspacePk): Promise<boolean> => {
   return success;
 };
 
-export const prune = async (
-  workspaceId: WorkspacePk,
-  changeSetId: ChangeSetId,
-) => {
+export const prune = async (workspaceId: WorkspacePk, changeSetId: ChangeSetId) => {
   delete muspelheimStatuses.value[changeSetId];
   await db.pruneAtomsForClosedChangeSet(workspaceId, changeSetId);
 };
@@ -987,10 +851,8 @@ export const useMakeArgs = () => {
   return innerUseMakeArgs(ctx);
 };
 
-export const changeSetExists = async (
-  workspaceId: WorkspacePk,
-  changeSetId: ChangeSetId,
-) => await db.changeSetExists(workspaceId, changeSetId);
+export const changeSetExists = async (workspaceId: WorkspacePk, changeSetId: ChangeSetId) =>
+  await db.changeSetExists(workspaceId, changeSetId);
 
 /// Make a reactive query key that includes the workspace, changeSet, EntityKind
 /// and entity ID (if any). You can also add an extension, if you want to
@@ -1012,10 +874,7 @@ export const useMakeKey = () => {
 export const useMakeKeyForHead = () => {
   const ctx: Context | undefined = inject("CONTEXT");
   assertIsDefined<Context>(ctx);
-  return <K = Gettable>(
-    kind: MaybeRefOrGetter<K>,
-    id?: MaybeRefOrGetter<string>,
-  ) =>
+  return <K = Gettable>(kind: MaybeRefOrGetter<K>, id?: MaybeRefOrGetter<string>) =>
     computed<[string, string, ComputedRef<K> | K, string]>(() => [
       ctx.workspacePk.value,
       ctx.headChangeSetId.value,
@@ -1037,20 +896,12 @@ export const bobby = async () => {
   // eslint-disable-next-line no-console
   console.log("🗑️ BOBBY DROP TABLE 🗑️");
 };
-export const ragnarok = async (
-  workspaceId: WorkspacePk,
-  changeSetId: ChangeSetId,
-) => {
+export const ragnarok = async (workspaceId: WorkspacePk, changeSetId: ChangeSetId) => {
   await db.ragnarok(workspaceId, changeSetId);
   // eslint-disable-next-line no-console
   console.log("🗑️ RAGNAROK 🗑️");
 };
 
-export const mjolnir = async (
-  workspaceId: WorkspacePk,
-  changeSetId: ChangeSetId,
-  kind: EntityKind,
-  id: string,
-) => {
+export const mjolnir = async (workspaceId: WorkspacePk, changeSetId: ChangeSetId, kind: EntityKind, id: string) => {
   await db.mjolnir(workspaceId, changeSetId, kind, id);
 };

@@ -1,11 +1,6 @@
 <template>
   <div>
-    <div
-      v-if="isDevMode"
-      class="pb-xs text-3xs italic opacity-30 break-all hidden"
-    >
-      ID = {{ connection.id }}
-    </div>
+    <div v-if="isDevMode" class="pb-xs text-3xs italic opacity-30 break-all hidden">ID = {{ connection.id }}</div>
     <ConnectionEndCard
       v-if="isSocketConnection(connection)"
       :changeStatus="connection.changeStatus"
@@ -55,19 +50,11 @@
 import * as _ from "lodash-es";
 import { computed, PropType, ref } from "vue";
 import clsx from "clsx";
-import {
-  DropdownMenu,
-  DropdownMenuItemObjectDef,
-  themeClasses,
-} from "@si/vue-lib/design-system";
+import { DropdownMenu, DropdownMenuItemObjectDef, themeClasses } from "@si/vue-lib/design-system";
 import { tw } from "@si/vue-lib";
 import { isDevMode } from "@/utils/debug";
 import { ChangeStatus } from "@/api/sdf/dal/change_set";
-import {
-  ActorAndTimestamp,
-  AttributePath,
-  ComponentId,
-} from "@/api/sdf/dal/component";
+import { ActorAndTimestamp, AttributePath, ComponentId } from "@/api/sdf/dal/component";
 import { useComponentsStore } from "@/store/components.store";
 import { useViewsStore } from "@/store/views.store";
 import { DiagramSocketData } from "./ModelingDiagram/diagram_types";
@@ -87,9 +74,7 @@ export interface SocketConnection extends BaseConnection {
   fromSocket: DiagramSocketData;
   toSocket: DiagramSocketData;
 }
-function isSocketConnection(
-  connection: Connection,
-): connection is SocketConnection {
+function isSocketConnection(connection: Connection): connection is SocketConnection {
   return "fromSocket" in connection;
 }
 
@@ -99,9 +84,7 @@ export interface SubscriptionConnection extends BaseConnection {
   toComponentId: ComponentId;
   toAttributePath: AttributePath;
 }
-function isSubscriptionConnection(
-  connection: Connection,
-): connection is SubscriptionConnection {
+function isSubscriptionConnection(connection: Connection): connection is SubscriptionConnection {
   return "fromAttributePath" in connection;
 }
 
@@ -120,10 +103,8 @@ const modelingEventBus = componentsStore.eventBus;
 
 const componentNames = computed(() => {
   if (isSubscriptionConnection(props.connection)) {
-    const toComponent =
-      componentsStore.allComponentsById[props.connection.toComponentId];
-    const fromComponent =
-      componentsStore.allComponentsById[props.connection.fromComponentId];
+    const toComponent = componentsStore.allComponentsById[props.connection.toComponentId];
+    const fromComponent = componentsStore.allComponentsById[props.connection.fromComponentId];
     return {
       to: toComponent?.def.displayName ?? "?",
       from: fromComponent?.def.displayName ?? "?",

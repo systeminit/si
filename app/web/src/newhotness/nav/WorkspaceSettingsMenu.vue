@@ -24,6 +24,5 @@ import WorkspaceSettingsMenuItems from "./WorkspaceSettingsMenuItems.vue";
 
 const importModalRef = ref<InstanceType<typeof WorkspaceImportModal>>();
 const exportModalRef = ref<InstanceType<typeof WorkspaceExportModal>>();
-const integrationsModalRef =
-  ref<InstanceType<typeof WorkspaceIntegrationsModal>>();
+const integrationsModalRef = ref<InstanceType<typeof WorkspaceIntegrationsModal>>();
 </script>

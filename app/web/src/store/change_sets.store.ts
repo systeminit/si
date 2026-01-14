@@ -5,11 +5,7 @@ import { ApiRequest, addStoreHooks } from "@si/vue-lib/pinia";
 import { useToast } from "vue-toastification";
 import { ulid } from "ulid";
 import { URLPattern } from "@si/vue-lib";
-import {
-  ChangeSet,
-  ChangeSetId,
-  ChangeSetStatus,
-} from "@/api/sdf/dal/change_set";
+import { ChangeSet, ChangeSetId, ChangeSetStatus } from "@/api/sdf/dal/change_set";
 import { WorkspaceMetadata } from "@/api/sdf/dal/workspace";
 import router from "@/router";
 import { UserId, useAuthStore } from "@/store/auth.store";
@@ -64,15 +60,9 @@ export interface ApprovalData {
   latestApprovals: ChangeSetApproval[];
 }
 
-export const approverForChangeSet = (
-  userId: UserId,
-  approvalData: ApprovalData,
-) =>
+export const approverForChangeSet = (userId: UserId, approvalData: ApprovalData) =>
   approvalData.requirements.some((r) =>
-    Object.values(r.approverGroups)
-      .flat()
-      .concat(r.approverIndividuals)
-      .includes(userId),
+    Object.values(r.approverGroups).flat().concat(r.approverIndividuals).includes(userId),
   );
 
 export function useChangeSetsStore() {
@@ -82,12 +72,7 @@ export function useChangeSetsStore() {
   const authStore = useAuthStore();
   const realtimeStore = useRealtimeStore();
 
-  const BASE_API = [
-    "v2",
-    "workspaces",
-    { workspacePk },
-    "change-sets",
-  ] as URLPattern;
+  const BASE_API = ["v2", "workspaces", { workspacePk }, "change-sets"] as URLPattern;
 
   return addStoreHooks(
     workspacePk,
@@ -115,9 +100,7 @@ export function useChangeSetsStore() {
         },
         allChangeSets: (state) => _.values(state.changeSetsById),
         changeSetsNeedingApproval(): ChangeSet[] {
-          return _.filter(this.allChangeSets, (cs) =>
-            [ChangeSetStatus.NeedsApproval].includes(cs.status),
-          );
+          return _.filter(this.allChangeSets, (cs) => [ChangeSetStatus.NeedsApproval].includes(cs.status));
         },
         openChangeSets(): ChangeSet[] {
           return _.filter(this.allChangeSets, (cs) =>
@@ -149,10 +132,7 @@ export function useChangeSetsStore() {
         },
 
         selectedChangeSetLastWrittenAt(): Date | null {
-          return (
-            this.changeSetsWrittenAtById[this.selectedChangeSet?.id || ""] ??
-            null
-          );
+          return this.changeSetsWrittenAtById[this.selectedChangeSet?.id || ""] ?? null;
         },
 
         selectedChangeSetId(): ChangeSetId | undefined {
@@ -229,17 +209,14 @@ export function useChangeSetsStore() {
           });
         },
         async ABANDON_CHANGE_SET() {
-          if (this.creatingChangeSet)
-            throw new Error("Wait until change set is created to abandon");
+          if (this.creatingChangeSet) throw new Error("Wait until change set is created to abandon");
           if (!this.selectedChangeSet) throw new Error("Select a change set");
           else if (this.headSelected) {
             throw new Error("You cannot abandon HEAD!");
           }
           if (
             router.currentRoute.value.name &&
-            ["workspace-lab-packages", "workspace-lab-assets"].includes(
-              router.currentRoute.value.name.toString(),
-            )
+            ["workspace-lab-packages", "workspace-lab-assets"].includes(router.currentRoute.value.name.toString())
           ) {
             router.push({ name: "workspace-lab" });
           }
@@ -299,10 +276,7 @@ export function useChangeSetsStore() {
           const selectedChangeSetId = this.selectedChangeSetId;
           return new ApiRequest({
             method: "post",
-            url: BASE_API.concat([
-              { selectedChangeSetId },
-              "cancel_approval_request",
-            ]),
+            url: BASE_API.concat([{ selectedChangeSetId }, "cancel_approval_request"]),
           });
         },
         async REOPEN_CHANGE_SET() {
@@ -357,20 +331,14 @@ export function useChangeSetsStore() {
         },
 
         getAutoSelectedChangeSetId() {
-          const lastChangeSetId = sessionStorage.getItem(
-            `SI:LAST_CHANGE_SET/${workspacePk}`,
-          );
-          if (
-            lastChangeSetId &&
-            this.changeSetsById[lastChangeSetId]?.status ===
-              ChangeSetStatus.Open
-          ) {
+          const lastChangeSetId = sessionStorage.getItem(`SI:LAST_CHANGE_SET/${workspacePk}`);
+          if (lastChangeSetId && this.changeSetsById[lastChangeSetId]?.status === ChangeSetStatus.Open) {
             return lastChangeSetId;
           }
 
           if (this.openChangeSets?.length <= 2) {
             // will select the single open change set or head if thats all that exists
-            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+
             return _.last(this.openChangeSets)!.id;
           }
 
@@ -392,10 +360,7 @@ export function useChangeSetsStore() {
           () => {
             // store last used change set (per workspace) in localstorage
             if (this.selectedChangeSet && workspacePk) {
-              sessionStorage.setItem(
-                `SI:LAST_CHANGE_SET/${workspacePk}`,
-                this.selectedChangeSet.id,
-              );
+              sessionStorage.setItem(`SI:LAST_CHANGE_SET/${workspacePk}`, this.selectedChangeSet.id);
             }
           },
           { immediate: true },
@@ -410,19 +375,15 @@ export function useChangeSetsStore() {
             eventType: "ChangeSetStatusChanged",
             callback: async (data) => {
               if (
-                [
-                  ChangeSetStatus.Abandoned,
-                  ChangeSetStatus.Applied,
-                  ChangeSetStatus.Closed,
-                ].includes(data.changeSet.status) &&
+                [ChangeSetStatus.Abandoned, ChangeSetStatus.Applied, ChangeSetStatus.Closed].includes(
+                  data.changeSet.status,
+                ) &&
                 data.changeSet.id !== this.headChangeSetId
               ) {
                 heimdall.prune(workspacePk, data.changeSet.id);
               }
               // If I'm the one who requested this change set - toast that it's been approved/rejected/etc.
-              if (
-                data.changeSet.mergeRequestedByUserId === authStore.user?.pk
-              ) {
+              if (data.changeSet.mergeRequestedByUserId === authStore.user?.pk) {
                 if (data.changeSet.status === ChangeSetStatus.Rejected) {
                   toast({
                     component: ChangeSetStatusChanged,
@@ -442,9 +403,7 @@ export function useChangeSetsStore() {
                     },
                   });
                 }
-              } else if (
-                data.changeSet.status === ChangeSetStatus.NeedsApproval
-              ) {
+              } else if (data.changeSet.status === ChangeSetStatus.NeedsApproval) {
                 this.FETCH_APPROVAL_STATUS(data.changeSet.id);
               }
               await this.FETCH_CHANGE_SETS();
@@ -547,10 +506,7 @@ export function useChangeSetsStore() {
 
               // `list_open_change_sets` gets called prior on voters
               // which means the change set is gone, so always move
-              if (
-                !this.selectedChangeSetId ||
-                this.selectedChangeSetId === changeSetId
-              ) {
+              if (!this.selectedChangeSetId || this.selectedChangeSetId === changeSetId) {
                 const route = useRouterStore().currentRoute;
 
                 if (route?.name) {
@@ -559,11 +515,9 @@ export function useChangeSetsStore() {
                     // if you're on a single-item page in the UI while just bring them to explore
                     // but only if you're not already on head!
                     if (
-                      ![
-                        "new-hotness",
-                        "new-hotness-workspace-auto",
-                        "new-hotness-head",
-                      ].includes(route.name as string) &&
+                      !["new-hotness", "new-hotness-workspace-auto", "new-hotness-head"].includes(
+                        route.name as string,
+                      ) &&
                       this.selectedChangeSetId !== this.headChangeSetId
                     )
                       name = "new-hotness";
@@ -584,10 +538,7 @@ export function useChangeSetsStore() {
                       },
                     });
                   }
-                  if (
-                    this.selectedChangeSet &&
-                    this.selectedChangeSet.name !== "HEAD"
-                  )
+                  if (this.selectedChangeSet && this.selectedChangeSet.name !== "HEAD")
                     // FIXME(nick): use a new design in the new UI, but keep the toast.
                     toast({
                       component: MovedToHead,

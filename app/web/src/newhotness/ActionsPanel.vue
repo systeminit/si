@@ -6,16 +6,9 @@
     icon="tools"
     class="p-sm"
   />
-  <EmptyState
-    v-else-if="actionPrototypeViews.length === 0"
-    text="No actions available"
-    icon="tools"
-    class="p-lg"
-  />
+  <EmptyState v-else-if="actionPrototypeViews.length === 0" text="No actions available" icon="tools" class="p-lg" />
   <div v-else class="flex flex-col">
-    <div
-      class="text-sm text-neutral-700 dark:text-neutral-300 p-xs italic border-b dark:border-neutral-600"
-    >
+    <div class="text-sm text-neutral-700 dark:text-neutral-300 p-xs italic border-b dark:border-neutral-600">
       The changes below will run when you click "Apply Changes".
     </div>
     <ActionWidget
@@ -29,10 +22,7 @@
 </template>
 
 <script lang="ts" setup>
-import {
-  BifrostComponent,
-  ComponentInList,
-} from "@/workers/types/entity_kind_types";
+import { BifrostComponent, ComponentInList } from "@/workers/types/entity_kind_types";
 import ActionWidget from "./ActionWidget.vue";
 import EmptyState from "./EmptyState.vue";
 import { useComponentActions } from "./logic_composables/component_actions";
@@ -41,9 +31,7 @@ const props = defineProps<{
   component: BifrostComponent | ComponentInList;
 }>();
 
-const { actionPrototypeViews, actionByPrototype } = useComponentActions(
-  () => props.component,
-);
+const { actionPrototypeViews, actionByPrototype } = useComponentActions(() => props.component);
 
 defineExpose({
   actionPrototypeViews,

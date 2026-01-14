@@ -26,17 +26,11 @@
       @childHover="(componentId) => $emit('childHover', componentId)"
       @childUnhover="(componentId) => $emit('childUnhover', componentId)"
       @clickCollapse="clickCollapse"
-      @componentNavigate="
-        (componentId) => $emit('componentNavigate', componentId)
-      "
+      @componentNavigate="(componentId) => $emit('componentNavigate', componentId)"
       @unpin="(componentId) => $emit('unpin', componentId)"
       @resetFilter="$emit('resetFilter')"
-      @selectAllInSection="
-        (sectionKey) => $emit('selectAllInSection', sectionKey)
-      "
-      @deselectAllInSection="
-        (sectionKey) => $emit('deselectAllInSection', sectionKey)
-      "
+      @selectAllInSection="(sectionKey) => $emit('selectAllInSection', sectionKey)"
+      @deselectAllInSection="(sectionKey) => $emit('deselectAllInSection', sectionKey)"
     />
   </div>
 </template>
@@ -62,9 +56,7 @@ const props = defineProps<{
 }>();
 
 const treatAsMultipleSections = computed(
-  () =>
-    exploreContext.hasMultipleSections.value ||
-    exploreContext.gridMode.value.mode === "defaultSubscriptions",
+  () => exploreContext.hasMultipleSections.value || exploreContext.gridMode.value.mode === "defaultSubscriptions",
 );
 
 const GRID_TILE_GAP = 16; // this is being used for both the X and Y gap
@@ -73,9 +65,7 @@ const clickCollapse = (title: string, collapsed: boolean) => {
   emit("collapse", title, collapsed);
 };
 
-const componentRowsVirtualItemsList = computed(() =>
-  virtualList.value.getVirtualItems(),
-);
+const componentRowsVirtualItemsList = computed(() => virtualList.value.getVirtualItems());
 
 // Rows need a unique item key, so the virtualizer internal watcher knows when to recompute sizes
 const getItemKey = (rowIndex: number) => {
@@ -88,10 +78,7 @@ const getItemKey = (rowIndex: number) => {
     case "defaultSubHeader":
       return `defaultSubHeader-${row.subKey}`;
     case "contentRow":
-      if (
-        !treatAsMultipleSections.value &&
-        rowIndex === props.gridRows.length - 1
-      )
+      if (!treatAsMultipleSections.value && rowIndex === props.gridRows.length - 1)
         return `contentRow-final-${rowIndex}`;
       else return `contentRow-${rowIndex}`;
     case "emptyRow":
@@ -115,10 +102,7 @@ const rowHeights = computed(() => {
       case "defaultSubHeader":
         return GROUP_HEADER_HEIGHT;
       case "contentRow":
-        if (
-          !treatAsMultipleSections.value &&
-          index === props.gridRows.length - 1
-        ) {
+        if (!treatAsMultipleSections.value && index === props.gridRows.length - 1) {
           return GRID_TILE_HEIGHT;
         } else {
           return GRID_TILE_HEIGHT + GRID_TILE_GAP;
@@ -141,7 +125,7 @@ const virtualizerOptions = computed(() => ({
   // https://tanstack.com/virtual/latest/docs/api/virtualizer#lanes
   // Our grid is based on the minimum tile width... so how many tiles can we fit?
   // thats the value of `virtualizerLanes`
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+
   getScrollElement: () => props.scrollRef!,
   estimateSize: (i: number) => rowHeights.value[i] ?? 0,
   // The item key is essential for reactivity and was found by @vbustamante and his valiant
@@ -182,18 +166,16 @@ const scrollCurrentTileIntoView = () => {
   if (
     exploreContext.focusedComponentIdx.value === undefined ||
     exploreContext.focusedComponentIdx.value < 0 ||
-    exploreContext.focusedComponentIdx.value >
-      exploreContext.allVisibleComponents.value.length - 1
+    exploreContext.focusedComponentIdx.value > exploreContext.allVisibleComponents.value.length - 1
   )
     return;
 
   // otherwise use the virtualizer to scroll
   // so that even if the DOM element doesn't exist
   // it will still work!
-  virtualList.value.scrollToIndex(
-    getRowIndexByGridTileIndex(exploreContext.focusedComponentIdx.value),
-    { behavior: "smooth" },
-  );
+  virtualList.value.scrollToIndex(getRowIndexByGridTileIndex(exploreContext.focusedComponentIdx.value), {
+    behavior: "smooth",
+  });
 };
 
 watch([exploreContext.focusedComponentIdx], scrollCurrentTileIntoView);
@@ -210,12 +192,7 @@ const emit = defineEmits<{
   (e: "resetFilter"): void;
   (e: "selectAllInSection", sectionKey: string): void;
   (e: "deselectAllInSection", sectionKey: string): void;
-  (
-    e: "childClicked",
-    event: MouseEvent,
-    componentId: ComponentId,
-    componentIdx: number,
-  ): void;
+  (e: "childClicked", event: MouseEvent, componentId: ComponentId, componentIdx: number): void;
 }>();
 </script>
 

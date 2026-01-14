@@ -3,19 +3,11 @@
     <div class="max-h-[70vh] overflow-hidden flex flex-col">
       <div class="pb-xs">
         Are you sure you want to delete
-        {{
-          components.length > 1
-            ? `${components.length} components`
-            : "this component"
-        }}?
+        {{ components.length > 1 ? `${components.length} components` : "this component" }}?
       </div>
 
       <div class="scrollable">
-        <ComponentCard
-          v-for="component in components"
-          :key="component.id"
-          :component="component"
-        />
+        <ComponentCard v-for="component in components" :key="component.id" :component="component" />
       </div>
 
       <div class="px-2xs py-xs">
@@ -26,10 +18,9 @@
                 <strong>Delete</strong>
               </span>
               <span class="flex flex-col">
-                If this component has a corresponding resource, and/or its
-                outgoing dependencies do, it will be marked for deletion and
-                removed when this change set is applied. Otherwise, the
-                component will be deleted immediately.
+                If this component has a corresponding resource, and/or its outgoing dependencies do, it will be marked
+                for deletion and removed when this change set is applied. Otherwise, the component will be deleted
+                immediately.
               </span>
             </div>
           </VormInputOption>
@@ -39,10 +30,9 @@
                 <strong>Remove</strong>
               </span>
               <span class="flex flex-col">
-                If this component exists in at least two views, it will be
-                removed from the current view and will remain in other view(s).
-                Otherwise, the remove request will "no-op" and the component
-                will remain in the current view.
+                If this component exists in at least two views, it will be removed from the current view and will remain
+                in other view(s). Otherwise, the remove request will "no-op" and the component will remain in the
+                current view.
               </span>
             </div>
           </VormInputOption>
@@ -51,13 +41,7 @@
 
       <div class="flex gap-sm">
         <NewButton label="Cancel" @click="close" />
-        <NewButton
-          class="flex-grow"
-          icon="trash"
-          label="Confirm"
-          tone="destructive"
-          @click="onConfirm"
-        />
+        <NewButton class="flex-grow" icon="trash" label="Confirm" tone="destructive" @click="onConfirm" />
       </div>
     </div>
   </Modal>
@@ -65,13 +49,7 @@
 
 <script lang="ts" setup>
 import * as _ from "lodash-es";
-import {
-  Modal,
-  NewButton,
-  useModal,
-  VormInput,
-  VormInputOption,
-} from "@si/vue-lib/design-system";
+import { Modal, NewButton, useModal, VormInput, VormInputOption } from "@si/vue-lib/design-system";
 import { onBeforeUnmount, onMounted, ref } from "vue";
 import { ComponentInList } from "@/workers/types/entity_kind_types";
 import ComponentCard from "./ComponentCard.vue";

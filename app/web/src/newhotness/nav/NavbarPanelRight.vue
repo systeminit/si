@@ -1,7 +1,5 @@
 <template>
-  <div
-    class="flex flex-row flex-1 basis-1/2 items-center min-w-0 h-full justify-end"
-  >
+  <div class="flex flex-row flex-1 basis-1/2 items-center min-w-0 h-full justify-end">
     <template v-if="!invalidWorkspace">
       <Collaborators />
       <Notifications :changeSetsNeedingApproval="changeSetsNeedingApproval" />
@@ -22,22 +20,14 @@
             label="Rebuild Index"
             @click="rebuild(props.workspaceId, props.changeSetId)"
           />
-          <DropdownMenuItem
-            icon="mjolnir"
-            label="Throw Hammer"
-            @click="() => modalRef.open()"
-          />
+          <DropdownMenuItem icon="mjolnir" label="Throw Hammer" @click="() => modalRef.open()" />
           <DropdownMenuItem
             v-if="props.changeSetId"
             icon="odin"
             label="Log Sqlite"
             @click="() => props.changeSetId && heimdall.odin(props.changeSetId)"
           />
-          <DropdownMenuItem
-            icon="trash"
-            label="Bobby Drop Tables"
-            @click="() => heimdall.bobby()"
-          />
+          <DropdownMenuItem icon="trash" label="Bobby Drop Tables" @click="() => heimdall.bobby()" />
           <DropdownMenuItem
             v-if="props.workspaceId && props.changeSetId"
             icon="trash"
@@ -51,11 +41,7 @@
     </template>
 
     <template v-if="!collapse">
-      <NavbarButton
-        tooltipText="Documentation"
-        icon="question-circle"
-        externalLinkTo="https://docs.systeminit.com/"
-      />
+      <NavbarButton tooltipText="Documentation" icon="question-circle" externalLinkTo="https://docs.systeminit.com/" />
 
       <NavbarButton
         tooltipText="Discord Community"
@@ -82,13 +68,7 @@
 
 <script lang="ts" setup>
 import { computed, onBeforeUnmount, onMounted, ref } from "vue";
-import {
-  DropdownMenuItem,
-  VormInput,
-  Modal,
-  Stack,
-  NewButton,
-} from "@si/vue-lib/design-system";
+import { DropdownMenuItem, VormInput, Modal, Stack, NewButton } from "@si/vue-lib/design-system";
 import { URLPattern, describePattern } from "@si/vue-lib";
 import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import * as heimdall from "@/store/realtime/heimdall";
@@ -137,12 +117,7 @@ const rebuild = (workspaceId: string, changeSetId: ChangeSetId) => {
 
 const hammer = () => {
   if (props.workspaceId && props.changeSetId) {
-    heimdall.mjolnir(
-      props.workspaceId,
-      props.changeSetId,
-      entityKind.value as EntityKind,
-      entityId.value,
-    );
+    heimdall.mjolnir(props.workspaceId, props.changeSetId, entityKind.value as EntityKind, entityId.value);
     modalRef.value.close();
   }
 };

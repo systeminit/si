@@ -7,21 +7,13 @@
         <div :class="clsx('w-full flex-none')">
           <div class="flex items-center gap-2xs p-xs">
             <Icon name="eye" class="flex-none" />
-            <div
-              v-if="changeSetsStore.headSelected"
-              class="flex-grow text-lg font-bold truncate"
-            >
+            <div v-if="changeSetsStore.headSelected" class="flex-grow text-lg font-bold truncate">
               Audit Logs for HEAD
             </div>
-            <div
-              v-else-if="selectedChangeSetName"
-              class="flex-grow text-lg font-bold truncate"
-            >
+            <div v-else-if="selectedChangeSetName" class="flex-grow text-lg font-bold truncate">
               Audit Logs for Change Set: {{ selectedChangeSetName }}
             </div>
-            <div v-else class="flex-grow text-lg font-bold truncate">
-              Audit Logs for Selected Change Set
-            </div>
+            <div v-else class="flex-grow text-lg font-bold truncate">Audit Logs for Selected Change Set</div>
 
             <!-- <div -->
             <!-- class="flex items-center gap-2xs pr-xs whitespace-nowrap flex-none" -->
@@ -88,10 +80,7 @@
       </template>
       <table class="w-full relative border-collapse">
         <thead>
-          <tr
-            v-for="headerGroup in table.getHeaderGroups()"
-            :key="headerGroup.id"
-          >
+          <tr v-for="headerGroup in table.getHeaderGroups()" :key="headerGroup.id">
             <AuditLogHeader
               v-for="header in headerGroup.headers"
               :key="header.id"
@@ -110,16 +99,10 @@
               :class="
                 clsx(
                   'h-lg text-sm hover:border',
-                  themeClasses(
-                    'hover:border-action-500',
-                    'hover:border-action-300',
-                  ),
+                  themeClasses('hover:border-action-500', 'hover:border-action-300'),
                   rowCollapseState[Number(row.id)]
                     ? themeClasses('bg-action-200', 'bg-action-900')
-                    : themeClasses(
-                        'odd:bg-neutral-200 even:bg-neutral-100',
-                        'odd:bg-neutral-700 even:bg-neutral-800',
-                      ),
+                    : themeClasses('odd:bg-neutral-200 even:bg-neutral-100', 'odd:bg-neutral-700 even:bg-neutral-800'),
                 )
               "
             >
@@ -131,20 +114,13 @@
                 @toggleExpand="toggleRowExpand(Number(cell.row.id))"
               />
             </tr>
-            <AuditLogDrawer
-              :row="row"
-              :colspan="columns.length"
-              :expanded="rowCollapseState[Number(row.id)]"
-            />
+            <AuditLogDrawer :row="row" :colspan="columns.length" :expanded="rowCollapseState[Number(row.id)]" />
             <tr class="invisible"></tr>
           </template>
         </tbody>
       </table>
       <template v-if="initialLoadLogsRequestStatus.isSuccess">
-        <span
-          v-if="noRowsMessage"
-          class="flex flex-row items-center justify-center pt-md"
-        >
+        <span v-if="noRowsMessage" class="flex flex-row items-center justify-center pt-md">
           {{ noRowsMessage }}
         </span>
         <div class="flex flex-row items-center justify-center py-md">
@@ -160,30 +136,14 @@
           />
         </div>
       </template>
-      <RequestStatusMessage
-        v-else
-        :requestStatus="initialLoadLogsRequestStatus"
-        loadingMessage="Loading Logs..."
-      />
+      <RequestStatusMessage v-else :requestStatus="initialLoadLogsRequestStatus" loadingMessage="Loading Logs..." />
     </ScrollArea>
   </div>
 </template>
 
 <script lang="ts" setup>
-import {
-  Icon,
-  RequestStatusMessage,
-  ScrollArea,
-  themeClasses,
-  Timestamp,
-  VButton,
-} from "@si/vue-lib/design-system";
-import {
-  getCoreRowModel,
-  getFilteredRowModel,
-  useVueTable,
-  createColumnHelper,
-} from "@tanstack/vue-table";
+import { Icon, RequestStatusMessage, ScrollArea, themeClasses, Timestamp, VButton } from "@si/vue-lib/design-system";
+import { getCoreRowModel, getFilteredRowModel, useVueTable, createColumnHelper } from "@tanstack/vue-table";
 import clsx from "clsx";
 import { h, computed, ref, withDirectives, resolveDirective, watch } from "vue";
 import { trackEvent } from "@/utils/tracking";
@@ -200,9 +160,7 @@ const logs = computed(() => logsStore.logs);
 const sizeForWatcher = computed(() => logsStore.size);
 const canLoadMore = computed(() => logsStore.canLoadMore);
 
-const selectedChangeSetName = computed(
-  () => changeSetsStore.selectedChangeSet?.name,
-);
+const selectedChangeSetName = computed(() => changeSetsStore.selectedChangeSet?.name);
 
 const rowCollapseState = ref(new Array(logs.value.length).fill(false));
 const anyRowsOpen = computed(() => rowCollapseState.value.some(Boolean));
@@ -214,10 +172,7 @@ const collapseAllRows = () => {
 };
 
 const initialLoadLogsRequestIdentifier = "initialLoadLogs";
-const initialLoadLogsRequestStatus = logsStore.getRequestStatus(
-  "LOAD_PAGE",
-  initialLoadLogsRequestIdentifier,
-);
+const initialLoadLogsRequestStatus = logsStore.getRequestStatus("LOAD_PAGE", initialLoadLogsRequestIdentifier);
 const performInitialLoadLogs = async () => {
   collapseAllRows();
   const size = logsStore.size;
@@ -227,10 +182,7 @@ const performInitialLoadLogs = async () => {
 };
 
 const loadLogsRequestIdentifier = "loadLogs";
-const loadLogsRequestStatus = logsStore.getRequestStatus(
-  "LOAD_PAGE",
-  loadLogsRequestIdentifier,
-);
+const loadLogsRequestStatus = logsStore.getRequestStatus("LOAD_PAGE", loadLogsRequestIdentifier);
 const loadLogs = async (expandSize: boolean, toggleTimestampSort: boolean) => {
   if (expandSize === true) {
     logsStore.size += 50;
@@ -381,16 +333,12 @@ const clearFilters = (id: string) => {
   } else if (id === "userName") {
     logsStore.filters.userFilter = [];
   }
-  table.setColumnFilters((filters) =>
-    filters.filter((filter) => filter.id !== id),
-  );
+  table.setColumnFilters((filters) => filters.filter((filter) => filter.id !== id));
 };
 
 const noRowsMessage = computed(() => {
-  if (logs.value.length < 1)
-    return "No logs exist for the selected Change Set.";
-  if (table.getRowModel().rows.length === 0)
-    return "No entries match selected filter criteria.";
+  if (logs.value.length < 1) return "No logs exist for the selected Change Set.";
+  if (table.getRowModel().rows.length === 0) return "No entries match selected filter criteria.";
   return null;
 });
 

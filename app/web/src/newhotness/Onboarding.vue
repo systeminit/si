@@ -1,4 +1,4 @@
-<!-- eslint-disable vue/component-tags-order,import/first -->
+<!-- eslint-disable vue/block-order,import/first -->
 <script lang="ts">
 // To add a new provider to this onboarding flow, search for this string -
 // NEW_PROVIDER_STEPS
@@ -24,7 +24,7 @@ export const DEBUG_ONBOARDING_START = OnboardingStep.PICK_PROVIDER;
 export const DEBUG_PROVIDER_CHOICE = undefined;
 </script>
 
-<!-- eslint-disable vue/component-tags-order,import/first -->
+<!-- eslint-disable vue/block-order,import/first -->
 <template>
   <div
     data-testid="lobby"
@@ -36,49 +36,25 @@ export const DEBUG_PROVIDER_CHOICE = undefined;
     "
   >
     <!-- Onboarding page main body -->
-    <div
-      class="flex flex-col items-center w-full h-full relative overflow-hidden"
-    >
+    <div class="flex flex-col items-center w-full h-full relative overflow-hidden">
       <!-- Gradient circles-->
-      <div
-        class="absolute w-[50vw] h-[50vw] rounded-full z-0 -bottom-[25vw] right-2xl bg-onboardingcircle1"
-      />
-      <div
-        class="absolute w-[50vw] h-[50vw] rounded-full z-0 -bottom-[10vw] -right-[25vw] bg-onboardingcircle2"
-      />
+      <div class="absolute w-[50vw] h-[50vw] rounded-full z-0 -bottom-[25vw] right-2xl bg-onboardingcircle1" />
+      <div class="absolute w-[50vw] h-[50vw] rounded-full z-0 -bottom-[10vw] -right-[25vw] bg-onboardingcircle2" />
 
       <!-- Everything else -->
       <div class="w-full h-full scrollable scrollable-horizontal">
-        <div
-          :class="
-            clsx(
-              'flex flex-col items-center w-full h-full relative min-w-[700px]',
-            )
-          "
-        >
+        <div :class="clsx('flex flex-col items-center w-full h-full relative min-w-[700px]')">
           <!--  Header  -->
-          <div
-            class="flex flex-row flex-none items-center justify-between w-full px-sm py-xs z-10"
-          >
+          <div class="flex flex-row flex-none items-center justify-between w-full px-sm py-xs z-10">
             <SiLogo class="block h-md w-md flex-none" />
-            <div
-              :class="
-                clsx(
-                  'font-normal text-sm',
-                  themeClasses('text-neutral-600', 'text-neutral-400'),
-                )
-              "
-            >
+            <div :class="clsx('font-normal text-sm', themeClasses('text-neutral-600', 'text-neutral-400'))">
               Need help? Have questions?
               <NewButton
                 aria-label="schedule-meeting-header"
                 :class="
                   clsx(
                     'hover:underline',
-                    themeClasses(
-                      'text-neutral-700 hover:text-black',
-                      'text-neutral-300 hover:text-white',
-                    ),
+                    themeClasses('text-neutral-700 hover:text-black', 'text-neutral-300 hover:text-white'),
                   )
                 "
                 tone="nostyle"
@@ -92,53 +68,24 @@ export const DEBUG_PROVIDER_CHOICE = undefined;
           </div>
 
           <!--  Form + Text in the middle  -->
-          <div
-            class="flex flex-row items-center grow w-full max-w-[1600px] px-lg z-10"
-          >
+          <div class="flex flex-row items-center grow w-full max-w-[1600px] px-lg z-10">
             <div
-              v-if="
-                currentStep === OnboardingStep.PICK_PROVIDER || !providerChoice
-              "
+              v-if="currentStep === OnboardingStep.PICK_PROVIDER || !providerChoice"
               class="flex-1 flex flex-col items-center min-w-0 gap-xl"
             >
-              <div
-                :class="
-                  clsx(
-                    'text-lg',
-                    themeClasses('text-neutral-800', 'text-neutral-200'),
-                  )
-                "
-              >
+              <div :class="clsx('text-lg', themeClasses('text-neutral-800', 'text-neutral-200'))">
                 Select a provider to start
               </div>
               <div :class="onboardingTileRowClasses">
                 <!-- Primary Providers -->
                 <OnboardingProviderTile provider="AWS" @select="pickProvider" />
-                <OnboardingProviderTile
-                  provider="Azure"
-                  beta
-                  @select="pickProvider"
-                />
-                <OnboardingProviderTile
-                  provider="Google Cloud Platform"
-                  beta
-                  @select="pickProvider"
-                />
+                <OnboardingProviderTile provider="Azure" beta @select="pickProvider" />
+                <OnboardingProviderTile provider="Google Cloud Platform" beta @select="pickProvider" />
               </div>
               <div :class="onboardingTileRowClasses">
                 <!-- Secondary Providers -->
-                <OnboardingProviderTile
-                  provider="Hetzner"
-                  beta
-                  variant="secondary"
-                  @select="pickProvider"
-                />
-                <OnboardingProviderTile
-                  provider="DigitalOcean"
-                  beta
-                  variant="secondary"
-                  @select="pickProvider"
-                />
+                <OnboardingProviderTile provider="Hetzner" beta variant="secondary" @select="pickProvider" />
+                <OnboardingProviderTile provider="DigitalOcean" beta variant="secondary" @select="pickProvider" />
               </div>
 
               <!-- TODO(Wendy) - when we have more providers, we will put a search here -->
@@ -146,21 +93,11 @@ export const DEBUG_PROVIDER_CHOICE = undefined;
             <template v-else>
               <div class="flex-1 flex flex-col basis-1/2 min-w-0">
                 <!-- Step 2: Provider setup -->
-                <OnboardingStepBlock
-                  v-if="currentStep === OnboardingStep.INITIALIZE"
-                >
+                <OnboardingStepBlock v-if="currentStep === OnboardingStep.INITIALIZE">
                   <template #header>
                     <div class="flex flex-row items-center gap-sm">
                       <Icon :name="pickBrandIconByString(providerChoice)" />
-                      <div
-                        :class="
-                          clsx(
-                            'flex-grow',
-                            initializeRequestSentAndSuccessful &&
-                              'text-success-200',
-                          )
-                        "
-                      >
+                      <div :class="clsx('flex-grow', initializeRequestSentAndSuccessful && 'text-success-200')">
                         {{ providerTitleText }}
                       </div>
                       <div>1/2</div>
@@ -172,10 +109,7 @@ export const DEBUG_PROVIDER_CHOICE = undefined;
                       :class="
                         clsx(
                           'flex flex-col border p-sm gap-sm text-sm',
-                          themeClasses(
-                            'border-neutral-400',
-                            'border-neutral-600',
-                          ),
+                          themeClasses('border-neutral-400', 'border-neutral-600'),
                         )
                       "
                     >
@@ -202,44 +136,25 @@ export const DEBUG_PROVIDER_CHOICE = undefined;
                                 ),
                               )
                             "
-                            @focus="
-                              onboardingTracking(
-                                'focused_credential_name_input',
-                              )
-                            "
+                            @focus="onboardingTracking('focused_credential_name_input')"
                           />
                         </div>
                       </div>
                       <!-- Secret Values -->
                       <ErrorMessage
                         v-if="showCredentialBanner"
-                        :class="
-                          clsx(
-                            'rounded-sm p-xs',
-                            themeClasses('bg-action-200', 'bg-action-900'),
-                          )
-                        "
+                        :class="clsx('rounded-sm p-xs', themeClasses('bg-action-200', 'bg-action-900'))"
                         tone="action"
                         variant="block"
                         noIcon
                       >
-                        <div
-                          class="flex flex-row items-center justify-between text-sm"
-                        >
+                        <div class="flex flex-row items-center justify-between text-sm">
                           <div v-if="providerChoice === 'AWS'">
-                            Paste the full Bash environment block into the first
-                            field — we'll auto-fill the rest.
+                            Paste the full Bash environment block into the first field — we'll auto-fill the rest.
                           </div>
-                          <div v-else>
-                            Please enter your {{ providerChoice }} credential
-                            information below.
-                          </div>
+                          <div v-else>Please enter your {{ providerChoice }} credential information below.</div>
                           <Icon
-                            v-tooltip="
-                              someFieldsVisible
-                                ? 'Hide All Values'
-                                : 'Show All Values'
-                            "
+                            v-tooltip="someFieldsVisible ? 'Hide All Values' : 'Show All Values'"
                             :name="someFieldsVisible ? 'hide' : 'eye'"
                             size="xs"
                             class="cursor-pointer z-20"
@@ -250,32 +165,22 @@ export const DEBUG_PROVIDER_CHOICE = undefined;
 
                       <div class="flex flex-col">
                         <div
-                          v-for="(
-                            field, title
-                          ) in secretFormFieldsForSelectedProvider"
+                          v-for="(field, title) in secretFormFieldsForSelectedProvider"
                           :key="title"
                           :class="
                             clsx(
                               'flex flex-row justify-between text-sm mb-[-1px]',
-                              field.type.includes('textarea')
-                                ? 'items-start'
-                                : 'items-center',
+                              field.type.includes('textarea') ? 'items-start' : 'items-center',
                             )
                           "
                         >
-                          <label
-                            class="basis-0 grow flex flex-row items-center gap-2xs"
-                          >
+                          <label class="basis-0 grow flex flex-row items-center gap-2xs">
                             {{ title }}
                             <RequiredAsterisk v-if="field.required" />
                           </label>
                           <div class="flex flex-row basis-0 grow relative">
                             <component
-                              :is="
-                                field.type.includes('textarea')
-                                  ? 'textarea'
-                                  : 'input'
-                              "
+                              :is="field.type.includes('textarea') ? 'textarea' : 'input'"
                               v-model="field.ref"
                               :type="field.type"
                               :class="
@@ -283,11 +188,7 @@ export const DEBUG_PROVIDER_CHOICE = undefined;
                                   'p-xs pr-7 text-sm border font-mono cursor-text grow',
                                   'focus:outline-none focus:ring-0 focus:z-20',
                                   field.type.includes('textarea')
-                                    ? [
-                                        'h-[120px]',
-                                        field.type.includes('password') &&
-                                          'secret-masked-textarea',
-                                      ]
+                                    ? ['h-[120px]', field.type.includes('password') && 'secret-masked-textarea']
                                     : 'h-lg',
                                   themeClasses(
                                     'text-black bg-white border-neutral-400 focus:border-action-500',
@@ -295,11 +196,7 @@ export const DEBUG_PROVIDER_CHOICE = undefined;
                                   ),
                                 )
                               "
-                              :placeholder="
-                                field.type.includes('password')
-                                  ? '*****'
-                                  : 'Value will be visible'
-                              "
+                              :placeholder="field.type.includes('password') ? '*****' : 'Value will be visible'"
                               data-lpignore="true"
                               data-1p-ignore
                               data-bwignore
@@ -309,34 +206,20 @@ export const DEBUG_PROVIDER_CHOICE = undefined;
                                 (ev: ClipboardEvent) => tryMatchOnPaste(ev)
                               "
                               @focus="
-                                onboardingTracking(
-                                  `focused_secret_field_${title
-                                    .toLowerCase()
-                                    .replace(/ /g, '_')}`,
-                                )
+                                onboardingTracking(`focused_secret_field_${title.toLowerCase().replace(/ /g, '_')}`)
                               "
                             />
                             <div
                               :class="
                                 clsx(
                                   'absolute right-xs cursor-pointer z-20',
-                                  field.type.includes('textarea')
-                                    ? 'h-full flex flex-row items-center'
-                                    : 'top-[10px]',
+                                  field.type.includes('textarea') ? 'h-full flex flex-row items-center' : 'top-[10px]',
                                 )
                               "
                             >
                               <Icon
-                                v-tooltip="
-                                  field.type.includes('password')
-                                    ? 'Show Value'
-                                    : 'Hide Value'
-                                "
-                                :name="
-                                  field.type.includes('password')
-                                    ? 'eye'
-                                    : 'hide'
-                                "
+                                v-tooltip="field.type.includes('password') ? 'Show Value' : 'Hide Value'"
+                                :name="field.type.includes('password') ? 'eye' : 'hide'"
                                 size="xs"
                                 @click="toggleVisibility(field)"
                               />
@@ -351,10 +234,7 @@ export const DEBUG_PROVIDER_CHOICE = undefined;
                       :class="
                         clsx(
                           'border flex flex-col p-sm gap-sm text-sm',
-                          themeClasses(
-                            'border-neutral-400',
-                            'border-neutral-600',
-                          ),
+                          themeClasses('border-neutral-400', 'border-neutral-600'),
                         )
                       "
                     >
@@ -362,9 +242,7 @@ export const DEBUG_PROVIDER_CHOICE = undefined;
                         Pick a region
                         <RequiredAsterisk />
                       </div>
-                      <div
-                        class="flex desktop:flex-row flex-col desktop:items-center items-stretch gap-xs"
-                      >
+                      <div class="flex desktop:flex-row flex-col desktop:items-center items-stretch gap-xs">
                         <div
                           v-for="region in pickerRegions"
                           :key="region.value"
@@ -373,54 +251,25 @@ export const DEBUG_PROVIDER_CHOICE = undefined;
                               'flex flex-row grow items-center gap-xs',
                               'border rounded-sm cursor-pointer',
                               'desktop:p-xs p-2xs',
-                              themeClasses(
-                                'hover:border-neutral-700',
-                                'hover:border-neutral-300',
-                              ),
+                              themeClasses('hover:border-neutral-700', 'hover:border-neutral-300'),
                               region.value === awsRegion
-                                ? themeClasses(
-                                    'border-neutral-700',
-                                    'border-neutral-300',
-                                  )
-                                : themeClasses(
-                                    'border-neutral-300',
-                                    'border-neutral-600',
-                                  ),
+                                ? themeClasses('border-neutral-700', 'border-neutral-300')
+                                : themeClasses('border-neutral-300', 'border-neutral-600'),
                             )
                           "
                           @click="selectRegion(region.value)"
                         >
-                          <Icon
-                            :name="
-                              region.value === awsRegion
-                                ? 'check-circle'
-                                : 'circle-empty'
-                            "
-                          />
-                          <div
-                            class="flex flex-col justify-center align-middle"
-                          >
+                          <Icon :name="region.value === awsRegion ? 'check-circle' : 'circle-empty'" />
+                          <div class="flex flex-col justify-center align-middle">
                             <span class="text-sm">{{ region.title }}</span>
-                            <span
-                              :class="
-                                clsx(
-                                  'text-sm',
-                                  themeClasses(
-                                    'text-neutral-600',
-                                    'text-neutral-400',
-                                  ),
-                                )
-                              "
-                            >
+                            <span :class="clsx('text-sm', themeClasses('text-neutral-600', 'text-neutral-400'))">
                               {{ region.value }}
                             </span>
                           </div>
                         </div>
                       </div>
                       <div class="flex flex-row items-center">
-                        <label for="aws-region" class="basis-0 grow">
-                          Or select any region
-                        </label>
+                        <label for="aws-region" class="basis-0 grow"> Or select any region </label>
                         <div class="basis-0 grow">
                           <select
                             id="aws-region"
@@ -453,10 +302,7 @@ export const DEBUG_PROVIDER_CHOICE = undefined;
                       :class="
                         clsx(
                           'border flex flex-col p-sm gap-sm text-sm',
-                          themeClasses(
-                            'border-neutral-400',
-                            'border-neutral-600',
-                          ),
+                          themeClasses('border-neutral-400', 'border-neutral-600'),
                         )
                       "
                     >
@@ -464,9 +310,7 @@ export const DEBUG_PROVIDER_CHOICE = undefined;
                         Pick a location
                         <RequiredAsterisk />
                       </div>
-                      <div
-                        class="flex desktop:flex-row flex-col desktop:items-center items-stretch gap-xs"
-                      >
+                      <div class="flex desktop:flex-row flex-col desktop:items-center items-stretch gap-xs">
                         <div
                           v-for="location in pickerLocations"
                           :key="location.value"
@@ -475,54 +319,25 @@ export const DEBUG_PROVIDER_CHOICE = undefined;
                               'flex flex-row grow items-center gap-xs',
                               'border rounded-sm cursor-pointer',
                               'desktop:p-xs p-2xs',
-                              themeClasses(
-                                'hover:border-neutral-700',
-                                'hover:border-neutral-300',
-                              ),
+                              themeClasses('hover:border-neutral-700', 'hover:border-neutral-300'),
                               location.value === azureLocation
-                                ? themeClasses(
-                                    'border-neutral-700',
-                                    'border-neutral-300',
-                                  )
-                                : themeClasses(
-                                    'border-neutral-300',
-                                    'border-neutral-600',
-                                  ),
+                                ? themeClasses('border-neutral-700', 'border-neutral-300')
+                                : themeClasses('border-neutral-300', 'border-neutral-600'),
                             )
                           "
                           @click="selectLocation(location.value)"
                         >
-                          <Icon
-                            :name="
-                              location.value === azureLocation
-                                ? 'check-circle'
-                                : 'circle-empty'
-                            "
-                          />
-                          <div
-                            class="flex flex-col justify-center align-middle"
-                          >
+                          <Icon :name="location.value === azureLocation ? 'check-circle' : 'circle-empty'" />
+                          <div class="flex flex-col justify-center align-middle">
                             <span class="text-sm">{{ location.title }}</span>
-                            <span
-                              :class="
-                                clsx(
-                                  'text-sm',
-                                  themeClasses(
-                                    'text-neutral-600',
-                                    'text-neutral-400',
-                                  ),
-                                )
-                              "
-                            >
+                            <span :class="clsx('text-sm', themeClasses('text-neutral-600', 'text-neutral-400'))">
                               {{ location.value }}
                             </span>
                           </div>
                         </div>
                       </div>
                       <div class="flex flex-row items-center">
-                        <label for="azure-location" class="basis-0 grow">
-                          Or select any location
-                        </label>
+                        <label for="azure-location" class="basis-0 grow"> Or select any location </label>
                         <div class="basis-0 grow">
                           <select
                             id="azure-location"
@@ -562,14 +377,10 @@ export const DEBUG_PROVIDER_CHOICE = undefined;
                     <NewButton
                       :label="initializeApiError ? 'Retry' : 'Next'"
                       :tooltip="
-                        !formHasRequiredValues || DEBUG_MODE
-                          ? 'You must enter your credential to continue'
-                          : undefined
+                        !formHasRequiredValues || DEBUG_MODE ? 'You must enter your credential to continue' : undefined
                       "
                       tone="action"
-                      :disabled="
-                        !formHasRequiredValues || DEBUG_ONBOARDING_SHOW_DISABLED
-                      "
+                      :disabled="!formHasRequiredValues || DEBUG_ONBOARDING_SHOW_DISABLED"
                       :loading="submitOnboardingInProgress"
                       loadingText="Saving"
                       @click="submitOnboardRequest"
@@ -577,9 +388,7 @@ export const DEBUG_PROVIDER_CHOICE = undefined;
                   </template>
                 </OnboardingStepBlock>
                 <!-- Step 3: Agent Tutorial + token -->
-                <OnboardingStepBlock
-                  v-else-if="currentStep === OnboardingStep.SETUP_AI"
-                >
+                <OnboardingStepBlock v-else-if="currentStep === OnboardingStep.SETUP_AI">
                   <template #header>
                     <div class="flex flex-row items-center justify-between">
                       <span>Connect the AI Agent</span>
@@ -587,44 +396,22 @@ export const DEBUG_PROVIDER_CHOICE = undefined;
                     </div>
                   </template>
                   <template #body>
-                    <div
-                      class="flex flex-col gap-md [&>div]:flex [&>div]:flex-col [&>div]:gap-xs"
-                    >
+                    <div class="flex flex-col gap-md [&>div]:flex [&>div]:flex-col [&>div]:gap-xs">
                       <div>
                         <div class="flex flex-col">
                           <span
                             >Install
                             <NewButton
                               aria-label="claude-code-link"
-                              :class="
-                                clsx(
-                                  'underline',
-                                  themeClasses(
-                                    'hover:text-action-500',
-                                    'hover:text-action-300',
-                                  ),
-                                )
-                              "
+                              :class="clsx('underline', themeClasses('hover:text-action-500', 'hover:text-action-300'))"
                               tone="nostyle"
                               href="https://claude.com/product/claude-code"
                               target="_blank"
                               label="Claude Code"
-                              @mousedown="
-                                onboardingTracking('external_link_claude_code')
-                              "
+                              @mousedown="onboardingTracking('external_link_claude_code')"
                           /></span>
-                          <span
-                            :class="
-                              clsx(
-                                themeClasses(
-                                  'text-neutral-800',
-                                  'text-neutral-300',
-                                ),
-                              )
-                            "
-                          >
-                            The System Initiative AI Agent is a customized
-                            installation of Claude Code.
+                          <span :class="clsx(themeClasses('text-neutral-800', 'text-neutral-300'))">
+                            The System Initiative AI Agent is a customized installation of Claude Code.
                           </span>
                         </div>
                         <CopyableTextBlock
@@ -657,33 +444,17 @@ export const DEBUG_PROVIDER_CHOICE = undefined;
                         </span>
                         <CopyableTextBlock
                           :text="installCommand"
-                          @copied="
-                            onboardingTracking(
-                              'copied_si_cli_install_instructions',
-                            )
-                          "
+                          @copied="onboardingTracking('copied_si_cli_install_instructions')"
                         />
                         <span
                           ><NewButton
                             aria-label="si-cli-install-link"
-                            :class="
-                              clsx(
-                                'hover:underline',
-                                themeClasses(
-                                  'text-neutral-800',
-                                  'text-neutral-300',
-                                ),
-                              )
-                            "
+                            :class="clsx('hover:underline', themeClasses('text-neutral-800', 'text-neutral-300'))"
                             tone="nostyle"
                             href="https://docs.systeminit.com/reference/si-cli#installation"
                             target="_blank"
                             label="Alternative setup options"
-                            @mousedown="
-                              onboardingTracking(
-                                'external_link_si_cli_installation_instructions',
-                              )
-                            "
+                            @mousedown="onboardingTracking('external_link_si_cli_installation_instructions')"
                         /></span>
                       </div>
                       <div>
@@ -692,66 +463,29 @@ export const DEBUG_PROVIDER_CHOICE = undefined;
                             Configure the
                             <NewButton
                               aria-label="ai-agent-link"
-                              :class="
-                                clsx(
-                                  'underline',
-                                  themeClasses(
-                                    'hover:text-action-500',
-                                    'hover:text-action-300',
-                                  ),
-                                )
-                              "
+                              :class="clsx('underline', themeClasses('hover:text-action-500', 'hover:text-action-300'))"
                               tone="nostyle"
                               href="https://docs.systeminit.com/reference/ai-agent"
                               target="_blank"
                               label="SI AI Agent"
-                              @mousedown="
-                                onboardingTracking(
-                                  'external_link_ai_agent_information',
-                                )
-                              "
+                              @mousedown="onboardingTracking('external_link_ai_agent_information')"
                             />
                           </span>
-                          <span
-                            :class="
-                              clsx(
-                                themeClasses(
-                                  'text-neutral-800',
-                                  'text-neutral-300',
-                                ),
-                              )
-                            "
-                          >
-                            Open your terminal and run the command, which will
-                            configure the Agent for your workspace.
+                          <span :class="clsx(themeClasses('text-neutral-800', 'text-neutral-300'))">
+                            Open your terminal and run the command, which will configure the Agent for your workspace.
                           </span>
                         </div>
                         <CopyableTextBlock
                           text="si ai-agent init"
-                          @copied="
-                            onboardingTracking(
-                              'copied_ai_setup_script_init_command',
-                            )
-                          "
+                          @copied="onboardingTracking('copied_ai_setup_script_init_command')"
                         />
                       </div>
                       <div>
                         <div class="flex flex-col">
                           <span>Enter your API token</span>
-                          <span
-                            :class="
-                              clsx(
-                                themeClasses(
-                                  'text-neutral-800',
-                                  'text-neutral-300',
-                                ),
-                              )
-                            "
-                          >
-                            In your terminal, the ai-agent will ask for the
-                            System Initiative API token. Paste it there. The
-                            input is hidden for security. Press Enter to save
-                            and proceed.
+                          <span :class="clsx(themeClasses('text-neutral-800', 'text-neutral-300'))">
+                            In your terminal, the ai-agent will ask for the System Initiative API token. Paste it there.
+                            The input is hidden for security. Press Enter to save and proceed.
                           </span>
                         </div>
                         <ErrorMessage
@@ -769,101 +503,53 @@ export const DEBUG_PROVIDER_CHOICE = undefined;
                           tone="action"
                           variant="block"
                         >
-                          <div class="text-sm">
-                            We're only showing you the value of this token once.
-                          </div>
+                          <div class="text-sm">We're only showing you the value of this token once.</div>
                         </ErrorMessage>
-                        <CopyableTextBlock
-                          :text="apiToken"
-                          expandable
-                          @copied="onCopyAgentToken"
-                        />
+                        <CopyableTextBlock :text="apiToken" expandable @copied="onCopyAgentToken" />
                       </div>
                       <div>
                         <span>
                           Start the
                           <NewButton
                             aria-label="ai-agent-link"
-                            :class="
-                              clsx(
-                                'underline',
-                                themeClasses(
-                                  'hover:text-action-500',
-                                  'hover:text-action-300',
-                                ),
-                              )
-                            "
+                            :class="clsx('underline', themeClasses('hover:text-action-500', 'hover:text-action-300'))"
                             tone="nostyle"
                             href="https://docs.systeminit.com/reference/ai-agent"
                             target="_blank"
                             label="SI AI Agent"
-                            @mousedown="
-                              onboardingTracking(
-                                'external_link_ai_agent_information',
-                              )
-                            "
+                            @mousedown="onboardingTracking('external_link_ai_agent_information')"
                           />
                         </span>
-                        <span
-                          :class="
-                            clsx(
-                              themeClasses(
-                                'text-neutral-800',
-                                'text-neutral-300',
-                              ),
-                            )
-                          "
-                        >
-                          This will start claude code and connect it to the SI
-                          AI Agent.
+                        <span :class="clsx(themeClasses('text-neutral-800', 'text-neutral-300'))">
+                          This will start claude code and connect it to the SI AI Agent.
                         </span>
                         <CopyableTextBlock
                           text="si ai-agent start"
-                          @copied="
-                            onboardingTracking('copied_start_ai_agent_command')
-                          "
+                          @copied="onboardingTracking('copied_start_ai_agent_command')"
                         />
                       </div>
                       <div>
-                        <ErrorMessage
-                          v-if="stepTwoNextDisabled"
-                          tone="neutral"
-                          icon="loader"
-                        >
+                        <ErrorMessage v-if="stepTwoNextDisabled" tone="neutral" icon="loader">
                           <div>
-                            Waiting for the AI agent to start. You'll be able to
-                            proceed as soon as setup is finished and Claude is
-                            running.
+                            Waiting for the AI agent to start. You'll be able to proceed as soon as setup is finished
+                            and Claude is running.
                           </div>
                           <div>
                             If you are having trouble,
                             <NewButton
                               aria-label="schedule-meeting-stuck-agent"
-                              :class="
-                                clsx(
-                                  'underline',
-                                  themeClasses(
-                                    'hover:text-action-500',
-                                    'hover:text-action-300',
-                                  ),
-                                )
-                              "
+                              :class="clsx('underline', themeClasses('hover:text-action-500', 'hover:text-action-300'))"
                               tone="nostyle"
                               :href="scheduleWithUsLink"
                               target="_blank"
                               label="schedule a meeting"
-                              @mousedown="
-                                onboardingTracking(
-                                  'schedule_meeting_stuck_agent',
-                                )
-                              "
+                              @mousedown="onboardingTracking('schedule_meeting_stuck_agent')"
                             />
                             with us and we will help you out.
                           </div>
                         </ErrorMessage>
                         <ErrorMessage v-else tone="neutral" icon="check">
-                          Congratulations! Your Agent is connected and you are
-                          ready to start.
+                          Congratulations! Your Agent is connected and you are ready to start.
                         </ErrorMessage>
                       </div>
                     </div>
@@ -872,59 +558,34 @@ export const DEBUG_PROVIDER_CHOICE = undefined;
                     <NewButton
                       label="Get Started"
                       tone="action"
-                      :disabled="
-                        (stepTwoNextDisabled && !DEBUG_MODE) ||
-                        DEBUG_ONBOARDING_SHOW_DISABLED
-                      "
+                      :disabled="(stepTwoNextDisabled && !DEBUG_MODE) || DEBUG_ONBOARDING_SHOW_DISABLED"
                       :tooltip="
-                        stepTwoNextDisabled || DEBUG_MODE
-                          ? 'You must set up your AI agent to continue'
-                          : undefined
+                        stepTwoNextDisabled || DEBUG_MODE ? 'You must set up your AI agent to continue' : undefined
                       "
                       @click="onNextPageTwo"
                     />
                   </template>
                 </OnboardingStepBlock>
               </div>
-              <div
-                class="flex-1 basis-1/4 min-w-0 flex flex-col gap-lg ml-xl font-medium"
-              >
+              <div class="flex-1 basis-1/4 min-w-0 flex flex-col gap-lg ml-xl font-medium">
                 <div class="text-xl">
                   <template v-if="currentStep === OnboardingStep.INITIALIZE">
-                    Connect your {{ providerChoice }} account to discover,
-                    manage, and automate your infrastructure.
+                    Connect your {{ providerChoice }} account to discover, manage, and automate your infrastructure.
                   </template>
                   <template v-else-if="currentStep === OnboardingStep.SETUP_AI">
                     Install the System Initiative AI Agent
                   </template>
                 </div>
-                <div
-                  v-if="currentStep === OnboardingStep.INITIALIZE"
-                  class="flex flex-col gap-xs"
-                >
+                <div v-if="currentStep === OnboardingStep.INITIALIZE" class="flex flex-col gap-xs">
                   <CollapsingFlexItem
                     variant="onboarding"
                     open
-                    @toggle="
-                      onboardingTracking('toggled_why_is_a_cred_necessary')
-                    "
+                    @toggle="onboardingTracking('toggled_why_is_a_cred_necessary')"
                   >
-                    <template #header>
-                      Why is {{ aOrAn }} {{ providerChoice }} credential
-                      necessary?
-                    </template>
+                    <template #header> Why is {{ aOrAn }} {{ providerChoice }} credential necessary? </template>
                     <div>
-                      <span
-                        :class="
-                          clsx(
-                            themeClasses(
-                              'text-neutral-800',
-                              'text-neutral-300',
-                            ),
-                          )
-                        "
-                        >System Initiative needs access to your
-                        {{ providerChoice }} account to securely discover,
+                      <span :class="clsx(themeClasses('text-neutral-800', 'text-neutral-300'))"
+                        >System Initiative needs access to your {{ providerChoice }} account to securely discover,
                         manage, and automate your infrastructure.
                       </span>
                       <span>You make and approve all changes.</span>
@@ -933,45 +594,25 @@ export const DEBUG_PROVIDER_CHOICE = undefined;
                       Have questions?
                       <NewButton
                         aria-label="schedule-meeting-not-ready"
-                        :class="
-                          clsx(
-                            'underline',
-                            themeClasses(
-                              'hover:text-action-500',
-                              'hover:text-action-300',
-                            ),
-                          )
-                        "
+                        :class="clsx('underline', themeClasses('hover:text-action-500', 'hover:text-action-300'))"
                         tone="nostyle"
                         :href="scheduleWithUsLink"
                         target="_blank"
                         label="Schedule a meeting"
-                        @mousedown="
-                          onboardingTracking('schedule_meeting_not_ready')
-                        "
+                        @mousedown="onboardingTracking('schedule_meeting_not_ready')"
                       />
                       with us.
                     </div>
                   </CollapsingFlexItem>
                   <CollapsingFlexItem
                     variant="onboarding"
-                    @toggle="
-                      onboardingTracking('toggled_how_are_my_secrets_stored')
-                    "
+                    @toggle="onboardingTracking('toggled_how_are_my_secrets_stored')"
                   >
                     <template #header>How are my secrets stored?</template>
-                    <div
-                      :class="
-                        clsx(
-                          themeClasses('text-neutral-800', 'text-neutral-300'),
-                        )
-                      "
-                    >
-                      System Initiative secrets are secure by default. They are
-                      encrypted in the browser before being transmitted over the
-                      wire and encrypted at rest. All generated logs will
-                      automatically redact each secret so that there are no
-                      leaks.
+                    <div :class="clsx(themeClasses('text-neutral-800', 'text-neutral-300'))">
+                      System Initiative secrets are secure by default. They are encrypted in the browser before being
+                      transmitted over the wire and encrypted at rest. All generated logs will automatically redact each
+                      secret so that there are no leaks.
                       <!-- TODO - add link here when we have a good blog post to link to -->
                       <!-- <NewButton
                         aria-label="read-more-secrets"
@@ -994,176 +635,76 @@ export const DEBUG_PROVIDER_CHOICE = undefined;
                   </CollapsingFlexItem>
                   <CollapsingFlexItem
                     variant="onboarding"
-                    @toggle="
-                      onboardingTracking(
-                        'toggled_i_dont_use_existing_providers',
-                      )
-                    "
+                    @toggle="onboardingTracking('toggled_i_dont_use_existing_providers')"
                   >
-                    <template #header>
-                      I don't use any of these cloud providers, what should I
-                      do?
-                    </template>
-                    <div
-                      :class="
-                        clsx(
-                          themeClasses('text-neutral-800', 'text-neutral-300'),
-                        )
-                      "
-                    >
+                    <template #header> I don't use any of these cloud providers, what should I do? </template>
+                    <div :class="clsx(themeClasses('text-neutral-800', 'text-neutral-300'))">
                       We are currently adding support for additional providers.
                     </div>
                     <div>
                       <NewButton
                         aria-label="schedule-meeting-no-existing-providers"
-                        :class="
-                          clsx(
-                            'underline',
-                            themeClasses(
-                              'hover:text-action-500',
-                              'hover:text-action-300',
-                            ),
-                          )
-                        "
+                        :class="clsx('underline', themeClasses('hover:text-action-500', 'hover:text-action-300'))"
                         tone="nostyle"
                         :href="scheduleWithUsLink"
                         target="_blank"
                         label="Schedule a meeting"
-                        @mousedown="
-                          onboardingTracking(
-                            'schedule_meeting_no_existing_providers',
-                          )
-                        "
+                        @mousedown="onboardingTracking('schedule_meeting_no_existing_providers')"
                       />
-                      <span
-                        :class="
-                          clsx(
-                            themeClasses(
-                              'text-neutral-800',
-                              'text-neutral-300',
-                            ),
-                          )
-                        "
-                      >
+                      <span :class="clsx(themeClasses('text-neutral-800', 'text-neutral-300'))">
                         with us and tell us what you need.</span
                       >
                     </div>
                   </CollapsingFlexItem>
                 </div>
-                <div
-                  v-else-if="currentStep === OnboardingStep.SETUP_AI"
-                  class="flex flex-col gap-xs"
-                >
+                <div v-else-if="currentStep === OnboardingStep.SETUP_AI" class="flex flex-col gap-xs">
                   <CollapsingFlexItem
                     variant="onboarding"
                     open
-                    @toggle="
-                      onboardingTracking('toggled_how_does_ai_agent_work')
-                    "
+                    @toggle="onboardingTracking('toggled_how_does_ai_agent_work')"
                   >
-                    <template #header
-                      >What does the System Initiative AI Agent do?</template
-                    >
-                    <div
-                      :class="
-                        clsx(
-                          themeClasses('text-neutral-800', 'text-neutral-300'),
-                        )
-                      "
-                    >
-                      The AI Agent allows you to discover resources, propose
-                      changes, and understand your infrastructure using natural
-                      language. Think of it like having an infrastructure expert
-                      around to help out.
+                    <template #header>What does the System Initiative AI Agent do?</template>
+                    <div :class="clsx(themeClasses('text-neutral-800', 'text-neutral-300'))">
+                      The AI Agent allows you to discover resources, propose changes, and understand your infrastructure
+                      using natural language. Think of it like having an infrastructure expert around to help out.
                     </div>
                   </CollapsingFlexItem>
-                  <CollapsingFlexItem
-                    variant="onboarding"
-                    @toggle="onboardingTracking('toggled_what_am_i_installing')"
-                  >
+                  <CollapsingFlexItem variant="onboarding" @toggle="onboardingTracking('toggled_what_am_i_installing')">
                     <template #header>What am I installing?</template>
-                    <div
-                      :class="
-                        clsx(
-                          themeClasses('text-neutral-800', 'text-neutral-300'),
-                        )
-                      "
-                    >
+                    <div :class="clsx(themeClasses('text-neutral-800', 'text-neutral-300'))">
                       The
                       <NewButton
                         aria-label="ai-agent-docs-right"
-                        :class="
-                          clsx(
-                            'underline',
-                            themeClasses(
-                              'hover:text-action-500',
-                              'hover:text-action-300',
-                            ),
-                          )
-                        "
+                        :class="clsx('underline', themeClasses('hover:text-action-500', 'hover:text-action-300'))"
                         tone="nostyle"
                         href="https://docs.systeminit.com/reference/ai-agent"
                         target="_blank"
                         label="si ai-agent"
-                        @mousedown="
-                          onboardingTracking('external_link_ai_agent_repo')
-                        "
+                        @mousedown="onboardingTracking('external_link_ai_agent_repo')"
                       />
-                      is an instance of Claude Code preconfigured to work with
-                      the System Initiative MCP server. It includes both the
-                      tools neccessary to work with System Inititaive and
-                      helpful context for the agent.
+                      is an instance of Claude Code preconfigured to work with the System Initiative MCP server. It
+                      includes both the tools neccessary to work with System Inititaive and helpful context for the
+                      agent.
                     </div>
                   </CollapsingFlexItem>
-                  <CollapsingFlexItem
-                    variant="onboarding"
-                    @toggle="onboardingTracking('toggled_can_i_not_use_claude')"
-                  >
-                    <template #header
-                      >Can I use an Agent other than Claude?</template
-                    >
-                    <div
-                      :class="
-                        clsx(
-                          themeClasses('text-neutral-800', 'text-neutral-300'),
-                        )
-                      "
-                    >
-                      We have found that Claude Code is the best agent for
-                      System Initiative, and we have pre-configured it for a
-                      great experience. Once you have experienced it, you can
-                      configure the MCP server to work with any Agent you want.
-                      We also support
+                  <CollapsingFlexItem variant="onboarding" @toggle="onboardingTracking('toggled_can_i_not_use_claude')">
+                    <template #header>Can I use an Agent other than Claude?</template>
+                    <div :class="clsx(themeClasses('text-neutral-800', 'text-neutral-300'))">
+                      We have found that Claude Code is the best agent for System Initiative, and we have pre-configured
+                      it for a great experience. Once you have experienced it, you can configure the MCP server to work
+                      with any Agent you want. We also support
                       <NewButton
                         aria-label="ai-agent-opencode-right"
-                        :class="
-                          clsx(
-                            'underline',
-                            themeClasses(
-                              'hover:text-action-500',
-                              'hover:text-action-300',
-                            ),
-                          )
-                        "
+                        :class="clsx('underline', themeClasses('hover:text-action-500', 'hover:text-action-300'))"
                         tone="nostyle"
                         href="https://opencode.ai"
                         target="_blank"
                         label="opencode.ai"
-                        @mousedown="
-                          onboardingTracking('external_link_opencode')
-                        "
+                        @mousedown="onboardingTracking('external_link_opencode')"
                       />,
                       <NewButton
                         aria-label="ai-agent-codex-right"
-                        :class="
-                          clsx(
-                            'underline',
-                            themeClasses(
-                              'hover:text-action-500',
-                              'hover:text-action-300',
-                            ),
-                          )
-                        "
+                        :class="clsx('underline', themeClasses('hover:text-action-500', 'hover:text-action-300'))"
                         tone="nostyle"
                         href="https://openai.com/codex/"
                         target="_blank"
@@ -1173,15 +714,7 @@ export const DEBUG_PROVIDER_CHOICE = undefined;
                       and
                       <NewButton
                         aria-label="ai-agent-cursor-right"
-                        :class="
-                          clsx(
-                            'underline',
-                            themeClasses(
-                              'hover:text-action-500',
-                              'hover:text-action-300',
-                            ),
-                          )
-                        "
+                        :class="clsx('underline', themeClasses('hover:text-action-500', 'hover:text-action-300'))"
                         tone="nostyle"
                         href="https://cursor.com/"
                         target="_blank"
@@ -1197,9 +730,7 @@ export const DEBUG_PROVIDER_CHOICE = undefined;
           </div>
 
           <!--  Bottom Links  -->
-          <div
-            class="flex flex-row flex-none w-full items-center justify-between p-sm gap-sm z-10"
-          >
+          <div class="flex flex-row flex-none w-full items-center justify-between p-sm gap-sm z-10">
             <!-- Left side -->
             <div>
               <NewButton
@@ -1208,10 +739,7 @@ export const DEBUG_PROVIDER_CHOICE = undefined;
                 :class="
                   clsx(
                     'hover:underline',
-                    themeClasses(
-                      'text-neutral-700 hover:text-black',
-                      'text-neutral-300 hover:text-white',
-                    ),
+                    themeClasses('text-neutral-700 hover:text-black', 'text-neutral-300 hover:text-white'),
                   )
                 "
                 label="I don't use any of these providers"
@@ -1246,30 +774,22 @@ export const DEBUG_PROVIDER_CHOICE = undefined;
       size="xl"
       buttonConfiguration="done"
     >
-      We're working to support more providers. We can help with your special
-      needs setup. Let us know what you need,
+      We're working to support more providers. We can help with your special needs setup. Let us know what you need,
       <NewButton
         aria-label="schedule-meeting-no-existing-providers"
-        :class="
-          clsx(
-            'underline',
-            themeClasses('hover:text-action-500', 'hover:text-action-300'),
-          )
-        "
+        :class="clsx('underline', themeClasses('hover:text-action-500', 'hover:text-action-300'))"
         tone="nostyle"
         :href="scheduleWithUsLink"
         target="_blank"
         label="schedule a meeting"
-        @mousedown="
-          onboardingTracking('schedule_meeting_no_existing_providers')
-        "
+        @mousedown="onboardingTracking('schedule_meeting_no_existing_providers')"
       />
       with us.
     </Modal>
   </div>
 </template>
 
-<!-- eslint-disable vue/component-tags-order,import/first -->
+<!-- eslint-disable vue/block-order,import/first -->
 <script lang="ts" setup>
 import { computed, onMounted, reactive, ref, watch } from "vue";
 import clsx from "clsx";
@@ -1317,8 +837,7 @@ function toggleTheme() {
 
 const differentProviderModal = ref<InstanceType<typeof Modal>>();
 
-const scheduleWithUsLink =
-  "https://calendly.com/d/cw8r-6rq-b3n/share-your-use-case-with-system-initiative";
+const scheduleWithUsLink = "https://calendly.com/d/cw8r-6rq-b3n/share-your-use-case-with-system-initiative";
 // const scheduleADemoLink =
 //   "https://calendly.com/d/cns7-v2b-jkz/system-initiative-demo";
 
@@ -1336,36 +855,21 @@ const ctx = useContext();
 
 const authStore = useAuthStore();
 
-const hasUsedAiAgent = computed(
-  () => authStore.userWorkspaceFlags.executedAgent ?? false,
-);
+const hasUsedAiAgent = computed(() => authStore.userWorkspaceFlags.executedAgent ?? false);
 
 /// STARTUP LOGIC
-const currentStep = ref<OnboardingStep>(
-  DEBUG_MODE ? DEBUG_ONBOARDING_START : OnboardingStep.PICK_PROVIDER,
-);
+const currentStep = ref<OnboardingStep>(DEBUG_MODE ? DEBUG_ONBOARDING_START : OnboardingStep.PICK_PROVIDER);
 const incrementOnboardingStep = () => {
-  currentStep.value = Math.min(
-    OnboardingStep.SETUP_AI,
-    currentStep.value + 1,
-  ) as OnboardingStep;
+  currentStep.value = Math.min(OnboardingStep.SETUP_AI, currentStep.value + 1) as OnboardingStep;
 
-  if (
-    currentStep.value === OnboardingStep.INITIALIZE &&
-    secretFormFieldsForSelectedProvider.value
-  ) {
-    for (const item of Object.values(
-      secretFormFieldsForSelectedProvider.value,
-    )) {
+  if (currentStep.value === OnboardingStep.INITIALIZE && secretFormFieldsForSelectedProvider.value) {
+    for (const item of Object.values(secretFormFieldsForSelectedProvider.value)) {
       item.ref = "";
     }
   }
 };
 const decrementOnboardingStep = () => {
-  currentStep.value = Math.max(
-    OnboardingStep.PICK_PROVIDER,
-    currentStep.value - 1,
-  ) as OnboardingStep;
+  currentStep.value = Math.max(OnboardingStep.PICK_PROVIDER, currentStep.value - 1) as OnboardingStep;
   if (currentStep.value === OnboardingStep.PICK_PROVIDER) {
     providerChoice.value = undefined;
   }
@@ -1454,8 +958,7 @@ const formHasRequiredValues = computed(() => {
   if (!formFields) return false;
 
   const credentialFieldsFilled =
-    !Object.values(formFields).some((f) => f.required && f.ref === "") &&
-    credentialName.value !== "";
+    !Object.values(formFields).some((f) => f.required && f.ref === "") && credentialName.value !== "";
 
   return credentialFieldsFilled || DEBUG_MODE;
 });
@@ -1477,9 +980,7 @@ const tryMatchOnPaste = (ev: ClipboardEvent) => {
 
   let matchedAValue = false;
   // Loop through form fields and try to match the value keys to the titles
-  for (const [formKey, formValue] of Object.entries(
-    formFields as SecretFormFields,
-  )) {
+  for (const [formKey, formValue] of Object.entries(formFields)) {
     const formattedKey = formKey.replaceAll(" ", "_").toUpperCase();
     const matchedField = valuesFromInput[formattedKey];
 
@@ -1499,8 +1000,7 @@ const toggleVisibility = (field: SecretFormField) => {
   if (field.type === "password" || field.type === "text") {
     field.type = field.type === "password" ? "text" : "password";
   } else if (field.type.includes("textarea")) {
-    field.type =
-      field.type === "password textarea" ? "textarea" : "password textarea";
+    field.type = field.type === "password textarea" ? "textarea" : "password textarea";
   }
 };
 const someFieldsVisible = computed(() => {
@@ -1525,9 +1025,7 @@ const toggleAll = () => {
 };
 
 // PROVIDER
-const providerChoice = ref<Provider | undefined>(
-  DEBUG_MODE ? DEBUG_PROVIDER_CHOICE : undefined,
-);
+const providerChoice = ref<Provider | undefined>(DEBUG_MODE ? DEBUG_PROVIDER_CHOICE : undefined);
 const providerTrackingName = computed(() => {
   if (providerChoice.value === "Google Cloud Platform") {
     return "gcp";
@@ -1541,9 +1039,7 @@ const pickProvider = (provider: Provider) => {
   onboardingTracking(`picked_provider_${providerTrackingName.value}`);
   incrementOnboardingStep();
 };
-const aOrAn = computed(() =>
-  providerChoice.value?.match("^[aieouAIEOU].*") ? "an" : "a",
-);
+const aOrAn = computed(() => (providerChoice.value?.match("^[aieouAIEOU].*") ? "an" : "a"));
 
 // NEW_PROVIDER_STEPS - Add your provider title text here
 
@@ -1663,11 +1159,7 @@ const submittedOnboardRequest = ref(false);
 const keyApi = useApi();
 
 const initializeRequestSentAndSuccessful = computed(() => {
-  return (
-    submittedOnboardRequest.value &&
-    !initializeApi.inFlight.value &&
-    !initializeApiError.value
-  );
+  return submittedOnboardRequest.value && !initializeApi.inFlight.value && !initializeApiError.value;
 });
 
 const submitOnboardingInProgress = ref(false);
@@ -1697,20 +1189,12 @@ const submitOnboardRequest = async () => {
   const publicKey = resp.data;
 
   // Format cred values for encryption
-  const generateCredValue = (
-    values: Record<string, string>,
-    formFields: SecretFormFields,
-  ) => {
+  const generateCredValue = (values: Record<string, string>, formFields: SecretFormFields) => {
     const array = [];
     for (const [key, value] of Object.entries(values)) {
-      array.push(
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-        [key, formFields[value]!.ref],
-      );
+      array.push([key, formFields[value]!.ref]);
     }
-    return (
-      array.filter(([_, value]) => value !== "") as [string, string][]
-    ).reduce<{
+    return (array.filter(([_, value]) => value !== "") as [string, string][]).reduce<{
       [key: string]: string;
     }>((acc, [key, value]) => {
       // make the pairs array into an object
@@ -1821,9 +1305,7 @@ const generateToken = async () => {
     return;
   }
 
-  const callApi = generateTokenApi.endpoint<{ token: string }>(
-    routes.GenerateApiToken,
-  );
+  const callApi = generateTokenApi.endpoint<{ token: string }>(routes.GenerateApiToken);
   const {
     req: { data },
   } = await callApi.post({
@@ -1872,9 +1354,7 @@ const onCopyAgentToken = () => {
   onboardingTracking("ai_token_copied");
 };
 
-const stepTwoNextDisabled = computed(
-  () => !initializeRequestSentAndSuccessful.value || !hasUsedAiAgent.value,
-);
+const stepTwoNextDisabled = computed(() => !initializeRequestSentAndSuccessful.value || !hasUsedAiAgent.value);
 
 const emit = defineEmits<{
   (e: "completed"): void;
@@ -1924,21 +1404,13 @@ const onboardingTileRowClasses = computed(() =>
 }
 
 .bg-onboardingcircle1 {
-  background: radial-gradient(
-    50% 50% at 50% 50%,
-    rgba(240, 115, 0, 0.6) 0%,
-    rgba(124, 72, 24, 0) 100%
-  );
+  background: radial-gradient(50% 50% at 50% 50%, rgba(240, 115, 0, 0.6) 0%, rgba(124, 72, 24, 0) 100%);
   opacity: 0.3;
   background-blend-mode: color;
 }
 
 .bg-onboardingcircle2 {
-  background: radial-gradient(
-    50% 50% at 54.57% 49.79%,
-    #50e6e6 0%,
-    rgba(45, 128, 128, 0) 100%
-  );
+  background: radial-gradient(50% 50% at 54.57% 49.79%, #50e6e6 0%, rgba(45, 128, 128, 0) 100%);
   opacity: 0.3;
   background-blend-mode: color;
 }

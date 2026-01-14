@@ -54,7 +54,6 @@ prod_deps_srcs = {
 }
 
 dev_deps_srcs = {
-    "lib/eslint-config": "//lib/eslint-config:src",
     "lib/tsconfig": "//lib/tsconfig:src",
 }
 
@@ -65,7 +64,7 @@ npm_bin(
 eslint(
     name = "check-lint",
     directories = ["src", "test"],
-    srcs = [":src", ":test"] + glob([".eslint*"]),
+    srcs = [":src", ":test"] + glob(["*eslint*"]),
     prod_deps_srcs = prod_deps_srcs,
     dev_deps_srcs = dev_deps_srcs,
 )

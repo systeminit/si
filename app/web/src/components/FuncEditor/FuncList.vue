@@ -8,7 +8,7 @@
       alwaysShowArrow
       indentationSize="none"
       leftBorderSize="none"
-      :defaultOpen="funcsForKind(kind).length > 0"
+      :defaultOpen="funcsForKind(kind as CustomizableFuncKind).length > 0"
       internalScrolling
       class="min-h-[32px]"
       primaryIconClasses=""
@@ -21,22 +21,19 @@
       </template>
 
       <SiFuncListItem
-        v-for="func in funcsForKind(kind)"
+        v-for="func in funcsForKind(kind as CustomizableFuncKind)"
         :key="func.funcId"
         :func="func"
         :context="context"
       />
       <div
-        v-if="funcsForKind(kind).length === 0"
+        v-if="funcsForKind(kind as CustomizableFuncKind).length === 0"
         class="text-xs w-full text-center italic py-xs text-neutral-500"
       >
         There are no functions of this kind.
       </div>
       <template #icons>
-        <PillCounter
-          :count="funcsForKind(kind).length"
-          showHoverInsideTreeNode
-        />
+        <PillCounter :count="funcsForKind(kind as CustomizableFuncKind).length" showHoverInsideTreeNode />
       </template>
     </TreeNode>
   </div>

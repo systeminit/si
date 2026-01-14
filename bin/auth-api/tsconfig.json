@@ -6,7 +6,12 @@
   "compilerOptions": {
     "outDir": "dist",
     "rootDir": "./",
-    "lib": ["DOM", "ES2022"]
+    "lib": ["DOM", "ES2022"],
+    "module": "ESNext",
+    "moduleResolution": "node",
+    "target": "ES2023",
+    "strict": true,
+    "esModuleInterop": true,
   },
   "include": ["src/**/*.ts", "test/**/*.ts", "node_modules/@si/ts-lib/**/*.ts"]
 }

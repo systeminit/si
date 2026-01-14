@@ -1,13 +1,7 @@
 <template>
-  <ol
-    id="construction"
-    class="flex flex-row w-full mb-md border border-neutral-600 p-sm"
-  >
+  <ol id="construction" class="flex flex-row w-full mb-md border border-neutral-600 p-sm">
     <template v-for="(cmd, index) in commandBuffer" :key="`${cmd}-${index}`">
-      <li
-        class="cmd buffer mr-xs text-md rounded-md bg-action-900 px-xs py-[.33rem]"
-        @click="() => remove(cmd, index)"
-      >
+      <li class="cmd buffer mr-xs text-md rounded-md bg-action-900 px-xs py-[.33rem]" @click="() => remove(cmd, index)">
         {{ cmd.name }}
       </li>
 
@@ -20,12 +14,7 @@
             indexChoice + 1 === cmd.choices.length ? 'last' : '',
           )
         "
-        @click="
-          () =>
-            indexChoice + 1 === cmd.choices.length
-              ? removeChoice(cmd, index, choice, indexChoice)
-              : null
-        "
+        @click="() => (indexChoice + 1 === cmd.choices.length ? removeChoice(cmd, index, choice, indexChoice) : null)"
       >
         {{ choice.label }}
       </li>
@@ -62,34 +51,19 @@
           class="p-xs"
           :class="
             clsx(
-              selectedOption?.value === option.value
-                ? themeClasses('text-action-500', 'text-action-300')
-                : '',
-              selectedOption?.value === option.value
-                ? themeClasses('bg-neutral-300', 'bg-neutral-600')
-                : '',
+              selectedOption?.value === option.value ? themeClasses('text-action-500', 'text-action-300') : '',
+              selectedOption?.value === option.value ? themeClasses('bg-neutral-300', 'bg-neutral-600') : '',
             )
           "
           @click="chooseArg(option)"
         >
           {{ option.label }}
         </li>
-        <li v-if="filteredDropDownOptions.length === 0" class="ps-x italic">
-          No options
-        </li>
+        <li v-if="filteredDropDownOptions.length === 0" class="ps-x italic">No options</li>
       </ul>
     </li>
     <li v-else>
-      <VButton
-        ref="go"
-        tone="action"
-        variant="solid"
-        size="sm"
-        @keydown.enter="runGo"
-        @click="runGo"
-      >
-        go
-      </VButton>
+      <VButton ref="go" tone="action" variant="solid" size="sm" @keydown.enter="runGo" @click="runGo"> go </VButton>
     </li>
   </ol>
 </template>
@@ -109,10 +83,7 @@ const dropdownStyle = ref<any>({});
 
 interface Props {
   commands: Command[];
-  setDropDown: (
-    command: ComputedRef<Command | undefined>,
-    dropdownOptions: Ref<Option[]>,
-  ) => void;
+  setDropDown: (command: ComputedRef<Command | undefined>, dropdownOptions: Ref<Option[]>) => void;
 }
 const props = defineProps<Props>();
 
@@ -139,9 +110,7 @@ watch(go, (newGo, oldGo) => {
 });
 
 const commandBuffer = ref<Command[]>([]);
-const lastCmd = computed<Command | undefined>(
-  () => commandBuffer.value[commandBuffer.value.length - 1],
-);
+const lastCmd = computed<Command | undefined>(() => commandBuffer.value[commandBuffer.value.length - 1]);
 
 const dropDownOptions = ref<Option[]>([]);
 
@@ -149,9 +118,7 @@ const dropDownFilter = ref<string | null>();
 const selectedOption = ref<Option | null>();
 
 const filter = (event: KeyboardEvent) => {
-  let idx = filteredDropDownOptions.value.findIndex(
-    (o) => o.value === selectedOption.value?.value,
-  );
+  let idx = filteredDropDownOptions.value.findIndex((o) => o.value === selectedOption.value?.value);
   if (event.code === "ArrowDown") {
     if (idx === null) idx = 0;
     else {
@@ -190,30 +157,21 @@ const remove = (cmd: Command, index: number) => {
   dropDownOptions.value = [];
 };
 
-const removeChoice = (
-  cmd: Command,
-  index: number,
-  choice: Option,
-  indexChoice: number,
-) => {
+const removeChoice = (cmd: Command, index: number, choice: Option, indexChoice: number) => {
   cmd.choices.splice(indexChoice, 1);
   props.setDropDown(lastCmd, dropDownOptions);
 };
 
-const maybeDone = computed(
-  () =>
-    lastCmd.value &&
-    lastCmd.value.expects.length === lastCmd.value.choices.length,
-);
+const maybeDone = computed(() => lastCmd.value && lastCmd.value.expects.length === lastCmd.value.choices.length);
 
 watch(maybeDone, (newDone) => {
   if (newDone) dropDownOptions.value = [];
 });
 
-const runGo = async () => {
+const runGo = () => {
   if (!maybeDone.value) return;
   else {
-    await lastCmd.value?.execute();
+    lastCmd.value?.execute();
     reset();
     emit("done");
   }

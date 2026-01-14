@@ -20,11 +20,7 @@
           />
 
           <span class="flex flex-col">
-            <p
-              v-for="singleMessage in message"
-              :key="singleMessage"
-              class="mt-1 ml-1"
-            >
+            <p v-for="singleMessage in message" :key="singleMessage" class="mt-1 ml-1">
               {{ singleMessage }}
             </p>
           </span>

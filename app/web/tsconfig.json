@@ -2,20 +2,15 @@
   "extends": "@si/tsconfig/tsconfig.browser.json",
   "compilerOptions": {
     "noUncheckedIndexedAccess": true,
-    "baseUrl": ".",
+    "baseUrl": "./",
     "paths": {
       "@/*": [
-        "src/*"
+        "src/*",
+        "app/web/src/*",
       ]
     },
-    "types": [
-      "vite/client",
-      "vite-svg-loader",
-      "unplugin-icons/types/raw",
-      "@types/wicg-file-system-access",
-    ],
     "declaration": false,
-    "declarationMap": false
+    "declarationMap": false,
   },
   "include": [
     "src/**/*.ts",
@@ -23,5 +18,5 @@
     "src/**/*.tsx",
     "src/**/*.vue",
     "cypress.d.ts",
-  ]
+  ],
 }

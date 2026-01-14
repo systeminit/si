@@ -1,26 +1,11 @@
 <template>
   <div
     v-if="row.type === 'header'"
-    :class="
-      clsx(
-        'flex flex-row items-center gap-xs px-xs',
-        themeClasses('bg-neutral-200', 'bg-neutral-800'),
-      )
-    "
+    :class="clsx('flex flex-row items-center gap-xs px-xs', themeClasses('bg-neutral-200', 'bg-neutral-800'))"
   >
-    <CollapseExpandChevron
-      :open="!row.collapsed"
-      @click="emit('clickCollapse', row.title, !row.collapsed)"
-    />
-    <Icon
-      v-if="titleIcon"
-      :name="titleIcon.iconName"
-      :tone="titleIcon.iconTone"
-    />
-    <span
-      class="select-none"
-      @click="emit('clickCollapse', row.title, !row.collapsed)"
-    >
+    <CollapseExpandChevron :open="!row.collapsed" @click="emit('clickCollapse', row.title, !row.collapsed)" />
+    <Icon v-if="titleIcon" :name="titleIcon.iconName" :tone="titleIcon.iconTone" />
+    <span class="select-none" @click="emit('clickCollapse', row.title, !row.collapsed)">
       {{ row.title }}
     </span>
     <PillCounter :count="row.count" class="text-xs" />
@@ -31,39 +16,23 @@
       :label="row.allSelected ? 'Deselect All' : 'Select All'"
       :disabled="row.count === 0"
       @click.stop.prevent="
-        row.allSelected
-          ? emit('deselectAllInSection', row.title)
-          : emit('selectAllInSection', row.title)
+        row.allSelected ? emit('deselectAllInSection', row.title) : emit('selectAllInSection', row.title)
       "
     />
   </div>
   <div
     v-else-if="row.type === 'defaultSubHeader'"
-    :class="
-      clsx(
-        'flex flex-row items-center gap-sm px-xs',
-        themeClasses('bg-neutral-200', 'bg-neutral-800'),
-      )
-    "
+    :class="clsx('flex flex-row items-center gap-sm px-xs', themeClasses('bg-neutral-200', 'bg-neutral-800'))"
   >
-    <CollapseExpandChevron
-      :open="!row.collapsed"
-      @click="emit('clickCollapse', row.subKey, !row.collapsed)"
-    />
+    <CollapseExpandChevron :open="!row.collapsed" @click="emit('clickCollapse', row.subKey, !row.collapsed)" />
     <Icon :name="pickBrandIconByString(row.schemaCategory)" size="md" />
     <!-- TODO(Wendy) - we need a hover state here -->
     <div
       class="cursor-pointer select-none flex flex-row items-center gap-xs"
-      @click="
-        () =>
-          row.type === 'defaultSubHeader' &&
-          emit('componentNavigate', row.componentId)
-      "
+      @click="() => row.type === 'defaultSubHeader' && emit('componentNavigate', row.componentId)"
     >
       <span>{{ row.schemaName }}</span>
-      <span :class="themeClasses('text-neutral-600', 'text-neutral-400')"
-        >({{ row.componentName }})</span
-      >
+      <span :class="themeClasses('text-neutral-600', 'text-neutral-400')">({{ row.componentName }})</span>
 
       <span
         v-if="defaultSubSourceValuesQuery.data.value"
@@ -84,10 +53,7 @@
         :class="
           clsx(
             'border border-dashed rounded-sm font-normal flex flex-row items-center gap-2xs p-2xs',
-            themeClasses(
-              'border-neutral-400 bg-neutral-100',
-              'border-neutral-500 bg-neutral-800',
-            ),
+            themeClasses('border-neutral-400 bg-neutral-100', 'border-neutral-500 bg-neutral-800'),
           )
         "
       >
@@ -105,20 +71,13 @@
       :label="row.allSelected ? 'Deselect All' : 'Select All'"
       :disabled="row.count === 0"
       @click.stop.prevent="
-        row.allSelected
-          ? emit('deselectAllInSection', row.subKey)
-          : emit('selectAllInSection', row.subKey)
+        row.allSelected ? emit('deselectAllInSection', row.subKey) : emit('selectAllInSection', row.subKey)
       "
     />
   </div>
   <div
     v-else-if="row.type === 'contentHeader'"
-    :class="
-      clsx(
-        'flex flex-row items-center gap-xs px-xs',
-        themeClasses('bg-neutral-200', 'bg-neutral-800'),
-      )
-    "
+    :class="clsx('flex flex-row items-center gap-xs px-xs', themeClasses('bg-neutral-200', 'bg-neutral-800'))"
     @click="emit('clickCollapse', row.title, !row.collapsed)"
   >
     <CollapseExpandChevron :open="!row.collapsed" />
@@ -134,14 +93,7 @@
   </div>
   <div v-else-if="row.type === 'pinnedContentRow'">
     <!-- We need an outer div because the card uses borders for the asset color. -->
-    <div
-      :class="
-        clsx(
-          'border rounded-sm cursor-pointer',
-          pinnedBorderClasses(row.component.id),
-        )
-      "
-    >
+    <div :class="clsx('border rounded-sm cursor-pointer', pinnedBorderClasses(row.component.id))">
       <ComponentCard
         ref="exploreGridPinnedRef"
         :component="row.component"
@@ -165,11 +117,7 @@
             :class="
               clsx(
                 'bg-neutral-600 border border-neutral-600 rounded p-2xs',
-                hoveredPinId === row.component.id &&
-                  themeClasses(
-                    'border-black bg-black',
-                    'border-white bg-white',
-                  ),
+                hoveredPinId === row.component.id && themeClasses('border-black bg-black', 'border-white bg-white'),
               )
             "
             @mouseenter="hoverPin(row.component.id, true)"
@@ -202,19 +150,9 @@
       :selected="isSelected(row, columnIndex)"
       :focused="exploreContext.focusedComponent.value?.id === component.id"
       :hovered="hoveredId === component.id"
-      :hasFailedActions="
-        exploreContext.componentsHaveActionsWithState.value.failed.has(
-          component.id,
-        )
-      "
-      :hasRunningActions="
-        exploreContext.componentsHaveActionsWithState.value.running.has(
-          component.id,
-        )
-      "
-      :pendingActionCounts="
-        exploreContext.componentsPendingActionNames.value.get(component.id)
-      "
+      :hasFailedActions="exploreContext.componentsHaveActionsWithState.value.failed.has(component.id)"
+      :hasRunningActions="exploreContext.componentsHaveActionsWithState.value.running.has(component.id)"
+      :pendingActionCounts="exploreContext.componentsPendingActionNames.value.get(component.id)"
       @select="(e: MouseEvent) => emit('childSelect', dataIndexForTileInRow(row, columnIndex), e)"
       @deselect="(e: MouseEvent) => emit('childDeselect', dataIndexForTileInRow(row, columnIndex), e)"
       @mouseenter="hover(component.id, true)"
@@ -239,12 +177,7 @@
       "
     />
     <!--this fills in any extra spots in an unfilled row-->
-    <div
-      v-for="emptySpot in exploreContext.lanesCount.value -
-      row.components.length"
-      :key="emptySpot"
-      class="flex-1"
-    />
+    <div v-for="emptySpot in exploreContext.lanesCount.value - row.components.length" :key="emptySpot" class="flex-1" />
   </div>
   <div
     v-else-if="row.type === 'emptyRow'"
@@ -260,21 +193,11 @@
       :class="
         clsx(
           'flex flex-col items-center justify-center gap-md grow h-full',
-          themeClasses(
-            'bg-neutral-100 border border-neutral-400',
-            'bg-neutral-800 border border-neutral-600',
-          ),
+          themeClasses('bg-neutral-100 border border-neutral-400', 'bg-neutral-800 border border-neutral-600'),
         )
       "
     >
-      <div
-        :class="
-          clsx(
-            'p-sm rounded-full',
-            themeClasses('bg-neutral-300', 'bg-neutral-700'),
-          )
-        "
-      >
+      <div :class="clsx('p-sm rounded-full', themeClasses('bg-neutral-300', 'bg-neutral-700'))">
         <Icon name="check-circle-outline" />
       </div>
       <span>
@@ -282,32 +205,16 @@
       </span>
     </div>
   </div>
-  <div
-    v-else-if="row.type === 'filteredCounterRow'"
-    class="flex items-center justify-center gap-1"
-  >
-    <span
-      :class="
-        clsx('text-xs', themeClasses('text-neutral-600', 'text-neutral-300'))
-      "
-    >
+  <div v-else-if="row.type === 'filteredCounterRow'" class="flex items-center justify-center gap-1">
+    <span :class="clsx('text-xs', themeClasses('text-neutral-600', 'text-neutral-300'))">
       {{ row.hiddenCount }} components hidden
     </span>
-    <span
-      :class="
-        clsx('text-xs', themeClasses('text-neutral-600', 'text-neutral-300'))
-      "
-    >
-      |
-    </span>
+    <span :class="clsx('text-xs', themeClasses('text-neutral-600', 'text-neutral-300'))"> | </span>
     <button
       :class="
         clsx(
           'text-xs underline cursor-pointer hover:no-underline',
-          themeClasses(
-            'text-neutral-600 hover:text-black',
-            'text-neutral-300 hover:text-white',
-          ),
+          themeClasses('text-neutral-600 hover:text-black', 'text-neutral-300 hover:text-white'),
         )
       "
       @click="emit('resetFilter')"
@@ -337,11 +244,7 @@ import {
 } from "@si/vue-lib/design-system";
 import { tw } from "@si/vue-lib";
 import { useQuery } from "@tanstack/vue-query";
-import {
-  AttributeTree,
-  ComponentInList,
-  EntityKind,
-} from "@/workers/types/entity_kind_types";
+import { AttributeTree, ComponentInList, EntityKind } from "@/workers/types/entity_kind_types";
 import { ComponentId } from "@/api/sdf/dal/component";
 import { bifrost, useMakeArgs, useMakeKey } from "@/store/realtime/heimdall";
 import ComponentCard from "../ComponentCard.vue";
@@ -362,12 +265,8 @@ const ctx = useContext();
 const key = useMakeKey();
 const args = useMakeArgs();
 
-const enableDefaultSubSourceValuesQuery = computed(
-  () => ctx.queriesEnabled && props.row.type === "defaultSubHeader",
-);
-const defaultSubSourceValuesQuery = useQuery<
-  { prop: string; value: string } | undefined
->({
+const enableDefaultSubSourceValuesQuery = computed(() => ctx.queriesEnabled && props.row.type === "defaultSubHeader");
+const defaultSubSourceValuesQuery = useQuery<{ prop: string; value: string } | undefined>({
   enabled: enableDefaultSubSourceValuesQuery,
   queryKey: key(
     EntityKind.AttributeTree,
@@ -380,25 +279,18 @@ const defaultSubSourceValuesQuery = useQuery<
     if (props.row.type !== "defaultSubHeader") {
       return;
     }
-    const attributeTree = await bifrost<AttributeTree>(
-      args(EntityKind.AttributeTree, props.row.componentId),
-    );
+    const attributeTree = await bifrost<AttributeTree>(args(EntityKind.AttributeTree, props.row.componentId));
     const value =
       attributeTree &&
       Object.values(attributeTree.attributeValues).find(
-        (av) =>
-          props.row.type === "defaultSubHeader" && av.path === props.row.path,
+        (av) => props.row.type === "defaultSubHeader" && av.path === props.row.path,
       );
 
-    const prop = value?.propId
-      ? attributeTree?.props[value.propId]?.name
-      : undefined;
+    const prop = value?.propId ? attributeTree?.props[value.propId]?.name : undefined;
     if (!prop) {
       return;
     }
-    const sourceValue = value?.secret
-      ? value.secret.name
-      : value?.value?.toString();
+    const sourceValue = value?.secret ? value.secret.name : value?.value?.toString();
     if (!sourceValue) {
       return;
     }
@@ -416,9 +308,7 @@ interface TitleIcon {
 }
 
 const isSelected = (row: ExploreGridRowData, columnIndex: number) =>
-  exploreContext.selectedComponentIndexes.has(
-    dataIndexForTileInRow(row, columnIndex),
-  );
+  exploreContext.selectedComponentIndexes.has(dataIndexForTileInRow(row, columnIndex));
 
 const titleIcon = computed((): TitleIcon | null => {
   if (props.row.type !== "header") return null;
@@ -538,13 +428,8 @@ const hoverPin = (pinnedComponentId: ComponentId, hovered: boolean) => {
 // the inner border for the asset color.
 const pinnedBorderClasses = (componentId: string) => {
   const focused = exploreContext.focusedComponent.value?.id === componentId;
-  if (focused)
-    return themeClasses(
-      tw`border-action-500 bg-action-500`,
-      tw`border-action-300 bg-action-300`,
-    );
-  else if (hoveredId.value === componentId)
-    return themeClasses(tw`border-black bg-black`, tw`border-white bg-white`);
+  if (focused) return themeClasses(tw`border-action-500 bg-action-500`, tw`border-action-300 bg-action-300`);
+  else if (hoveredId.value === componentId) return themeClasses(tw`border-black bg-black`, tw`border-white bg-white`);
   else return "border-neutral-600 bg-neutral-600";
 };
 
@@ -552,12 +437,7 @@ const emit = defineEmits<{
   (e: "unpin", componentId: ComponentId): void;
   (e: "childHover", componentId: ComponentId): void;
   (e: "childUnhover", componentId: ComponentId): void;
-  (
-    e: "childClicked",
-    event: MouseEvent,
-    componentId: ComponentId,
-    componentIdx: number,
-  ): void;
+  (e: "childClicked", event: MouseEvent, componentId: ComponentId, componentIdx: number): void;
   (e: "clickCollapse", title: string, collapsed: boolean): void;
   (e: "childSelect", componentIdx: number, event?: MouseEvent): void;
   (e: "childDeselect", componentIdx: number, event?: MouseEvent): void;

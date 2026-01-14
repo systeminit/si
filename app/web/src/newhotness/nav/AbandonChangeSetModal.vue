@@ -15,16 +15,9 @@
       </TruncateWithTooltip>
       <div>and return to HEAD?</div>
     </div>
-    <div class="text-sm mb-sm">
-      Once abandoned, a change set cannot be recovered.
-    </div>
+    <div class="text-sm mb-sm">Once abandoned, a change set cannot be recovered.</div>
     <div class="flex flex-row items-center w-full gap-sm">
-      <NewButton
-        label="Cancel"
-        tone="warning"
-        icon="x"
-        @click="closeModalHandler"
-      />
+      <NewButton label="Cancel" tone="warning" icon="x" @click="closeModalHandler" />
       <template v-if="notHead">
         <NewButton
           data-testid="abandon-change-set-modal-confirm-button"
@@ -42,11 +35,7 @@
 
 <script lang="ts" setup>
 import * as _ from "lodash-es";
-import {
-  Modal,
-  NewButton,
-  TruncateWithTooltip,
-} from "@si/vue-lib/design-system";
+import { Modal, NewButton, TruncateWithTooltip } from "@si/vue-lib/design-system";
 import { computed, ref } from "vue";
 import { useRouter } from "vue-router";
 import { ChangeSet } from "@/api/sdf/dal/change_set";
@@ -59,11 +48,7 @@ const props = defineProps<{
 
 const ctx = useContext();
 
-const notHead = computed(
-  () =>
-    ctx.headChangeSetId.value &&
-    props.changeSet.id !== ctx.headChangeSetId.value,
-);
+const notHead = computed(() => ctx.headChangeSetId.value && props.changeSet.id !== ctx.headChangeSetId.value);
 
 const modalRef = ref<InstanceType<typeof Modal> | null>(null);
 
@@ -84,9 +69,7 @@ async function abandonHandler() {
   if (abandonApi.ok(req)) {
     if (
       router.currentRoute.value.name &&
-      ["workspace-lab-packages", "workspace-lab-assets"].includes(
-        router.currentRoute.value.name.toString(),
-      )
+      ["workspace-lab-packages", "workspace-lab-assets"].includes(router.currentRoute.value.name.toString())
     ) {
       router.push({ name: "workspace-lab" });
     }

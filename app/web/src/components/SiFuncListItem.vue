@@ -13,9 +13,7 @@
     @mousedown.left.stop="onClick"
   >
     <template #label>
-      <div
-        class="w-full flex flex-row gap-xs text-xs justify-between items-center"
-      >
+      <div class="w-full flex flex-row gap-xs text-xs justify-between items-center">
         <div class="truncate">
           {{ func.displayName || func.name }}
         </div>

@@ -10,30 +10,11 @@
       >
         Code</VormInput
       >
-      <VormInput
-        v-model="deletedAtSelected"
-        noLabel
-        :disabled="$props.disabled"
-        type="checkbox"
-      >
+      <VormInput v-model="deletedAtSelected" noLabel :disabled="$props.disabled" type="checkbox">
         Deleted At
       </VormInput>
-      <VormInput
-        v-model="domainSelected"
-        noLabel
-        :disabled="$props.disabled"
-        type="checkbox"
-      >
-        Domain</VormInput
-      >
-      <VormInput
-        v-model="resourceSelected"
-        noLabel
-        :disabled="$props.disabled"
-        type="checkbox"
-      >
-        Resource
-      </VormInput>
+      <VormInput v-model="domainSelected" noLabel :disabled="$props.disabled" type="checkbox"> Domain</VormInput>
+      <VormInput v-model="resourceSelected" noLabel :disabled="$props.disabled" type="checkbox"> Resource </VormInput>
       <VormInput
         v-model="secretsSelected"
         class="pt-xs"
@@ -79,13 +60,7 @@ watch(
 );
 
 watch(
-  [
-    codeSelected,
-    deletedAtSelected,
-    domainSelected,
-    resourceSelected,
-    secretsSelected,
-  ],
+  [codeSelected, deletedAtSelected, domainSelected, resourceSelected, secretsSelected],
   ([code, deletedAt, domain, resource, secrets]) => {
     const leafInputLocations: LeafInputLocation[] = [];
 

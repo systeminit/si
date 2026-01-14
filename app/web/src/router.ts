@@ -3,10 +3,7 @@ import * as _ from "lodash-es";
 import { nextTick } from "vue";
 import { AxiosRequestConfig } from "axios";
 import { posthog } from "@/utils/posthog";
-import {
-  push as pushBreadcrumb,
-  query,
-} from "@/newhotness/logic_composables/navigation_stack";
+import { push as pushBreadcrumb, query } from "@/newhotness/logic_composables/navigation_stack";
 import { tokensByWorkspacePk } from "@/newhotness/logic_composables/tokens";
 import { useAuthStore } from "./store/auth.store";
 import { useRouterStore } from "./store/router.store";
@@ -61,9 +58,7 @@ const routes: RouteRecordRaw[] = [
     name: "new-hotness-workspace",
     path: "/n/:workspacePk",
     beforeEnter: async (loc) => {
-      const changeSetId = await findChangeSetId(
-        loc.params.workspacePk as string | undefined,
-      );
+      const changeSetId = await findChangeSetId(loc.params.workspacePk as string | undefined);
       const newloc = `/n/${loc.params.workspacePk}/${changeSetId}/h`;
       return newloc;
     },
@@ -73,9 +68,7 @@ const routes: RouteRecordRaw[] = [
     name: "new-hotness-workspace-auto",
     path: "/n/:workspacePk/auto",
     beforeEnter: async (loc) => {
-      const changeSetId = await findChangeSetId(
-        loc.params.workspacePk as string | undefined,
-      );
+      const changeSetId = await findChangeSetId(loc.params.workspacePk as string | undefined);
       const newloc = `/n/${loc.params.workspacePk}/${changeSetId}/h`;
       return newloc;
     },
@@ -85,9 +78,7 @@ const routes: RouteRecordRaw[] = [
     name: "new-hotness-head",
     path: "/n/:workspacePk/head/h",
     beforeEnter: async (loc) => {
-      const changeSetId = await findChangeSetId(
-        loc.params.workspacePk as string | undefined,
-      );
+      const changeSetId = await findChangeSetId(loc.params.workspacePk as string | undefined);
       const newloc = `/n/${loc.params.workspacePk}/${changeSetId}/h`;
       return newloc;
     },
@@ -186,8 +177,7 @@ const routes: RouteRecordRaw[] = [
       {
         path: ":changeSetId/l",
         name: "workspace-lab",
-        component: () =>
-          import("@/components/Workspace/WorkspaceCustomizeIndex.vue"),
+        component: () => import("@/components/Workspace/WorkspaceCustomizeIndex.vue"),
         redirect(to) {
           return {
             name: "workspace-lab-assets",
@@ -199,20 +189,17 @@ const routes: RouteRecordRaw[] = [
           {
             path: "a/",
             name: "workspace-lab-assets",
-            component: () =>
-              import("@/components/Workspace/WorkspaceCustomizeAssets.vue"),
+            component: () => import("@/components/Workspace/WorkspaceCustomizeAssets.vue"),
           },
           {
             path: "n/",
             name: "workspace-lab-newassets",
-            component: () =>
-              import("@/components/Workspace/WorkspaceCustomizeAssets.vue"),
+            component: () => import("@/components/Workspace/WorkspaceCustomizeAssets.vue"),
           },
           {
             path: "m/:moduleSlug?",
             name: "workspace-lab-packages",
-            component: () =>
-              import("@/components/Workspace/WorkspaceCustomizeModules.vue"),
+            component: () => import("@/components/Workspace/WorkspaceCustomizeModules.vue"),
           },
         ],
       },
@@ -224,16 +211,14 @@ const routes: RouteRecordRaw[] = [
       {
         path: "admin",
         name: "workspace-admin-dashboard",
-        component: () =>
-          import("@/components/Workspace/WorkspaceAdminDashboard.vue"),
+        component: () => import("@/components/Workspace/WorkspaceAdminDashboard.vue"),
       },
       ...(isDevMode
         ? [
             {
               path: "dev",
               name: "workspace-dev-dashboard",
-              component: () =>
-                import("@/components/Workspace/WorkspaceDevDashboard.vue"),
+              component: () => import("@/components/Workspace/WorkspaceDevDashboard.vue"),
             },
           ]
         : []),
@@ -319,8 +304,7 @@ router.beforeEach((to, _from) => {
     const authStore = useAuthStore();
 
     if (!authStore.userIsLoggedIn) {
-      const workspaceId = to.fullPath.match(/^\/(n|w)\/(?<workspaceId>\w*)\//)
-        ?.groups?.workspaceId;
+      const workspaceId = to.fullPath.match(/^\/(n|w)\/(?<workspaceId>\w*)\//)?.groups?.workspaceId;
 
       return {
         name: "login",

@@ -14,19 +14,11 @@
       :focus="() => (show = true)"
       :blur="() => (show = showInstructions ?? false)"
       :class="
-        clsx(
-          'flex-1 border-none outline-none [&_input]:placeholder:italic',
-          themeClasses('bg-shade-0', 'bg-shade-100'),
-        )
+        clsx('flex-1 border-none outline-none [&_input]:placeholder:italic', themeClasses('bg-shade-0', 'bg-shade-100'))
       "
     />
-    <div
-      v-if="show"
-      class="flex flex-row flex-none gap-3xs items-center text-2xs"
-    >
-      <TextPill v-for="p in pills" :key="p" tighter variant="key">{{
-        p
-      }}</TextPill>
+    <div v-if="show" class="flex flex-row flex-none gap-3xs items-center text-2xs">
+      <TextPill v-for="p in pills" :key="p" tighter variant="key">{{ p }}</TextPill>
       <span class="leading-snug">{{ instructions }}</span>
     </div>
   </div>

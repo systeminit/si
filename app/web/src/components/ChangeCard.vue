@@ -13,28 +13,17 @@
         <span v-if="diff.status === 'added'">Added</span>
         <span v-if="diff.status === 'deleted'">Removed</span>
         <span v-if="diff.status === 'modified'">Modified</span>
-        {{
-          componentsStore.allComponentsById[diff.componentId]?.def.schemaName
-        }}
+        {{ componentsStore.allComponentsById[diff.componentId]?.def.schemaName }}
       </div>
       <div
-        :class="
-          clsx(
-            'dark:text-action-300 text-action-500 truncate cursor-pointer font-bold',
-            isHover && 'underline',
-          )
-        "
+        :class="clsx('dark:text-action-300 text-action-500 truncate cursor-pointer font-bold', isHover && 'underline')"
         @click="onClick"
         @mouseenter="onHoverStart"
         @mouseleave="onHoverEnd"
       >
-        {{
-          componentsStore.allComponentsById[diff.componentId]?.def.displayName
-        }}
+        {{ componentsStore.allComponentsById[diff.componentId]?.def.displayName }}
       </div>
-      <div class="text-neutral-500 dark:text-neutral-400 truncate">
-        By: {{ diff.actor }}
-      </div>
+      <div class="text-neutral-500 dark:text-neutral-400 truncate">By: {{ diff.actor }}</div>
     </div>
   </div>
 </template>
@@ -73,9 +62,7 @@ function onClick() {
   }
 }
 
-const isHover = computed(
-  () => viewStore.hoveredComponentId === props.diff.componentId,
-);
+const isHover = computed(() => viewStore.hoveredComponentId === props.diff.componentId);
 
 function onHoverStart() {
   if (componentsStore.allComponentsById[props.diff.componentId]) {

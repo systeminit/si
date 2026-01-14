@@ -2,12 +2,7 @@ import { addStoreHooks, ApiRequest } from "@si/vue-lib/pinia";
 import { defineStore } from "pinia";
 import { ChangeSetId } from "@/api/sdf/dal/change_set";
 import { ComponentId } from "@/api/sdf/dal/component";
-import {
-  ActionId,
-  ActionKind,
-  ActionPrototypeId,
-  ActionResultState,
-} from "@/api/sdf/dal/action";
+import { ActionId, ActionKind, ActionPrototypeId, ActionResultState } from "@/api/sdf/dal/action";
 import { useWorkspacesStore } from "./workspaces.store";
 import { AttributeValueId } from "./status.store";
 import { useChangeSetsStore } from "./change_sets.store";
@@ -18,21 +13,9 @@ export type FuncRunId = string;
 export type FuncRunLogId = string;
 export type ContentHash = string;
 
-export type FuncRunState =
-  | "Created"
-  | "Dispatched"
-  | "Running"
-  | "Postprocessing"
-  | "Failure"
-  | "Success";
+export type FuncRunState = "Created" | "Dispatched" | "Running" | "Postprocessing" | "Failure" | "Success";
 
-export type FuncKind =
-  | "action"
-  | "attribute"
-  | "authentication"
-  | "codeGeneration"
-  | "intrinsic"
-  | "management";
+export type FuncKind = "action" | "attribute" | "authentication" | "codeGeneration" | "intrinsic" | "management";
 
 export enum FuncBackendKind {
   Array,

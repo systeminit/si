@@ -20,13 +20,8 @@ export type CreateComponentPayload = ComponentIdType & {
   height: "0";
   width: "0";
 };
-export const createComponentPayload = (
-  idType: ComponentIdType,
-): CreateComponentPayload => {
-  if (
-    ("schemaId" in idType && !idType.schemaId) ||
-    ("schemaVariantId" in idType && !idType.schemaVariantId)
-  )
+export const createComponentPayload = (idType: ComponentIdType): CreateComponentPayload => {
+  if (("schemaId" in idType && !idType.schemaId) || ("schemaVariantId" in idType && !idType.schemaVariantId))
     throw new Error("schemaId or schemaVariantId required");
   return {
     ...idType,
@@ -45,7 +40,7 @@ export type SetAttributeTo =
   // Set attribute to a subscription (another component's value feeds it)
   | {
       $source: "subscription";
-      component: ComponentId | string;
+      component: ComponentId;
       path: AttributePath;
     }
   // Unset the value by not passing "value" field

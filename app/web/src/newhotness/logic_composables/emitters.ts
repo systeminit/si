@@ -4,15 +4,7 @@ import { ref } from "vue";
 export interface KeyDetails {
   [key: string | symbol]: Pick<
     KeyboardEvent,
-    | "key"
-    | "ctrlKey"
-    | "shiftKey"
-    | "altKey"
-    | "charCode"
-    | "code"
-    | "keyCode"
-    | "metaKey"
-    | "preventDefault"
+    "key" | "ctrlKey" | "shiftKey" | "altKey" | "charCode" | "code" | "keyCode" | "metaKey" | "preventDefault"
   >;
 }
 
@@ -26,19 +18,12 @@ export const startKeyEmitter = (document: Document) => {
   if (keyEmitterStarted) return;
   keyEmitterStarted = true;
   document.addEventListener("keydown", (event: KeyboardEvent) => {
-    const fromInput = ["INPUT", "TEXTAREA", "SELECT"].includes(
-      (event.target as HTMLBodyElement)?.tagName,
-    );
+    const fromInput = ["INPUT", "TEXTAREA", "SELECT"].includes((event.target as HTMLBodyElement)?.tagName);
 
     if (!fromInput) {
       // letter keys should be case insensitive
-      const isUpperCaseLetter = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".includes(
-        event.key,
-      );
-      keyEmitter.emit(
-        isUpperCaseLetter ? event.key.toLowerCase() : event.key,
-        event,
-      );
+      const isUpperCaseLetter = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".includes(event.key);
+      keyEmitter.emit(isUpperCaseLetter ? event.key.toLowerCase() : event.key, event);
     }
   });
 };
@@ -48,8 +33,7 @@ type AttributeDetails = {
   selectedDocs: { docs: string; link: string } | null;
 };
 
-export const attributeEmitter: Emitter<AttributeDetails> =
-  mitt<AttributeDetails>();
+export const attributeEmitter: Emitter<AttributeDetails> = mitt<AttributeDetails>();
 
 export const windowWidthReactive = ref<number>(window.innerWidth);
 export const windowHeightReactive = ref<number>(window.innerHeight);
@@ -58,8 +42,7 @@ export interface ResizeDetails {
   [resize: string | symbol]: Pick<Event, "preventDefault" | "target">;
 }
 
-export const windowResizeEmitter: Emitter<ResizeDetails> =
-  mitt<ResizeDetails>();
+export const windowResizeEmitter: Emitter<ResizeDetails> = mitt<ResizeDetails>();
 
 let windowResizeEmitterStarted = false;
 
@@ -79,15 +62,7 @@ export const startWindowResizeEmitter = (window: Window) => {
 export interface MouseDetails {
   [key: string | symbol]: Pick<
     MouseEvent,
-    | "button"
-    | "clientX"
-    | "clientY"
-    | "altKey"
-    | "ctrlKey"
-    | "metaKey"
-    | "shiftKey"
-    | "preventDefault"
-    | "target"
+    "button" | "clientX" | "clientY" | "altKey" | "ctrlKey" | "metaKey" | "shiftKey" | "preventDefault" | "target"
   >;
 }
 

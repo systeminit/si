@@ -2,11 +2,7 @@
   <div>
     <ScrollArea>
       <template #top>
-        <SidebarSubpanelTitle
-          class="mt-2xs"
-          icon="func"
-          label="Asset Functions"
-        >
+        <SidebarSubpanelTitle class="mt-2xs" icon="func" label="Asset Functions">
           <AssetFuncAttachDropdown
             v-if="assetStore.selectedVariantId"
             :disabled="!assetStore.selectedSchemaVariant?.schemaVariantId"
@@ -36,10 +32,7 @@
         />
       </template>
     </ScrollArea>
-    <AssetFuncAttachModal
-      ref="attachModalRef"
-      :schemaVariantId="schemaVariantId"
-    />
+    <AssetFuncAttachModal ref="attachModalRef" :schemaVariantId="schemaVariantId" />
   </div>
 </template>
 
@@ -71,9 +64,7 @@ interface VariantsWithFunctionSummary extends SchemaVariant {
 const variantSummaries = computed(() => {
   if (!props.schemaVariantId) return null;
 
-  const variant = _.cloneDeep(
-    assetStore.variantFromListById[props.schemaVariantId],
-  ) as VariantsWithFunctionSummary;
+  const variant = _.cloneDeep(assetStore.variantFromListById[props.schemaVariantId]) as VariantsWithFunctionSummary;
   if (!variant) return null;
   variant.funcSummaries = [];
 
@@ -88,9 +79,7 @@ const variantSummaries = computed(() => {
 });
 
 const funcsByKindWithDeprecationFiltering = computed(() => {
-  const r = variantSummaries.value
-    ? groupBy(variantSummaries.value.funcSummaries ?? [], (f) => f.kind)
-    : {};
+  const r = variantSummaries.value ? groupBy(variantSummaries.value.funcSummaries ?? [], (f) => f.kind) : {};
 
   // NOTE(nick): filter out deprecated attribute funcs that have become intrinsic funcs.
   if (r[FuncKind.Attribute]) {

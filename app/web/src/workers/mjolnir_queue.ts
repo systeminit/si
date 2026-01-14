@@ -6,7 +6,7 @@ import { EntityKind } from "./types/entity_kind_types";
 
 const _DEBUG = import.meta.env.VITE_SI_ENV === "local";
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function debug(...args: any | any[]) {
+function debug(...args: any) {
   // eslint-disable-next-line no-console
   if (_DEBUG) console.debug(args);
 }
@@ -139,10 +139,7 @@ const inflight = new Set<string>();
 // if the bulk succeeds, don't fire them...
 const _bulkInflight: Record<string, Set<string>> = {};
 
-export const bulkInflight = (args: {
-  workspaceId: string;
-  changeSetId: string;
-}) => {
+export const bulkInflight = (args: { workspaceId: string; changeSetId: string }) => {
   debug("BULK IN FLIGHT", args);
   bulkQueue.pause();
   processPatchQueue.pause();
@@ -154,10 +151,7 @@ export const bulkInflight = (args: {
   }
   inflight.add(args.changeSetId);
 };
-export const bulkDone = (
-  args: { workspaceId: string; changeSetId: string },
-  runQueue = false,
-) => {
+export const bulkDone = (args: { workspaceId: string; changeSetId: string }, runQueue = false) => {
   debug("BULK DONE", args);
   let inflight = _bulkInflight[args.workspaceId];
   if (!inflight) {
@@ -181,8 +175,7 @@ type Description = {
   id: Id;
 };
 
-const descToString = (desc: Description) =>
-  `${desc.workspaceId}-${desc.changeSetId}-${desc.kind}-${desc.id}`;
+const descToString = (desc: Description) => `${desc.workspaceId}-${desc.changeSetId}-${desc.kind}-${desc.id}`;
 
 const canThrow = (desc: Description) => {
   const d = descToString(desc);

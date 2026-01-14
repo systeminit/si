@@ -16,19 +16,12 @@
             props.hasSocketConnection && 'pr-xs',
           )
         "
-        :style="
-          props.hasSocketConnection
-            ? { backgroundColor: 'rgba(125, 74, 23, 0.25)' }
-            : {}
-        "
+        :style="props.hasSocketConnection ? { backgroundColor: 'rgba(125, 74, 23, 0.25)' } : {}"
       >
         <!-- Attribute name -->
         <div
           :class="
-            clsx(
-              'flex flex-row items-center gap-2xs pl-xs',
-              (hasError || validationStatus === 'failing') && 'mt-xs',
-            )
+            clsx('flex flex-row items-center gap-2xs pl-xs', (hasError || validationStatus === 'failing') && 'mt-xs')
           "
         >
           <AttributeInputRequiredProperty
@@ -70,18 +63,9 @@
               'w-full h-lg p-xs ml-auto text-sm border font-mono flex flex-row items-center gap-3xs',
 
               hasError || validationStatus === 'failing'
-                ? [
-                    'mt-xs',
-                    themeClasses(
-                      'border-destructive-600',
-                      'border-destructive-400',
-                    ),
-                  ]
+                ? ['mt-xs', themeClasses('border-destructive-600', 'border-destructive-400')]
                 : props.hasSocketConnection
-                ? [
-                    'mt-xs',
-                    themeClasses('border-neutral-400', 'border-neutral-600'),
-                  ]
+                ? ['mt-xs', themeClasses('border-neutral-400', 'border-neutral-600')]
                 : themeClasses('border-neutral-400', 'border-neutral-600'),
 
               readOnly
@@ -95,10 +79,7 @@
                 : [themeClasses('bg-shade-0', 'bg-shade-100'), 'cursor-text'],
 
               isArray || isMap
-                ? [
-                    'flex flex-row items-center',
-                    themeClasses('text-neutral-600', 'text-neutral-400'),
-                  ]
+                ? ['flex flex-row items-center', themeClasses('text-neutral-600', 'text-neutral-400')]
                 : [!readOnly && themeClasses('text-shade-100', 'text-shade-0')],
             )
           "
@@ -122,16 +103,11 @@
                     :class="
                       clsx(
                         'max-w-full flex flex-row items-center [&>*]:min-w-0 [&>*]:flex-1 [&>*]:max-w-fit',
-                        themeClasses(
-                          'text-newhotness-greenlight',
-                          'text-newhotness-greendark',
-                        ),
+                        themeClasses('text-newhotness-greenlight', 'text-newhotness-greendark'),
                       )
                     "
                   >
-                    <TruncateWithTooltip>{{
-                      externalSources[0]?.componentName
-                    }}</TruncateWithTooltip>
+                    <TruncateWithTooltip>{{ externalSources[0]?.componentName }}</TruncateWithTooltip>
                     <div class="flex-none">/</div>
                     <TruncateWithTooltip>
                       {{ field.state.value }}
@@ -144,60 +120,32 @@
                 class="max-w-full flex flex-row items-center [&>*]:min-w-0 [&>*]:flex-1 [&>*]:max-w-fit"
               >
                 <!-- TODO: Paul make this an actual tailwind color! -->
-                <TruncateWithTooltip
-                  :class="
-                    themeClasses(
-                      'text-newhotness-purplelight',
-                      'text-newhotness-purpledark',
-                    )
-                  "
-                >
+                <TruncateWithTooltip :class="themeClasses('text-newhotness-purplelight', 'text-newhotness-purpledark')">
                   {{ externalSources[0]?.componentName }}
                 </TruncateWithTooltip>
                 <div class="flex-none">/</div>
-                <TruncateWithTooltip
-                  :class="themeClasses('text-neutral-600', 'text-neutral-400')"
-                >
-                  {{
-                    field.state.value ||
-                    `<${externalSources[0]?.path?.replace(/^\//, "")}>`
-                  }}
+                <TruncateWithTooltip :class="themeClasses('text-neutral-600', 'text-neutral-400')">
+                  {{ field.state.value || `<${externalSources[0]?.path?.replace(/^\//, "")}>` }}
                 </TruncateWithTooltip>
               </div>
             </AttributeValueBox>
             <!-- TODO(Wendy) make this an actual tailwind color! -->
             <AttributeValueBox
               v-else-if="isSecret && field.state.value"
-              :class="
-                themeClasses(
-                  'text-newhotness-greenlight',
-                  'text-newhotness-greendark',
-                )
-              "
+              :class="themeClasses('text-newhotness-greenlight', 'text-newhotness-greendark')"
             >
               {{ field.state.value }}
             </AttributeValueBox>
             <template v-else>
-              {{
-                maybeOptions.options?.find((o) => o.value === field.state.value)
-                  ?.label ?? field.state.value
-              }}
+              {{ maybeOptions.options?.find((o) => o.value === field.state.value)?.label ?? field.state.value }}
             </template>
           </TruncateWithTooltip>
           <!-- This pushes all the icons to the right side! -->
           <div class="ml-auto" />
           <!-- NOTE(nick): you need "click.stop" here to prevent the outer click -->
           <Icon
-            v-if="
-              props.externalSources &&
-              props.externalSources.length > 0 &&
-              !component.toDelete
-            "
-            v-tooltip="
-              props.isSecret
-                ? 'Remove subscription to Secret'
-                : 'Remove subscription'
-            "
+            v-if="props.externalSources && props.externalSources.length > 0 && !component.toDelete"
+            v-tooltip="props.isSecret ? 'Remove subscription to Secret' : 'Remove subscription'"
             name="x"
             size="sm"
             :class="
@@ -218,18 +166,11 @@
 
       <!-- validation message below the name and input box -->
       <div
-        v-if="
-          !inputOpen &&
-          (hasError ||
-            (validationStatus === 'failing' && props.validation?.message))
-        "
+        v-if="!inputOpen && (hasError || (validationStatus === 'failing' && props.validation?.message))"
         :class="
           clsx(
             'flex flex-row p-xs text-sm',
-            themeClasses(
-              'text-destructive-600 bg-destructive-200',
-              'text-destructive-200 bg-newhotness-destructive',
-            ),
+            themeClasses('text-destructive-600 bg-destructive-200', 'text-destructive-200 bg-newhotness-destructive'),
           )
         "
       >
@@ -247,9 +188,7 @@
         :class="clsx('flex flex-row p-xs text-xs')"
         :style="{ backgroundColor: 'rgba(125, 74, 23, 0.25)' }"
       >
-        <span>
-          This attribute setting is incompatible with the new experience
-        </span>
+        <span> This attribute setting is incompatible with the new experience </span>
       </div>
 
       <!-- floating input window, shows when this attribute is selected -->
@@ -259,10 +198,7 @@
           :class="
             clsx(
               'flex flex-col gap-xs text-sm font-normal border z-100 p-xs',
-              themeClasses(
-                'bg-neutral-100 border-neutral-400',
-                'bg-neutral-700 border-neutral-500',
-              ),
+              themeClasses('bg-neutral-100 border-neutral-400', 'bg-neutral-700 border-neutral-500'),
             )
           "
         >
@@ -284,13 +220,7 @@
                 loadingText=""
                 :tabIndex="-1"
                 :class="
-                  clsx(
-                    'ml-auto focus:outline',
-                    themeClasses(
-                      'focus:outline-action-500',
-                      'focus:outline-action-300',
-                    ),
-                  )
+                  clsx('ml-auto focus:outline', themeClasses('focus:outline-action-500', 'focus:outline-action-300'))
                 "
                 @click.left="remove"
               />
@@ -337,10 +267,7 @@
               :class="
                 clsx(
                   'absolute right-[6px] top-[10px] z-20',
-                  themeClasses(
-                    'hover:text-action-500',
-                    'hover:text-action-300',
-                  ),
+                  themeClasses('hover:text-action-500', 'hover:text-action-300'),
                   'hover:scale-110 cursor-pointer',
                 )
               "
@@ -451,51 +378,29 @@
               :class="
                 clsx(
                   'flex-1 min-w-0 max-w-fit font-mono',
-                  !field.state.value &&
-                    !isArray && [
-                      'italic',
-                      themeClasses('text-neutral-600', 'text-neutral-400'),
-                    ],
+                  !field.state.value && !isArray && ['italic', themeClasses('text-neutral-600', 'text-neutral-400')],
                 )
               "
             >
-              <template v-if="isArray && !isSetByConnection">
-                + Add "{{ displayName }}" item
-              </template>
-              <template v-else-if="isMap && !mapKey && !isSetByConnection">
-                You must enter a key
-              </template>
-              <template v-else-if="isMap && mapKey && !isSetByConnection">
-                "{{ mapKey }}"
-              </template>
-              <template v-else-if="field.state.value">
-                "{{ field.state.value }}"
-              </template>
+              <template v-if="isArray && !isSetByConnection"> + Add "{{ displayName }}" item </template>
+              <template v-else-if="isMap && !mapKey && !isSetByConnection"> You must enter a key </template>
+              <template v-else-if="isMap && mapKey && !isSetByConnection"> "{{ mapKey }}" </template>
+              <template v-else-if="field.state.value"> "{{ field.state.value }}" </template>
               <template v-else> Set to no value</template>
             </TruncateWithTooltip>
             <div
               v-if="selectedIndex === 0"
               :class="
-                clsx(
-                  'text-xs flex-none',
-                  themeClasses('text-neutral-900', 'text-neutral-200'),
-                  !value && 'ml-auto',
-                )
+                clsx('text-xs flex-none', themeClasses('text-neutral-900', 'text-neutral-200'), !value && 'ml-auto')
               "
             >
               <TextPill variant="key2">{{ selectKeyString }}</TextPill>
               to select
             </div>
-            <div
-              v-if="value && !isMap"
-              class="ml-auto pl-sm flex flex-row items-end gap-xs flex-1 min-w-0 max-w-fit"
-            >
+            <div v-if="value && !isMap" class="ml-auto pl-sm flex flex-row items-end gap-xs flex-1 min-w-0 max-w-fit">
               <span
                 :class="
-                  clsx(
-                    'font-bold whitespace-nowrap flex-none',
-                    themeClasses('text-neutral-600', 'text-neutral-400'),
-                  )
+                  clsx('font-bold whitespace-nowrap flex-none', themeClasses('text-neutral-600', 'text-neutral-400'))
                 "
               >
                 Previous value:
@@ -504,11 +409,7 @@
                 :class="
                   clsx(
                     'flex-1 font-mono',
-                    !value &&
-                      !isArray && [
-                        'italic',
-                        themeClasses('text-neutral-600', 'text-neutral-400'),
-                      ],
+                    !value && !isArray && ['italic', themeClasses('text-neutral-600', 'text-neutral-400')],
                   )
                 "
                 >{{ value }}
@@ -528,11 +429,7 @@
           >
             Or select a value
           </div>
-          <div
-            v-if="maybeOptions.hasOptions"
-            ref="optionRef"
-            class="scrollable max-h-[10rem]"
-          >
+          <div v-if="maybeOptions.hasOptions" ref="optionRef" class="scrollable max-h-[10rem]">
             <ol>
               <li
                 v-for="(option, index) in filteredOptions"
@@ -541,10 +438,7 @@
                   clsx(
                     'cursor-pointer px-xs py-2xs border border-transparent first:border-transparent',
                     'flex flex-row items-center',
-                    isOptionSelected(index) && [
-                      'input-selected-item',
-                      themeClasses('bg-action-200', 'bg-action-900'),
-                    ],
+                    isOptionSelected(index) && ['input-selected-item', themeClasses('bg-action-200', 'bg-action-900')],
                     themeClasses(
                       'border-t-neutral-400 hover:border-action-500 active:active:bg-action-200',
                       'border-t-neutral-600 hover:border-action-300 active:active:bg-action-900',
@@ -553,17 +447,10 @@
                 "
                 @click.left="() => selectOption(option)"
               >
-                <TruncateWithTooltip class="grow">{{
-                  option.label
-                }}</TruncateWithTooltip>
+                <TruncateWithTooltip class="grow">{{ option.label }}</TruncateWithTooltip>
                 <div
                   v-if="isOptionSelected(index)"
-                  :class="
-                    clsx(
-                      'text-xs flex-none',
-                      themeClasses('text-neutral-900', 'text-neutral-200'),
-                    )
-                  "
+                  :class="clsx('text-xs flex-none', themeClasses('text-neutral-900', 'text-neutral-200'))"
                 >
                   <TextPill variant="key2">{{ selectKeyString }}</TextPill>
                   to select
@@ -579,12 +466,7 @@
           <template v-if="!isMap && filteredConnections.length > 0">
             <div
               v-if="!isSecret"
-              :class="
-                clsx(
-                  'px-xs font-bold',
-                  themeClasses('text-neutral-600', 'text-neutral-400'),
-                )
-              "
+              :class="clsx('px-xs font-bold', themeClasses('text-neutral-600', 'text-neutral-400'))"
             >
               Or subscribe to an existing prop
             </div>
@@ -595,10 +477,7 @@
               This will allow us to only create HTML elements for visible items, and speeds up
               the rendering and initialization of the list.
             -->
-            <div
-              ref="filteredConnectionsListRef"
-              class="scrollable max-h-[10rem]"
-            >
+            <div ref="filteredConnectionsListRef" class="scrollable max-h-[10rem]">
               <!-- Create a relative-positioned container so that children are relative to its (0,0) -->
               <div
                 :class="clsx('relative w-full')"
@@ -612,20 +491,13 @@
                   :key="
                     filteredConnections[virtualItem.index]?.showAllButton
                       ? 'show-all-button'
-                      : filteredConnections[virtualItem.index]
-                          ?.possibleConnection?.attributeValueId
+                      : filteredConnections[virtualItem.index]?.possibleConnection?.attributeValueId
                   "
                 >
                   <AttributeInputPossibleConnection
-                    v-if="
-                      filteredConnections[virtualItem.index]?.possibleConnection
-                    "
-                    :connection="
-                      filteredConnections[virtualItem.index]?.possibleConnection
-                    "
-                    :isConnectionSelected="
-                      isConnectionSelected(virtualItem.index)
-                    "
+                    v-if="filteredConnections[virtualItem.index]?.possibleConnection"
+                    :connection="filteredConnections[virtualItem.index]?.possibleConnection"
+                    :isConnectionSelected="isConnectionSelected(virtualItem.index)"
                     :virtualItemIndex="virtualItem.index"
                     :virtualItemSize="virtualItem.size"
                     :virtualItemStart="virtualItem.start"
@@ -660,35 +532,20 @@
                     }"
                     @click.left="selectConnection(virtualItem.index)"
                   >
-                    <TruncateWithTooltip
-                      :class="
-                        clsx(
-                          'italic',
-                          themeClasses('text-neutral-600', 'text-neutral-400'),
-                        )
-                      "
-                    >
+                    <TruncateWithTooltip :class="clsx('italic', themeClasses('text-neutral-600', 'text-neutral-400'))">
                       <template v-if="filteredConnections.length - 1 > 1">
-                        Showing {{ filteredConnections.length - 1 }} suggested
-                        connections
+                        Showing {{ filteredConnections.length - 1 }} suggested connections
                       </template>
-                      <template
-                        v-else-if="filteredConnections.length - 1 === 1"
-                      >
+                      <template v-else-if="filteredConnections.length - 1 === 1">
                         Showing one suggested connection
                       </template>
-                      <template v-else>
-                        No suggested subscriptions available
-                      </template>
+                      <template v-else> No suggested subscriptions available </template>
                     </TruncateWithTooltip>
                     <TruncateWithTooltip
                       :class="
                         clsx(
                           'font-bold group-hover:underline',
-                          themeClasses(
-                            'group-hover:text-action-500',
-                            'group-hover:text-action-300',
-                          ),
+                          themeClasses('group-hover:text-action-500', 'group-hover:text-action-300'),
                           isConnectionSelected(virtualItem.index) && [
                             'underline',
                             themeClasses('text-action-500', 'text-action-300'),
@@ -713,11 +570,7 @@
             class="relative"
           >
             <CodeViewer
-              :code="`${JSON.stringify(
-                selectedConnection.possibleConnection.value,
-                null,
-                2,
-              )}\n`"
+              :code="`${JSON.stringify(selectedConnection.possibleConnection.value, null, 2)}\n`"
               showTitle
               :allowCopy="false"
               :title="selectedConnection.possibleConnection.path"
@@ -737,28 +590,14 @@
                 ),
               )
             "
-            @click="
-              () =>
-                toggleIsDefaultSource(
-                  `default-source-checkbox-${prop?.id}`,
-                  path,
-                  true,
-                )
-            "
+            @click="() => toggleIsDefaultSource(`default-source-checkbox-${prop?.id}`, path, true)"
           >
             <input
               :id="`default-source-checkbox-${prop?.id}`"
               data-default-sub-checkbox="input"
               type="checkbox"
               :checked="isDefaultSource"
-              @click.stop="
-                () =>
-                  toggleIsDefaultSource(
-                    `default-source-checkbox-${prop?.id}`,
-                    path,
-                    false,
-                  )
-              "
+              @click.stop="() => toggleIsDefaultSource(`default-source-checkbox-${prop?.id}`, path, false)"
             />
             <div>Make this the default subscription for new components</div>
           </label>
@@ -775,24 +614,10 @@
 </template>
 
 <script setup lang="ts">
-import {
-  computed,
-  ComputedRef,
-  inject,
-  nextTick,
-  reactive,
-  ref,
-  watch,
-} from "vue";
+import { computed, ComputedRef, inject, nextTick, reactive, ref, watch } from "vue";
 import { debounce } from "lodash-es";
 import clsx from "clsx";
-import {
-  Icon,
-  themeClasses,
-  TruncateWithTooltip,
-  TextPill,
-  NewButton,
-} from "@si/vue-lib/design-system";
+import { Icon, themeClasses, TruncateWithTooltip, TextPill, NewButton } from "@si/vue-lib/design-system";
 import { Fzf } from "fzf";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/vue-query";
 import { useVirtualizer } from "@tanstack/vue-virtual";
@@ -813,20 +638,12 @@ import {
   PossibleConnection,
   Prop,
 } from "@/workers/types/entity_kind_types";
-import {
-  getPossibleConnections,
-  useMakeArgs,
-  useMakeKey,
-} from "@/store/realtime/heimdall";
+import { getPossibleConnections, useMakeArgs, useMakeKey } from "@/store/realtime/heimdall";
 import CodeViewer from "@/components/CodeViewer.vue";
 import { PropKind } from "@/api/sdf/dal/prop";
 import { CategorizedPossibleConnections } from "@/workers/types/dbinterface";
 import { AttributePath, ComponentId } from "@/api/sdf/dal/component";
-import {
-  attributeEmitter,
-  MouseDetails,
-  mouseEmitter,
-} from "../logic_composables/emitters";
+import { attributeEmitter, MouseDetails, mouseEmitter } from "../logic_composables/emitters";
 import { useWatchedForm } from "../logic_composables/watched_form";
 import AttributeValueBox from "./AttributeValueBox.vue";
 import CodeEditorModal from "../CodeEditorModal.vue";
@@ -875,31 +692,18 @@ const externalSources = computed(() => {
 
 const showAllPossibleConnections = ref(false);
 
-const isSetByConnection = computed(
-  () => props.externalSources && props.externalSources.length > 0,
-);
+const isSetByConnection = computed(() => props.externalSources && props.externalSources.length > 0);
 
 const kindAsString = computed(() => `${props.prop?.widgetKind}`.toLowerCase());
 
-const isPendingValue = computed(
-  () =>
-    props.externalSources &&
-    props.externalSources.length > 0 &&
-    props.value === "",
-);
+const isPendingValue = computed(() => props.externalSources && props.externalSources.length > 0 && props.value === "");
 
-const validationStatus = computed(
-  (): "passing" | "missingRequiredValue" | "failing" => {
-    const failing =
-      props.validation &&
-      props.validation.status !== "Success" &&
-      !isPendingValue.value;
-    if (!failing) return "passing";
-    if (props.validation.message === '"value" is required')
-      return "missingRequiredValue";
-    return "failing";
-  },
-);
+const validationStatus = computed((): "passing" | "missingRequiredValue" | "failing" => {
+  const failing = props.validation && props.validation.status !== "Success" && !isPendingValue.value;
+  if (!failing) return "passing";
+  if (props.validation.message === '"value" is required') return "missingRequiredValue";
+  return "failing";
+});
 
 // does not set the actual key, just the string displayed!
 const selectKeyString = "Tab";
@@ -925,9 +729,7 @@ const errorContext = inject<ComputedRef<AttributeErrors>>("ATTRIBUTE_ERRORS");
 assertIsDefined<ComputedRef<AttributeErrors>>(errorContext);
 
 const errorKey = computed(() => `${props.component.id}-${props.path}`);
-const errorValue = computed(
-  () => errorContext.value.saveErrors.value[errorKey.value],
-);
+const errorValue = computed(() => errorContext.value.saveErrors.value[errorKey.value]);
 const hasError = computed(() => {
   return !!errorValue.value;
 });
@@ -939,13 +741,7 @@ const valueForm = wForm.newForm({
     if (connectingComponentId.value && selectedConnectionData.value) {
       // For new subscriptions, send the raw path to the API, not the display value
       const apiValue = selectedConnectionData.value.propPath;
-      emit(
-        "save",
-        props.path,
-        apiValue,
-        props.prop.kind,
-        connectingComponentId.value,
-      );
+      emit("save", props.path, apiValue, props.prop.kind, connectingComponentId.value);
     } else {
       // For manual values or other cases, use the form value
       emit("save", props.path, value.value, props.prop.kind);
@@ -959,16 +755,11 @@ const valueForm = wForm.newForm({
 // i assume more things than comboboxes have a list of options
 type AttrOption = string | number;
 const secretKind = computed(() => {
-  if (
-    !props.kind ||
-    !(props.kind instanceof Object) ||
-    !("secret" in props.kind)
-  ) {
+  if (!props.kind || !(props.kind instanceof Object) || !("secret" in props.kind)) {
     return undefined;
   }
 
-  const options = (props.kind.secret as PropertyEditorPropWidgetKindSecret)
-    .options;
+  const options = (props.kind.secret as PropertyEditorPropWidgetKindSecret).options;
 
   const kindOpt = options.find((opt) => opt.label === "secretKind");
 
@@ -993,12 +784,8 @@ const maybeOptions = computed<{
   // Even though secrets have options, they are only used to transfer the secret kind, which is extracted to its own variable (secretKind0
   if (props.kind instanceof Object) {
     let options: LabelList<AttrOption> | undefined = [];
-    if ("comboBox" in props.kind)
-      options = (props.kind.comboBox as PropertyEditorPropWidgetKindComboBox)
-        .options;
-    else if ("select" in props.kind)
-      options = (props.kind.select as PropertyEditorPropWidgetKindSelect)
-        .options;
+    if ("comboBox" in props.kind) options = (props.kind.comboBox as PropertyEditorPropWidgetKindComboBox).options;
+    else if ("select" in props.kind) options = (props.kind.select as PropertyEditorPropWidgetKindSelect).options;
 
     if (!options) options = [];
 
@@ -1009,8 +796,7 @@ const maybeOptions = computed<{
 
 const filterStr = ref<string>("");
 const filteredOptions = reactive<LabelList<AttrOption>>([]);
-const resetFilteredOptions = () =>
-  filteredOptions.splice(0, Infinity, ...maybeOptions.value.options);
+const resetFilteredOptions = () => filteredOptions.splice(0, Infinity, ...maybeOptions.value.options);
 
 const debouncedFilterStr = debounce(
   () => {
@@ -1059,9 +845,7 @@ const focus = () => {
 };
 
 const connectingComponentId = ref<string | undefined>();
-const selectedConnectionData = ref<
-  { componentName: string; propPath: string } | undefined
->();
+const selectedConnectionData = ref<{ componentName: string; propPath: string } | undefined>();
 const queryClient = useQueryClient();
 const makeKey = useMakeKey();
 
@@ -1074,51 +858,37 @@ const createSubscriptionMutation = useMutation({
   }) => {
     // Emit to the save handler which calls the actual API
     if (props.prop) {
-      emit(
-        "save",
-        variables.path,
-        variables.apiValue,
-        variables.propKind,
-        variables.connectingComponentId,
-      );
+      emit("save", variables.path, variables.apiValue, variables.propKind, variables.connectingComponentId);
     }
     return variables;
   },
   onMutate: async (variables) => {
     const queryKey = makeKey(EntityKind.AttributeTree, props.component.id);
 
-    const previousData = queryClient.getQueryData<AttributeTree>(
-      queryKey.value,
-    );
+    const previousData = queryClient.getQueryData<AttributeTree>(queryKey.value);
 
-    queryClient.setQueryData(
-      queryKey.value,
-      (cachedData: AttributeTree | undefined) => {
-        if (!cachedData) return cachedData;
+    queryClient.setQueryData(queryKey.value, (cachedData: AttributeTree | undefined) => {
+      if (!cachedData) return cachedData;
 
-        const found = findAttributeValueInTree(cachedData, variables.path);
-        if (!found || !selectedConnectionData.value) return cachedData;
+      const found = findAttributeValueInTree(cachedData, variables.path);
+      if (!found || !selectedConnectionData.value) return cachedData;
 
-        const updatedData = { ...cachedData };
-        const updatedFound = findAttributeValueInTree(
-          updatedData,
-          variables.path,
-        );
-        if (updatedFound) {
-          updatedFound.attributeValue.externalSources = [
-            {
-              componentId: updatedData.id,
-              componentName: selectedConnectionData.value.componentName,
-              path: selectedConnectionData.value.propPath,
-              isSecret: false,
-            },
-          ];
-          updatedFound.attributeValue.value = `subscribing to ${selectedConnectionData.value.propPath}`;
-        }
+      const updatedData = { ...cachedData };
+      const updatedFound = findAttributeValueInTree(updatedData, variables.path);
+      if (updatedFound) {
+        updatedFound.attributeValue.externalSources = [
+          {
+            componentId: updatedData.id,
+            componentName: selectedConnectionData.value.componentName,
+            path: selectedConnectionData.value.propPath,
+            isSecret: false,
+          },
+        ];
+        updatedFound.attributeValue.value = `subscribing to ${selectedConnectionData.value.propPath}`;
+      }
 
-        return updatedData;
-      },
-    );
+      return updatedData;
+    });
 
     return { previousData };
   },
@@ -1150,12 +920,7 @@ const selectConnection = (index: number) => {
     propPath: newConnection.path,
   };
 
-  if (
-    apiValue &&
-    connectingComponentId.value &&
-    apiValue !== attrData.value.value &&
-    props.prop
-  ) {
+  if (apiValue && connectingComponentId.value && apiValue !== attrData.value.value && props.prop) {
     createSubscriptionMutation.mutate({
       path: props.path,
       apiValue,
@@ -1197,20 +962,14 @@ const selectDefault = () => {
       return;
     }
     emit("add", mapKey.value);
-  } else if (
-    newValue !== attrData.value.value ||
-    attributeInputContext?.blankInput
-  ) {
+  } else if (newValue !== attrData.value.value || attributeInputContext?.blankInput) {
     valueForm.handleSubmit();
   }
   closeInput();
 };
 
 const blur = (event: FocusEvent) => {
-  if (
-    event.relatedTarget instanceof HTMLElement &&
-    (event.relatedTarget as HTMLElement).dataset.defaultSubCheckbox
-  ) {
+  if (event.relatedTarget instanceof HTMLElement && event.relatedTarget.dataset.defaultSubCheckbox) {
     inputRef.value?.focus({ preventScroll: true });
   } else {
     inputRef.value?.focus();
@@ -1228,20 +987,10 @@ const removeSubscription = () => {
 
 // TODO add spinner for deletion
 const emit = defineEmits<{
-  (
-    e: "save",
-    path: AttributePath,
-    value: string,
-    propKind: PropKind,
-    connectingComponentId?: ComponentId,
-  ): void;
+  (e: "save", path: AttributePath, value: string, propKind: PropKind, connectingComponentId?: ComponentId): void;
   (e: "delete", path: AttributePath): void;
   (e: "removeSubscription", path: AttributePath): void;
-  (
-    e: "setDefaultSubscriptionSource",
-    path: AttributePath,
-    setTo: boolean,
-  ): void;
+  (e: "setDefaultSubscriptionSource", path: AttributePath, setTo: boolean): void;
   (e: "add", key?: string): void;
   (e: "selected"): void;
   (e: "close"): void;
@@ -1277,8 +1026,7 @@ const resetEverything = () => {
   if (readOnly.value) return;
 
   resetFilteredOptions();
-  if (!valueForm.state.canSubmit || valueForm.state.isDirty)
-    wForm.reset(valueForm);
+  if (!valueForm.state.canSubmit || valueForm.state.isDirty) wForm.reset(valueForm);
   mapKey.value = "";
   mapKeyError.value = false;
   selectedIndex.value = defaultSelectedIndex();
@@ -1388,10 +1136,7 @@ const onMouseDown = (e: MouseDetails["mousedown"]) => {
       const newValue = valueForm.state.values.value;
       // The newValue has to be different AND this input
       // can't be for an array or map!
-      if (
-        newValue !== attrData.value.value &&
-        !["array", "map"].includes(kindAsString.value)
-      ) {
+      if (newValue !== attrData.value.value && !["array", "map"].includes(kindAsString.value)) {
         connectingComponentId.value = undefined;
         selectedConnectionData.value = undefined;
         valueForm.handleSubmit();
@@ -1418,8 +1163,7 @@ const onUp = (e: KeyboardEvent) => {
   }
 
   if (selectedIndex.value < defaultSelectedIndex()) {
-    selectedIndex.value =
-      filteredConnections.value.length + filteredOptions.length;
+    selectedIndex.value = filteredConnections.value.length + filteredOptions.length;
   }
 };
 const onDown = (e: KeyboardEvent) => {
@@ -1437,10 +1181,7 @@ const onDown = (e: KeyboardEvent) => {
     selectedIndex.value = 1;
   }
 
-  if (
-    selectedIndex.value >
-    filteredConnections.value.length + filteredOptions.length
-  ) {
+  if (selectedIndex.value > filteredConnections.value.length + filteredOptions.length) {
     selectedIndex.value = defaultSelectedIndex();
   }
 };
@@ -1462,9 +1203,7 @@ const onTab = (e: KeyboardEvent) => {
   }
 
   // This allows the user to Tab or Shift+Tab to go through the attribute fields
-  const focusable = Array.from(
-    document.querySelectorAll('[tabindex="0"]'),
-  ) as HTMLElement[];
+  const focusable = Array.from(document.querySelectorAll<HTMLElement>('[tabindex="0"]'));
   const currentFocus = inputFocusDivRef.value;
   if (!currentFocus) return;
   const index = focusable.indexOf(currentFocus);
@@ -1525,9 +1264,7 @@ const potentialConnQuery = useQuery({
   enabled: inputOpen,
   queryFn: async () => {
     if (props.prop) {
-      return await getPossibleConnections(
-        makeArgs(EntityKind.PossibleConnections),
-      );
+      return await getPossibleConnections(makeArgs(EntityKind.PossibleConnections));
     }
   },
 });
@@ -1544,28 +1281,19 @@ const categorizedPossibleConn = computed(() => {
 
   for (const source of possible) {
     const isSuggested =
-      props.prop?.suggestSources?.some(
-        (s) => s.schema === source.schemaName && s.prop === source.path,
-      ) ||
+      props.prop?.suggestSources?.some((s) => s.schema === source.schemaName && s.prop === source.path) ||
       source.suggestAsSourceFor?.some(
-        (d) =>
-          d.schema === props.component.schemaName &&
-          `root${d.prop}` === props.prop?.path,
+        (d) => d.schema === props.component.schemaName && `root${d.prop}` === props.prop?.path,
       );
     if (isSuggested) {
       categories.suggestedMatches.push(source);
     } else if (
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-enum-comparison
       source.kind === props.prop?.kind ||
-      (source.kind === "string" &&
-        !["string", "checkbox", "object", "map", "integer"].includes(
-          props.prop?.kind ?? "",
-        ))
+      (source.kind === "string" && !["string", "checkbox", "object", "map", "integer"].includes(props.prop?.kind ?? ""))
     ) {
       // If the types match, sort name matches first
-      if (
-        source.name === props.prop?.name &&
-        source.schemaName !== props.component.schemaName
-      ) {
+      if (source.name === props.prop?.name && source.schemaName !== props.component.schemaName) {
         categories.typeAndNameMatches.push(source);
       } else {
         categories.typeMatches.push(source);
@@ -1590,20 +1318,13 @@ const filteredConnections = computed(() => {
   const output: UIConnectionRow[] = [];
 
   if (potentialConnQuery.data.value) {
-    const addToArray = (
-      matches: PossibleConnection[],
-      array: UIConnectionRow[],
-    ) => {
+    const addToArray = (matches: PossibleConnection[], array: UIConnectionRow[]) => {
       if (filteredSchemaName.value) {
-        matches = matches.filter(
-          (m) => m.schemaName === filteredSchemaName.value,
-        );
+        matches = matches.filter((m) => m.schemaName === filteredSchemaName.value);
       }
 
       if (filteredComponentName.value) {
-        matches = matches.filter(
-          (m) => m.componentName === filteredComponentName.value,
-        );
+        matches = matches.filter((m) => m.componentName === filteredComponentName.value);
       }
 
       // Node(victor): We know that secret props on secret defining schemas live on /secrets/kind name
@@ -1612,10 +1333,7 @@ const filteredConnections = computed(() => {
       // our current UI hurdle - only suggesting valid secrets as connection sources for secret props
       if (props.isSecret) {
         matches = matches.filter(
-          (m) =>
-            secretKind.value &&
-            m.path === `/secrets/${secretKind.value}` &&
-            m.isOriginSecret,
+          (m) => secretKind.value && m.path === `/secrets/${secretKind.value}` && m.isOriginSecret,
         );
       } else {
         matches = matches.filter((m) => !m.path.startsWith("/secrets/"));
@@ -1626,8 +1344,7 @@ const filteredConnections = computed(() => {
       if (filterStr.value) {
         const fzf = new Fzf(matches, {
           casing: "case-insensitive",
-          selector: (match) =>
-            `${match.name} ${match.value} ${match.componentName} ${match.path} ${match.schemaName}`,
+          selector: (match) => `${match.name} ${match.value} ${match.componentName} ${match.path} ${match.schemaName}`,
         });
 
         const results = fzf.find(filterStr.value);
@@ -1662,13 +1379,8 @@ const filteredConnections = computed(() => {
 
   // For arrays and maps, when showing all possible connections
   // we need to filter out any possible connections that don't match kind
-  if (
-    !output[0]?.showAllButton &&
-    (kindAsString.value === "array" || kindAsString.value === "map")
-  ) {
-    return output.filter(
-      (item) => item.possibleConnection?.kind === kindAsString.value,
-    );
+  if (!output[0]?.showAllButton && (kindAsString.value === "array" || kindAsString.value === "map")) {
+    return output.filter((item) => item.possibleConnection?.kind === kindAsString.value);
   }
 
   return output;
@@ -1688,9 +1400,7 @@ watch(
           el.scrollIntoView({ block: "nearest" });
         }
       } else if (connectionIsSelected.value) {
-        virtualFilteredConnections.value.scrollToIndex(
-          selectedIndex.value - filteredOptions.length - 1,
-        );
+        virtualFilteredConnections.value.scrollToIndex(selectedIndex.value - filteredOptions.length - 1);
       }
     });
   },
@@ -1702,7 +1412,7 @@ const virtualFilteredConnections = useVirtualizer(
   computed(() => {
     return {
       count: filteredConnections.value.length,
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+
       getScrollElement: () => filteredConnectionsListRef.value!,
       // getItemKey: (index: number) => filteredConnections.value[index]?.attributeValueId ?? "<unknown>",
       estimateSize: () => 30,
@@ -1710,47 +1420,28 @@ const virtualFilteredConnections = useVirtualizer(
     };
   }),
 );
-const virtualFilteredConnectionItemsList = computed(() =>
-  virtualFilteredConnections.value.getVirtualItems(),
-);
-const virtualFilteredConnectionsHeight = computed(() =>
-  virtualFilteredConnections.value.getTotalSize(),
-);
+const virtualFilteredConnectionItemsList = computed(() => virtualFilteredConnections.value.getVirtualItems());
+const virtualFilteredConnectionsHeight = computed(() => virtualFilteredConnections.value.getTotalSize());
 
-const isOptionSelected = (index: number) =>
-  selectedIndex.value > 0 && selectedIndex.value - 1 === index;
+const isOptionSelected = (index: number) => selectedIndex.value > 0 && selectedIndex.value - 1 === index;
 const isConnectionSelected = (index: number) =>
-  selectedIndex.value > filteredOptions.length - 1 &&
-  selectedIndex.value - filteredOptions.length - 1 === index;
+  selectedIndex.value > filteredOptions.length - 1 && selectedIndex.value - filteredOptions.length - 1 === index;
 
-const selectedConnection = computed(
-  () =>
-    filteredConnections.value[selectedIndex.value - 1 - filteredOptions.length],
-);
+const selectedConnection = computed(() => filteredConnections.value[selectedIndex.value - 1 - filteredOptions.length]);
 
 const readOnly = computed(() => {
   // Allow editing create-only properties if the component doesn't exist on HEAD yet
-  const componentExistsOnHead =
-    "diffStatus" in props.component
-      ? props.component.diffStatus !== "Added"
-      : true; // If no diffStatus, assume it exists on HEAD (conservative approach)
+  const componentExistsOnHead = "diffStatus" in props.component ? props.component.diffStatus !== "Added" : true; // If no diffStatus, assume it exists on HEAD (conservative approach)
 
   return (
-    !!(
-      props.prop?.createOnly &&
-      props.component.hasResource &&
-      componentExistsOnHead
-    ) ||
+    !!(props.prop?.createOnly && props.component.hasResource && componentExistsOnHead) ||
     props.component.toDelete ||
     props.forceReadOnly
   );
 });
 
 const inputHtmlTag = computed(() => {
-  if (
-    kindAsString.value === "textarea" ||
-    kindAsString.value === "codeeditor"
-  ) {
+  if (kindAsString.value === "textarea" || kindAsString.value === "codeeditor") {
     return "textarea";
   }
 
@@ -1769,11 +1460,7 @@ const setValueFromCodeEditorModal = (value: string) => {
   valueForm.handleSubmit();
 };
 
-const toggleIsDefaultSource = (
-  checkboxId: string,
-  path: AttributePath,
-  invertBox: boolean,
-) => {
+const toggleIsDefaultSource = (checkboxId: string, path: AttributePath, invertBox: boolean) => {
   const checkboxElement = document.getElementById(checkboxId);
   if (!checkboxElement) {
     return;
@@ -1786,12 +1473,8 @@ const toggleIsDefaultSource = (
   emit("setDefaultSubscriptionSource", path, newValue);
 };
 
-const optionIsSelected = computed(
-  () => selectedIndex.value < filteredOptions.length + 1,
-);
-const connectionIsSelected = computed(
-  () => !optionIsSelected.value && selectedIndex.value > 0,
-);
+const optionIsSelected = computed(() => selectedIndex.value < filteredOptions.length + 1);
+const connectionIsSelected = computed(() => !optionIsSelected.value && selectedIndex.value > 0);
 
 const discardString = computed(() => {
   if (props.isMap) return "Discard key";

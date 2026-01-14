@@ -23,11 +23,7 @@
         :props="{ ...cell.getContext(), getValue: () => cellDataTruncated }"
       />
     </span>
-    <FlexRender
-      v-else
-      :render="cell.column.columnDef.cell"
-      :props="cell.getContext()"
-    />
+    <FlexRender v-else :render="cell.column.columnDef.cell" :props="cell.getContext()" />
   </td>
 </template>
 
@@ -59,9 +55,7 @@ const tooltip = computed(() => {
   return null;
 });
 
-const cellRawData = computed(
-  () => props.cell.getContext().getValue() as string,
-);
+const cellRawData = computed(() => props.cell.getContext().getValue() as string);
 
 const cellDataTruncated = computed(() => {
   if (cellRawData.value.length > MAX_STRING_LENGTH) {

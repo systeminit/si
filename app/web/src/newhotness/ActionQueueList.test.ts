@@ -24,13 +24,7 @@ vi.mock("./EmptyState.vue", () => ({
 vi.mock("./ActionQueueListItem.vue", () => ({
   default: {
     name: "ActionQueueListItem",
-    props: [
-      "action",
-      "actionsById",
-      "child",
-      "noInteraction",
-      "actionChildren",
-    ],
+    props: ["action", "actionsById", "child", "noInteraction", "actionChildren"],
     template: '<div class="action-item">{{ action.name }}</div>',
   },
 }));
@@ -597,12 +591,7 @@ describe("ActionQueueList - hasDisplayedParent logic preventing duplicates", () 
       componentName: "1si-6147",
     };
 
-    const actionViewList = ref([
-      comp4Action,
-      comp3Action,
-      comp2Action,
-      comp1Action,
-    ]);
+    const actionViewList = ref([comp4Action, comp3Action, comp2Action, comp1Action]);
     const highlightedActionIds = ref(new Set<string>());
 
     // When: Rendering the ActionQueueList

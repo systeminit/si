@@ -1,67 +1,38 @@
 <template>
   <li class="rounded border border-neutral-600 [&>div]:p-xs">
-    <div
-      class="border-b border-neutral-600 text-sm flex flex-row items-center justify-between gap-xs"
-    >
+    <div class="border-b border-neutral-600 text-sm flex flex-row items-center justify-between gap-xs">
       <TruncateWithTooltip :lineClamp="3">
         {{ qualification.name }}
       </TruncateWithTooltip>
-      <NewButton
-        v-if="qualification.avId"
-        label="Rerun qualification"
-        @click="enqueueDVU"
-      />
+      <NewButton v-if="qualification.avId" label="Rerun qualification" @click="enqueueDVU" />
     </div>
 
     <div class="flex flex-col gap-xs text-sm">
-      <StatusMessageBox
-        :status="qualificationStatus ?? 'unknown'"
-        class="break-all"
-      >
-        <template v-if="qualification.isDirty">
-          The qualification has not yet run or is actively running.
-        </template>
-        <template v-else-if="qualificationStatus === 'success'">
-          Passed!
-        </template>
+      <StatusMessageBox :status="qualificationStatus ?? 'unknown'" class="break-all">
+        <template v-if="qualification.isDirty"> The qualification has not yet run or is actively running. </template>
+        <template v-else-if="qualificationStatus === 'success'"> Passed! </template>
         <div
-          v-else-if="
-            qualificationStatus === 'failure' ||
-            qualificationStatus === 'warning'
-          "
+          v-else-if="qualificationStatus === 'failure' || qualificationStatus === 'warning'"
           class="w-full flex flex-row items-center gap-xs"
         >
           <span class="grow">
             {{ qualification.message }}
           </span>
           <NewButton
-            v-if="
-              (qualification.avId || qualification.output) &&
-              (qualification.message || output?.length)
-            "
+            v-if="(qualification.avId || qualification.output) && (qualification.message || output?.length)"
             :label="showDetails ? 'Hide Details' : 'View Details'"
             @click="toggleHidden"
           />
         </div>
         <!-- Note: this should only really happen if it's a new component and the MVs aren't up to date yet -->
-        <template v-else>
-          The qualification has not yet run or is actively running.
-        </template>
+        <template v-else> The qualification has not yet run or is actively running. </template>
       </StatusMessageBox>
 
       <template v-if="showDetails">
-        <div
-          v-if="output?.length"
-          class="my-xs p-xs border border-warning-600 text-warning-500 rounded"
-        >
+        <div v-if="output?.length" class="my-xs p-xs border border-warning-600 text-warning-500 rounded">
           <b>Raw Output:</b>
 
-          <CodeViewer
-            :code="output.map((o) => o).join('\n')"
-            :showTitle="false"
-            :allowCopy="false"
-          >
-          </CodeViewer>
+          <CodeViewer :code="output.map((o) => o).join('\n')" :showTitle="false" :allowCopy="false"> </CodeViewer>
         </div>
         <LoadingMessage v-else message="Loading Details..." />
       </template>
@@ -72,17 +43,10 @@
 <script lang="ts" setup>
 import { computed, ref, toRef } from "vue";
 import * as _ from "lodash-es";
-import {
-  LoadingMessage,
-  NewButton,
-  TruncateWithTooltip,
-} from "@si/vue-lib/design-system";
+import { LoadingMessage, NewButton, TruncateWithTooltip } from "@si/vue-lib/design-system";
 import StatusMessageBox from "@/newhotness/layout_components/StatusMessageBox.vue";
 import CodeViewer from "@/components/CodeViewer.vue";
-import {
-  Qualification,
-  QualificationStatus,
-} from "@/newhotness/QualificationPanel.vue";
+import { Qualification, QualificationStatus } from "@/newhotness/QualificationPanel.vue";
 import { routes, useApi, funcRunTypes } from "@/newhotness/api_composables";
 
 const api = useApi();
@@ -123,12 +87,9 @@ const toggleHidden = async () => {
   }
 
   if (props.qualification.avId) {
-    const call = api.endpoint<funcRunTypes.FuncRunLogsResponse>(
-      routes.FuncRunByAv,
-      {
-        id: props.qualification.avId,
-      },
-    );
+    const call = api.endpoint<funcRunTypes.FuncRunLogsResponse>(routes.FuncRunByAv, {
+      id: props.qualification.avId,
+    });
     const result = await call.get();
     if (api.ok(result)) {
       output.value = result.data.logs.logs.map((l) => l.message);

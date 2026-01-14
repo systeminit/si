@@ -13,10 +13,7 @@
       :class="
         clsx(
           'block w-full h-lg p-xs ml-auto text-sm border font-mono',
-          themeClasses(
-            'text-shade-100 bg-shade-0 border-neutral-400',
-            'text-shade-0 bg-shade-100 border-neutral-600',
-          ),
+          themeClasses('text-shade-100 bg-shade-0 border-neutral-400', 'text-shade-0 bg-shade-100 border-neutral-600'),
         )
       "
       type="text"

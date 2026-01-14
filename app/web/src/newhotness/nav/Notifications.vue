@@ -8,46 +8,25 @@
     :class="
       clsx(
         'relative h-full flex flex-row gap-2xs items-center children:pointer-events-none font-bold',
-        numberICanApprove > 0 || currentChangeSetNeedsApproval
-          ? 'bg-destructive-900'
-          : 'hover:bg-black',
-        (numberICanApprove > 0 || currentChangeSetNeedsApproval) && !compact
-          ? 'p-xs'
-          : 'p-sm',
+        numberICanApprove > 0 || currentChangeSetNeedsApproval ? 'bg-destructive-900' : 'hover:bg-black',
+        (numberICanApprove > 0 || currentChangeSetNeedsApproval) && !compact ? 'p-xs' : 'p-sm',
       )
     "
     @click="handleNotificationClick"
   >
     <Icon
       name="bell"
-      :class="
-        clsx(
-          numberICanApprove > 0 || currentChangeSetNeedsApproval
-            ? 'text-destructive-500'
-            : 'text-shade-0',
-        )
-      "
+      :class="clsx(numberICanApprove > 0 || currentChangeSetNeedsApproval ? 'text-destructive-500' : 'text-shade-0')"
     />
-    <template
-      v-if="
-        (numberICanApprove > 0 || currentChangeSetNeedsApproval) && !compact
-      "
-    >
+    <template v-if="(numberICanApprove > 0 || currentChangeSetNeedsApproval) && !compact">
       <PillCounter
-        :count="
-          Math.max(numberICanApprove, currentChangeSetNeedsApproval ? 1 : 0)
-        "
+        :count="Math.max(numberICanApprove, currentChangeSetNeedsApproval ? 1 : 0)"
         noColorStyles
         hideIfZero
         class="bg-destructive-500 py-2xs"
       />
       <div class="text-xs">
-        Approval{{
-          numberICanApprove > 1 ||
-          (numberICanApprove === 0 && currentChangeSetNeedsApproval)
-            ? "s"
-            : ""
-        }}
+        Approval{{ numberICanApprove > 1 || (numberICanApprove === 0 && currentChangeSetNeedsApproval) ? "s" : "" }}
       </div>
     </template>
     <ApprovalPendingModal
@@ -63,11 +42,7 @@ import clsx from "clsx";
 import { computed, ref, onMounted, onBeforeUnmount } from "vue";
 import { Icon, PillCounter } from "@si/vue-lib/design-system";
 import { useQueries } from "@tanstack/vue-query";
-import {
-  ChangeSetId,
-  ChangeSet,
-  ChangeSetStatus,
-} from "@/api/sdf/dal/change_set";
+import { ChangeSetId, ChangeSet, ChangeSetStatus } from "@/api/sdf/dal/change_set";
 import { ApprovalData } from "../types";
 import ApprovalPendingModal from "./ApprovalPendingModal.vue";
 import { useContext } from "../logic_composables/context";
@@ -78,9 +53,7 @@ const props = defineProps<{
   changeSetsNeedingApproval: ChangeSet[];
 }>();
 
-const pendingApprovalModalRef = ref<InstanceType<
-  typeof ApprovalPendingModal
-> | null>(null);
+const pendingApprovalModalRef = ref<InstanceType<typeof ApprovalPendingModal> | null>(null);
 
 const ctx = useContext();
 
@@ -114,9 +87,7 @@ const allApprovalDataQueries = useQueries({
 const allApprovalData = computed(() => {
   const results: Record<ChangeSetId, ApprovalData> = {};
   for (const approvalDataQuery of allApprovalDataQueries.value) {
-    if (approvalDataQuery.data)
-      results[approvalDataQuery.data.changeSetId] =
-        approvalDataQuery.data.approvalData;
+    if (approvalDataQuery.data) results[approvalDataQuery.data.changeSetId] = approvalDataQuery.data.approvalData;
   }
   return results;
 });

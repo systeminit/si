@@ -11,11 +11,7 @@
       :disabled="!ctx.queriesEnabled.value"
       @click="openApplyChangeSetModal"
     />
-    <ApplyChangeSetModal
-      ref="applyChangeSetModalRef"
-      votingKind="merge"
-      :actions="proposedActions"
-    />
+    <ApplyChangeSetModal ref="applyChangeSetModalRef" votingKind="merge" :actions="proposedActions" />
   </section>
 </template>
 
@@ -25,10 +21,7 @@ import * as _ from "lodash-es";
 import { NewButton } from "@si/vue-lib/design-system";
 import { useQuery } from "@tanstack/vue-query";
 import { useRoute, useRouter } from "vue-router";
-import {
-  BifrostActionViewList,
-  EntityKind,
-} from "@/workers/types/entity_kind_types";
+import { BifrostActionViewList, EntityKind } from "@/workers/types/entity_kind_types";
 import { bifrost, useMakeArgs, useMakeKey } from "@/store/realtime/heimdall";
 import ApplyChangeSetModal from "./ApplyChangeSetModal.vue";
 import { useApplyChangeSet } from "./logic_composables/change_set";
@@ -70,14 +63,11 @@ const args = useMakeArgs();
 
 const actionsRaw = useQuery<BifrostActionViewList | null>({
   queryKey: key(EntityKind.ActionViewList),
-  queryFn: async () =>
-    await bifrost<BifrostActionViewList>(args(EntityKind.ActionViewList)),
+  queryFn: async () => await bifrost<BifrostActionViewList>(args(EntityKind.ActionViewList)),
   enabled: ctx.queriesEnabled,
 });
 const actions = computed(() => actionsRaw.data.value?.actions ?? []);
 const proposedActions = computed(() =>
-  actions.value.filter(
-    (action) => action.originatingChangeSetId === ctx.changeSetId.value,
-  ),
+  actions.value.filter((action) => action.originatingChangeSetId === ctx.changeSetId.value),
 );
 </script>

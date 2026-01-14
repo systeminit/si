@@ -34,7 +34,7 @@ declare global {
 const _DEBUG = true; // import.meta.env.VITE_SI_ENV === "local";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function debug(...args: any | any[]) {
+function debug(...args: any) {
   // eslint-disable-next-line no-console
   if (_DEBUG) console.debug(args);
 }
@@ -52,6 +52,7 @@ const LEADER_CHANGED = "LEADER_CHANGED";
 const failOnLeaderChange = (): Promise<never> => {
   return new Promise((_, reject) => {
     const onMessage = () => {
+      // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors
       reject(LEADER_CHANGED);
     };
     leaderChangedChannel.port1.addEventListener("message", onMessage, {
@@ -85,17 +86,12 @@ const sleep = (ms: number) =>
     setTimeout(resolve, ms);
   });
 
-async function withLeader<R>(
-  cb: (remote: Comlink.Remote<TabDBInterface>) => Promise<R>,
-  retry?: number,
-): Promise<R> {
+async function withLeader<R>(cb: (remote: Comlink.Remote<TabDBInterface>) => Promise<R>, retry?: number): Promise<R> {
   const remote = await getLeader();
   const retries = retry ?? 0;
 
   if (retries >= MAX_RETRIES) {
-    throw new Error(
-      "Retries exceeded attempting to perform query against database leader. Please refresh this tab.",
-    );
+    throw new Error("Retries exceeded attempting to perform query against database leader. Please refresh this tab.");
   }
 
   // If the leader with the remote changes while a call is in progress, we need
@@ -147,7 +143,7 @@ const dbInterface: SharedDBInterface = {
       // Just in case there is a race between closing a tab and a new one
       // loading, and this worker gets a new remote, don't shut down right away.
       // Double check after a few seconds.
-      setTimeout(async () => {
+      setTimeout(() => {
         if (Object.keys(remotes).length === 0) {
           shutDownWebWorker();
         }
@@ -263,96 +259,40 @@ const dbInterface: SharedDBInterface = {
     await withLeader(async (remote) => await remote.bifrostReconnect());
   },
 
-  async linkNewChangeset(
-    workspaceId: string,
-    headChangeSetId: string,
-    changeSetId: string,
-  ): Promise<void> {
-    await withLeader(
-      async (remote) =>
-        await remote.linkNewChangeset(
-          workspaceId,
-          headChangeSetId,
-          changeSetId,
-        ),
+  async linkNewChangeset(workspaceId: string, headChangeSetId: string, changeSetId: string): Promise<void> {
+    await withLeader(async (remote) => await remote.linkNewChangeset(workspaceId, headChangeSetId, changeSetId));
+  },
+
+  async getOutgoingConnectionsByComponentId(workspaceId: string, changeSetId: string) {
+    return await withLeader(
+      async (remote) => await remote.getOutgoingConnectionsByComponentId(workspaceId, changeSetId),
     );
   },
 
-  async getOutgoingConnectionsByComponentId(
-    workspaceId: string,
-    changeSetId: string,
-  ) {
+  async getIncomingManagementByComponentId(workspaceId: string, changeSetId: string) {
     return await withLeader(
-      async (remote) =>
-        await remote.getOutgoingConnectionsByComponentId(
-          workspaceId,
-          changeSetId,
-        ),
+      async (remote) => await remote.getIncomingManagementByComponentId(workspaceId, changeSetId),
     );
   },
 
-  async getIncomingManagementByComponentId(
-    workspaceId: string,
-    changeSetId: string,
-  ) {
-    return await withLeader(
-      async (remote) =>
-        await remote.getIncomingManagementByComponentId(
-          workspaceId,
-          changeSetId,
-        ),
-    );
+  async getGlobal(workspaceId: string, kind: GlobalEntity, id: string): Promise<-1 | AtomDocument> {
+    return await withLeader(async (remote) => await remote.getGlobal(workspaceId, kind, id));
   },
 
-  async getGlobal(
-    workspaceId: string,
-    kind: GlobalEntity,
-    id: string,
-  ): Promise<-1 | AtomDocument> {
-    return await withLeader(
-      async (remote) => await remote.getGlobal(workspaceId, kind, id),
-    );
+  async get(workspaceId: string, changeSetId: string, kind: Gettable, id: string): Promise<-1 | AtomDocument> {
+    return await withLeader(async (remote) => await remote.get(workspaceId, changeSetId, kind, id));
   },
 
-  async get(
-    workspaceId: string,
-    changeSetId: string,
-    kind: Gettable,
-    id: string,
-  ): Promise<-1 | AtomDocument> {
-    return await withLeader(
-      async (remote) => await remote.get(workspaceId, changeSetId, kind, id),
-    );
+  async getExists(workspaceId: string, changeSetId: string, kind: Gettable, id: string): Promise<boolean> {
+    return await withLeader(async (remote) => await remote.getExists(workspaceId, changeSetId, kind, id));
   },
 
-  async getExists(
-    workspaceId: string,
-    changeSetId: string,
-    kind: Gettable,
-    id: string,
-  ): Promise<boolean> {
-    return await withLeader(
-      async (remote) =>
-        await remote.getExists(workspaceId, changeSetId, kind, id),
-    );
-  },
-
-  async getList(
-    workspaceId: string,
-    changeSetId: string,
-    kind: Listable,
-    id: string,
-  ): Promise<string> {
-    return await withLeader(
-      async (remote) =>
-        await remote.getList(workspaceId, changeSetId, kind, id),
-    );
+  async getList(workspaceId: string, changeSetId: string, kind: Listable, id: string): Promise<string> {
+    return await withLeader(async (remote) => await remote.getList(workspaceId, changeSetId, kind, id));
   },
 
   async getKind(workspaceId, changeSetId, kind) {
-    return await withLeader(
-      async (remote) => await remote.getKind(workspaceId, changeSetId, kind),
-    );
+    return await withLeader(async (remote) => await remote.getKind(workspaceId, changeSetId, kind));
   },
 
   async queryAttributes(
@@ -360,108 +300,59 @@ const dbInterface: SharedDBInterface = {
     changeSetId: ChangeSetId,
     terms: QueryAttributesTerm[],
   ): Promise<ComponentId[]> {
-    return await withLeader(
-      async (remote) =>
-        await remote.queryAttributes(workspaceId, changeSetId, terms),
-    );
+    return await withLeader(async (remote) => await remote.queryAttributes(workspaceId, changeSetId, terms));
   },
 
   async getPossibleConnections(workspaceId, changeSetId) {
-    return await withLeader(
-      async (remote) =>
-        await remote.getPossibleConnections(workspaceId, changeSetId),
-    );
+    return await withLeader(async (remote) => await remote.getPossibleConnections(workspaceId, changeSetId));
   },
 
   async getOutgoingConnectionsCounts(workspaceId: string, changeSetId: string) {
-    return await withLeader(
-      async (remote) =>
-        await remote.getOutgoingConnectionsCounts(workspaceId, changeSetId),
-    );
+    return await withLeader(async (remote) => await remote.getOutgoingConnectionsCounts(workspaceId, changeSetId));
   },
 
   async getComponentDetails(workspaceId: string, changeSetId: string) {
-    return await withLeader(
-      async (remote) =>
-        await remote.getComponentDetails(workspaceId, changeSetId),
-    );
+    return await withLeader(async (remote) => await remote.getComponentDetails(workspaceId, changeSetId));
   },
 
   async getComponentsInViews(workspaceId: string, changeSetId: string) {
-    return await withLeader(
-      async (remote) =>
-        await remote.getComponentsInViews(workspaceId, changeSetId),
-    );
+    return await withLeader(async (remote) => await remote.getComponentsInViews(workspaceId, changeSetId));
   },
 
   async getComponentsInOnlyOneView(workspaceId: string, changeSetId: string) {
-    return await withLeader(
-      async (remote) =>
-        await remote.getComponentsInOnlyOneView(workspaceId, changeSetId),
-    );
+    return await withLeader(async (remote) => await remote.getComponentsInOnlyOneView(workspaceId, changeSetId));
   },
 
   async getSchemaMembers(workspaceId: string, changeSetId: string) {
-    return await withLeader(
-      async (remote) => await remote.getSchemaMembers(workspaceId, changeSetId),
-    );
+    return await withLeader(async (remote) => await remote.getSchemaMembers(workspaceId, changeSetId));
   },
 
   async getDefaultSubscriptions(workspaceId: string, changeSetId: string) {
-    return await withLeader(
-      async (remote) =>
-        await remote.getDefaultSubscriptions(workspaceId, changeSetId),
-    );
+    return await withLeader(async (remote) => await remote.getDefaultSubscriptions(workspaceId, changeSetId));
   },
 
-  async mjolnir(
-    workspaceId: string,
-    changeSetId: string,
-    kind: EntityKind,
-    id: string,
-    checksum?: string,
-  ) {
-    await withLeader(
-      async (remote) =>
-        await remote.mjolnir(workspaceId, changeSetId, kind, id, checksum),
-    );
+  async mjolnir(workspaceId: string, changeSetId: string, kind: EntityKind, id: string, checksum?: string) {
+    await withLeader(async (remote) => await remote.mjolnir(workspaceId, changeSetId, kind, id, checksum));
   },
 
-  async changeSetExists(
-    workspaceId: string,
-    changeSetId: string,
-  ): Promise<boolean> {
-    return await withLeader(
-      async (remote) => await remote.changeSetExists(workspaceId, changeSetId),
-    );
+  async changeSetExists(workspaceId: string, changeSetId: string): Promise<boolean> {
+    return await withLeader(async (remote) => await remote.changeSetExists(workspaceId, changeSetId));
   },
 
-  async niflheim(
-    workspaceId: string,
-    changeSetId: string,
-  ): Promise<-1 | 0 | 1> {
-    return await withLeader(
-      async (remote) => await remote.niflheim(workspaceId, changeSetId),
-    );
+  async niflheim(workspaceId: string, changeSetId: string): Promise<-1 | 0 | 1> {
+    return await withLeader(async (remote) => await remote.niflheim(workspaceId, changeSetId));
   },
 
   async syncAtoms(workspaceId: string, changeSetId: string): Promise<void> {
-    return await withLeader(
-      async (remote) => await remote.syncAtoms(workspaceId, changeSetId),
-    );
+    return await withLeader(async (remote) => await remote.syncAtoms(workspaceId, changeSetId));
   },
 
   async vanaheim(workspaceId: string): Promise<boolean> {
-    return await withLeader(
-      async (remote) => await remote.vanaheim(workspaceId),
-    );
+    return await withLeader(async (remote) => await remote.vanaheim(workspaceId));
   },
 
   async pruneAtomsForClosedChangeSet(workspaceId: string, changeSetId: string) {
-    return await withLeader(
-      async (remote) =>
-        await remote.pruneAtomsForClosedChangeSet(workspaceId, changeSetId),
-    );
+    return await withLeader(async (remote) => await remote.pruneAtomsForClosedChangeSet(workspaceId, changeSetId));
   },
 
   async exec(
@@ -478,15 +369,8 @@ const dbInterface: SharedDBInterface = {
     await withLeader(async (remote) => await remote.bobby());
   },
 
-  async ragnarok(
-    workspaceId: string,
-    changeSetId: string,
-    noColdStart?: boolean,
-  ): Promise<void> {
-    await withLeader(
-      async (remote) =>
-        await remote.ragnarok(workspaceId, changeSetId, noColdStart),
-    );
+  async ragnarok(workspaceId: string, changeSetId: string, noColdStart?: boolean): Promise<void> {
+    await withLeader(async (remote) => await remote.ragnarok(workspaceId, changeSetId, noColdStart));
   },
 
   async odin(changeSetId: string): Promise<object> {
@@ -496,13 +380,10 @@ const dbInterface: SharedDBInterface = {
 
 const onConnectBroadcast = new BroadcastChannel(SHARED_BROADCAST_CHANNEL_NAME);
 
-// eslint-disable-next-line no-restricted-globals
 const name = self.name;
 
-// eslint-disable-next-line no-restricted-globals
 const shutDownWebWorker = () => self.close();
 
-// eslint-disable-next-line no-restricted-globals
 self.onconnect = (event: MessageEvent) => {
   Comlink.expose(dbInterface, event.ports[0]);
   onConnectBroadcast.postMessage(name);

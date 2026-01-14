@@ -35,16 +35,10 @@ const colorClasses = computed(() => {
   if (props.variant === "simple") {
     switch (props.tone) {
       case "warning":
-        return themeClasses(
-          "bg-warning-500 text-shade-0",
-          "bg-warning-600 text-shade-100",
-        );
+        return themeClasses("bg-warning-500 text-shade-0", "bg-warning-600 text-shade-100");
       // TODO - implement other tones here as needed!
       default: // action is default
-        return themeClasses(
-          "bg-action-500 text-shade-0",
-          "bg-action-200 text-shade-100",
-        );
+        return themeClasses("bg-action-500 text-shade-0", "bg-action-200 text-shade-100");
     }
   }
   // 'classic'

@@ -68,7 +68,7 @@ export function useJsonTreeRootContext() {
 }
 </script>
 
-<!-- eslint-disable vue/component-tags-order,import/first -->
+<!-- eslint-disable vue/block-order,import/first -->
 <script setup lang="ts">
 import * as _ from "lodash-es";
 import { InjectionKey, inject, provide, ref } from "vue";

@@ -27,7 +27,7 @@ const WORKSPACE_FLAG_MAPPING: Record<string, string> = {
 const FEATURE_FLAGS = Object.keys({
   ...USER_FLAG_MAPPING,
   ...WORKSPACE_FLAG_MAPPING,
-}) as FeatureFlag[];
+});
 
 export function useFeatureFlagsStore() {
   // const route = useRoute();
@@ -41,12 +41,9 @@ export function useFeatureFlagsStore() {
     defineStore("feature-flags", {
       // all flags default to undefined, but we put entries in the feature flags anyway
       state: () =>
-        Object.fromEntries(
-          FEATURE_FLAGS.map((flag) => [flag, undefined]),
-        ) as Record<FeatureFlag, boolean | undefined>,
+        Object.fromEntries(FEATURE_FLAGS.map((flag) => [flag, undefined])) as Record<FeatureFlag, boolean | undefined>,
       getters: {
-        allFeatureFlags: (state) =>
-          FEATURE_FLAGS.map((name) => ({ name, value: state[name] })),
+        allFeatureFlags: (state) => FEATURE_FLAGS.map((name) => ({ name, value: state[name] })),
       },
       actions: {
         /**
@@ -84,22 +81,17 @@ export function useFeatureFlagsStore() {
         async fetchWorkspaceFlags(): Promise<string[]> {
           if (!workspacePk) return [];
           try {
-            const resp = await fetch(
-              `${import.meta.env.VITE_POSTHOG_API_HOST}/decide/?v=3`,
-              {
-                method: "POST",
-                body: JSON.stringify({
-                  api_key: import.meta.env.VITE_POSTHOG_PUBLIC_KEY,
-                  distinct_id: workspacePk,
-                }),
-              },
-            );
+            const resp = await fetch(`${import.meta.env.VITE_POSTHOG_API_HOST}/decide/?v=3`, {
+              method: "POST",
+              body: JSON.stringify({
+                api_key: import.meta.env.VITE_POSTHOG_PUBLIC_KEY,
+                distinct_id: workspacePk,
+              }),
+            });
             if (!resp.ok) {
               // TODO probably should just throw here
               // eslint-disable-next-line no-console
-              console.error(
-                `Error retrieving workspace-specific flags: ${resp}`,
-              );
+              console.error(`Error retrieving workspace-specific flags: ${resp}`);
               return [];
             }
             const json = await resp.json();

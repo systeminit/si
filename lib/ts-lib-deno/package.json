@@ -13,7 +13,6 @@
     "lodash-es": "^4.17.21"
   },
   "devDependencies": {
-    "@si/eslint-config": "workspace:*",
     "@si/tsconfig": "workspace:*",
     "@types/lodash-es": "^4.17.12",
     "eslint": "^8.57.1",

@@ -90,8 +90,7 @@ export const useAuthStore = () => {
       // but when the DB is reset, the token is still set but the backend DB is empty
       // so we must wait for the backend to be re-initialized
       userIsLoggedIn: (state) => !_.isEmpty(state.tokens),
-      userIsLoggedInAndInitialized: (state) =>
-        !_.isEmpty(state.tokens) && state.user?.pk,
+      userIsLoggedInAndInitialized: (state) => !_.isEmpty(state.tokens) && state.user?.pk,
       selectedWorkspaceToken: (state) => {
         const workspacesStore = useWorkspacesStore();
         if (workspacesStore.urlSelectedWorkspaceId) {
@@ -109,14 +108,9 @@ export const useAuthStore = () => {
             // TODO(Wendy) - replace this with URLSearchParams when we can
             const queryString = window.location.search.replace("?", ""); // grab the whole query string, removing the starting ?
             const queryParts = queryString.split("&"); // split each of the individual parts
-            const workspacePartString = queryParts.find((part) =>
-              part.includes("workspaceId="),
-            ); // find the part we care about
+            const workspacePartString = queryParts.find((part) => part.includes("workspaceId=")); // find the part we care about
             if (workspacePartString) {
-              const workspaceId = workspacePartString.replace(
-                "workspaceId=",
-                "",
-              ); // strip out unnecessary data
+              const workspaceId = workspacePartString.replace("workspaceId=", ""); // strip out unnecessary data
               return state.tokens[workspaceId];
             }
           } else if (path.startsWith("/n/") || path.startsWith("/w/")) {
@@ -173,10 +167,7 @@ export const useAuthStore = () => {
       // exchanges a code from the auth portal/api to auth with sdf
       // and initializes workspace/user if necessary
       async AUTH_CONNECT(payload: { code: string; onDemandAssets: boolean }) {
-        return new ApiRequest<
-          LoginResponse,
-          { code: string; onDemandAssets: boolean }
-        >({
+        return new ApiRequest<LoginResponse, { code: string; onDemandAssets: boolean }>({
           method: "post",
           url: "/session/connect",
           params: { ...payload },
@@ -185,16 +176,11 @@ export const useAuthStore = () => {
           },
           onFail: (response) => {
             const errMessage = response?.error?.message || "";
-            if (
-              errMessage.includes("relation") &&
-              errMessage.includes("does not exist")
-            ) {
+            if (errMessage.includes("relation") && errMessage.includes("does not exist")) {
               /* eslint-disable no-console, no-alert */
               console.log("db needs migrations");
               // TODO: probably show a better error than an alert
-              alert(
-                "Looks like your database needs migrations - please restart SDF",
-              );
+              alert("Looks like your database needs migrations - please restart SDF");
             }
           },
         });
@@ -224,7 +210,6 @@ export const useAuthStore = () => {
             this.userWorkspaceFlags = response.userWorkspaceFlags;
           },
           onFail(e) {
-            /* eslint-disable-next-line no-console */
             console.log("AUTH RECONNECT FAILED!", e);
             // trigger logout?
           },
@@ -234,9 +219,7 @@ export const useAuthStore = () => {
       initTokens() {
         let tokensByWorkspacePk: Record<string, string> = {};
         try {
-          const parsed = JSON.parse(
-            storage.getItem(AUTH_LOCAL_STORAGE_KEYS.USER_TOKENS) || "{}",
-          );
+          const parsed = JSON.parse(storage.getItem(AUTH_LOCAL_STORAGE_KEYS.USER_TOKENS) || "{}");
           tokensByWorkspacePk = parsed;
         } catch {
           /* empty */
@@ -246,7 +229,7 @@ export const useAuthStore = () => {
         if (!tokens.length) return [];
 
         // token contains user pk and workspace pk (normalize V1/V2 format)
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+
         const decodedToken = jwtDecode<TokenData>(tokens[0]!);
         const { userPk } = normalizeTokenData(decodedToken);
 
@@ -268,10 +251,8 @@ export const useAuthStore = () => {
         // dont think it's 100% necessary at the moment and not quite the right shape, but can fix later
         const restoreAuthReq = await this.RESTORE_AUTH();
         if (!restoreAuthReq.result.success) {
-          const errMessage: string | undefined =
-            restoreAuthReq.result.errBody?.error?.message;
-          const errCode: string | undefined =
-            restoreAuthReq.result.errBody?.error?.code;
+          const errMessage: string | undefined = restoreAuthReq.result.errBody?.error?.message;
+          const errCode: string | undefined = restoreAuthReq.result.errBody?.error?.code;
 
           if (errCode === "WORKSPACE_NOT_INITIALIZED") {
             // db is migrated, but workspace does not exist, probably because it has been reset
@@ -290,9 +271,7 @@ export const useAuthStore = () => {
             /* eslint-disable no-console, no-alert */
             console.log("db needs migrations");
             // TODO: probably show a better error than an alert
-            alert(
-              "Looks like your database needs migrations - please restart SDF",
-            );
+            alert("Looks like your database needs migrations - please restart SDF");
           } else {
             this.localLogout();
           }
@@ -349,10 +328,7 @@ export const useAuthStore = () => {
           userWorkspaceFlags: loginResponse.userWorkspaceFlags,
         });
         // store the tokens in localstorage
-        storage.setItem(
-          AUTH_LOCAL_STORAGE_KEYS.USER_TOKENS,
-          JSON.stringify(this.tokens),
-        );
+        storage.setItem(AUTH_LOCAL_STORAGE_KEYS.USER_TOKENS, JSON.stringify(this.tokens));
         // identify the user in posthog
         posthog.identify(loginResponse.user.pk, {
           email: loginResponse.user.email,

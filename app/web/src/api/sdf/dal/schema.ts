@@ -88,9 +88,7 @@ export interface SchemaVariant {
   canContribute: boolean;
 }
 
-export const outputSocketsAndPropsFor = (
-  schemaVariant: SchemaVariant,
-): GroupedOptions => {
+export const outputSocketsAndPropsFor = (schemaVariant: SchemaVariant): GroupedOptions => {
   const socketOptions = schemaVariant.outputSockets
     .map((socket) => ({
       label: `Output Socket: ${socket.name}`,
@@ -103,9 +101,7 @@ export const outputSocketsAndPropsFor = (
   return opts;
 };
 
-export const groupedPropsFor = (
-  schemaVariant: SchemaVariant,
-): GroupedOptions => {
+export const groupedPropsFor = (schemaVariant: SchemaVariant): GroupedOptions => {
   const rootPropOptions = schemaVariant.props
     .filter(
       (p) =>
@@ -142,9 +138,7 @@ export const groupedPropsFor = (
     }))
     .sort((a, b) => a.label.localeCompare(b.label));
   const qualificationPropOptions = schemaVariant.props
-    .filter(
-      (p) => p.eligibleToSendData && p.path.startsWith("/root/qualification/"),
-    )
+    .filter((p) => p.eligibleToSendData && p.path.startsWith("/root/qualification/"))
     .map((p) => ({
       label: p.name,
       value: `p_${p.id}`,
@@ -158,9 +152,7 @@ export const groupedPropsFor = (
     }))
     .sort((a, b) => a.label.localeCompare(b.label));
   const resourceValuePropOptions = schemaVariant.props
-    .filter(
-      (p) => p.eligibleToSendData && p.path.startsWith("/root/resource_value/"),
-    )
+    .filter((p) => p.eligibleToSendData && p.path.startsWith("/root/resource_value/"))
     .map((p) => ({
       label: p.name,
       value: `p_${p.id}`,
@@ -193,17 +185,13 @@ export const groupedPropsFor = (
   };
 };
 
-export const inputSocketsAndPropsFor = (
-  schemaVariant: SchemaVariant,
-): GroupedOptions => {
+export const inputSocketsAndPropsFor = (schemaVariant: SchemaVariant): GroupedOptions => {
   const opts = groupedPropsFor(schemaVariant);
   opts["Input Sockets"] = rawInputSocketsFor(schemaVariant);
   return opts;
 };
 
-export const inputSocketsFor = (
-  schemaVariant: SchemaVariant,
-): GroupedOptions => {
+export const inputSocketsFor = (schemaVariant: SchemaVariant): GroupedOptions => {
   return {
     "Input Sockets": rawInputSocketsFor(schemaVariant),
   };
@@ -225,11 +213,7 @@ export const findSchemaVariantForPropOrSocketId = (
 
   return schemaVariants.find((sv) => {
     if (propId && sv.props.map((p) => p.id).includes(propId)) return sv;
-    if (
-      outputSocketId &&
-      sv.outputSockets.map((o) => o.id).includes(outputSocketId)
-    )
-      return sv;
+    if (outputSocketId && sv.outputSockets.map((o) => o.id).includes(outputSocketId)) return sv;
     return undefined;
   });
 };

@@ -14,12 +14,7 @@
       :style="`border-color: ${color}`"
     >
       <!-- TODO(Wendy) - This should check for and pull the image of the user in question, not the current user's image! -->
-      <img
-        v-if="user.pictureUrl"
-        class="rounded-full bg-shade-0"
-        :src="user.pictureUrl"
-        referrerpolicy="no-referrer"
-      />
+      <img v-if="user.pictureUrl" class="rounded-full bg-shade-0" :src="user.pictureUrl" referrerpolicy="no-referrer" />
       <Icon v-else name="user-circle" size="full" class="text-shade-0" />
     </div>
     <div
@@ -35,13 +30,7 @@
         )
       "
     >
-      <Icon
-        name="star"
-        size="2xs"
-        :class="
-          changeSetStarSide ? 'translate-x-[-24px]' : 'translate-y-[-12px]'
-        "
-      />
+      <Icon name="star" size="2xs" :class="changeSetStarSide ? 'translate-x-[-24px]' : 'translate-y-[-12px]'" />
     </div>
   </div>
 </template>

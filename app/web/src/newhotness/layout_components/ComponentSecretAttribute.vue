@@ -1,32 +1,15 @@
 <template>
-  <div
-    v-if="attributeTree.prop?.isOriginSecret && showSecretForm"
-    ref="secretFormRef"
-  >
+  <div v-if="attributeTree.prop?.isOriginSecret && showSecretForm" ref="secretFormRef">
     <AttributeChildLayout secret>
       <template #header>
         <div class="flex flex-row items-center gap-2xs">
           <div>{{ displayName }}</div>
         </div>
       </template>
-      <div
-        :class="
-          clsx(
-            'p-xs flex flex-col gap-xs text-sm font-normal',
-            themeClasses('bg-white', 'bg-neutral-900'),
-          )
-        "
-      >
-        <div
-          :class="
-            clsx(
-              'text-sm italic',
-              themeClasses('text-neutral-600', 'text-neutral-400'),
-            )
-          "
-        >
-          Secret data entered will be encrypted. Secret data can always be
-          replaced, but only the name and description can be viewed.
+      <div :class="clsx('p-xs flex flex-col gap-xs text-sm font-normal', themeClasses('bg-white', 'bg-neutral-900'))">
+        <div :class="clsx('text-sm italic', themeClasses('text-neutral-600', 'text-neutral-400'))">
+          Secret data entered will be encrypted. Secret data can always be replaced, but only the name and description
+          can be viewed.
         </div>
         <ul class="flex flex-col">
           <li
@@ -35,9 +18,7 @@
             :class="
               clsx(
                 'flex flex-col items-center gap-3xs text-sm [&>*]:w-full relative',
-                index === Object.keys(secretFormData).length - 1
-                  ? 'mb-xs'
-                  : 'mb-[-1px]',
+                index === Object.keys(secretFormData).length - 1 ? 'mb-xs' : 'mb-[-1px]',
               )
             "
           >
@@ -45,18 +26,13 @@
               <template #default="{ field }">
                 <div class="grid grid-cols-2">
                   <div class="py-2xs">
-                    <AttributeInputRequiredProperty
-                      :text="fieldname"
-                      :showAsterisk="isFieldRequired(fieldname)"
-                    />
+                    <AttributeInputRequiredProperty :text="fieldname" :showAsterisk="isFieldRequired(fieldname)" />
                   </div>
                   <SecretInput
                     :field="field"
                     :fieldname="fieldname"
                     :widgetKind="secretFieldWidgetKinds[fieldname]"
-                    :placeholder="
-                      attributeTree.secret ? getPlaceholder(fieldname) : ''
-                    "
+                    :placeholder="attributeTree.secret ? getPlaceholder(fieldname) : ''"
                   />
                 </div>
                 <!-- Validation errors are intentionally not displayed -->
@@ -91,12 +67,8 @@
               ),
             )
           "
-          @click.stop.prevent="
-            () => toggleIsDefaultSource(attributeTree.attributeValue.path, true)
-          "
-          @keydown.enter.stop.prevent="
-            () => toggleIsDefaultSource(attributeTree.attributeValue.path, true)
-          "
+          @click.stop.prevent="() => toggleIsDefaultSource(attributeTree.attributeValue.path, true)"
+          @keydown.enter.stop.prevent="() => toggleIsDefaultSource(attributeTree.attributeValue.path, true)"
           @keydown.tab.stop.prevent="onDefaultSubTab"
         >
           <input
@@ -105,9 +77,7 @@
             data-default-sub-checkbox="input"
             type="checkbox"
             :checked="attributeTree.attributeValue.isDefaultSource"
-            @click.stop.prevent="
-              () => toggleIsDefaultSource(attributeTree.attributeValue.path)
-            "
+            @click.stop.prevent="() => toggleIsDefaultSource(attributeTree.attributeValue.path)"
           />
           <div>Make this the default subscription for new components</div>
         </label>
@@ -125,19 +95,12 @@
     :validation="attributeTree.attributeValue.validation"
     :component="component"
     :externalSources="attributeTree.attributeValue.externalSources"
-    :value="
-      interstitialSpinner
-        ? 'subscribing...'
-        : attributeTree.secret?.name?.toString() ?? ''
-    "
+    :value="interstitialSpinner ? 'subscribing...' : attributeTree.secret?.name?.toString() ?? ''"
     :canDelete="false"
     :disableInputWindow="attributeTree.prop?.isOriginSecret"
     isSecret
     @selected="openSecretForm"
-    @save="
-      (path, value, _kind, connectingComponentId) =>
-        save(path, value, connectingComponentId)
-    "
+    @save="(path, value, _kind, connectingComponentId) => save(path, value, connectingComponentId)"
     @remove-subscription="removeSubscription"
   />
 </template>
@@ -147,10 +110,7 @@ import { computed, nextTick, ref } from "vue";
 import { NewButton, themeClasses } from "@si/vue-lib/design-system";
 import { useRoute } from "vue-router";
 import clsx from "clsx";
-import {
-  BifrostComponent,
-  ComponentInList,
-} from "@/workers/types/entity_kind_types";
+import { BifrostComponent, ComponentInList } from "@/workers/types/entity_kind_types";
 import { encryptMessage } from "@/utils/messageEncryption";
 import { AttributePath, ComponentId } from "@/api/sdf/dal/component";
 import AttributeChildLayout from "./AttributeChildLayout.vue";
@@ -169,16 +129,11 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
-  (
-    e: "setDefaultSubscriptionSource",
-    path: AttributePath,
-    setTo: boolean,
-  ): void;
+  (e: "setDefaultSubscriptionSource", path: AttributePath, setTo: boolean): void;
 }>();
 
 const displayName = computed(() => {
-  if (props.attributeTree.attributeValue.key)
-    return props.attributeTree.attributeValue.key;
+  if (props.attributeTree.attributeValue.key) return props.attributeTree.attributeValue.key;
   else return props.attributeTree.prop?.name || "XXX";
 });
 
@@ -188,10 +143,7 @@ const isFieldRequired = (fieldname: string): boolean => {
 };
 
 const secretFormData = computed(() => {
-  if (
-    props.attributeTree.prop?.isOriginSecret &&
-    props.attributeTree.prop?.secretDefinition
-  ) {
+  if (props.attributeTree.prop?.isOriginSecret && props.attributeTree.prop?.secretDefinition) {
     const form = props.attributeTree.prop.secretDefinition.formData
       .flatMap((row) => row.name)
       .reduce((obj, name) => {
@@ -207,10 +159,7 @@ const secretFormData = computed(() => {
 });
 
 const secretFieldWidgetKinds = computed(() => {
-  if (
-    props.attributeTree.prop?.isOriginSecret &&
-    props.attributeTree.prop?.secretDefinition
-  ) {
+  if (props.attributeTree.prop?.isOriginSecret && props.attributeTree.prop?.secretDefinition) {
     return props.attributeTree.prop.secretDefinition.formData.reduce(
       (obj, field) => {
         obj[field.name] = field.widgetKind;
@@ -225,15 +174,8 @@ const secretFieldWidgetKinds = computed(() => {
 });
 
 const saveApi = useApi();
-const save = async (
-  path: AttributePath,
-  value: string,
-  connectingComponentId?: ComponentId,
-) => {
-  const call = saveApi.endpoint<{ success: boolean }>(
-    routes.UpdateComponentAttributes,
-    { id: props.component.id },
-  );
+const save = async (path: AttributePath, value: string, connectingComponentId?: ComponentId) => {
+  const call = saveApi.endpoint<{ success: boolean }>(routes.UpdateComponentAttributes, { id: props.component.id });
   const payload: componentTypes.UpdateComponentAttributesArgs = {};
   payload[path] = value;
   if (connectingComponentId) {
@@ -241,8 +183,7 @@ const save = async (
       $source: { component: connectingComponentId, path: value },
     };
   }
-  const { req, newChangeSetId } =
-    await call.put<componentTypes.UpdateComponentAttributesArgs>(payload);
+  const { req, newChangeSetId } = await call.put<componentTypes.UpdateComponentAttributesArgs>(payload);
   if (saveApi.ok(req) && newChangeSetId) {
     saveApi.navigateToNewChangeSet(
       {
@@ -260,18 +201,16 @@ const save = async (
 
 const removeSubscriptionApi = useApi();
 const removeSubscription = async (path: AttributePath) => {
-  const call = removeSubscriptionApi.endpoint<{ success: boolean }>(
-    routes.UpdateComponentAttributes,
-    { id: props.component.id },
-  );
+  const call = removeSubscriptionApi.endpoint<{ success: boolean }>(routes.UpdateComponentAttributes, {
+    id: props.component.id,
+  });
 
   const payload: componentTypes.UpdateComponentAttributesArgs = {};
   payload[path] = {
     $source: null,
   };
 
-  const { req, newChangeSetId } =
-    await call.put<componentTypes.UpdateComponentAttributesArgs>(payload);
+  const { req, newChangeSetId } = await call.put<componentTypes.UpdateComponentAttributesArgs>(payload);
   if (removeSubscriptionApi.ok(req) && newChangeSetId) {
     removeSubscriptionApi.navigateToNewChangeSet(
       {
@@ -292,9 +231,7 @@ const route = useRoute();
 const secretApi = useApi();
 const keyApi = useApi();
 
-const wForm = useWatchedForm<Record<string, string>>(
-  `component.av.secret.${props.attributeTree.prop?.id}`,
-);
+const wForm = useWatchedForm<Record<string, string>>(`component.av.secret.${props.attributeTree.prop?.id}`);
 const secretForm = wForm.newForm({
   data: secretFormData,
   onSubmit: async ({ value }) => {
@@ -303,16 +240,11 @@ const secretForm = wForm.newForm({
     if (!definition) throw new Error("Secret Definition Required");
     if (!propId) throw new Error("Secret Definition Prop Id required");
 
-    const callApi = keyApi.endpoint<componentTypes.PublicKey>(
-      routes.GetPublicKey,
-      { id: props.component.id },
-    );
+    const callApi = keyApi.endpoint<componentTypes.PublicKey>(routes.GetPublicKey, { id: props.component.id });
     const resp = await callApi.get();
     const publicKey = resp.data;
 
-    const filteredValue = Object.fromEntries(
-      Object.entries(value).filter(([_key, val]) => val !== ""),
-    );
+    const filteredValue = Object.fromEntries(Object.entries(value).filter(([_key, val]) => val !== ""));
 
     const name = filteredValue.Name ?? "";
     delete filteredValue.Name;
@@ -337,8 +269,7 @@ const secretForm = wForm.newForm({
     const newSecret = secretApi.endpoint<{ id: string }>(routes.CreateSecret, {
       id: props.component.id,
     });
-    const { req, newChangeSetId } =
-      await newSecret.post<componentTypes.CreateSecret>(payload);
+    const { req, newChangeSetId } = await newSecret.post<componentTypes.CreateSecret>(payload);
     if (secretApi.ok(req) && newChangeSetId) {
       secretApi.navigateToNewChangeSet(
         {
@@ -438,9 +369,7 @@ const defaultSubCheckboxRef = ref<HTMLInputElement>();
 const toggleIsDefaultSource = (path: AttributePath, flipped?: boolean) => {
   if (!defaultSubCheckboxRef.value) return;
 
-  const checked = flipped
-    ? !defaultSubCheckboxRef.value.checked
-    : defaultSubCheckboxRef.value.checked;
+  const checked = flipped ? !defaultSubCheckboxRef.value.checked : defaultSubCheckboxRef.value.checked;
   emit("setDefaultSubscriptionSource", path, checked);
 };
 

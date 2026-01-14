@@ -68,34 +68,29 @@ const componentNameFilter = ref<string>("");
 
 const api = useApi();
 
-const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } =
-  useInfiniteQuery({
-    queryKey: [ctx.changeSetId, "paginatedFuncRuns"],
-    queryFn: async ({
-      pageParam = undefined,
-    }): Promise<funcRunTypes.GetFuncRunsPaginatedResponse> => {
-      const call = api.endpoint<funcRunTypes.GetFuncRunsPaginatedResponse>(
-        routes.GetFuncRunsPaginated,
-      );
-      const params = new URLSearchParams();
-      params.append("limit", pageSize.value.toString());
-      if (pageParam) {
-        params.append("cursor", pageParam);
-      }
-      const req = await call.get(params);
-      if (api.ok(req)) {
-        return req.data;
-      }
-      return {
-        funcRuns: [],
-        nextCursor: null,
-      };
-    },
-    initialPageParam: undefined,
-    getNextPageParam: (lastPage: funcRunTypes.GetFuncRunsPaginatedResponse) => {
-      return lastPage.nextCursor ?? undefined;
-    },
-  });
+const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } = useInfiniteQuery({
+  queryKey: [ctx.changeSetId, "paginatedFuncRuns"],
+  queryFn: async ({ pageParam = undefined }): Promise<funcRunTypes.GetFuncRunsPaginatedResponse> => {
+    const call = api.endpoint<funcRunTypes.GetFuncRunsPaginatedResponse>(routes.GetFuncRunsPaginated);
+    const params = new URLSearchParams();
+    params.append("limit", pageSize.value.toString());
+    if (pageParam) {
+      params.append("cursor", pageParam);
+    }
+    const req = await call.get(params);
+    if (api.ok(req)) {
+      return req.data;
+    }
+    return {
+      funcRuns: [],
+      nextCursor: null,
+    };
+  },
+  initialPageParam: undefined,
+  getNextPageParam: (lastPage: funcRunTypes.GetFuncRunsPaginatedResponse) => {
+    return lastPage.nextCursor ?? undefined;
+  },
+});
 
 // Flatten the pages of function runs for display
 const allFuncRuns = computed<FuncRun[]>(() => {
@@ -121,6 +116,7 @@ const funcRuns = computed<FuncRun[]>(() => {
   // Filter by function kind if selected
   if (selectedFuncKind.value) {
     filtered = filtered.filter(
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-enum-comparison
       (funcRun) => funcRun.functionKind === selectedFuncKind.value,
     );
   }
@@ -138,9 +134,7 @@ const funcRuns = computed<FuncRun[]>(() => {
 
 // Check if any filters are active
 const hasActiveFilters = computed(() => {
-  return (
-    selectedFuncKind.value !== "" || componentNameFilter.value.trim() !== ""
-  );
+  return selectedFuncKind.value !== "" || componentNameFilter.value.trim() !== "";
 });
 
 // Reset all filters

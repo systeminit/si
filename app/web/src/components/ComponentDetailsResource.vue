@@ -4,23 +4,14 @@
     <template v-else-if="resourceReqStatus.isError">
       <ErrorMessage :requestStatus="resourceReqStatus" />
     </template>
-    <template
-      v-else-if="resourceReqStatus.isSuccess && selectedComponentResource"
-    >
+    <template v-else-if="resourceReqStatus.isSuccess && selectedComponentResource">
       <CodeViewer
         v-if="selectedComponentResource.payload !== null"
-        :code="
-          selectedComponentResource.payload
-            ? JSON.stringify(selectedComponentResource.payload, null, 2)
-            : ''
-        "
+        :code="selectedComponentResource.payload ? JSON.stringify(selectedComponentResource.payload, null, 2) : ''"
         class="dark:text-neutral-50 text-neutral-900 pt-4"
       >
         <template #title>
-          <StatusIndicatorIcon
-            type="resource"
-            :status="selectedComponentResource.status"
-          />
+          <StatusIndicatorIcon type="resource" :status="selectedComponentResource.status" />
           <div class="pl-sm grow overflow-hidden">
             <div class="font-bold line-clamp-2 break-all">
               {{
@@ -29,25 +20,15 @@
                   : `Health ${selectedComponentResource.status}`
               }}
             </div>
-            <div
-              v-if="selectedComponentResource.lastSynced"
-              class="text-xs italic truncate"
-            >
+            <div v-if="selectedComponentResource.lastSynced" class="text-xs italic truncate">
               Last synced:
-              <Timestamp
-                :date="new Date(selectedComponentResource.lastSynced)"
-                size="long"
-              />
+              <Timestamp :date="new Date(selectedComponentResource.lastSynced)" size="long" />
             </div>
           </div>
           <div class="pr-sm">
             <ActionRunnerDetails
               :health="selectedComponentResource.status"
-              :message="
-                [selectedComponentResource.message ?? ''].filter(
-                  (f) => f.length > 0,
-                )
-              "
+              :message="[selectedComponentResource.message ?? ''].filter((f) => f.length > 0)"
             />
           </div>
         </template>
@@ -76,19 +57,12 @@ import EmptyStateIcon from "./EmptyStateIcon.vue";
 const changeSetsStore = useChangeSetsStore();
 const viewStore = useViewsStore();
 const componentsStore = useComponentsStore();
-const selectedComponentId = computed(
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-  () => viewStore.selectedComponentId!,
-);
+const selectedComponentId = computed(() => viewStore.selectedComponentId!);
 
-const resourceReqStatus = componentsStore.getRequestStatus(
-  "FETCH_COMPONENT_RESOURCE",
-  selectedComponentId,
-);
+const resourceReqStatus = componentsStore.getRequestStatus("FETCH_COMPONENT_RESOURCE", selectedComponentId);
 
 const selectedComponentResource = computed(
-  () =>
-    componentsStore.componentResourceById[viewStore.selectedComponentId || ""],
+  () => componentsStore.componentResourceById[viewStore.selectedComponentId || ""],
 );
 
 watch(

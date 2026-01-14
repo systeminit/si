@@ -1,8 +1,5 @@
 <template>
-  <div
-    v-if="root && component && attributeTree && component.hasResource"
-    class="p-xs flex flex-col gap-xs"
-  >
+  <div v-if="root && component && attributeTree && component.hasResource" class="p-xs flex flex-col gap-xs">
     <div>
       <SiSearch
         ref="searchRef"
@@ -13,18 +10,9 @@
         @keydown.tab="onSearchInputTab"
       />
     </div>
-    <div
-      v-if="'children' in filtered.tree && filtered.tree.children.length > 0"
-    >
+    <div v-if="'children' in filtered.tree && filtered.tree.children.length > 0">
       <!-- this is _really_ a type guard for "i am not an empty object" -->
-      <ul
-        :class="
-          clsx(
-            'border-l border-r border-t',
-            themeClasses('border-neutral-300', 'border-neutral-800'),
-          )
-        "
-      >
+      <ul :class="clsx('border-l border-r border-t', themeClasses('border-neutral-300', 'border-neutral-800'))">
         <ComponentAttribute
           v-for="child in filtered.tree.children"
           :key="child.id"
@@ -33,14 +21,7 @@
           forceReadOnly
         />
       </ul>
-      <div
-        :class="
-          clsx(
-            'w-full border-b',
-            themeClasses('border-neutral-300', 'border-neutral-800'),
-          )
-        "
-      />
+      <div :class="clsx('w-full border-b', themeClasses('border-neutral-300', 'border-neutral-800'))" />
     </div>
   </div>
   <EmptyState
@@ -52,24 +33,12 @@
 </template>
 
 <script lang="ts" setup>
-import {
-  computed,
-  onBeforeUnmount,
-  onMounted,
-  provide,
-  reactive,
-  ref,
-  watch,
-} from "vue";
+import { computed, onBeforeUnmount, onMounted, provide, reactive, ref, watch } from "vue";
 import { Fzf } from "fzf";
 import { themeClasses, SiSearch } from "@si/vue-lib/design-system";
 import clsx from "clsx";
 import * as _ from "lodash-es";
-import {
-  AttributeTree,
-  AttributeValue,
-  BifrostComponent,
-} from "@/workers/types/entity_kind_types";
+import { AttributeTree, AttributeValue, BifrostComponent } from "@/workers/types/entity_kind_types";
 import ComponentAttribute from "./layout_components/ComponentAttribute.vue";
 import { keyEmitter } from "./logic_composables/emitters";
 import { AttrTree, makeAvTree } from "./logic_composables/attribute_tree";
@@ -109,7 +78,6 @@ const root = computed<AttrTree>(() => {
 
   // find the root node in the tree, the only one with parent null
   const rootId = Object.keys(raw.treeInfo).find((avId) => {
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const av = raw.treeInfo[avId]!;
     if (!av.parent) return true;
     return false;
@@ -120,9 +88,7 @@ const root = computed<AttrTree>(() => {
   return tree;
 });
 
-const resourceValue = computed(() =>
-  root.value?.children.find((c) => c.prop?.name === "resource_value"),
-);
+const resourceValue = computed(() => root.value?.children.find((c) => c.prop?.name === "resource_value"));
 
 const filtered = reactive<{ tree: AttrTree | object }>({
   tree: {},
@@ -155,8 +121,7 @@ watch(
 
     const fzf = new Fzf(Object.values(map), {
       casing: "case-insensitive",
-      selector: (p) =>
-        `${p.id} ${p.prop?.name} ${p.prop?.path} ${p.attributeValue.key} ${p.attributeValue.value}`,
+      selector: (p) => `${p.id} ${p.prop?.name} ${p.prop?.path} ${p.attributeValue.key} ${p.attributeValue.value}`,
     });
 
     const results = fzf.find(q.value);
@@ -191,10 +156,8 @@ watch(
         if (p) {
           if (prevPid) {
             const lastParent = matchesAsTree[prevPid];
-            if (lastParent && !p.children.some((c) => c.id === lastParent.id))
-              p.children.push(lastParent);
-          } else if (!p.children.some((c) => c.id === attr.id))
-            p.children.push(attr);
+            if (lastParent && !p.children.some((c) => c.id === lastParent.id)) p.children.push(lastParent);
+          } else if (!p.children.some((c) => c.id === attr.id)) p.children.push(attr);
 
           matchesAsTree[p.id] = p;
 

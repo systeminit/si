@@ -17,20 +17,14 @@
       :class="
         clsx(
           'flex flex-row items-center gap-xs',
-          kind === 'error' &&
-            themeClasses('text-destructive-600', 'text-destructive-200'),
+          kind === 'error' && themeClasses('text-destructive-600', 'text-destructive-200'),
         )
       "
     >
       <Icon
         v-if="iconName"
         :name="iconName"
-        :class="
-          clsx(
-            kind === 'success' &&
-              themeClasses('text-success-500', 'text-success-200'),
-          )
-        "
+        :class="clsx(kind === 'success' && themeClasses('text-success-500', 'text-success-200'))"
         size="xs"
       />
 
@@ -38,10 +32,7 @@
         {{ text }}
       </TruncateWithTooltip>
 
-      <TruncateWithTooltip
-        v-if="description"
-        class="text-sm italic text-neutral-500"
-      >
+      <TruncateWithTooltip v-if="description" class="text-sm italic text-neutral-500">
         {{ description }}
       </TruncateWithTooltip>
 
@@ -54,12 +45,7 @@
     <!-- Second row for a subtitle in neutral text -->
     <div
       v-if="showSubtitle && subtitle"
-      :class="
-        clsx(
-          'flex flex-row items-center mt-xs text-sm',
-          themeClasses('text-neutral-700', 'text-neutral-400'),
-        )
-      "
+      :class="clsx('flex flex-row items-center mt-xs text-sm', themeClasses('text-neutral-700', 'text-neutral-400'))"
     >
       <span>{{ subtitle }}</span>
     </div>
@@ -67,11 +53,7 @@
 </template>
 
 <script lang="ts" setup>
-import {
-  Icon,
-  themeClasses,
-  TruncateWithTooltip,
-} from "@si/vue-lib/design-system";
+import { Icon, themeClasses, TruncateWithTooltip } from "@si/vue-lib/design-system";
 import clsx from "clsx";
 import { computed } from "vue";
 

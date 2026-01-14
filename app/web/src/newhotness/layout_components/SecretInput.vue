@@ -17,16 +17,10 @@
         clsx(
           'block w-full ml-auto text-sm font-mono',
           'border-transparent focus:outline-none focus:border-transparent focus:ring-0 focus:z-10',
-          themeClasses(
-            'text-black bg-white disabled:bg-neutral-100',
-            'text-white bg-black disabled:bg-neutral-900',
-          ),
+          themeClasses('text-black bg-white disabled:bg-neutral-100', 'text-white bg-black disabled:bg-neutral-900'),
           field.state.meta.errors.length > 0 && 'border-destructive-500 z-100',
           isTextArea ? 'min-h-[36px]' : 'h-lg',
-          isTextArea &&
-            isSecretField &&
-            !secretShowing &&
-            'secret-masked-textarea',
+          isTextArea && isSecretField && !secretShowing && 'secret-masked-textarea',
         )
       "
       :type="isTextArea ? null : getCurrentFormFieldType(fieldname)"
@@ -92,17 +86,11 @@ const isTextArea = computed(() => {
 
   if (props.widgetKind) {
     // Handle string widget kind
-    if (
-      typeof props.widgetKind === "string" &&
-      props.widgetKind === "textArea"
-    ) {
+    if (typeof props.widgetKind === "string" && props.widgetKind === "textArea") {
       return true;
     }
     // Handle object widget kind (legacy format)
-    if (
-      typeof props.widgetKind === "object" &&
-      "textArea" in props.widgetKind
-    ) {
+    if (typeof props.widgetKind === "object" && "textArea" in props.widgetKind) {
       return true;
     }
   }
@@ -137,9 +125,7 @@ const getCurrentFormFieldType = (fieldname: string) => {
 const inputRef = ref<HTMLInputElement>();
 const onTab = (e: KeyboardEvent) => {
   // This allows the user to Tab or Shift+Tab to go through the attribute fields
-  const focusable = Array.from(
-    document.querySelectorAll('[tabindex="0"]'),
-  ) as HTMLElement[];
+  const focusable = Array.from(document.querySelectorAll<HTMLElement>('[tabindex="0"]'));
   const currentFocus = inputRef.value;
   if (!currentFocus) return;
   const index = focusable.indexOf(currentFocus);

@@ -11,26 +11,17 @@
     <div
       :class="
         clsx(
-          changeStatus === 'added' &&
-            themeClasses('text-success-500', 'text-success-400'),
+          changeStatus === 'added' && themeClasses('text-success-500', 'text-success-400'),
           'flex flex-row gap-2xs items-center',
         )
       "
     >
-      <StatusIndicatorIcon
-        type="change"
-        status="added"
-        size="xs"
-        class="shrink-0"
-        tone="inherit"
-      />
+      <StatusIndicatorIcon type="change" status="added" size="xs" class="shrink-0" tone="inherit" />
       <div v-if="created" class="grow truncate">
         Created {{ formatters.timeAgo(created.timestamp) }} by
         {{ created.actor.label }}
       </div>
-      <div v-else-if="changeStatus === 'added'">
-        Created in this change set.
-      </div>
+      <div v-else-if="changeStatus === 'added'">Created in this change set.</div>
       <div v-else>Created in a previous change set.</div>
     </div>
     <div
@@ -39,20 +30,9 @@
         (changeStatus === 'modified' || changeStatus === 'unmodified') &&
         created?.timestamp !== modified?.timestamp
       "
-      :class="
-        clsx(
-          changeStatus === 'modified' && 'text-warning-500',
-          'flex flex-row gap-2xs items-center',
-        )
-      "
+      :class="clsx(changeStatus === 'modified' && 'text-warning-500', 'flex flex-row gap-2xs items-center')"
     >
-      <StatusIndicatorIcon
-        type="change"
-        status="modified"
-        size="xs"
-        class="shrink-0"
-        tone="inherit"
-      />
+      <StatusIndicatorIcon type="change" status="modified" size="xs" class="shrink-0" tone="inherit" />
       <div v-if="modified" class="grow truncate">
         Modified {{ formatters.timeAgo(modified?.timestamp) }} by
         {{ modified?.actor.label }}
@@ -62,13 +42,7 @@
       v-if="changeStatus === 'deleted'"
       class="flex flex-row gap-2xs items-center text-destructive-500 dark:text-destructive-600"
     >
-      <StatusIndicatorIcon
-        type="change"
-        status="deleted"
-        size="xs"
-        class="shrink-0"
-        tone="inherit"
-      />
+      <StatusIndicatorIcon type="change" status="deleted" size="xs" class="shrink-0" tone="inherit" />
       <div v-if="deleted" class="grow truncate">
         Deleted {{ formatters.timeAgo(deleted?.timestamp) }} by
         {{ deleted?.actor.label }}

@@ -1,10 +1,6 @@
 import { useRoute } from "vue-router";
 import { ComponentId } from "@/api/sdf/dal/component";
-import {
-  ComponentInList,
-  BifrostComponent,
-  ComponentDiffStatus,
-} from "@/workers/types/entity_kind_types";
+import { ComponentInList, BifrostComponent, ComponentDiffStatus } from "@/workers/types/entity_kind_types";
 import { useApi, routes } from "../api_composables";
 import { DeleteMode } from "../DeleteModal.vue";
 
@@ -15,17 +11,12 @@ export function useComponentDeletion(viewId?: string, skipNavigation = false) {
   const deleteEraseFromViewApi = useApi();
   const restoreApi = useApi();
 
-  const convertBifrostToComponentInList = (
-    component: BifrostComponent,
-  ): ComponentInList => {
+  const convertBifrostToComponentInList = (component: BifrostComponent): ComponentInList => {
     // Convert resourceDiff to diffStatus
     let diffStatus: ComponentDiffStatus;
     if (component.resourceDiff?.diff) {
       diffStatus = "Modified";
-    } else if (
-      component.resourceDiff?.current &&
-      !component.resourceDiff?.diff
-    ) {
+    } else if (component.resourceDiff?.current && !component.resourceDiff?.diff) {
       diffStatus = "Added";
     } else {
       diffStatus = "None";
@@ -50,10 +41,7 @@ export function useComponentDeletion(viewId?: string, skipNavigation = false) {
     };
   };
 
-  const deleteComponents = async (
-    componentIds: ComponentId[],
-    mode: DeleteMode,
-  ) => {
+  const deleteComponents = async (componentIds: ComponentId[], mode: DeleteMode) => {
     if (mode === DeleteMode.Delete) {
       const call = deleteApi.endpoint(routes.DeleteComponents);
       const { req, newChangeSetId } = await call.delete({

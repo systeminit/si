@@ -2,13 +2,9 @@
   <AppLayout pageMode="scroll">
     <meta name="robots" content="noindex" />
     <DebugNavbar />
-    <div
-      class="flex flex-col pt-sm pb-lg gap-sm items-center justify-center border-t border-white"
-    >
+    <div class="flex flex-col pt-sm pb-lg gap-sm items-center justify-center border-t border-white">
       <div class="w-full px-lg text-xl text-left">Main Icon Set</div>
-      <div
-        class="w-full flex flex-row flex-wrap gap-sm px-lg pb-lg justify-start"
-      >
+      <div class="w-full flex flex-row flex-wrap gap-sm px-lg pb-lg justify-start">
         <Icon
           v-for="(_, name) in ICONS"
           :key="name"
@@ -28,9 +24,7 @@
       </div>
 
       <div class="w-full px-lg text-xl text-left">Logo Icons</div>
-      <div
-        class="w-full flex flex-row flex-wrap gap-sm px-lg pb-lg justify-start"
-      >
+      <div class="w-full flex flex-row flex-wrap gap-sm px-lg pb-lg justify-start">
         <Icon
           v-for="(_, name) in LOGO_ICONS"
           :key="name"
@@ -44,12 +38,7 @@
       <div
         v-for="num in Array(6).keys()"
         :key="num"
-        :class="
-          clsx(
-            'w-full flex flex-row gap-sm flex-wrap px-lg justify-start h-8',
-            num === 5 && 'mb-lg',
-          )
-        "
+        :class="clsx('w-full flex flex-row gap-sm flex-wrap px-lg justify-start h-8', num === 5 && 'mb-lg')"
       >
         <template v-for="variant in buttonVariants" :key="variant">
           <NewButton
@@ -65,28 +54,16 @@
         </template>
       </div>
 
-      <div class="w-full px-lg text-xl text-left">
-        Empty State Icons (OLD UI)
-      </div>
+      <div class="w-full px-lg text-xl text-left">Empty State Icons (OLD UI)</div>
       <div class="w-full flex flex-row flex-wrap px-lg pb-lg justify-start">
         <div v-for="(_, name) in BIG_ICONS" :key="name" class="basis-1/4">
-          <EmptyStateIcon
-            v-tooltip="name"
-            :name="name"
-            class="w-full cursor-pointer"
-          />
+          <EmptyStateIcon v-tooltip="name" :name="name" class="w-full cursor-pointer" />
         </div>
       </div>
 
       <div class="w-full px-lg text-xl text-left">Other SVGs</div>
-      <div
-        class="w-full flex flex-row flex-wrap px-lg pb-lg justify-start gap-sm items-center"
-      >
-        <NodeSkeleton
-          v-tooltip="'NodeSkeleton'"
-          color="#ff00ff"
-          class="cursor-pointer"
-        />
+      <div class="w-full flex flex-row flex-wrap px-lg pb-lg justify-start gap-sm items-center">
+        <NodeSkeleton v-tooltip="'NodeSkeleton'" color="#ff00ff" class="cursor-pointer" />
         <SiLogo v-tooltip="'SiLogo'" class="cursor-pointer h-xl w-xl" />
         <CheechSvg
           v-tooltip="'CheechSvg'"
@@ -96,9 +73,7 @@
 
       <div class="w-full px-lg text-xl text-left">Semantic Sizes Reference</div>
       <div class="flex flex-col w-full gap-2xs">
-        <div
-          class="px-lg w-full flex flex-row justify-between font-bold gap-sm"
-        >
+        <div class="px-lg w-full flex flex-row justify-between font-bold gap-sm">
           <div class="basis-1/6 text-center">3xs: 0.125rem / 2px</div>
           <div class="basis-1/6 text-center">2xs: 0.25rem / 4px</div>
           <div class="basis-1/6 text-center">xs: 0.5rem / 8px</div>
@@ -109,9 +84,7 @@
           <div class="basis-1/6 text-center">2xl: 6rem / 96px</div>
           <div class="basis-1/6 text-center">3xl: 8rem / 128px</div>
         </div>
-        <div
-          class="w-full flex flex-row px-lg justify-between gap-sm items-center"
-        >
+        <div class="w-full flex flex-row px-lg justify-between gap-sm items-center">
           <div class="basis-[12.5%] flex flex-row items-start justify-center">
             <div class="w-3xs h-3xs bg-action-500"></div>
           </div>
@@ -141,65 +114,45 @@
           </div>
         </div>
         <div class="px-lg w-full flex flex-row justify-between gap-sm">
-          <div
-            class="basis-[12.5%] text-center flex flex-col items-center justify-center"
-          >
+          <div class="basis-[12.5%] text-center flex flex-col items-center justify-center">
             <div class="text-3xs">3xs text</div>
             <div class="text-md">0.5rem / 8px</div>
           </div>
-          <div
-            class="basis-[12.5%] text-center flex flex-col items-center justify-center"
-          >
+          <div class="basis-[12.5%] text-center flex flex-col items-center justify-center">
             <div class="text-2xs">2xs text</div>
             <div class="text-md">0.6rem / 9.6px</div>
           </div>
-          <div
-            class="basis-[12.5%] text-center flex flex-col items-center justify-center"
-          >
+          <div class="basis-[12.5%] text-center flex flex-col items-center justify-center">
             <div class="text-xs">xs text</div>
             <div class="text-md">0.75rem / 12px</div>
           </div>
-          <div
-            class="basis-[12.5%] text-center flex flex-col items-center justify-center"
-          >
+          <div class="basis-[12.5%] text-center flex flex-col items-center justify-center">
             <div class="text-sm">sm text</div>
             <div class="text-md">0.875rem / 14px</div>
           </div>
-          <div
-            class="basis-[12.5%] text-center flex flex-col items-center justify-center"
-          >
+          <div class="basis-[12.5%] text-center flex flex-col items-center justify-center">
             <div class="text-md">md text</div>
             <div class="text-md">1rem / 16px</div>
           </div>
-          <div
-            class="basis-[12.5%] text-center flex flex-col items-center justify-center"
-          >
+          <div class="basis-[12.5%] text-center flex flex-col items-center justify-center">
             <div class="text-lg">lg text</div>
             <div class="text-md">1.125rem / 18px</div>
           </div>
-          <div
-            class="basis-[12.5%] text-center flex flex-col items-center justify-center"
-          >
+          <div class="basis-[12.5%] text-center flex flex-col items-center justify-center">
             <div class="text-xl">xl text</div>
             <div class="text-md">1.25rem / 20px</div>
           </div>
-          <div
-            class="basis-[12.5%] text-center flex flex-col items-center justify-center"
-          >
+          <div class="basis-[12.5%] text-center flex flex-col items-center justify-center">
             <div class="text-2xl">2xl text</div>
             <div class="text-md">1.5rem / 24px</div>
           </div>
-          <div
-            class="basis-[12.5%] text-center flex flex-col items-center justify-center"
-          >
+          <div class="basis-[12.5%] text-center flex flex-col items-center justify-center">
             <div class="text-3xl">3xl text</div>
             <div class="text-md">1.875rem / 30px</div>
           </div>
         </div>
       </div>
-      <div class="w-full px-lg text-xl text-left">
-        Semantic Colors Reference
-      </div>
+      <div class="w-full px-lg text-xl text-left">Semantic Colors Reference</div>
       <div class="flex flex-col w-full">
         <div class="w-full flex flex-row px-lg">
           <div
@@ -214,17 +167,10 @@
             <div>shade-100</div>
             <div>#000000</div>
           </div>
-          <div
-            v-for="i in 8"
-            :key="i"
-            class="flex-grow aspect-square basis-0"
-          ></div>
+          <div v-for="i in 8" :key="i" class="flex-grow aspect-square basis-0"></div>
         </div>
         <template v-for="color in ColorNamesArray" :key="color">
-          <div
-            v-if="color !== 'shade'"
-            class="flex flex-row px-lg w-full justify-start items-center"
-          >
+          <div v-if="color !== 'shade'" class="flex flex-row px-lg w-full justify-start items-center">
             <div
               v-for="i in 10"
               :key="i"
@@ -270,20 +216,9 @@ import AppLayout from "@/components/layout/AppLayout.vue";
 import DebugNavbar from "@/components/DebugNavbar.vue";
 import NodeSkeleton from "@/components/NodeSkeleton.vue";
 
-type ColorNumber =
-  | "50"
-  | "100"
-  | "200"
-  | "300"
-  | "400"
-  | "500"
-  | "600"
-  | "700"
-  | "800"
-  | "900";
+type ColorNumber = "50" | "100" | "200" | "300" | "400" | "500" | "600" | "700" | "800" | "900";
 
-const indexToColorNumber = (i: number) =>
-  (i === 1 ? 50 : (i - 1) * 100).toString() as ColorNumber;
+const indexToColorNumber = (i: number) => (i === 1 ? 50 : (i - 1) * 100).toString() as ColorNumber;
 
 const buttonVariants = computed(() => [...BUTTON_TONES, "disabled"]);
 

@@ -7,10 +7,7 @@
           :class="
             clsx(
               'rounded min-w-[128px] h-8 skeleton-shimmer',
-              themeClasses(
-                'bg-neutral-200 border border-neutral-400',
-                'bg-neutral-700 border border-neutral-600',
-              ),
+              themeClasses('bg-neutral-200 border border-neutral-400', 'bg-neutral-700 border border-neutral-600'),
             )
           "
         ></div>
@@ -20,10 +17,7 @@
           :class="
             clsx(
               'rounded grow h-8 skeleton-shimmer flex items-center px-2 gap-2',
-              themeClasses(
-                'bg-neutral-200 border border-neutral-400',
-                'bg-neutral-700 border border-neutral-600',
-              ),
+              themeClasses('bg-neutral-200 border border-neutral-400', 'bg-neutral-700 border border-neutral-600'),
             )
           "
         ></div>
@@ -35,10 +29,7 @@
             :class="
               clsx(
                 'px-3 py-1 rounded h-8 skeleton-shimmer min-w-[128px]',
-                themeClasses(
-                  'bg-neutral-200 border border-neutral-400',
-                  'bg-neutral-700 border border-neutral-600',
-                ),
+                themeClasses('bg-neutral-200 border border-neutral-400', 'bg-neutral-700 border border-neutral-600'),
               )
             "
           ></div>
@@ -50,10 +41,7 @@
             :class="
               clsx(
                 'rounded min-w-[100px] h-8 skeleton-shimmer',
-                themeClasses(
-                  'bg-neutral-200 border border-neutral-400',
-                  'bg-neutral-700 border border-neutral-600',
-                ),
+                themeClasses('bg-neutral-200 border border-neutral-400', 'bg-neutral-700 border border-neutral-600'),
               )
             "
           ></div>
@@ -63,10 +51,7 @@
             :class="
               clsx(
                 'rounded min-w-[100px] h-8 skeleton-shimmer',
-                themeClasses(
-                  'bg-neutral-200 border border-neutral-400',
-                  'bg-neutral-700 border border-neutral-600',
-                ),
+                themeClasses('bg-neutral-200 border border-neutral-400', 'bg-neutral-700 border border-neutral-600'),
               )
             "
           ></div>

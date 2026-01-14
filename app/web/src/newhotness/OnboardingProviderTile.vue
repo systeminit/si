@@ -84,10 +84,7 @@ const betaClasses = computed(() =>
       ? tw`absolute top-xs left-xs`
       : tw`order-last ml-auto`,
     tw`border text-xs`,
-    themeClasses(
-      tw`border-action-300 bg-action-100`,
-      tw`border-action-500 bg-action-900`,
-    ),
+    themeClasses(tw`border-action-300 bg-action-100`, tw`border-action-500 bg-action-900`),
   ),
 );
 

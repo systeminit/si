@@ -4,13 +4,8 @@
     :class="
       clsx(
         'group/funcruncard relative p-xs border border-transparent cursor-pointer transition-all duration-200',
-        themeClasses(
-          'hover:border-action-500 border-b-neutral-300',
-          'hover:border-action-300 border-b-neutral-800',
-        ),
-        isRunning
-          ? 'border-l-4 border-l-action-500 pl-xs animate-[pulse_2s_infinite]'
-          : 'border-l-1',
+        themeClasses('hover:border-action-500 border-b-neutral-300', 'hover:border-action-300 border-b-neutral-800'),
+        isRunning ? 'border-l-4 border-l-action-500 pl-xs animate-[pulse_2s_infinite]' : 'border-l-1',
       )
     "
     @click="$emit('click', funcRun.id)"
@@ -32,10 +27,7 @@
             :class="
               clsx(
                 'text-sm font-medium',
-                themeClasses(
-                  'group-hover/funcruncard:text-action-500',
-                  'group-hover/funcruncard:text-action-300',
-                ),
+                themeClasses('group-hover/funcruncard:text-action-500', 'group-hover/funcruncard:text-action-300'),
               )
             "
             :title="funcRun.functionDisplayName || funcRun.functionName"
@@ -44,10 +36,7 @@
               :class="
                 clsx(
                   'text-xs',
-                  themeClasses(
-                    'group-hover/funcruncard:text-action-500',
-                    'group-hover/funcruncard:text-action-300',
-                  ),
+                  themeClasses('group-hover/funcruncard:text-action-500', 'group-hover/funcruncard:text-action-300'),
                 )
               "
             >
@@ -69,17 +58,12 @@
           </span>
 
           <div class="flex-1 min-w-0">
-            <TruncateWithTooltip
-              v-if="funcRun.componentId && funcRun.componentName"
-            >
+            <TruncateWithTooltip v-if="funcRun.componentId && funcRun.componentName">
               {{ funcRun.componentName }}
             </TruncateWithTooltip>
           </div>
 
-          <span
-            v-if="funcRun.actionId"
-            class="flex flex-row items-center text-action-400"
-          >
+          <span v-if="funcRun.actionId" class="flex flex-row items-center text-action-400">
             <Icon name="bolt" size="xs" />
             Action
           </span>
@@ -92,11 +76,7 @@
 <script lang="ts" setup>
 import clsx from "clsx";
 import { computed } from "vue";
-import {
-  Icon,
-  themeClasses,
-  TruncateWithTooltip,
-} from "@si/vue-lib/design-system";
+import { Icon, themeClasses, TruncateWithTooltip } from "@si/vue-lib/design-system";
 import StatusIndicatorIcon from "@/components/StatusIndicatorIcon.vue";
 import { funcRunStatus, FuncRun } from "./api_composables/func_run";
 import { useManagementFuncJobState } from "./logic_composables/management";
@@ -111,18 +91,14 @@ defineEmits<{
 
 const funcRun = computed(() => props.funcRun);
 const managementFuncJobStateComposable = useManagementFuncJobState(funcRun);
-const managementFuncJobState = computed(
-  () => managementFuncJobStateComposable.value.value,
-);
+const managementFuncJobState = computed(() => managementFuncJobStateComposable.value.value);
 
 /**
  * Determines if the function is currently in a running state
  * @returns {boolean} True if function is in a running state
  */
 const isRunning = computed(() => {
-  return ["Created", "Dispatched", "Running", "Postprocessing"].includes(
-    props.funcRun.state,
-  );
+  return ["Created", "Dispatched", "Running", "Postprocessing"].includes(props.funcRun.state);
 });
 
 /**
@@ -176,8 +152,6 @@ const functionKindClass = (kind: string): string => {
     codeGeneration: "bg-violet-900 text-violet-300",
   };
 
-  return (
-    classes[kind as keyof typeof classes] || "bg-neutral-800 text-neutral-300"
-  );
+  return classes[kind as keyof typeof classes] || "bg-neutral-800 text-neutral-300";
 };
 </script>

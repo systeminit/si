@@ -15,12 +15,7 @@
         tooltipPlacement="top"
         icon="x"
         tone="empty"
-        :class="
-          clsx(
-            'active:bg-white active:text-black',
-            themeClasses('hover:bg-neutral-200', 'hover:bg-neutral-600'),
-          )
-        "
+        :class="clsx('active:bg-white active:text-black', themeClasses('hover:bg-neutral-200', 'hover:bg-neutral-600'))"
         @click="() => emit('close')"
       />
       <div class="flex-none text-sm">Edit selected components</div>
@@ -33,21 +28,14 @@
             'scrollable min-h-0',
             'w-1/4 flex-none flex flex-col gap-xs border p-sm',
             themeClasses('border-neutral-300', 'border-neutral-600'),
-            themeClasses(
-              'bg-shade-0 border-neutral-400',
-              'bg-neutral-800 border-neutral-600',
-            ),
+            themeClasses('bg-shade-0 border-neutral-400', 'bg-neutral-800 border-neutral-600'),
           )
         "
       >
-        <li class="text-sm mb-2xs text-neutral-400">
-          Components selected for editing
-        </li>
+        <li class="text-sm mb-2xs text-neutral-400">Components selected for editing</li>
         <!-- i took these styles and html nesting from connection panel, we should create a component that does this -->
         <li
-          v-for="[idx, component] in Object.entries(
-            exploreContext.selectedComponentsMap.value,
-          )"
+          v-for="[idx, component] in Object.entries(exploreContext.selectedComponentsMap.value)"
           :key="component.id"
           :class="clsx('ml-xs', 'flex flex-col gap-2xs')"
         >
@@ -55,29 +43,15 @@
             :class="
               clsx(
                 'flex flex-row items-center gap-xs [&>*]:text-sm [&>*]:font-bold',
-                themeClasses(
-                  '[&>*]:border-neutral-400',
-                  '[&>*]:border-neutral-600',
-                ),
+                themeClasses('[&>*]:border-neutral-400', '[&>*]:border-neutral-600'),
               )
             "
           >
             <input type="checkbox" checked @click="() => deselect(idx)" />
-            <MinimizedComponentQualificationStatus
-              :component="component"
-              noText
-            />
+            <MinimizedComponentQualificationStatus :component="component" noText />
             <TextPill
               mono
-              :class="
-                clsx(
-                  'min-w-0',
-                  themeClasses(
-                    'text-newhotness-greenlight',
-                    'text-newhotness-greendark',
-                  ),
-                )
-              "
+              :class="clsx('min-w-0', themeClasses('text-newhotness-greenlight', 'text-newhotness-greendark'))"
             >
               <TruncateWithTooltip>
                 {{ component.schemaVariantName }}
@@ -85,15 +59,7 @@
             </TextPill>
             <TextPill
               mono
-              :class="
-                clsx(
-                  'min-w-0',
-                  themeClasses(
-                    'text-newhotness-purplelight',
-                    'text-newhotness-purpledark',
-                  ),
-                )
-              "
+              :class="clsx('min-w-0', themeClasses('text-newhotness-purplelight', 'text-newhotness-purpledark'))"
             >
               <TruncateWithTooltip>
                 {{ component.name }}
@@ -115,17 +81,7 @@
               "
             >
               <p class="text-sm">{{ path }}</p>
-              <p
-                :class="
-                  clsx(
-                    'text-xs',
-                    themeClasses(
-                      'text-destructive-900',
-                      'text-destructive-300',
-                    ),
-                  )
-                "
-              >
+              <p :class="clsx('text-xs', themeClasses('text-destructive-900', 'text-destructive-300'))">
                 {{ err }}
               </p>
             </div>
@@ -133,10 +89,7 @@
         </li>
       </ul>
       <DelayedLoader v-if="treesPending" :size="'full'" />
-      <div
-        v-else-if="commonTree.domain || commonTree.secrets"
-        class="grow min-h-0 my-2xs"
-      >
+      <div v-else-if="commonTree.domain || commonTree.secrets" class="grow min-h-0 my-2xs">
         <!-- styles taken from CollapsingFlexItem -->
         <div
           :class="
@@ -146,10 +99,7 @@
               'border overflow-hidden mb-[-1px]', // basis-0 makes items take equal size when multiple are open
               '[&>dl]:m-xs', // pad the child attributes
               themeClasses('border-neutral-300', 'border-neutral-600'),
-              themeClasses(
-                'bg-shade-0 border-neutral-400',
-                'bg-neutral-800 border-neutral-600',
-              ),
+              themeClasses('bg-shade-0 border-neutral-400', 'bg-neutral-800 border-neutral-600'),
             )
           "
         >
@@ -179,9 +129,7 @@
               @delete="remove"
             />
           </AttributeChildLayout>
-          <AttributeChildLayout
-            v-if="commonTree.secrets && commonTree.secrets.children.length > 0"
-          >
+          <AttributeChildLayout v-if="commonTree.secrets && commonTree.secrets.children.length > 0">
             <template #header><span class="text-sm">secrets</span></template>
             <ComponentSecretAttribute
               v-for="secret in commonTree.secrets.children"
@@ -190,9 +138,7 @@
               :attributeTree="secret"
             />
           </AttributeChildLayout>
-          <p v-else class="italic text-center mt-md">
-            The selected components do not share any common attributes.
-          </p>
+          <p v-else class="italic text-center mt-md">The selected components do not share any common attributes.</p>
         </div>
       </div>
       <div
@@ -202,10 +148,7 @@
             'scrollable min-h-0',
             'w-1/5 flex-none flex flex-col gap-xs scrollable border',
             themeClasses('border-neutral-300', 'border-neutral-600'),
-            themeClasses(
-              'bg-shade-0 border-neutral-400',
-              'bg-neutral-800 border-neutral-600',
-            ),
+            themeClasses('bg-shade-0 border-neutral-400', 'bg-neutral-800 border-neutral-600'),
           )
         "
       >
@@ -219,16 +162,11 @@
             )
           "
         >
-          <template v-if="selectedPathName">
-            {{ selectedPathName }} values
-          </template>
+          <template v-if="selectedPathName"> {{ selectedPathName }} values </template>
         </h3>
         <div class="m-sm flex flex-col gap-xs">
           <template v-if="historyValueData">
-            <template
-              v-for="[valueKey, desc] in Object.entries(historyValueData)"
-              :key="valueKey"
-            >
+            <template v-for="[valueKey, desc] in Object.entries(historyValueData)" :key="valueKey">
               <AttributeValueBox>
                 <template #components>
                   <AttrComponentList :components="desc.components" />
@@ -244,10 +182,7 @@
             </template>
           </template>
           <template v-if="pathValueData">
-            <template
-              v-for="[valueKey, desc] in Object.entries(pathValueData)"
-              :key="valueKey"
-            >
+            <template v-for="[valueKey, desc] in Object.entries(pathValueData)" :key="valueKey">
               <AttributeValueBox>
                 <template #components>
                   <AttrComponentList :components="desc.components" />
@@ -270,36 +205,13 @@
 <script lang="ts" setup>
 import clsx from "clsx";
 import { useQueries } from "@tanstack/vue-query";
-import {
-  computed,
-  inject,
-  onBeforeUnmount,
-  onMounted,
-  provide,
-  reactive,
-  ref,
-  watch,
-} from "vue";
-import {
-  themeClasses,
-  TruncateWithTooltip,
-  TextPill,
-  NewButton,
-} from "@si/vue-lib/design-system";
+import { computed, inject, onBeforeUnmount, onMounted, provide, reactive, ref, watch } from "vue";
+import { themeClasses, TruncateWithTooltip, TextPill, NewButton } from "@si/vue-lib/design-system";
 import { bifrost, useMakeArgs, useMakeKey } from "@/store/realtime/heimdall";
-import {
-  AttributeTree,
-  ComponentInList,
-  EntityKind,
-} from "@/workers/types/entity_kind_types";
-import {
-  attributeEmitter,
-  keyEmitter,
-} from "@/newhotness/logic_composables/emitters";
+import { AttributeTree, ComponentInList, EntityKind } from "@/workers/types/entity_kind_types";
+import { attributeEmitter, keyEmitter } from "@/newhotness/logic_composables/emitters";
 import { nonNullable } from "@/utils/typescriptLinter";
-import ComponentAttribute, {
-  NewChildValue,
-} from "@/newhotness/layout_components/ComponentAttribute.vue";
+import ComponentAttribute, { NewChildValue } from "@/newhotness/layout_components/ComponentAttribute.vue";
 import ComponentSecretAttribute from "@/newhotness/layout_components/ComponentSecretAttribute.vue";
 import AttrValue from "@/newhotness/layout_components/AttrValue.vue";
 import AttributeValueBox from "@/newhotness/layout_components/AttributeValueBox.vue";
@@ -307,28 +219,12 @@ import AttributeChildLayout from "@/newhotness/layout_components/AttributeChildL
 import DelayedLoader from "@/newhotness/layout_components/DelayedLoader.vue";
 import { AttributePath, ComponentId } from "@/api/sdf/dal/component";
 import { PropKind } from "@/api/sdf/dal/prop";
-import {
-  arrayAttrTreeIntoTree,
-  AttrTree,
-  makeAvTree,
-  makeSavePayload,
-} from "../logic_composables/attribute_tree";
-import {
-  componentTypes,
-  DoResponse,
-  ok,
-  routes,
-  UseApi,
-  useApi,
-} from "../api_composables";
+import { arrayAttrTreeIntoTree, AttrTree, makeAvTree, makeSavePayload } from "../logic_composables/attribute_tree";
+import { componentTypes, DoResponse, ok, routes, UseApi, useApi } from "../api_composables";
 import { useContext } from "../logic_composables/context";
 import MinimizedComponentQualificationStatus from "../MinimizedComponentQualificationStatus.vue";
 import AttrComponentList from "../layout_components/AttrComponentList.vue";
-import {
-  assertIsDefined,
-  AttributeInputContext,
-  ExploreContext,
-} from "../types";
+import { assertIsDefined, AttributeInputContext, ExploreContext } from "../types";
 import { AttributeErrors } from "../AttributePanel.vue";
 import { escapeJsonPointerSegment } from "../util";
 
@@ -341,13 +237,10 @@ const deselect = (index: number) => {
 };
 
 const componentMap = computed(() =>
-  Object.values(exploreContext.selectedComponentsMap.value).reduce(
-    (obj, component) => {
-      obj[component.id] = component;
-      return obj;
-    },
-    {} as Record<string, ComponentInList>,
-  ),
+  Object.values(exploreContext.selectedComponentsMap.value).reduce((obj, component) => {
+    obj[component.id] = component;
+    return obj;
+  }, {} as Record<string, ComponentInList>),
 );
 const componentIds = computed(() => Object.keys(componentMap.value));
 
@@ -359,8 +252,7 @@ const queries = computed(() =>
   componentIds.value.map((id) => {
     return {
       queryKey: makeKey(EntityKind.AttributeTree, id),
-      queryFn: async () =>
-        await bifrost<AttributeTree>(makeArgs(EntityKind.AttributeTree, id)),
+      queryFn: async () => await bifrost<AttributeTree>(makeArgs(EntityKind.AttributeTree, id)),
     };
   }),
 );
@@ -368,9 +260,7 @@ const avTrees = useQueries({
   queries,
 });
 
-const treesPending = computed(() =>
-  avTrees.value.some((t) => t.status === "pending"),
-);
+const treesPending = computed(() => avTrees.value.some((t) => t.status === "pending"));
 
 // now turn them all into the AttrTree type, starting at domain
 type Trees = Array<{
@@ -386,7 +276,6 @@ const trees = computed<Trees>(() => {
     .filter(nonNullable)
     .map((t) => {
       const rootId = Object.keys(t.treeInfo).find((avId) => {
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
         const av = t.treeInfo[avId]!;
         if (!av.parent) return true;
         return false;
@@ -418,12 +307,8 @@ const upsertError = (id: ComponentId, path: AttributePath, error?: string) => {
   else delete paths[path];
 };
 
-const history = reactive<Record<AttributePath, PathValueData>>(
-  {} as Record<AttributePath, PathValueData>,
-);
-const showHistory = reactive<Record<AttributePath, boolean>>(
-  {} as Record<AttributePath, boolean>,
-);
+const history = reactive<Record<AttributePath, PathValueData>>({} as Record<AttributePath, PathValueData>);
+const showHistory = reactive<Record<AttributePath, boolean>>({} as Record<AttributePath, boolean>);
 
 provide<AttributeInputContext>("ATTRIBUTEINPUT", { blankInput: true });
 
@@ -468,8 +353,7 @@ const onlyOnceStop = watch(
 
       const av = child.attributeValue;
       const source = (av.externalSources || [])[0];
-      const v =
-        typeof av.value === "object" ? JSON.stringify(av.value) : av.value;
+      const v = typeof av.value === "object" ? JSON.stringify(av.value) : av.value;
       const valKey: ValueKey = `${source?.componentName}|${source?.path}|${v}`;
       let vals = history[av.path];
       if (!vals) {
@@ -484,7 +368,7 @@ const onlyOnceStop = watch(
         } as ComponentsWithValue;
         vals[valKey] = data;
       }
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+
       data.components.push(names[child.componentId]!);
 
       children.push(...child.children);
@@ -545,12 +429,8 @@ const commonTree = computed<{
 
   const matchesAsTree = arrayAttrTreeIntoTree(matches, map);
 
-  const domain = Object.values(matchesAsTree).find(
-    (t) => t.prop?.name === "domain",
-  );
-  const secrets = Object.values(matchesAsTree).find(
-    (t) => t.prop?.name === "secrets",
-  );
+  const domain = Object.values(matchesAsTree).find((t) => t.prop?.name === "domain");
+  const secrets = Object.values(matchesAsTree).find((t) => t.prop?.name === "secrets");
   return {
     domain: matchesAsTree[domain?.id || ""],
     secrets: matchesAsTree[secrets?.id || ""],
@@ -570,20 +450,14 @@ type SuccessResp = { success: boolean };
 const createCalls = () =>
   componentIds.value.map((componentId) => {
     const saveApi = useApi<ApiArgs>(ctx);
-    const call = saveApi.endpoint<SuccessResp>(
-      routes.UpdateComponentAttributes,
-      { id: componentId },
-    );
+    const call = saveApi.endpoint<SuccessResp>(routes.UpdateComponentAttributes, { id: componentId });
     return call;
   });
 
 const createPayload = (path: AttributePath, vals: ApiVal) =>
   makeSavePayload(path, vals.value, vals.propKind, vals.connectingComponentId);
 
-const handleErrors = (
-  path: AttributePath,
-  resps: Array<DoResponse<SuccessResp, ApiArgs>>,
-): void => {
+const handleErrors = (path: AttributePath, resps: Array<DoResponse<SuccessResp, ApiArgs>>): void => {
   resps.forEach((resp) => {
     let err;
     if (!ok(resp.req)) {
@@ -593,11 +467,7 @@ const handleErrors = (
   });
 };
 
-const add = async (
-  _: UseApi,
-  attributeTree: AttrTree,
-  value: NewChildValue,
-) => {
+const add = async (_: UseApi, attributeTree: AttrTree, value: NewChildValue) => {
   if (ctx.onHead.value) throw new Error("Must be on a change set");
 
   const apis = createCalls();
@@ -616,11 +486,7 @@ const add = async (
   handleErrors(appendPath, resps);
 };
 
-const setKey = async (
-  attributeTree: AttrTree,
-  key: string,
-  value: NewChildValue,
-) => {
+const setKey = async (attributeTree: AttrTree, key: string, value: NewChildValue) => {
   if (ctx.onHead.value) throw new Error("Must be on a change set");
 
   const apis = createCalls();
@@ -628,8 +494,7 @@ const setKey = async (
   // Escape the key according to RFC 6901 (JSON Pointer spec)
   // This ensures special characters like '/' and '~' are properly escaped
   const escapedKey = escapeJsonPointerSegment(key);
-  const appendPath =
-    `${attributeTree.attributeValue.path}/${escapedKey}` as AttributePath;
+  const appendPath = `${attributeTree.attributeValue.path}/${escapedKey}` as AttributePath;
   const calls = apis.map(async (call) => {
     const payload = {
       [appendPath]: value,
@@ -644,12 +509,7 @@ const setKey = async (
   handleErrors(appendPath, resps);
 };
 
-const save = async (
-  path: AttributePath,
-  value: string,
-  propKind: PropKind,
-  connectingComponentId?: ComponentId,
-) => {
+const save = async (path: AttributePath, value: string, propKind: PropKind, connectingComponentId?: ComponentId) => {
   // TODO force change set if on HEAD when starting
   if (ctx.onHead.value) throw new Error("Must be on a change set");
 
@@ -663,9 +523,7 @@ const save = async (
       connectingComponentId,
     });
 
-    return await call.put<componentTypes.UpdateComponentAttributesArgs>(
-      payload,
-    );
+    return await call.put<componentTypes.UpdateComponentAttributesArgs>(payload);
   });
   saving.value = calls.length;
   const resps = await Promise.all(calls);
@@ -741,8 +599,7 @@ const valuesByAvPath = computed(() => {
         }
 
         const source = (av.externalSources || [])[0];
-        const v =
-          typeof av.value === "object" ? JSON.stringify(av.value) : av.value;
+        const v = typeof av.value === "object" ? JSON.stringify(av.value) : av.value;
         const valKey: ValueKey = `${source?.componentName}|${source?.path}|${v}`;
         let components = values[valKey];
         if (!components) {
@@ -772,8 +629,7 @@ attributeEmitter.on("selectedPath", ({ path, name }) => {
   selectedPathPath.value = path;
   const vals = valuesByAvPath.value[path as AttributePath];
   pathValueData.value = vals;
-  if (showHistory[path as AttributePath])
-    historyValueData.value = history[path as AttributePath];
+  if (showHistory[path as AttributePath]) historyValueData.value = history[path as AttributePath];
 });
 
 watch(valuesByAvPath, () => {

@@ -1,9 +1,7 @@
 <template>
   <AppLayout class="font-medium" pageMode="modal">
     <Stack class="max-w-md" spacing="lg">
-      <AuthPageHeader title="Authenticating">
-        Validating your credentials
-      </AuthPageHeader>
+      <AuthPageHeader title="Authenticating"> Validating your credentials </AuthPageHeader>
 
       <Card rounded>
         <RichText>
@@ -15,12 +13,8 @@
             <ErrorMessage :requestStatus="authReqStatus" />
             <a :href="LOGIN_URL">Return to login</a>
           </template>
-          <template v-else-if="authReqStatus.isPending">
-            Checking credentials...
-          </template>
-          <template v-else-if="authReqStatus.isSuccess">
-            Hooray you logged in!
-          </template>
+          <template v-else-if="authReqStatus.isPending"> Checking credentials... </template>
+          <template v-else-if="authReqStatus.isSuccess"> Hooray you logged in! </template>
         </RichText>
       </Card>
     </Stack>
@@ -69,9 +63,7 @@ onMounted(async () => {
 
     const routeName = "new-hotness-workspace";
 
-    const redirectObject = redirectPath
-      ? { path: redirectPath }
-      : { name: routeName, params: { workspacePk } };
+    const redirectObject = redirectPath ? { path: redirectPath } : { name: routeName, params: { workspacePk } };
 
     await router.replace(redirectObject);
   }

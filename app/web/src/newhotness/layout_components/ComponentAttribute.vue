@@ -22,10 +22,7 @@
     @save="(...args) => emit('save', ...args)"
     @handleTab="handleTab"
   />
-  <li
-    v-else-if="!attributeTree.prop?.hidden"
-    :class="clsx('flex flex-col', !showingChildren && 'mb-[-1px]')"
-  >
+  <li v-else-if="!attributeTree.prop?.hidden" :class="clsx('flex flex-col', !showingChildren && 'mb-[-1px]')">
     <template v-if="showingChildren">
       <AttributeChildLayout
         :sticky="
@@ -42,8 +39,7 @@
             :class="
               clsx(
                 'flex flex-row items-center gap-2xs flex-1 min-w-0 justify-between',
-                attributeTree.isBuildable &&
-                  'focus:outline-none group/attributeheader',
+                attributeTree.isBuildable && 'focus:outline-none group/attributeheader',
               )
             "
             @keydown.tab.stop.prevent="onHeaderTab"
@@ -67,39 +63,17 @@
             </TruncateWithTooltip>
 
             <!-- everything else aligned right -->
-            <div
-              class="flex flex-row flex-1 min-w-0 max-w-fit gap-2xs items-center"
-            >
+            <div class="flex flex-row flex-1 min-w-0 max-w-fit gap-2xs items-center">
               <div
                 v-if="attributeTree.attributeValue.externalSources?.length"
                 class="flex flex-row items-center gap-2xs text-xs flex-1 min-w-0"
               >
                 <TruncateWithTooltip class="flex-1 min-w-0 max-w-fit">
-                  <span
-                    :class="
-                      themeClasses('text-neutral-500', 'text-neutral-400')
-                    "
-                  >
-                    Set via subscription to
+                  <span :class="themeClasses('text-neutral-500', 'text-neutral-400')"> Set via subscription to </span>
+                  <span :class="themeClasses('text-newhotness-purplelight', 'text-newhotness-purpledark')">
+                    {{ attributeTree.attributeValue.externalSources[0]?.componentName }}
                   </span>
-                  <span
-                    :class="
-                      themeClasses(
-                        'text-newhotness-purplelight',
-                        'text-newhotness-purpledark',
-                      )
-                    "
-                  >
-                    {{
-                      attributeTree.attributeValue.externalSources[0]
-                        ?.componentName
-                    }}
-                  </span>
-                  <span
-                    :class="
-                      themeClasses('text-neutral-600', 'text-neutral-400')
-                    "
-                  >
+                  <span :class="themeClasses('text-neutral-600', 'text-neutral-400')">
                     {{ attributeTree.attributeValue.externalSources[0]?.path }}
                   </span>
                 </TruncateWithTooltip>
@@ -111,10 +85,7 @@
                   :class="
                     clsx(
                       'active:bg-white active:text-black',
-                      themeClasses(
-                        'hover:bg-neutral-200',
-                        'hover:bg-neutral-600',
-                      ),
+                      themeClasses('hover:bg-neutral-200', 'hover:bg-neutral-600'),
                     )
                   "
                   @click="removeSubscription"
@@ -131,20 +102,10 @@
                 "
                 ref="connectButtonRef"
                 tooltip="Create subscription"
-                :tabIndex="
-                  attributeTree.isBuildable && !component.toDelete
-                    ? 0
-                    : undefined
-                "
+                :tabIndex="attributeTree.isBuildable && !component.toDelete ? 0 : undefined"
                 label="Connect"
                 :class="
-                  clsx(
-                    'focus:outline flex-none',
-                    themeClasses(
-                      'focus:outline-action-500',
-                      'focus:outline-action-300',
-                    ),
-                  )
+                  clsx('focus:outline flex-none', themeClasses('focus:outline-action-500', 'focus:outline-action-300'))
                 "
                 @keydown.enter.stop.prevent="createSubscription"
                 @click.stop.prevent="createSubscription"
@@ -161,24 +122,14 @@
                 ref="deleteButtonRef"
                 tooltip="Delete"
                 tooltipPlacement="top"
-                :tabIndex="
-                  attributeTree.isBuildable && !component.toDelete
-                    ? 0
-                    : undefined
-                "
+                :tabIndex="attributeTree.isBuildable && !component.toDelete ? 0 : undefined"
                 icon="trash"
                 tone="destructive"
                 loadingIcon="loader"
                 loadingText=""
                 :loading="bifrostingTrash"
                 :class="
-                  clsx(
-                    'focus:outline flex-none',
-                    themeClasses(
-                      'focus:outline-action-500',
-                      'focus:outline-action-300',
-                    ),
-                  )
+                  clsx('focus:outline flex-none', themeClasses('focus:outline-action-500', 'focus:outline-action-300'))
                 "
                 @click="remove"
                 @keydown.enter.stop.prevent="remove"
@@ -193,13 +144,8 @@
             :key="child.id"
             :component="component"
             :attributeTree="child"
-            :parentHasExternalSources="
-              !!attributeTree.attributeValue.externalSources?.length
-            "
-            :forceReadOnly="
-              props.forceReadOnly ||
-              !!attributeTree.attributeValue.externalSources?.length
-            "
+            :parentHasExternalSources="!!attributeTree.attributeValue.externalSources?.length"
+            :forceReadOnly="props.forceReadOnly || !!attributeTree.attributeValue.externalSources?.length"
             :stickyDepth="(stickyDepth || 0) + 1"
             :isFirstChild="index === 0"
             @save="
@@ -208,21 +154,14 @@
             "
             @delete="(path) => emit('delete', path)"
             @remove-subscription="(path) => emit('removeSubscription', path)"
-            @set-default-subscription-source="
-              (path, setTo) => emit('setDefaultSubscriptionSource', path, setTo)
-            "
+            @set-default-subscription-source="(path, setTo) => emit('setDefaultSubscriptionSource', path, setTo)"
             @add="(...args) => emit('add', ...args)"
             @set-key="(...args) => emit('setKey', ...args)"
             @focused="(path) => focused(path)"
           />
         </ul>
-        <div
-          v-if="isBuildable"
-          class="grid grid-cols-2 items-center gap-2xs relative"
-        >
-          <template
-            v-if="attributeTree.prop?.kind === 'map' && !props.forceReadOnly"
-          >
+        <div v-if="isBuildable" class="grid grid-cols-2 items-center gap-2xs relative">
+          <template v-if="attributeTree.prop?.kind === 'map' && !props.forceReadOnly">
             <keyForm.Field
               name="key"
               :validators="{
@@ -261,15 +200,7 @@
                 <template v-if="field.state.meta.errors.length > 0">
                   <div class="order-3" />
                   <div
-                    :class="
-                      clsx(
-                        'text-sm mb-xs order-4',
-                        themeClasses(
-                          'text-destructive-600',
-                          'text-destructive-200',
-                        ),
-                      )
-                    "
+                    :class="clsx('text-sm mb-xs order-4', themeClasses('text-destructive-600', 'text-destructive-200'))"
                   >
                     {{ field.state.meta.errors[0] }}
                   </div>
@@ -279,10 +210,7 @@
           </template>
           <div class="p-xs">
             <NewButton
-              v-if="
-                !attributeTree.attributeValue.externalSources?.length &&
-                !props.forceReadOnly
-              "
+              v-if="!attributeTree.attributeValue.externalSources?.length && !props.forceReadOnly"
               ref="addButtonRef"
               :loading="addButtonBifrosting"
               :disabled="addButtonBifrosting"
@@ -307,10 +235,7 @@
         :component="component"
         :value="attributeTree.attributeValue.value?.toString() ?? ''"
         :canDelete="
-          attributeTree.isBuildable &&
-          !component.toDelete &&
-          !parentHasExternalSources &&
-          !props.forceReadOnly
+          attributeTree.isBuildable && !component.toDelete && !parentHasExternalSources && !props.forceReadOnly
         "
         :externalSources="attributeTree.attributeValue.externalSources"
         :isArray="attributeTree.prop?.kind === 'array'"
@@ -321,9 +246,7 @@
         @selected="focused"
         @save="(...args) => emit('save', ...args)"
         @delete="(...args) => emit('delete', ...args)"
-        @set-default-subscription-source="
-          (path, setTo) => emit('setDefaultSubscriptionSource', path, setTo)
-        "
+        @set-default-subscription-source="(path, setTo) => emit('setDefaultSubscriptionSource', path, setTo)"
         @remove-subscription="(...args) => emit('removeSubscription', ...args)"
         @add="(...args) => add(...args)"
         @handleTab="handleTab"
@@ -334,25 +257,13 @@
 
 <script setup lang="ts">
 import { computed, nextTick, ref } from "vue";
-import {
-  themeClasses,
-  NewButton,
-  TruncateWithTooltip,
-} from "@si/vue-lib/design-system";
+import { themeClasses, NewButton, TruncateWithTooltip } from "@si/vue-lib/design-system";
 import clsx from "clsx";
 import { useQuery } from "@tanstack/vue-query";
-import {
-  BifrostComponent,
-  ComponentInList,
-  EntityKind,
-} from "@/workers/types/entity_kind_types";
+import { BifrostComponent, ComponentInList, EntityKind } from "@/workers/types/entity_kind_types";
 import { PropKind } from "@/api/sdf/dal/prop";
 import { AttributePath, ComponentId } from "@/api/sdf/dal/component";
-import {
-  getPossibleConnections,
-  useMakeArgs,
-  useMakeKey,
-} from "@/store/realtime/heimdall";
+import { getPossibleConnections, useMakeArgs, useMakeKey } from "@/store/realtime/heimdall";
 import AttributeChildLayout from "./AttributeChildLayout.vue";
 import AttributeInput from "./AttributeInput.vue";
 import { AttrTree } from "../logic_composables/attribute_tree";
@@ -372,9 +283,9 @@ const props = defineProps<{
 const hasChildren = computed(() => {
   if (!props.attributeTree.prop) return false;
   switch (props.attributeTree.prop.kind) {
-    case "array":
-    case "map":
-    case "object":
+    case PropKind.Array:
+    case PropKind.Map:
+    case PropKind.Object:
       return true;
     default:
       return false;
@@ -382,9 +293,7 @@ const hasChildren = computed(() => {
 });
 
 const isBuildable = computed(
-  () =>
-    ["array", "map"].includes(props.attributeTree.prop?.kind ?? "") &&
-    !props.component.toDelete,
+  () => ["array", "map"].includes(props.attributeTree.prop?.kind ?? "") && !props.component.toDelete,
 );
 
 const hasSocketConnections = computed(() => {
@@ -393,8 +302,7 @@ const hasSocketConnections = computed(() => {
 });
 
 const displayName = computed(() => {
-  if (props.attributeTree.attributeValue.key)
-    return props.attributeTree.attributeValue.key;
+  if (props.attributeTree.attributeValue.key) return props.attributeTree.attributeValue.key;
   else return props.attributeTree.prop?.name || "XXX";
 });
 
@@ -403,9 +311,7 @@ const parentHasExternalSources = computed(() => {
 });
 
 const addButtonBifrosting = computed(() => {
-  return props.attributeTree.prop?.kind === "map"
-    ? wForm.bifrosting.value
-    : false;
+  return props.attributeTree.prop?.kind === PropKind.Map ? wForm.bifrosting.value : false;
 });
 
 export type NewChildValue = [] | object | "";
@@ -417,10 +323,10 @@ const emptyChildValue = (): NewChildValue => {
   if (!props.attributeTree.prop) return "";
 
   switch (props.attributeTree.prop.childKind) {
-    case "array":
+    case PropKind.Array:
       return [];
-    case "map":
-    case "object":
+    case PropKind.Map:
+    case PropKind.Object:
       return {};
     default:
       // string, number, boolean, etc.
@@ -428,9 +334,7 @@ const emptyChildValue = (): NewChildValue => {
   }
 };
 
-const wForm = useWatchedForm<{ key: string }>(
-  `component.av.key.${props.attributeTree.prop?.id}`,
-);
+const wForm = useWatchedForm<{ key: string }>(`component.av.key.${props.attributeTree.prop?.id}`);
 const keyData = computed<{ key: string }>(() => {
   return { key: "" };
 });
@@ -463,10 +367,8 @@ const keyValidator = ({ value }: { value: string }) => {
 };
 
 const existingKeys = computed(() => {
-  if (props.attributeTree.prop?.kind === "map") {
-    return props.attributeTree.children.map(
-      (child) => child.attributeValue.key as string,
-    );
+  if (props.attributeTree.prop?.kind === PropKind.Map) {
+    return props.attributeTree.children.map((child) => child.attributeValue.key as string);
   } else {
     return [];
   }
@@ -474,10 +376,7 @@ const existingKeys = computed(() => {
 
 // map (all except the first, see below) and object keys come through this FN
 const saveKeyIfFormValid = async () => {
-  if (
-    keyForm.fieldInfo.key.instance?.state.meta.isDirty &&
-    !keyForm.baseStore.state.isSubmitted
-  ) {
+  if (keyForm.fieldInfo.key.instance?.state.meta.isDirty && !keyForm.baseStore.state.isSubmitted) {
     add(keyForm.state.values.key);
   } else {
     keyForm.validateAllFields("blur");
@@ -487,12 +386,8 @@ const saveKeyIfFormValid = async () => {
 const addApi = useApi();
 const add = (keyName?: string) => {
   // when adding a map key (for the first time), you're doing it from the child, which gives you the key name
-  if (props.attributeTree.prop?.kind === "map") {
-    if (
-      !keyName ||
-      keyName.trim().length === 0 ||
-      existingKeys.value.includes(keyName)
-    ) {
+  if (props.attributeTree.prop?.kind === PropKind.Map) {
+    if (!keyName || keyName.trim().length === 0 || existingKeys.value.includes(keyName)) {
       keyForm.validateAllFields("blur");
       return;
     }
@@ -505,7 +400,7 @@ const add = (keyName?: string) => {
   emit("add", addApi, props.attributeTree, emptyChildValue());
 };
 const onAddButtonClick = () => {
-  if (props.attributeTree.prop?.kind === "map") {
+  if (props.attributeTree.prop?.kind === PropKind.Map) {
     add(keyForm.state.values.key);
   } else {
     add();
@@ -516,10 +411,7 @@ const onAddButtonClick = () => {
 // be removed from the DOM once the update comes over the wire
 const bifrostingTrash = ref(false);
 const remove = () => {
-  if (
-    props.attributeTree.attributeValue.path &&
-    props.attributeTree.isBuildable
-  ) {
+  if (props.attributeTree.attributeValue.path && props.attributeTree.isBuildable) {
     emit("delete", props.attributeTree.attributeValue.path);
     bifrostingTrash.value = true;
   }
@@ -543,9 +435,7 @@ const possibleConnectionsQuery = useQuery({
   queryKey,
   queryFn: async () => {
     if (props.attributeTree.prop) {
-      return await getPossibleConnections(
-        makeArgs(EntityKind.PossibleConnections),
-      );
+      return await getPossibleConnections(makeArgs(EntityKind.PossibleConnections));
     }
     return [];
   },
@@ -578,21 +468,17 @@ const closeSubscriptionInput = () => {
   // Wait a bit for any state updates, then check for new subscriptions
   setTimeout(() => {
     if (props.attributeTree.attributeValue.externalSources?.length) {
-      const externalSource =
-        props.attributeTree.attributeValue.externalSources[0];
+      const externalSource = props.attributeTree.attributeValue.externalSources[0];
       if (externalSource) {
         // Look up the component ID from possible connections using the component name
         let connectingComponentId: ComponentId | undefined;
 
         if (possibleConnectionsQuery.data.value) {
           const matchingConnection = possibleConnectionsQuery.data.value.find(
-            (conn) =>
-              conn.componentName === externalSource.componentName &&
-              conn.path === externalSource.path,
+            (conn) => conn.componentName === externalSource.componentName && conn.path === externalSource.path,
           );
           if (matchingConnection) {
-            connectingComponentId =
-              matchingConnection.componentId as ComponentId;
+            connectingComponentId = matchingConnection.componentId;
           }
         }
 
@@ -609,33 +495,16 @@ const closeSubscriptionInput = () => {
 };
 
 const emit = defineEmits<{
-  (
-    e: "save",
-    path: AttributePath,
-    value: string,
-    propKind: PropKind,
-    connectingComponentId?: ComponentId,
-  ): void;
+  (e: "save", path: AttributePath, value: string, propKind: PropKind, connectingComponentId?: ComponentId): void;
   (e: "delete", path: AttributePath): void;
-  (
-    e: "setDefaultSubscriptionSource",
-    path: AttributePath,
-    setTo: boolean,
-  ): void;
+  (e: "setDefaultSubscriptionSource", path: AttributePath, setTo: boolean): void;
   (e: "removeSubscription", path: AttributePath): void;
   (e: "add", api: UseApi, attributeTree: AttrTree, value: NewChildValue): void;
-  (
-    e: "setKey",
-    attributeTree: AttrTree,
-    key: string,
-    value: NewChildValue,
-  ): void;
+  (e: "setKey", attributeTree: AttrTree, key: string, value: NewChildValue): void;
   (e: "focused", path: string): void;
 }>();
 
-const showingChildren = computed(
-  () => hasChildren.value && props.attributeTree.children.length > 0,
-);
+const showingChildren = computed(() => hasChildren.value && props.attributeTree.children.length > 0);
 
 const headerRef = ref<HTMLDivElement>();
 const addButtonRef = ref<InstanceType<typeof NewButton>>();

@@ -70,41 +70,27 @@ const componentsForSchemaVariantId = computed(() => {
 
 const disableTestButton = computed(
   (): boolean =>
-    !selectedComponentId.value ||
-    !props.readyToTest ||
-    (props.isAttributeFunc && !selectedOutputLocationId.value),
+    !selectedComponentId.value || !props.readyToTest || (props.isAttributeFunc && !selectedOutputLocationId.value),
 );
 
 const outputLocationAttributeOptions = computed(() => {
   let options: GroupedOptions = {};
 
   if (!funcStore.selectedFuncId || !selectedComponentId.value) return options;
-  if (funcStore.selectedFuncSummary?.kind !== FuncKind.Attribute)
-    return options;
+  if (funcStore.selectedFuncSummary?.kind !== FuncKind.Attribute) return options;
 
-  funcStore.attributeBindings[funcStore.selectedFuncSummary.funcId]?.forEach(
-    (binding) => {
-      let schemaVariant;
-      if (
-        binding.schemaVariantId &&
-        binding.schemaVariantId === props.schemaVariantId
-      )
-        schemaVariant = assetStore.variantFromListById[binding.schemaVariantId];
-      if (
-        binding.componentId &&
-        binding.componentId === selectedComponentId.value
-      ) {
-        const schemaVariantId =
-          componentsStore.allComponentsById[binding.componentId]?.def
-            .schemaVariantId;
-        if (schemaVariantId)
-          schemaVariant = assetStore.variantFromListById[schemaVariantId];
-      }
-      if (schemaVariant) {
-        options = outputSocketsAndPropsFor(schemaVariant);
-      }
-    },
-  );
+  funcStore.attributeBindings[funcStore.selectedFuncSummary.funcId]?.forEach((binding) => {
+    let schemaVariant;
+    if (binding.schemaVariantId && binding.schemaVariantId === props.schemaVariantId)
+      schemaVariant = assetStore.variantFromListById[binding.schemaVariantId];
+    if (binding.componentId && binding.componentId === selectedComponentId.value) {
+      const schemaVariantId = componentsStore.allComponentsById[binding.componentId]?.def.schemaVariantId;
+      if (schemaVariantId) schemaVariant = assetStore.variantFromListById[schemaVariantId];
+    }
+    if (schemaVariant) {
+      options = outputSocketsAndPropsFor(schemaVariant);
+    }
+  });
 
   // NOTE(nick): this is a bit cursed, but we need to flatten the results to work with the current
   // state of the func test panel. We will "fix" the label accordingly.
@@ -112,10 +98,7 @@ const outputLocationAttributeOptions = computed(() => {
   for (const [groupLabel, innerOptions] of Object.entries(options)) {
     for (const innerOption of innerOptions) {
       processedOptions.push({
-        label:
-          groupLabel === "Output Sockets"
-            ? innerOption.label
-            : `/${groupLabel}${innerOption.label}`,
+        label: groupLabel === "Output Sockets" ? innerOption.label : `/${groupLabel}${innerOption.label}`,
         value: innerOption.value,
       });
     }

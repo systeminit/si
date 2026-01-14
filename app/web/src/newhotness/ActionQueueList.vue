@@ -18,18 +18,12 @@
   </div>
   <div v-else class="actions list">
     <template v-for="section in actionDisplayLists" :key="section.title">
-      <div
-        v-if="section.actions.length > 0"
-        class="flex flex-col items-stretch gap-xs p-xs"
-      >
+      <div v-if="section.actions.length > 0" class="flex flex-col items-stretch gap-xs p-xs">
         <div
           :class="
             clsx(
               'flex flex-row items-center gap-xs w-full h-8',
-              themeClasses(
-                'text-neutral-600 [&_*]:border-neutral-400',
-                'text-neutral-400 [&_*]:border-neutral-600',
-              ),
+              themeClasses('text-neutral-600 [&_*]:border-neutral-400', 'text-neutral-400 [&_*]:border-neutral-600'),
             )
           "
         >
@@ -37,12 +31,7 @@
             {{ section.title }}
           </div>
           <div class="border-b flex-1 h-0" />
-          <NewButton
-            v-if="section.title === 'Failed'"
-            label="Retry All"
-            icon="restart"
-            @click="retryAll"
-          />
+          <NewButton v-if="section.title === 'Failed'" label="Retry All" icon="restart" @click="retryAll" />
         </div>
         <ActionQueueListItem
           v-for="action in section.actions"
@@ -105,9 +94,7 @@ const actionChildren = computed(() => {
   actions.sort((a, b) => a.dependentOn.length - b.dependentOn.length);
   let action = actions.shift();
 
-  const parentage = new DefaultMap<string, ActionProposedView[]>(
-    () => [] as ActionProposedView[],
-  );
+  const parentage = new DefaultMap<string, ActionProposedView[]>(() => [] as ActionProposedView[]);
   while (action) {
     if (action.dependentOn.length === 0) parentage.get(action.id);
 
@@ -119,11 +106,7 @@ const actionChildren = computed(() => {
       if (myDeps.find((a) => a.id === id)) continue;
 
       const parentA = actionsById.value.get(id);
-      if (
-        parentA &&
-        [ActionState.Running, ActionState.Failed].includes(parentA.state)
-      )
-        continue;
+      if (parentA && [ActionState.Running, ActionState.Failed].includes(parentA.state)) continue;
 
       deps.push(action);
     }
@@ -185,8 +168,7 @@ const actionDisplayLists = computed(() => {
         if (queuedShouldShow(action)) queued.actions.push(action);
         break;
       case ActionState.OnHold:
-        if (!hold.actions.find((a) => deps.includes(a.id)))
-          hold.actions.push(action);
+        if (!hold.actions.find((a) => deps.includes(a.id))) hold.actions.push(action);
         break;
       default:
         break;
@@ -210,9 +192,7 @@ const retryAll = () => {
 };
 
 // Track refs to ActionCard components by action ID
-const actionQueueListItemRefs = ref<
-  Map<string, InstanceType<typeof ActionQueueListItem>>
->(new Map());
+const actionQueueListItemRefs = ref<Map<string, InstanceType<typeof ActionQueueListItem>>>(new Map());
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const setActionQueueListItemRef = (actionId: string, el: any) => {
@@ -233,9 +213,7 @@ watch(
     await nextTick();
 
     // Find all highlighted actions and their positions
-    const highlightedActions = props.actionViewList.filter((action) =>
-      newHighlightedIds.has(action.id),
-    );
+    const highlightedActions = props.actionViewList.filter((action) => newHighlightedIds.has(action.id));
 
     if (highlightedActions.length === 0) return;
 
@@ -258,9 +236,7 @@ watch(
       const lastAction = highlightedActions[highlightedActions.length - 1];
 
       if (firstAction && lastAction) {
-        const firstActionRef = actionQueueListItemRefs.value.get(
-          firstAction.id,
-        );
+        const firstActionRef = actionQueueListItemRefs.value.get(firstAction.id);
         const lastActionRef = actionQueueListItemRefs.value.get(lastAction.id);
 
         if (firstActionRef?.$el && lastActionRef?.$el) {
@@ -277,8 +253,7 @@ watch(
             if (totalHeight <= containerHeight) {
               // All actions can fit in view, scroll to show them all
               const middleY = (firstRect.top + lastRect.bottom) / 2;
-              const containerMiddleY =
-                containerRect.top + containerRect.height / 2;
+              const containerMiddleY = containerRect.top + containerRect.height / 2;
               const scrollOffset = middleY - containerMiddleY;
 
               container.scrollBy({
@@ -290,9 +265,7 @@ watch(
               const middleIndex = Math.floor(highlightedActions.length / 2);
               const middleAction = highlightedActions[middleIndex];
               if (middleAction) {
-                const middleActionRef = actionQueueListItemRefs.value.get(
-                  middleAction.id,
-                );
+                const middleActionRef = actionQueueListItemRefs.value.get(middleAction.id);
                 if (middleActionRef?.$el) {
                   middleActionRef.$el.scrollIntoView({
                     behavior: "smooth",

@@ -1,18 +1,14 @@
 <template>
   <div class="flex flex-row gap-xs items-end flex-1 min-w-[156px] max-w-fit">
     <label class="flex flex-col flex-1 min-w-0 max-w-fit">
-      <div
-        class="text-[11px] mt-[1px] mb-[5px] capsize font-medium text-neutral-300 whitespace-nowrap"
-      >
+      <div class="text-[11px] mt-[1px] mb-[5px] capsize font-medium text-neutral-300 whitespace-nowrap">
         CHANGE SET:
       </div>
       <DropdownMenuButton
         ref="dropdownMenuRef"
         v-model="selectedChangeSetId"
         :options="changeSetSearchFilteredOptions"
-        :search="
-          changeSetDropdownOptions.length > DEFAULT_DROPDOWN_SEARCH_THRESHOLD
-        "
+        :search="changeSetDropdownOptions.length > DEFAULT_DROPDOWN_SEARCH_THRESHOLD"
         placeholder="-- select a change set --"
         checkable
         variant="navbar"
@@ -63,8 +59,7 @@
       data-testid="abandon-change-set-button"
       :disabled="
         !changeSet ||
-        (ctx.headChangeSetId.value &&
-          changeSet.id === ctx.headChangeSetId.value) ||
+        (ctx.headChangeSetId.value && changeSet.id === ctx.headChangeSetId.value) ||
         createApi.inFlight.value ||
         changeSet.status === ChangeSetStatus.NeedsApproval
       "
@@ -79,14 +74,10 @@
         <Stack>
           <p>
             Modeling a configuration or extending SI happens within
-            <b>Change Sets</b>. Think of these like light-weight branches,
-            allowing you to experiment freely without risk of impacting
-            production systems.
+            <b>Change Sets</b>. Think of these like light-weight branches, allowing you to experiment freely without
+            risk of impacting production systems.
           </p>
-          <p>
-            Please give your <b>Change Set</b> a name below, and click the
-            Create button.
-          </p>
+          <p>Please give your <b>Change Set</b> a name below, and click the Create button.</p>
           <VormInput
             v-model="createChangeSetName"
             :regex="CHANGE_SET_NAME_REGEX"
@@ -109,11 +100,7 @@
         </Stack>
       </form>
     </Modal>
-    <AbandonChangeSetModal
-      v-if="changeSet"
-      ref="abandonModalRef"
-      :changeSet="changeSet"
-    />
+    <AbandonChangeSetModal v-if="changeSet" ref="abandonModalRef" :changeSet="changeSet" />
     <ChangesetRenameModal ref="renameModalRef" />
   </div>
 </template>
@@ -165,17 +152,12 @@ const { openChangeSets, changeSet } = useChangeSets(computed(() => ctx));
 // are any of the new CS from me (or my AI agent?)
 const youHaveNewChangeSet = ref(false);
 watch([openChangeSets, ctx.changeSetId], ([newCS, _], [oldCS, _c]) => {
-  const myOld = new Set(
-    oldCS.filter((c) => c.createdByUserId === ctx.user?.pk).map((c) => c.id),
-  );
-  const myNew = new Set(
-    newCS.filter((c) => c.createdByUserId === ctx.user?.pk).map((c) => c.id),
-  );
+  const myOld = new Set(oldCS.filter((c) => c.createdByUserId === ctx.user?.pk).map((c) => c.id));
+  const myNew = new Set(newCS.filter((c) => c.createdByUserId === ctx.user?.pk).map((c) => c.id));
   const diff = [...myNew].filter((id) => !myOld.has(id));
   if (diff.length > 1) youHaveNewChangeSet.value = true;
   else if (diff.length === 0) youHaveNewChangeSet.value = false;
-  else if (diff[0] && diff[0] !== ctx.changeSetId.value)
-    youHaveNewChangeSet.value = true;
+  else if (diff[0] && diff[0] !== ctx.changeSetId.value) youHaveNewChangeSet.value = true;
 });
 
 const clearAnimation = () => {
@@ -213,16 +195,12 @@ const calculateShowSecondaryAction = (option: { label: string }) => {
   return option.label.toUpperCase() !== "HEAD";
 };
 
-const abandonModalRef = ref<InstanceType<typeof AbandonChangeSetModal> | null>(
-  null,
-);
+const abandonModalRef = ref<InstanceType<typeof AbandonChangeSetModal> | null>(null);
 const openAbandonConfirmationModal = () => {
   abandonModalRef.value?.open();
 };
 
-const renameModalRef = ref<InstanceType<typeof ChangesetRenameModal> | null>(
-  null,
-);
+const renameModalRef = ref<InstanceType<typeof ChangesetRenameModal> | null>(null);
 function openRenameModal(option: { value: string; label: string }) {
   renameModalRef.value?.open(option.value, option.label);
 }
@@ -244,6 +222,7 @@ const waitForChangeSetExists = (changeSetId: string): Promise<void> => {
     const interval = setInterval(async () => {
       if (retry >= MAX_RETRIES) {
         clearInterval(interval);
+        // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors
         reject();
       }
 
@@ -266,10 +245,7 @@ async function onSelectChangeSet(newVal: string) {
     // keep everything in the current route except the change set id
     // note - we use push here, so there is a new browser history entry
 
-    if (
-      route.name?.toString().startsWith("new-hotness") &&
-      typeof route.params.workspacePk === "string"
-    ) {
+    if (route.name?.toString().startsWith("new-hotness") && typeof route.params.workspacePk === "string") {
       await waitForChangeSetExists(newVal);
     }
 
@@ -360,13 +336,7 @@ defineExpose({ openCreateModal });
     use a spinning conic-gradient as the border image. It looks like this: https://www.geeksforgeeks.org/css/css-conic-gradient-function/
     But "masked" through the border
   */
-  border-image: conic-gradient(
-      from var(--angle),
-      #333,
-      #333 0.65turn,
-      #86efac 1turn /* success-300 */
-    )
-    1;
+  border-image: conic-gradient(from var(--angle), #333, #333 0.65turn, #86efac 1turn /* success-300 */) 1;
   /*
     Enable the animation. Although the rotation is linear, since it's showing through a rectangular shape,
     both the moving speed and the trail length vary depending on the position. We could fudge the border speed by

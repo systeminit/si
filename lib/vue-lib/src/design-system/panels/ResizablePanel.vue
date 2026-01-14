@@ -339,7 +339,7 @@ function subpanelCollapseSet(collapse: boolean) {
     subpanelOpeningFromCollapse.value = true;
     subpanelOpeningFromCollapseTimeout.value = window.setTimeout(() => {
       subpanelOpeningFromCollapse.value = false;
-    }, PANEL_COLLAPSE_HIDE_CONTENT_TIME) as number;
+    }, PANEL_COLLAPSE_HIDE_CONTENT_TIME);
   }
 }
 function subpanelCollapseToggle() {

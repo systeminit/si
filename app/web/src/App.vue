@@ -9,9 +9,7 @@
         <template
           v-else-if="
             !authStore.userIsLoggedInAndInitialized &&
-            (!restoreAuthReqStatus.isRequested ||
-              restoreAuthReqStatus.isPending ||
-              reconnectAuthReqStatus.isPending)
+            (!restoreAuthReqStatus.isRequested || restoreAuthReqStatus.isPending || reconnectAuthReqStatus.isPending)
           "
         >
           <p>restoring auth...</p>
@@ -28,15 +26,7 @@
 </template>
 
 <script lang="ts" setup>
-import {
-  computed,
-  onBeforeUnmount,
-  onMounted,
-  ref,
-  onErrorCaptured,
-  provide,
-  watch,
-} from "vue";
+import { computed, onBeforeUnmount, onMounted, ref, onErrorCaptured, provide, watch } from "vue";
 import "floating-vue/dist/style.css";
 
 import { tw } from "@si/vue-lib";
@@ -148,8 +138,7 @@ const subscribed = ref(false);
 watch([selectedWorkspace, user], () => {
   const workspaceId = selectedWorkspace.value?.id;
   const userPk = user.value?.pk;
-  if (subscribed.value || workspaceId === undefined || userPk === undefined)
-    return;
+  if (subscribed.value || workspaceId === undefined || userPk === undefined) return;
 
   subscribed.value = true;
   // the authStore does not run the activated hook so we let the App handle its subscriptions.
@@ -210,23 +199,11 @@ watch([selectedWorkspace, user], () => {
 }
 
 .bg-caution-lines-light {
-  background: repeating-linear-gradient(
-    -45deg,
-    #fff,
-    #fff 10px,
-    #ccc 10px,
-    #ccc 20px
-  );
+  background: repeating-linear-gradient(-45deg, #fff, #fff 10px, #ccc 10px, #ccc 20px);
 }
 
 .bg-caution-lines-dark {
-  background: repeating-linear-gradient(
-    -45deg,
-    #000,
-    #000 10px,
-    #333 10px,
-    #333 20px
-  );
+  background: repeating-linear-gradient(-45deg, #000, #000 10px, #333 10px, #333 20px);
 }
 
 @keyframes siToastFadeIn {
@@ -278,9 +255,7 @@ body.light {
   }
 
   .v-popper--theme-html > .v-popper__wrapper > .v-popper__inner,
-  .v-popper--theme-attribute-source-icon
-    > .v-popper__wrapper
-    > .v-popper__inner {
+  .v-popper--theme-attribute-source-icon > .v-popper__wrapper > .v-popper__inner {
     color: #000;
     background-color: #fff;
     border: 1px solid #000;
@@ -298,9 +273,7 @@ body.dark {
   }
 
   .v-popper--theme-html > .v-popper__wrapper > .v-popper__inner,
-  .v-popper--theme-attribute-source-icon
-    > .v-popper__wrapper
-    > .v-popper__inner {
+  .v-popper--theme-attribute-source-icon > .v-popper__wrapper > .v-popper__inner {
     color: #fff;
     background-color: rgb(0, 0, 0);
     border: 1px solid #fff;

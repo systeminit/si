@@ -6,10 +6,7 @@
       leaveActiveClass="duration-100 ease-in"
       leaveToClass="translate-x-[500px]"
     >
-      <div
-        v-if="open"
-        class="absolute w-[500px] h-full left-[-500px] bg-white dark:bg-neutral-800 z-[-10]"
-      >
+      <div v-if="open" class="absolute w-[500px] h-full left-[-500px] bg-white dark:bg-neutral-800 z-[-10]">
         <slot />
       </div>
     </Transition>

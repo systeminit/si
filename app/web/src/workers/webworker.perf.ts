@@ -1,27 +1,12 @@
-/* eslint-disable no-useless-escape */
 import * as Comlink from "comlink";
 import { ulid } from "ulid";
-import {
-  TabDBInterface,
-  BustCacheFn,
-  AtomWithDocument,
-  Gettable,
-  AtomDocument,
-} from "@/workers/types/dbinterface";
+import { TabDBInterface, BustCacheFn, AtomWithDocument, Gettable, AtomDocument } from "@/workers/types/dbinterface";
 import { EntityKind } from "./types/entity_kind_types";
 
 // setup a few things
-const workerUrl =
-  import.meta.env.VITE_SI_ENV === "local"
-    ? "/src/workers/webworker.ts"
-    : "webworker.js";
+const workerUrl = import.meta.env.VITE_SI_ENV === "local" ? "/src/workers/webworker.ts" : "webworker.js";
 
-const bustTanStackCache: BustCacheFn = (
-  _workspaceId: string,
-  _changeSetId: string,
-  _kind: string,
-  _id: string,
-) => {};
+const bustTanStackCache: BustCacheFn = (_workspaceId: string, _changeSetId: string, _kind: string, _id: string) => {};
 
 /**
  * TEST OUTPUT
@@ -1120,21 +1105,14 @@ const small3 = `
     }
 `;
 
-const opts: object[] = [
-  JSON.parse(large),
-  JSON.parse(small),
-  JSON.parse(small2),
-  JSON.parse(small3),
-];
+const opts: object[] = [JSON.parse(large), JSON.parse(small), JSON.parse(small2), JSON.parse(small3)];
 const checksums = await Promise.all(
   opts.map(async (doc) => {
     const encoder = new TextEncoder();
     const buffer = encoder.encode(JSON.stringify(doc));
     const hashBuffer = await window.crypto.subtle.digest("SHA-256", buffer);
     const hashArray = Array.from(new Uint8Array(hashBuffer));
-    const checksum = hashArray
-      .map((b) => b.toString(16).padStart(2, "0"))
-      .join("");
+    const checksum = hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
     return checksum;
   }),
 );
@@ -1159,22 +1137,20 @@ const _makeComponents = async (count: number): Promise<AtomWithDocument[]> => {
     EntityKind.ActionPrototypeViewList,
     EntityKind.AttributeTree,
   ];
-  const atoms = await Promise.all(
-    [...Array(count + 1).keys()].flatMap(() => {
-      const id = ulid();
-      return entities.map(async (kind) => {
-        const [doc, checksum] = await _docData();
+  const atoms = [...Array(count + 1).keys()].flatMap(() => {
+    const id = ulid();
+    return entities.map((kind) => {
+      const [doc, checksum] = _docData();
 
-        const atom: AtomWithDocument = {
-          doc: doc as AtomDocument,
-          kind,
-          id,
-          checksum,
-        };
-        return atom;
-      });
-    }),
-  );
+      const atom: AtomWithDocument = {
+        doc: doc as AtomDocument,
+        kind,
+        id,
+        checksum,
+      };
+      return atom;
+    });
+  });
   return atoms;
 };
 
@@ -1184,12 +1160,7 @@ const sleep = (ms: number) => {
   });
 };
 
-const asyncTimeit = async (
-  fn: () => Promise<void>,
-  count: number,
-  total: number,
-  log: (str: string) => void,
-) => {
+const asyncTimeit = async (fn: () => Promise<void>, count: number, total: number, log: (str: string) => void) => {
   const start = performance.now();
   await fn();
   const end = performance.now();
@@ -1207,11 +1178,7 @@ const _clearSome = async (db: Comlink.Remote<TabDBInterface>) => {
 };
 
 const doIO = true;
-const readAtoms = async (
-  db: Comlink.Remote<TabDBInterface>,
-  atoms: AtomWithDocument[],
-  total: number,
-) => {
+const readAtoms = async (db: Comlink.Remote<TabDBInterface>, atoms: AtomWithDocument[], total: number) => {
   if (atoms.length === 0) {
     reads("none to read");
   }
@@ -1224,12 +1191,7 @@ const readAtoms = async (
       await asyncTimeit(
         async () => {
           if (doIO) {
-            const _mv = await db.get(
-              workspaceId,
-              changeSetId,
-              atom.kind as Gettable,
-              atom.id,
-            );
+            const _mv = await db.get(workspaceId, changeSetId, atom.kind as Gettable, atom.id);
             // console.log("mv size", new TextEncoder().encode(_mv).byteLength);
           } else {
             // no IO
@@ -1349,7 +1311,7 @@ const fullPerfTest = async (db: Comlink.Remote<TabDBInterface>) => {
   for (const n of runs) {
     const atoms = cache.splice(0, n).map((a) => {
       return {
-        ...(a as AtomWithDocument),
+        ...a,
         checksum: `${a.checksum}-different`,
         doc: a.doc,
       };
@@ -1405,11 +1367,7 @@ const fullPerfTest = async (db: Comlink.Remote<TabDBInterface>) => {
 
   // now lets select all the records of a specific kind
   const cnt = runs.reduce((n, c) => n + c);
-  const kinds = [
-    EntityKind.Component,
-    EntityKind.SchemaVariant,
-    EntityKind.AttributeTree,
-  ];
+  const kinds = [EntityKind.Component, EntityKind.SchemaVariant, EntityKind.AttributeTree];
   await Promise.all(
     kinds.map(async (kind) => {
       await asyncTimeit(

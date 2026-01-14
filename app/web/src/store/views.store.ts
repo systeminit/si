@@ -25,13 +25,7 @@ import {
   ElementHoverMeta,
   Size2D,
 } from "@/components/ModelingDiagram/diagram_types";
-import {
-  ComponentId,
-  Edge,
-  EdgeId,
-  RawComponent,
-  ViewNodeGeometry,
-} from "@/api/sdf/dal/component";
+import { ComponentId, Edge, EdgeId, RawComponent, ViewNodeGeometry } from "@/api/sdf/dal/component";
 import {
   GROUP_BOTTOM_INTERNAL_PADDING,
   GROUP_INTERNAL_PADDING,
@@ -44,15 +38,8 @@ import { nonNullable } from "@/utils/typescriptLinter";
 import router from "@/router";
 import handleStoreError from "./errors";
 
-import {
-  diagramUlid as clientUlid,
-  useChangeSetsStore,
-} from "./change_sets.store";
-import {
-  ComponentsAndEdges,
-  processRawComponent,
-  useComponentsStore,
-} from "./components.store";
+import { diagramUlid as clientUlid, useChangeSetsStore } from "./change_sets.store";
+import { ComponentsAndEdges, processRawComponent, useComponentsStore } from "./components.store";
 import { useRealtimeStore } from "./realtime/realtime.store";
 import { useWorkspacesStore } from "./workspaces.store";
 import { useRouterStore } from "./router.store";
@@ -111,10 +98,7 @@ class UniqueStack<T> {
   }
 }
 
-const setSockets = (
-  component: DiagramGroupData | DiagramNodeData,
-  geometry: Vector2d & Partial<Size2D>,
-) => {
+const setSockets = (component: DiagramGroupData | DiagramNodeData, geometry: Vector2d & Partial<Size2D>) => {
   const sockets: Sockets = {};
   const width = geometry.width || NODE_WIDTH;
 
@@ -186,14 +170,7 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
     workspaceId,
   };
 
-  const API_PREFIX = [
-    "v2",
-    "workspaces",
-    { workspaceId },
-    "change-sets",
-    { changeSetId },
-    "views",
-  ] as URLPattern;
+  const API_PREFIX = ["v2", "workspaces", { workspaceId }, "change-sets", { changeSetId }, "views"] as URLPattern;
 
   const APPROVAL_REQUIREMENTS_API_PREFIX = [
     "v2",
@@ -212,15 +189,12 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
         activatedAndFetched: false,
         selectedViewId: null as ViewId | null,
         outlinerViewId: null as ViewId | null,
-        recentViews: new UniqueStack() as UniqueStack<ViewId>,
+        recentViews: new UniqueStack(),
 
         // every views data goes here
         viewsById: {} as Record<ViewId, View>,
         viewList: [] as ViewDescription[],
-        requirementDefinitionsById: {} as Record<
-          ApprovalRequirementDefinitionId,
-          ViewApprovalRequirementDefinition
-        >,
+        requirementDefinitionsById: {} as Record<ApprovalRequirementDefinitionId, ViewApprovalRequirementDefinition>,
 
         /* *
          * these hold the data for everything on the diagram in the SELECTED view
@@ -259,9 +233,7 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
         viewStats() {
           const stats: Record<ViewId, ComponentStats> = {};
           Object.values(this.viewsById).forEach((view) => {
-            const ids = Object.keys(view.components).concat(
-              Object.keys(view.groups),
-            );
+            const ids = Object.keys(view.components).concat(Object.keys(view.groups));
             const stat = {
               components: ids.length,
               failed: 0,
@@ -279,63 +251,38 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
           return stats;
         },
         hoveredComponent(): DiagramNodeData | DiagramGroupData | undefined {
-          return componentsStore.allComponentsById[
-            this.hoveredComponentId || 0
-          ];
+          return componentsStore.allComponentsById[this.hoveredComponentId || 0];
         },
 
         selectedComponentId: (state) => {
-          return state.selectedComponentIds.length === 1
-            ? state.selectedComponentIds[0]
-            : null;
+          return state.selectedComponentIds.length === 1 ? state.selectedComponentIds[0] : null;
         },
         viewListCount: (state) => {
           return state.viewList.length;
         },
-        selectedComponent():
-          | DiagramNodeData
-          | DiagramGroupData
-          | DiagramViewData
-          | undefined {
+        selectedComponent(): DiagramNodeData | DiagramGroupData | DiagramViewData | undefined {
           return (
             componentsStore.allComponentsById[this.selectedComponentId || 0] ??
             this.viewNodes[this.selectedComponentId || 0]
           );
         },
-        selectedComponents(): (
-          | DiagramNodeData
-          | DiagramGroupData
-          | DiagramViewData
-        )[] {
+        selectedComponents(): (DiagramNodeData | DiagramGroupData | DiagramViewData)[] {
           return _.compact(
-            _.map(
-              this.selectedComponentIds,
-              (id) =>
-                componentsStore.allComponentsById[id] ?? this.viewNodes[id],
-            ),
+            _.map(this.selectedComponentIds, (id) => componentsStore.allComponentsById[id] ?? this.viewNodes[id]),
           );
         },
         selectedEdge(): Edge | undefined {
           return componentsStore.rawEdgesById[this.selectedEdgeId || 0];
         },
-        selectedComponentsAndChildren(): (
-          | DiagramNodeData
-          | DiagramGroupData
-          | DiagramViewData
-        )[] {
-          const selectedAndChildren: Record<
-            string,
-            DiagramNodeData | DiagramGroupData | DiagramViewData
-          > = {};
-          Object.values(componentsStore.allComponentsById).forEach(
-            (component) => {
-              this.selectedComponents?.forEach((el) => {
-                if (component.def.ancestorIds?.includes(el.def.id)) {
-                  selectedAndChildren[component.def.id] = component;
-                }
-              });
-            },
-          );
+        selectedComponentsAndChildren(): (DiagramNodeData | DiagramGroupData | DiagramViewData)[] {
+          const selectedAndChildren: Record<string, DiagramNodeData | DiagramGroupData | DiagramViewData> = {};
+          Object.values(componentsStore.allComponentsById).forEach((component) => {
+            this.selectedComponents?.forEach((el) => {
+              if (component.def.ancestorIds?.includes(el.def.id)) {
+                selectedAndChildren[component.def.id] = component;
+              }
+            });
+          });
           this.selectedComponents?.forEach((el) => {
             selectedAndChildren[el.def.id] = el;
           });
@@ -346,11 +293,7 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
         deletableSelectedComponents(): (DiagramNodeData | DiagramGroupData)[] {
           const components: (DiagramNodeData | DiagramGroupData)[] = [];
           this.selectedComponentsAndChildren.forEach((c) => {
-            if (
-              !(c instanceof DiagramViewData) &&
-              "changeStatus" in c.def &&
-              c.def.changeStatus !== "deleted"
-            ) {
+            if (!(c instanceof DiagramViewData) && "changeStatus" in c.def && c.def.changeStatus !== "deleted") {
               components.push(c);
             }
           });
@@ -359,11 +302,7 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
         restorableSelectedComponents(): (DiagramNodeData | DiagramGroupData)[] {
           const components: (DiagramNodeData | DiagramGroupData)[] = [];
           this.selectedComponentsAndChildren.forEach((c) => {
-            if (
-              !(c instanceof DiagramViewData) &&
-              "changeStatus" in c.def &&
-              c.def.changeStatus === "deleted"
-            ) {
+            if (!(c instanceof DiagramViewData) && "changeStatus" in c.def && c.def.changeStatus === "deleted") {
               components.push(c);
             }
           });
@@ -372,11 +311,7 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
         erasableSelectedComponents(): (DiagramNodeData | DiagramGroupData)[] {
           const components: (DiagramNodeData | DiagramGroupData)[] = [];
           this.selectedComponentsAndChildren.forEach((c) => {
-            if (
-              !(c instanceof DiagramViewData) &&
-              "changeStatus" in c.def &&
-              c.def.changeStatus !== "deleted"
-            ) {
+            if (!(c instanceof DiagramViewData) && "changeStatus" in c.def && c.def.changeStatus !== "deleted") {
               components.push(c);
             }
           });
@@ -419,9 +354,7 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
             .filter((e) => {
               const to = e.toNodeKey.substring(2);
               const from = e.fromNodeKey.substring(2);
-              const componentIds = Object.keys(state.components).concat(
-                Object.keys(state.groups),
-              );
+              const componentIds = Object.keys(state.components).concat(Object.keys(state.groups));
               return componentIds.includes(to) && componentIds.includes(from);
             });
 
@@ -447,8 +380,7 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
             let right;
 
             for (const childId of childIds) {
-              const geometry =
-                state.groups[childId] || state.components[childId];
+              const geometry = state.groups[childId] || state.components[childId];
               if (!geometry) continue;
 
               if (!top || geometry.y < top) top = geometry.y;
@@ -463,12 +395,7 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
               if (!bottom || thisBottom > bottom) bottom = thisBottom;
             }
 
-            if (
-              left === undefined ||
-              right === undefined ||
-              top === undefined ||
-              bottom === undefined
-            ) {
+            if (left === undefined || right === undefined || top === undefined || bottom === undefined) {
               continue;
             }
 
@@ -477,11 +404,7 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
               x: left - GROUP_INTERNAL_PADDING,
               y: top - GROUP_INTERNAL_PADDING,
               width: right - left + GROUP_INTERNAL_PADDING * 2,
-              height:
-                bottom -
-                top +
-                GROUP_INTERNAL_PADDING +
-                GROUP_BOTTOM_INTERNAL_PADDING,
+              height: bottom - top + GROUP_INTERNAL_PADDING + GROUP_BOTTOM_INTERNAL_PADDING,
             };
           }
 
@@ -490,9 +413,7 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
 
         requirementDefintionsByViewId: (state) => {
           const out = {} as Record<ViewId, ViewApprovalRequirementDefinition[]>;
-          for (const requirement of Object.values(
-            state.requirementDefinitionsById,
-          )) {
+          for (const requirement of Object.values(state.requirementDefinitionsById)) {
             if (!out[requirement.entityId]) {
               out[requirement.entityId] = [];
             }
@@ -520,9 +441,7 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
         },
       },
       actions: {
-        geoFrom(
-          el: DiagramNodeData | DiagramGroupData | DiagramViewData,
-        ): IRect | undefined {
+        geoFrom(el: DiagramNodeData | DiagramGroupData | DiagramViewData): IRect | undefined {
           let geo: IRect | undefined;
           if (el.def.componentType === ComponentType.View) {
             const v = this.viewNodes[el.def.id];
@@ -535,9 +454,7 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
               };
             }
           } else {
-            geo = el.def.isGroup
-              ? this.groups[el.def.id]
-              : this.components[el.def.id];
+            geo = el.def.isGroup ? this.groups[el.def.id] : this.components[el.def.id];
           }
           return geo;
         },
@@ -583,9 +500,7 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
           }
         },
         syncUrlIntoSelection() {
-          const ids = (
-            (router.currentRoute.value.query?.s as string) || ""
-          ).split("|");
+          const ids = ((router.currentRoute.value.query?.s as string) || "").split("|");
           if (!ids.length) {
             this.selectedComponentIds = [];
             this.selectedEdgeId = null;
@@ -600,8 +515,7 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
             this.selectedViewDetailsId = null;
           }
 
-          const tabSlug =
-            (router.currentRoute.value.query?.t as string) || null;
+          const tabSlug = (router.currentRoute.value.query?.t as string) || null;
           if (this.selectedComponentIds.length === 1) {
             this.selectedComponentDetailsTab = tabSlug;
           } else {
@@ -614,10 +528,7 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
           this.selectedEdgeId = null;
           this.selectedDisplayEdgeId = null;
         },
-        setSelectedEdgeId(
-          selection: EdgeId | null,
-          displayEdgeId?: EdgeId | null,
-        ) {
+        setSelectedEdgeId(selection: EdgeId | null, displayEdgeId?: EdgeId | null) {
           // clear component selection
           this.selectedViewDetailsId = null;
           this.selectedComponentIds = [];
@@ -649,10 +560,7 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
                 !Object.keys(this.viewNodes).includes(id),
             );
             if (opts?.toggle) {
-              this.selectedComponentIds = _.xor(
-                this.selectedComponentIds,
-                validSelectionArray,
-              );
+              this.selectedComponentIds = _.xor(this.selectedComponentIds, validSelectionArray);
             } else {
               this.selectedComponentIds = validSelectionArray;
             }
@@ -684,9 +592,7 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
             ids.push(...Object.keys(v2.components));
             ids.push(...Object.keys(v2.groups));
           }
-          const valid = this.selectedComponentIds.filter((cId) =>
-            ids.includes(cId),
-          );
+          const valid = this.selectedComponentIds.filter((cId) => ids.includes(cId));
           this.selectedComponentIds = valid;
           this.syncSelectionIntoUrl();
         },
@@ -806,34 +712,30 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
                 });
               });
 
-              Object.entries(response.components).forEach(
-                ([componentId, geo]) => {
-                  const node = componentsStore.allComponentsById[componentId];
-                  if (!node) return;
-                  let geometry: IRect;
-                  if ("width" in node) {
-                    geo.width = node.width;
-                    geo.height = node.height;
-                    geometry = { ...(geo as IRect) };
-                    view.components[componentId] = geometry;
-                  } else {
-                    geometry = { ...(geo as IRect) };
-                    if (!geometry.width) geometry.width = 500;
-                    if (!geometry.height) geometry.height = 500;
-                    view.groups[componentId] = {
-                      // this one is actually an IRect
-                      ...geometry,
-                      size: geometry.width * geometry.height,
-                      zIndex: 0,
-                    };
-                  }
-                  for (const [key, loc] of Object.entries(
-                    setSockets(node, geometry),
-                  )) {
-                    view.sockets[key] = loc;
-                  }
-                },
-              );
+              Object.entries(response.components).forEach(([componentId, geo]) => {
+                const node = componentsStore.allComponentsById[componentId];
+                if (!node) return;
+                let geometry: IRect;
+                if ("width" in node) {
+                  geo.width = node.width;
+                  geo.height = node.height;
+                  geometry = { ...(geo as IRect) };
+                  view.components[componentId] = geometry;
+                } else {
+                  geometry = { ...(geo as IRect) };
+                  if (!geometry.width) geometry.width = 500;
+                  if (!geometry.height) geometry.height = 500;
+                  view.groups[componentId] = {
+                    // this one is actually an IRect
+                    ...geometry,
+                    size: geometry.width * geometry.height,
+                    zIndex: 0,
+                  };
+                }
+                for (const [key, loc] of Object.entries(setSockets(node, geometry))) {
+                  view.sockets[key] = loc;
+                }
+              });
               if (this.selectedViewId === view.id) this.viewAssignment(view);
               this.setGroupZIndex();
             },
@@ -897,10 +799,7 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
             onFail: () => {
               // getting the view id from URL can fail if you've moved changesets
               const route = useRouterStore().currentRoute;
-              if (
-                !this.selectedViewId &&
-                route?.name === "workspace-compose-view"
-              ) {
+              if (!this.selectedViewId && route?.name === "workspace-compose-view") {
                 const params = { ...route.params };
                 if ("viewId" in params) delete params.viewId;
                 routerStore.push(changeSetId, {
@@ -959,10 +858,8 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
             if (!component.viewData?.geometry) continue;
             // Note: its actually a Vector2D, but type guarding it so i can set the width and height below
             const geo = { ...component.viewData.geometry } as IRect;
-            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-            const node = componentsStore.allComponentsById[
-              component.id
-            ]! as DiagramNodeData;
+
+            const node = componentsStore.allComponentsById[component.id]! as DiagramNodeData;
             geo.width = node.width;
             geo.height = node.height;
             components[component.id] = geo;
@@ -982,13 +879,9 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
               size: geometry.width * geometry.height,
               zIndex: 0,
             };
-            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-            const node = componentsStore.allComponentsById[
-              group.id
-            ]! as DiagramGroupData;
-            for (const [key, loc] of Object.entries(
-              setSockets(node, geometry),
-            )) {
+
+            const node = componentsStore.allComponentsById[group.id]! as DiagramGroupData;
+            for (const [key, loc] of Object.entries(setSockets(node, geometry))) {
               sockets[key] = loc;
             }
           }
@@ -1023,9 +916,7 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
         ) {
           if (positionDelta.x !== 0 || positionDelta.y !== 0) {
             components.forEach((c) => {
-              const orig = c.def.isGroup
-                ? this.groups[c.def.id]
-                : this.components[c.def.id];
+              const orig = c.def.isGroup ? this.groups[c.def.id] : this.components[c.def.id];
               if (!orig) return;
 
               const newPos = vectorAdd({ ...orig }, positionDelta);
@@ -1033,24 +924,17 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
               orig.y = newPos.y;
 
               if (featureFlagsStore.SIMPLE_SOCKET_UI) {
-                const width = c.def.isGroup
-                  ? this.groups[c.def.id]?.width
-                  : this.components[c.def.id]?.width;
+                const width = c.def.isGroup ? this.groups[c.def.id]?.width : this.components[c.def.id]?.width;
                 if (!width) return;
 
-                const displaySockets = [
-                  ...c.layoutLeftSockets(width).sockets,
-                  ...c.layoutRightSockets(width).sockets,
-                ];
+                const displaySockets = [...c.layoutLeftSockets(width).sockets, ...c.layoutRightSockets(width).sockets];
 
-                new Set(displaySockets.map((s) => s.uniqueKey)).forEach(
-                  (uniqueKey) => {
-                    const geo = this.sockets[uniqueKey];
-                    if (!geo) return;
-                    geo.center.x += positionDelta.x;
-                    geo.center.y += positionDelta.y;
-                  },
-                );
+                new Set(displaySockets.map((s) => s.uniqueKey)).forEach((uniqueKey) => {
+                  const geo = this.sockets[uniqueKey];
+                  if (!geo) return;
+                  geo.center.x += positionDelta.x;
+                  geo.center.y += positionDelta.y;
+                });
               } else {
                 c.sockets.forEach((s) => {
                   const geo = this.sockets[s.uniqueKey];
@@ -1066,9 +950,7 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
           if (opts.broadcastToClients && changeSetsStore.selectedChangeSetId) {
             const payload: Record<ComponentId, IRect> = {};
             components.forEach((c) => {
-              const geo = c.def.isGroup
-                ? this.groups[c.def.id]
-                : this.components[c.def.id];
+              const geo = c.def.isGroup ? this.groups[c.def.id] : this.components[c.def.id];
               if (geo) {
                 if (c.def.isGroup) {
                   if (!geo.width) geo.width = 500;
@@ -1083,14 +965,12 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
               }
             });
             const realtimeStore = useRealtimeStore();
-            const positions = Object.entries(payload).map(
-              ([componentId, geo]) => ({ componentId, ...geo }),
-            );
+            const positions = Object.entries(payload).map(([componentId, geo]) => ({ componentId, ...geo }));
             realtimeStore.sendMessage({
               kind: "ComponentSetPosition",
               data: {
                 positions,
-                // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+
                 viewId: this.selectedViewId!,
                 clientUlid,
                 changeSetId: changeSetsStore.selectedChangeSetId,
@@ -1100,9 +980,7 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
           if (opts.writeToChangeSet) {
             const payload: Record<ComponentId, StringGeometry> = {};
             components.forEach((c) => {
-              const geo = c.def.isGroup
-                ? this.groups[c.def.id]
-                : this.components[c.def.id];
+              const geo = c.def.isGroup ? this.groups[c.def.id] : this.components[c.def.id];
               if (geo) {
                 payload[c.def.id] = {
                   x: Math.round(geo.x).toString(),
@@ -1114,10 +992,7 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
             });
             return new ApiRequest<{ requestUlid: RequestUlid }>({
               method: "put",
-              url: API_PREFIX.concat([
-                { viewId: this.selectedViewId },
-                "component/set_geometry",
-              ]),
+              url: API_PREFIX.concat([{ viewId: this.selectedViewId }, "component/set_geometry"]),
               params: {
                 clientUlid,
                 dataByComponentId: payload,
@@ -1135,22 +1010,16 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
 
                 // are the components that failed currently inflight?
                 // if not, resend their latest data
-                const failed =
-                  this.inflightElementSizes[reqPayload.requestUlid];
+                const failed = this.inflightElementSizes[reqPayload.requestUlid];
                 if (!failed) return;
                 delete this.inflightElementSizes[reqPayload.requestUlid];
-                const all_inflight_components = new Set(
-                  Object.values(this.inflightElementSizes).flat(),
-                );
+                const all_inflight_components = new Set(Object.values(this.inflightElementSizes).flat());
 
-                const maybe_retry: ComponentId[] = (
-                  failed as ComponentId[]
-                ).filter((x) => !all_inflight_components.has(x));
+                const maybe_retry: ComponentId[] = failed.filter((x) => !all_inflight_components.has(x));
 
                 const prevent = new Set();
                 for (const componentId of maybe_retry) {
-                  const cnt =
-                    (this.inflightRetryCounter.get(componentId) || 0) + 1;
+                  const cnt = (this.inflightRetryCounter.get(componentId) || 0) + 1;
                   if (cnt > MAX_RETRIES) prevent.add(componentId);
                   else this.inflightRetryCounter.set(componentId, cnt);
                 }
@@ -1161,16 +1030,9 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
 
                 if (retry.length > 0) {
                   const components = retry
-                    .map(
-                      (componentId) =>
-                        componentsStore.allComponentsById[componentId],
-                    )
+                    .map((componentId) => componentsStore.allComponentsById[componentId])
                     .filter(nonNullable);
-                  this.MOVE_COMPONENTS(
-                    components,
-                    { x: 0, y: 0 },
-                    { writeToChangeSet: true },
-                  );
+                  this.MOVE_COMPONENTS(components, { x: 0, y: 0 }, { writeToChangeSet: true });
                 }
               },
               onSuccess: (response) => {
@@ -1189,10 +1051,7 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
               const v = this.viewNodes[c.def.id];
               if (!v) return;
 
-              const newPos = vectorAdd(
-                { x: v.def.x, y: v.def.y },
-                positionDelta,
-              );
+              const newPos = vectorAdd({ x: v.def.x, y: v.def.y }, positionDelta);
               v.def.x = newPos.x;
               v.def.y = newPos.y;
             });
@@ -1212,14 +1071,12 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
               };
             });
             const realtimeStore = useRealtimeStore();
-            const positions = Object.entries(payload).map(
-              ([componentId, geo]) => ({ componentId, ...geo }),
-            );
+            const positions = Object.entries(payload).map(([componentId, geo]) => ({ componentId, ...geo }));
             realtimeStore.sendMessage({
               kind: "ComponentSetPosition",
               data: {
                 positions,
-                // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+
                 viewId: this.selectedViewId!,
                 clientUlid,
                 changeSetId: changeSetsStore.selectedChangeSetId,
@@ -1242,10 +1099,7 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
             });
             return new ApiRequest<{ requestUlid: RequestUlid }>({
               method: "put",
-              url: API_PREFIX.concat([
-                { viewId: this.selectedViewId },
-                "view_object/set_geometry",
-              ]),
+              url: API_PREFIX.concat([{ viewId: this.selectedViewId }, "view_object/set_geometry"]),
               params: {
                 clientUlid,
                 dataByViewId: payload,
@@ -1263,22 +1117,16 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
 
                 // are the components that failed currently inflight?
                 // if not, resend their latest data
-                const failed =
-                  this.inflightElementSizes[reqPayload.requestUlid];
+                const failed = this.inflightElementSizes[reqPayload.requestUlid];
                 if (!failed) return;
                 delete this.inflightElementSizes[reqPayload.requestUlid];
-                const all_inflight_components = new Set(
-                  Object.values(this.inflightElementSizes).flat(),
-                );
+                const all_inflight_components = new Set(Object.values(this.inflightElementSizes).flat());
 
-                const maybe_retry: ComponentId[] = (
-                  failed as ComponentId[]
-                ).filter((x) => !all_inflight_components.has(x));
+                const maybe_retry: ComponentId[] = failed.filter((x) => !all_inflight_components.has(x));
 
                 const prevent = new Set();
                 for (const componentId of maybe_retry) {
-                  const cnt =
-                    (this.inflightRetryCounter.get(componentId) || 0) + 1;
+                  const cnt = (this.inflightRetryCounter.get(componentId) || 0) + 1;
                   if (cnt > MAX_RETRIES) prevent.add(componentId);
                   else this.inflightRetryCounter.set(componentId, cnt);
                 }
@@ -1288,14 +1136,8 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
                 const retry = maybe_retry.filter((x) => !prevent.has(x));
 
                 if (retry.length > 0) {
-                  const components = retry
-                    .map((componentId) => this.viewNodes[componentId])
-                    .filter(nonNullable);
-                  this.MOVE_VIEWS(
-                    components,
-                    { x: 0, y: 0 },
-                    { writeToChangeSet: true },
-                  );
+                  const components = retry.map((componentId) => this.viewNodes[componentId]).filter(nonNullable);
+                  this.MOVE_VIEWS(components, { x: 0, y: 0 }, { writeToChangeSet: true });
                 }
               },
               onSuccess: (response) => {
@@ -1321,9 +1163,7 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
           };
           this.setGroupZIndex();
 
-          for (const [key, loc] of Object.entries(
-            setSockets(component, geometry),
-          )) {
+          for (const [key, loc] of Object.entries(setSockets(component, geometry))) {
             this.sockets[key] = loc;
           }
 
@@ -1334,7 +1174,7 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
               kind: "ComponentSetPosition",
               data: {
                 positions,
-                // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+
                 viewId: this.selectedViewId!,
                 clientUlid,
                 changeSetId: changeSetsStore.selectedChangeSetId,
@@ -1352,10 +1192,7 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
             };
             return new ApiRequest<{ requestUlid: RequestUlid }>({
               method: "put",
-              url: API_PREFIX.concat([
-                { viewId: this.selectedViewId },
-                "component/set_geometry",
-              ]),
+              url: API_PREFIX.concat([{ viewId: this.selectedViewId }, "component/set_geometry"]),
               params: {
                 clientUlid,
                 dataByComponentId: payload,
@@ -1412,18 +1249,12 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
             },
             onFail: (err) => {
               if (err.response.status === 422) {
-                toast(
-                  "Error: One or more of the selected components already exists in this view",
-                );
+                toast("Error: One or more of the selected components already exists in this view");
               }
             },
           });
         },
-        async ADD_VIEW_TO(
-          viewId: ViewId,
-          viewIdToHexagon: ViewId,
-          geo: VectorWithRadius,
-        ) {
+        async ADD_VIEW_TO(viewId: ViewId, viewIdToHexagon: ViewId, geo: VectorWithRadius) {
           const sGeo = {
             x: Math.round(geo.x).toString(),
             y: Math.round(geo.y).toString(),
@@ -1456,11 +1287,7 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
             },
           });
         },
-        async CREATE_VIEW_AND_MOVE(
-          name: string,
-          sourceViewId: ViewId,
-          components: Record<ComponentId, IRect>,
-        ) {
+        async CREATE_VIEW_AND_MOVE(name: string, sourceViewId: ViewId, components: Record<ComponentId, IRect>) {
           let sumX = 0;
           let sumY = 0;
           const stringGeometries: Record<ComponentId, StringGeometry> = {};
@@ -1476,12 +1303,8 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
             };
           });
           const viewToHexagonGeo = {
-            x: Math.round(
-              sumX / Object.keys(stringGeometries).length,
-            ).toString(),
-            y: Math.round(
-              sumY / Object.keys(stringGeometries).length,
-            ).toString(),
+            x: Math.round(sumX / Object.keys(stringGeometries).length).toString(),
+            y: Math.round(sumY / Object.keys(stringGeometries).length).toString(),
             radius: "250",
           };
           return new ApiRequest({
@@ -1508,9 +1331,7 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
             },
           });
         },
-        async REMOVE_VIEW_APPROVAL_REQUIREMENT(
-          definitionId: ApprovalRequirementDefinitionId,
-        ) {
+        async REMOVE_VIEW_APPROVAL_REQUIREMENT(definitionId: ApprovalRequirementDefinitionId) {
           return new ApiRequest({
             method: "delete",
             url: APPROVAL_REQUIREMENTS_API_PREFIX.concat([definitionId]),
@@ -1531,17 +1352,10 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
             },
           });
         },
-        async ADD_INDIVIDUAL_APPROVER_TO_REQUIREMENT(
-          definitionId: ApprovalRequirementDefinitionId,
-          userId: UserId,
-        ) {
+        async ADD_INDIVIDUAL_APPROVER_TO_REQUIREMENT(definitionId: ApprovalRequirementDefinitionId, userId: UserId) {
           return new ApiRequest({
             method: "put",
-            url: APPROVAL_REQUIREMENTS_API_PREFIX.concat([
-              definitionId,
-              "individual-approver",
-              userId,
-            ]),
+            url: APPROVAL_REQUIREMENTS_API_PREFIX.concat([definitionId, "individual-approver", userId]),
           });
         },
         async REMOVE_INDIVIDUAL_APPROVER_FROM_REQUIREMENT(
@@ -1550,11 +1364,7 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
         ) {
           return new ApiRequest({
             method: "delete",
-            url: APPROVAL_REQUIREMENTS_API_PREFIX.concat([
-              definitionId,
-              "individual-approver",
-              userId,
-            ]),
+            url: APPROVAL_REQUIREMENTS_API_PREFIX.concat([definitionId, "individual-approver", userId]),
           });
         },
 
@@ -1567,7 +1377,6 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
           });
           groupSizes.sort((a, b) => b.size - a.size);
           for (const [idx, groupSize] of groupSizes.entries()) {
-            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
             const g = this.groups[groupSize.id]!;
             g.zIndex = idx;
           }
@@ -1580,457 +1389,398 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
         },
       },
       async onActivated() {
-        realtimeStore.subscribe(
-          `${this.$id}-changeset`,
-          `changeset/${changeSetId}`,
-          [
-            {
-              eventType: "ComponentCreated",
-              callback: (data) => {
-                // If the component that updated wasn't in this change set,
-                // don't update
-                if (data.changeSetId !== changeSetId) return;
-                const { viewId, geometry } = { ...data.component.viewData };
-                if (!viewId || !geometry) {
-                  throw new Error("Expected view geometry on new component");
+        realtimeStore.subscribe(`${this.$id}-changeset`, `changeset/${changeSetId}`, [
+          {
+            eventType: "ComponentCreated",
+            callback: (data) => {
+              // If the component that updated wasn't in this change set,
+              // don't update
+              if (data.changeSetId !== changeSetId) return;
+              const { viewId, geometry } = { ...data.component.viewData };
+              if (!viewId || !geometry) {
+                throw new Error("Expected view geometry on new component");
+              }
+              const view = this.viewsById[viewId];
+              if (!view) return; // FIXME later when we have full WsEvents
+              if (data.component.componentType === ComponentType.Component) {
+                const node = processRawComponent(data.component, componentsStore.rawComponentsById) as DiagramNodeData;
+                geometry.height = node.height;
+                geometry.width = node.width;
+                view.components[data.component.id] = geometry as IRect;
+                for (const [key, loc] of Object.entries(setSockets(node, geometry))) {
+                  view.sockets[key] = loc;
                 }
+              } else {
+                if (!geometry.width) geometry.width = 500;
+                if (!geometry.height) geometry.height = 500;
+                view.groups[data.component.id] = {
+                  ...(geometry as IRect),
+                  size: geometry.width * geometry.height,
+                  zIndex: 0,
+                };
+                this.setGroupZIndex();
+                const node = processRawComponent(data.component, componentsStore.rawComponentsById) as DiagramGroupData;
+                for (const [key, loc] of Object.entries(setSockets(node, geometry))) {
+                  view.sockets[key] = loc;
+                }
+              }
+            },
+          },
+          {
+            eventType: "ResourceRefreshed",
+            callback: (data) => {
+              // If the component that updated wasn't in this change set,
+              // don't update
+              if (data.changeSetId !== changeSetId) return;
+            },
+          },
+          {
+            eventType: "ComponentUpgraded",
+            callback: (data, metadata) => {
+              // If the component that updated wasn't in this change set,
+              // don't update
+              if (data.changeSetId !== changeSetId) return;
+
+              const oldId = data.originalComponentId;
+              delete componentsStore.rawComponentsById[oldId];
+              delete componentsStore.allComponentsById[oldId];
+              delete componentsStore.nodesById[oldId];
+              delete componentsStore.groupsById[oldId];
+              componentsStore.rawComponentsById[data.component.id] = data.component;
+              componentsStore.processAndStoreRawComponent(data.component.id, {}); // now the component exists in the component store
+
+              const node = componentsStore.allComponentsById[data.component.id]!;
+
+              // upgrades can change the sockets on a component
+              // so we need to go through all the views this component is on
+              // and re-set their socket data
+              const viewIds = Object.keys(this.viewsById);
+              viewIds.forEach((viewId) => {
                 const view = this.viewsById[viewId];
-                if (!view) return; // FIXME later when we have full WsEvents
+                if (!view) return;
+                let geo = view.components[data.component.id];
+                if (!geo) geo = view.groups[data.component.id];
+                if (geo) {
+                  if ("height" in node) {
+                    // this covers components
+                    geo.height = node.height;
+                    geo.width = node.width;
+                    // note: if a person added a hundred sockets to a component
+                    // and that component was a frame, it would not resize itself
+                    // and the sockets would appear outside the frame
+                  }
+                  for (const [key, loc] of Object.entries(setSockets(node, geo))) {
+                    view.sockets[key] = loc;
+                  }
+                }
+              });
+
+              if (metadata.actor !== "System" && metadata.actor.User === authStore.userPk) {
+                this.setSelectedComponentId(data.component.id);
+              }
+            },
+          },
+          {
+            eventType: "ComponentUpdated",
+            callback: (data, metadata) => {
+              // If the component that updated wasn't in this change set,
+              // don't update
+              if (metadata.change_set_id !== changeSetId) return;
+              const { viewId, geometry } = { ...data.component.viewData };
+
+              // changed component type means book-keeping for all views
+              // PSA: currently SDF does not change any geometry when you change component types
+              // if it starts to change geometry, it must return new geometry for every view
+              // the structure doesn't currently support that
+              Object.values(this.viewsById).forEach((view) => {
+                const groupGeo = view.groups[data.component.id];
+                const componentGeo = view.components[data.component.id];
+                const thisGeo = groupGeo ?? componentGeo;
+                // I don't exist in this view, and I am not being added to this view, return
+                if (viewId && viewId !== view.id) {
+                  return;
+                }
+                const finalGeo = geometry ?? thisGeo;
+                if (!finalGeo) return;
+
+                delete view.components[data.component.id];
+                delete view.groups[data.component.id];
                 if (data.component.componentType === ComponentType.Component) {
                   const node = processRawComponent(
                     data.component,
                     componentsStore.rawComponentsById,
                   ) as DiagramNodeData;
-                  geometry.height = node.height;
-                  geometry.width = node.width;
-                  view.components[data.component.id] = geometry as IRect;
-                  for (const [key, loc] of Object.entries(
-                    setSockets(node, geometry),
-                  )) {
+                  finalGeo.height = node.height;
+                  finalGeo.width = node.width;
+                  view.components[data.component.id] = finalGeo as IRect;
+                  for (const [key, loc] of Object.entries(setSockets(node, finalGeo))) {
                     view.sockets[key] = loc;
                   }
                 } else {
-                  if (!geometry.width) geometry.width = 500;
-                  if (!geometry.height) geometry.height = 500;
+                  if (!finalGeo.width) finalGeo.width = 500;
+                  if (!finalGeo.height) finalGeo.height = 500;
                   view.groups[data.component.id] = {
-                    ...(geometry as IRect),
-                    size: geometry.width * geometry.height,
+                    ...(finalGeo as IRect),
+                    size: finalGeo.width * finalGeo.height,
                     zIndex: 0,
                   };
-                  this.setGroupZIndex();
                   const node = processRawComponent(
                     data.component,
                     componentsStore.rawComponentsById,
                   ) as DiagramGroupData;
-                  for (const [key, loc] of Object.entries(
-                    setSockets(node, geometry),
-                  )) {
+                  for (const [key, loc] of Object.entries(setSockets(node, finalGeo))) {
                     view.sockets[key] = loc;
                   }
                 }
-              },
+              });
+              this.setGroupZIndex();
             },
-            {
-              eventType: "ResourceRefreshed",
-              callback: (data) => {
-                // If the component that updated wasn't in this change set,
-                // don't update
-                if (data.changeSetId !== changeSetId) return;
-              },
+          },
+
+          {
+            eventType: "ComponentDeleted",
+            callback: (data) => {
+              if (data.changeSetId !== changeSetId) return;
+              // TODO "detach component from view"
+              // this is "delete from all views"
+              const viewIds = Object.keys(this.viewsById);
+              viewIds.forEach((viewId) => {
+                const view = this.viewsById[viewId];
+                delete view?.components[data.componentId];
+                delete view?.groups[data.componentId];
+              });
+              this.setGroupZIndex();
+
+              // remove invalid component IDs from the selection
+              const validComponentIds = _.intersection(
+                this.selectedComponentIds,
+                _.keys(componentsStore.rawComponentsById),
+              );
+              this.setSelectedComponentId(validComponentIds);
             },
-            {
-              eventType: "ComponentUpgraded",
-              callback: (data, metadata) => {
-                // If the component that updated wasn't in this change set,
-                // don't update
-                if (data.changeSetId !== changeSetId) return;
+          },
 
-                const oldId = data.originalComponentId;
-                delete componentsStore.rawComponentsById[oldId];
-                delete componentsStore.allComponentsById[oldId];
-                delete componentsStore.nodesById[oldId];
-                delete componentsStore.groupsById[oldId];
-                componentsStore.rawComponentsById[data.component.id] =
-                  data.component;
-                componentsStore.processAndStoreRawComponent(
-                  data.component.id,
-                  {},
-                ); // now the component exists in the component store
+          {
+            eventType: "SetComponentPosition",
+            callback: ({ changeSetId, clientUlid: _clientUlid, viewId, positions }) => {
+              if (changeSetId !== changeSetsStore.selectedChangeSetId) return;
+              if (clientUlid === _clientUlid) return;
+              const _view = this.viewsById[viewId];
+              if (!_view) return;
+              // TODO: make sure to update the correct view based on ID
 
-                const node =
-                  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-                  componentsStore.allComponentsById[data.component.id]!;
-
-                // upgrades can change the sockets on a component
-                // so we need to go through all the views this component is on
-                // and re-set their socket data
-                const viewIds = Object.keys(this.viewsById);
-                viewIds.forEach((viewId) => {
-                  const view = this.viewsById[viewId];
-                  if (!view) return;
-                  let geo = view.components[data.component.id];
-                  if (!geo) geo = view.groups[data.component.id];
-                  if (geo) {
-                    if ("height" in node) {
-                      // this covers components
-                      geo.height = node.height;
-                      geo.width = node.width;
-                      // note: if a person added a hundred sockets to a component
-                      // and that component was a frame, it would not resize itself
-                      // and the sockets would appear outside the frame
-                    }
-                    for (const [key, loc] of Object.entries(
-                      setSockets(node, geo),
-                    )) {
-                      view.sockets[key] = loc;
-                    }
-                  }
-                });
-
-                if (
-                  metadata.actor !== "System" &&
-                  metadata.actor.User === authStore.userPk
-                ) {
-                  this.setSelectedComponentId(data.component.id);
-                }
-              },
-            },
-            {
-              eventType: "ComponentUpdated",
-              callback: (data, metadata) => {
-                // If the component that updated wasn't in this change set,
-                // don't update
-                if (metadata.change_set_id !== changeSetId) return;
-                const { viewId, geometry } = { ...data.component.viewData };
-
-                // changed component type means book-keeping for all views
-                // PSA: currently SDF does not change any geometry when you change component types
-                // if it starts to change geometry, it must return new geometry for every view
-                // the structure doesn't currently support that
-                Object.values(this.viewsById).forEach((view) => {
-                  const groupGeo = view.groups[data.component.id];
-                  const componentGeo = view.components[data.component.id];
-                  const thisGeo = groupGeo ?? componentGeo;
-                  // I don't exist in this view, and I am not being added to this view, return
-                  if (viewId && viewId !== view.id) {
-                    return;
-                  }
-                  const finalGeo = geometry ?? thisGeo;
-                  if (!finalGeo) return;
-
-                  delete view.components[data.component.id];
-                  delete view.groups[data.component.id];
-                  if (
-                    data.component.componentType === ComponentType.Component
-                  ) {
-                    const node = processRawComponent(
-                      data.component,
-                      componentsStore.rawComponentsById,
-                    ) as DiagramNodeData;
-                    finalGeo.height = node.height;
-                    finalGeo.width = node.width;
-                    view.components[data.component.id] = finalGeo as IRect;
-                    for (const [key, loc] of Object.entries(
-                      setSockets(node, finalGeo),
-                    )) {
-                      view.sockets[key] = loc;
+              for (const geo of positions) {
+                const component = componentsStore.allComponentsById[geo.componentId];
+                if (component) {
+                  let viewComponent;
+                  if (component.def.isGroup) {
+                    viewComponent = _view.groups[geo.componentId];
+                    if (viewComponent && geo.height && geo.width) {
+                      viewComponent.height = geo.height;
+                      viewComponent.width = geo.width;
                     }
                   } else {
-                    if (!finalGeo.width) finalGeo.width = 500;
-                    if (!finalGeo.height) finalGeo.height = 500;
-                    view.groups[data.component.id] = {
-                      ...(finalGeo as IRect),
-                      size: finalGeo.width * finalGeo.height,
+                    viewComponent = _view.components[geo.componentId];
+                  }
+                  if (viewComponent) {
+                    viewComponent.x = geo.x;
+                    viewComponent.y = geo.y;
+                  }
+
+                  for (const [key, loc] of Object.entries(setSockets(component, geo))) {
+                    _view.sockets[key] = loc;
+                  }
+                } else {
+                  const node = _view.viewNodes[geo.componentId];
+                  if (node) {
+                    node.def.width = geo.width;
+                    node.def.height = geo.height;
+                    node.def.x = geo.x;
+                    node.def.y = geo.y;
+                  }
+                }
+              }
+            },
+          },
+
+          {
+            eventType: "ViewDeleted",
+            callback: ({ viewId }, metadata) => {
+              if (metadata.change_set_id !== changeSetId) return;
+              const idx = this.viewList.findIndex((v) => v.id === viewId);
+              if (idx !== -1) this.viewList.splice(idx, 1);
+              delete this.viewsById[viewId];
+              this.SORT_LIST_VIEWS();
+              Object.values(this.viewsById).forEach((view) => {
+                delete view.viewNodes[viewId];
+              });
+              const route = router.currentRoute;
+              if (route.value.params.viewId === viewId) {
+                const defaultView = this.viewList.find((v) => v.isDefault);
+                if (defaultView) this.selectView(defaultView.id);
+                else {
+                  const v = this.viewList[0];
+                  if (v) this.selectView(v.id);
+                  else {
+                    router.push({
+                      name: "workspace-single",
+                      params: { workspacePk: workspaceId },
+                    });
+                  }
+                }
+              }
+            },
+          },
+
+          {
+            eventType: "ViewUpdated",
+            callback: ({ view }, metadata) => {
+              if (metadata.change_set_id !== changeSetId) return;
+              const idx = this.viewList.findIndex((v) => v.id === view.id);
+              if (idx !== -1) this.viewList.splice(idx, 1, view);
+              else {
+                this.viewList.push(view);
+              }
+              // right now the name is the only thing you can update
+              const v = this.viewsById[view.id];
+              if (v) v.name = view.name;
+              const _v = this.viewNodes[view.id];
+              if (_v) _v.def.name = view.name;
+
+              this.SORT_LIST_VIEWS();
+            },
+          },
+
+          {
+            eventType: "ViewCreated",
+            callback: async ({ view }, metadata) => {
+              if (metadata.change_set_id !== changeSetId) return;
+              const idx = this.viewList.findIndex((v) => v.id === view.id);
+              if (idx !== -1) this.viewList.splice(idx, 1, view);
+              else {
+                this.viewList.push(view);
+              }
+              this.SORT_LIST_VIEWS();
+              await this.FETCH_VIEW_GEOMETRY(view.id);
+              const actionWhichCreatedView = realtimeStore.inflightRequests.get(metadata.request_ulid);
+              if (
+                metadata.actor !== "System" &&
+                metadata.actor.User === authStore.userPk &&
+                actionWhichCreatedView !== "RUN_MGMT_PROTOTYPE"
+              ) {
+                this.selectView(view.id);
+              }
+            },
+          },
+          {
+            eventType: "ViewObjectCreated",
+            callback: (payload, metadata) => {
+              if (metadata.change_set_id !== changeSetId) return;
+              const view = this.viewsById[payload.viewId];
+              const v = this.viewList.find((_v) => _v.id === payload.viewObjectId);
+              if (v) {
+                const node = new DiagramViewData({
+                  ...v,
+                  ...payload.geometry,
+                  ...VIEW_DEFAULTS,
+                  componentType: ComponentType.View,
+                });
+                if (view) view.viewNodes[payload.viewObjectId] = node;
+              }
+            },
+          },
+          {
+            eventType: "ViewObjectRemoved",
+            callback: (payload, metadata) => {
+              if (metadata.change_set_id !== changeSetId) return;
+              const view = this.viewsById[payload.viewId];
+              if (view) delete view.viewNodes[payload.viewObjectId];
+            },
+          },
+
+          {
+            eventType: "ViewComponentsUpdate",
+            callback: (payload, metadata) => {
+              if (metadata.change_set_id !== changeSetId) return;
+
+              Object.entries(payload.updatesByView).forEach(([viewId, { added, removed }]) => {
+                const view = this.viewsById[viewId];
+                if (!view) return;
+                Object.entries(added).forEach(([componentId, geo]) => {
+                  const c = componentsStore.allComponentsById[componentId];
+                  if (!c) return;
+                  if (c.def.isGroup) {
+                    view.groups[componentId] = {
+                      ...geo,
+                      size: geo.height * geo.width,
                       zIndex: 0,
                     };
-                    const node = processRawComponent(
-                      data.component,
-                      componentsStore.rawComponentsById,
-                    ) as DiagramGroupData;
-                    for (const [key, loc] of Object.entries(
-                      setSockets(node, finalGeo),
-                    )) {
+                  } else view.components[componentId] = geo;
+                  if (geo) {
+                    for (const [key, loc] of Object.entries(setSockets(c, geo))) {
                       view.sockets[key] = loc;
                     }
                   }
                 });
-                this.setGroupZIndex();
-              },
-            },
-
-            {
-              eventType: "ComponentDeleted",
-              callback: (data) => {
-                if (data.changeSetId !== changeSetId) return;
-                // TODO "detach component from view"
-                // this is "delete from all views"
-                const viewIds = Object.keys(this.viewsById);
-                viewIds.forEach((viewId) => {
-                  const view = this.viewsById[viewId];
-                  delete view?.components[data.componentId];
-                  delete view?.groups[data.componentId];
+                removed.forEach((r) => {
+                  delete view.components[r];
+                  delete view.groups[r];
                 });
-                this.setGroupZIndex();
+              });
 
-                // remove invalid component IDs from the selection
-                const validComponentIds = _.intersection(
-                  this.selectedComponentIds,
-                  _.keys(componentsStore.rawComponentsById),
-                );
-                this.setSelectedComponentId(validComponentIds);
-              },
+              this.setGroupZIndex();
             },
+          },
 
-            {
-              eventType: "SetComponentPosition",
-              callback: ({
-                changeSetId,
-                clientUlid: _clientUlid,
-                viewId,
-                positions,
-              }) => {
-                if (changeSetId !== changeSetsStore.selectedChangeSetId) return;
-                if (clientUlid === _clientUlid) return;
-                const _view = this.viewsById[viewId];
-                if (!_view) return;
-                // TODO: make sure to update the correct view based on ID
-
-                for (const geo of positions) {
-                  const component =
-                    componentsStore.allComponentsById[geo.componentId];
-                  if (component) {
-                    let viewComponent;
-                    if (component.def.isGroup) {
-                      viewComponent = _view.groups[geo.componentId];
-                      if (viewComponent && geo.height && geo.width) {
-                        viewComponent.height = geo.height;
-                        viewComponent.width = geo.width;
-                      }
-                    } else {
-                      viewComponent = _view.components[geo.componentId];
-                    }
-                    if (viewComponent) {
-                      viewComponent.x = geo.x;
-                      viewComponent.y = geo.y;
-                    }
-
-                    for (const [key, loc] of Object.entries(
-                      setSockets(component, geo),
-                    )) {
-                      _view.sockets[key] = loc;
-                    }
-                  } else {
-                    const node = _view.viewNodes[geo.componentId];
-                    if (node) {
-                      node.def.width = geo.width;
-                      node.def.height = geo.height;
-                      node.def.x = geo.x;
-                      node.def.y = geo.y;
-                    }
-                  }
-                }
-              },
-            },
-
-            {
-              eventType: "ViewDeleted",
-              callback: ({ viewId }, metadata) => {
-                if (metadata.change_set_id !== changeSetId) return;
-                const idx = this.viewList.findIndex((v) => v.id === viewId);
-                if (idx !== -1) this.viewList.splice(idx, 1);
-                delete this.viewsById[viewId];
-                this.SORT_LIST_VIEWS();
-                Object.values(this.viewsById).forEach((view) => {
-                  delete view.viewNodes[viewId];
-                });
-                const route = router.currentRoute;
-                if (route.value.params.viewId === viewId) {
-                  const defaultView = this.viewList.find((v) => v.isDefault);
-                  if (defaultView) this.selectView(defaultView.id);
-                  else {
-                    const v = this.viewList[0];
-                    if (v) this.selectView(v.id);
-                    else {
-                      router.push({
-                        name: "workspace-single",
-                        params: { workspacePk: workspaceId },
-                      });
-                    }
-                  }
-                }
-              },
-            },
-
-            {
-              eventType: "ViewUpdated",
-              callback: ({ view }, metadata) => {
-                if (metadata.change_set_id !== changeSetId) return;
-                const idx = this.viewList.findIndex((v) => v.id === view.id);
-                if (idx !== -1) this.viewList.splice(idx, 1, view);
-                else {
-                  this.viewList.push(view);
-                }
-                // right now the name is the only thing you can update
-                const v = this.viewsById[view.id];
-                if (v) v.name = view.name;
-                const _v = this.viewNodes[view.id];
-                if (_v) _v.def.name = view.name;
-
-                this.SORT_LIST_VIEWS();
-              },
-            },
-
-            {
-              eventType: "ViewCreated",
-              callback: async ({ view }, metadata) => {
-                if (metadata.change_set_id !== changeSetId) return;
-                const idx = this.viewList.findIndex((v) => v.id === view.id);
-                if (idx !== -1) this.viewList.splice(idx, 1, view);
-                else {
-                  this.viewList.push(view);
-                }
-                this.SORT_LIST_VIEWS();
-                await this.FETCH_VIEW_GEOMETRY(view.id);
-                const actionWhichCreatedView =
-                  realtimeStore.inflightRequests.get(metadata.request_ulid);
-                if (
-                  metadata.actor !== "System" &&
-                  metadata.actor.User === authStore.userPk &&
-                  actionWhichCreatedView !== "RUN_MGMT_PROTOTYPE"
-                ) {
-                  this.selectView(view.id);
-                }
-              },
-            },
-            {
-              eventType: "ViewObjectCreated",
-              callback: (payload, metadata) => {
-                if (metadata.change_set_id !== changeSetId) return;
-                const view = this.viewsById[payload.viewId];
-                const v = this.viewList.find(
-                  (_v) => _v.id === payload.viewObjectId,
-                );
-                if (v) {
-                  const node = new DiagramViewData({
-                    ...v,
-                    ...payload.geometry,
-                    ...VIEW_DEFAULTS,
-                    componentType: ComponentType.View,
-                  });
-                  if (view) view.viewNodes[payload.viewObjectId] = node;
-                }
-              },
-            },
-            {
-              eventType: "ViewObjectRemoved",
-              callback: (payload, metadata) => {
-                if (metadata.change_set_id !== changeSetId) return;
-                const view = this.viewsById[payload.viewId];
-                if (view) delete view.viewNodes[payload.viewObjectId];
-              },
-            },
-
-            {
-              eventType: "ViewComponentsUpdate",
-              callback: (payload, metadata) => {
-                if (metadata.change_set_id !== changeSetId) return;
-
-                Object.entries(payload.updatesByView).forEach(
-                  ([viewId, { added, removed }]) => {
-                    const view = this.viewsById[viewId];
-                    if (!view) return;
-                    Object.entries(added).forEach(([componentId, geo]) => {
-                      const c = componentsStore.allComponentsById[componentId];
-                      if (!c) return;
-                      if (c.def.isGroup) {
-                        view.groups[componentId] = {
-                          ...geo,
-                          size: geo.height * geo.width,
-                          zIndex: 0,
-                        };
-                      } else view.components[componentId] = geo;
-                      if (geo) {
-                        for (const [key, loc] of Object.entries(
-                          setSockets(c, geo),
-                        )) {
-                          view.sockets[key] = loc;
-                        }
-                      }
-                    });
-                    removed.forEach((r) => {
-                      delete view.components[r];
-                      delete view.groups[r];
-                    });
-                  },
-                );
-
-                this.setGroupZIndex();
-              },
-            },
-
-            // events for approval requirements
-            {
-              eventType: "ApprovalRequirementAddIndividualApprover",
-              callback: (payload) => {
-                const viewId =
-                  this.requirementDefinitionsById[
-                    payload.approvalRequirementDefinitionId
-                  ]?.entityId;
-                if (viewId) {
-                  this.LIST_VIEW_APPROVAL_REQUIREMENTS(viewId);
-                }
-              },
-            },
-            {
-              eventType: "ApprovalRequirementDefinitionCreated",
-              callback: (payload) => {
-                const viewId = payload.entityId;
+          // events for approval requirements
+          {
+            eventType: "ApprovalRequirementAddIndividualApprover",
+            callback: (payload) => {
+              const viewId = this.requirementDefinitionsById[payload.approvalRequirementDefinitionId]?.entityId;
+              if (viewId) {
                 this.LIST_VIEW_APPROVAL_REQUIREMENTS(viewId);
-              },
+              }
             },
-            {
-              eventType: "ApprovalRequirementDefinitionRemoved",
-              callback: (payload) => {
-                const viewId =
-                  this.requirementDefinitionsById[
-                    payload.approvalRequirementDefinitionId
-                  ]?.entityId;
-                if (viewId) {
-                  this.LIST_VIEW_APPROVAL_REQUIREMENTS(viewId);
-                }
-              },
+          },
+          {
+            eventType: "ApprovalRequirementDefinitionCreated",
+            callback: (payload) => {
+              const viewId = payload.entityId;
+              this.LIST_VIEW_APPROVAL_REQUIREMENTS(viewId);
             },
-            {
-              eventType: "ApprovalRequirementRemoveIndividualApprover",
-              callback: (payload) => {
-                const viewId =
-                  this.requirementDefinitionsById[
-                    payload.approvalRequirementDefinitionId
-                  ]?.entityId;
-                if (viewId) {
-                  this.LIST_VIEW_APPROVAL_REQUIREMENTS(viewId);
-                }
-              },
+          },
+          {
+            eventType: "ApprovalRequirementDefinitionRemoved",
+            callback: (payload) => {
+              const viewId = this.requirementDefinitionsById[payload.approvalRequirementDefinitionId]?.entityId;
+              if (viewId) {
+                this.LIST_VIEW_APPROVAL_REQUIREMENTS(viewId);
+              }
             },
-          ],
-        );
+          },
+          {
+            eventType: "ApprovalRequirementRemoveIndividualApprover",
+            callback: (payload) => {
+              const viewId = this.requirementDefinitionsById[payload.approvalRequirementDefinitionId]?.entityId;
+              if (viewId) {
+                this.LIST_VIEW_APPROVAL_REQUIREMENTS(viewId);
+              }
+            },
+          },
+        ]);
 
-        realtimeStore.subscribe(
-          `${this.$id}-workspace`,
-          `workspace/${workspaceId}`,
-          [
-            {
-              eventType: "ChangeSetApplied",
-              callback: async (data) => {
-                // If the applied change set has rebased into this change set,
-                // then refetch (i.e. there might be updates!)
-                if (data.toRebaseChangeSetId === changeSetId) {
-                  this.FETCH_COMPLETE_DATA();
-                }
-              },
+        realtimeStore.subscribe(`${this.$id}-workspace`, `workspace/${workspaceId}`, [
+          {
+            eventType: "ChangeSetApplied",
+            callback: async (data) => {
+              // If the applied change set has rebased into this change set,
+              // then refetch (i.e. there might be updates!)
+              if (data.toRebaseChangeSetId === changeSetId) {
+                this.FETCH_COMPLETE_DATA();
+              }
             },
-          ],
-        );
+          },
+        ]);
 
         const actionUnsub = this.$onAction(handleStoreError);
 

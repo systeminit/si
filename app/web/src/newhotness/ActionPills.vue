@@ -1,18 +1,7 @@
 <template>
-  <div
-    :class="
-      clsx(
-        'gap-1 items-center',
-        mode === 'grid' && 'grid grid-cols-5',
-        mode === 'row' && 'flex flex-row',
-      )
-    "
-  >
+  <div :class="clsx('gap-1 items-center', mode === 'grid' && 'grid grid-cols-5', mode === 'row' && 'flex flex-row')">
     <TextPill
-      v-if="
-        showNoPendingActions &&
-        (!actionCounts || Object.keys(actionCounts).length === 0)
-      "
+      v-if="showNoPendingActions && (!actionCounts || Object.keys(actionCounts).length === 0)"
       variant="key2"
       size="sm"
       class="text-xs flex items-center gap-1"
@@ -29,9 +18,7 @@
     >
       <Icon
         :name="getIcon(actionName)"
-        :class="
-          actionData.hasFailed ? 'text-destructive-500' : 'text-neutral-500'
-        "
+        :class="actionData.hasFailed ? 'text-destructive-500' : 'text-neutral-500'"
         size="xs"
       />
       {{ actionData.count }}

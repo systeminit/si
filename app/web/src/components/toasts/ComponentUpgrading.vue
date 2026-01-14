@@ -1,7 +1,5 @@
 <template>
-  <div
-    class="container flex flex-row gap-xs items-center justify-center rounded cursor-progress"
-  >
+  <div class="container flex flex-row gap-xs items-center justify-center rounded cursor-progress">
     <template v-if="!props.success">
       <Icon name="loader" size="md" tone="action" />
       <p class="text-md">Updating "{{ props.componentName }}"</p>

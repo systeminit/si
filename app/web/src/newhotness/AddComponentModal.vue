@@ -1,13 +1,6 @@
 <template>
   <!-- NOTE: the Modal CSS for height in "max" doesn't work as we might expect -->
-  <Modal
-    ref="modalRef"
-    noWrapper
-    hideExitButton
-    size="max"
-    class="w-[max(800px,66vw)]"
-    @click="onClick"
-  >
+  <Modal ref="modalRef" noWrapper hideExitButton size="max" class="w-[max(800px,66vw)]" @click="onClick">
     <div class="h-[45svh]">
       <div
         :class="
@@ -23,9 +16,7 @@
       >
         <!-- Left side - search, filters, asset list -->
         <div ref="leftSideRef" class="assets flex flex-col gap-xs">
-          <header class="text-md border-b p-xs flex-none">
-            Create a component
-          </header>
+          <header class="text-md border-b p-xs flex-none">Create a component</header>
 
           <!-- I don't like that we have to specify a height here it should
           contain within its parent, and its possible, just dont want to spend more time on it -->
@@ -62,10 +53,7 @@
               </template>
             </SiSearch>
             <!-- Fuzzy search category filters -->
-            <HorizontalScrollArea
-              hideScrollbar
-              class="flex flex-row gap-xs flex-none"
-            >
+            <HorizontalScrollArea hideScrollbar class="flex flex-row gap-xs flex-none">
               <FilterTile
                 v-for="filter in componentFilters"
                 :key="filter.name"
@@ -78,20 +66,12 @@
               />
             </HorizontalScrollArea>
             <!-- Fuzzy search results list -->
-            <div
-              v-if="showResults"
-              ref="scrollRef"
-              class="grow min-h-0 scrollable"
-            >
+            <div v-if="showResults" ref="scrollRef" class="grow min-h-0 scrollable">
               <div
                 v-if="virtualItems.length === 0 && fuzzySearchString.length > 0"
                 class="w-full h-full flex flex-row items-center justify-center"
               >
-                <EmptyState
-                  text="No components match your search."
-                  icon="component"
-                  noTopMargin
-                />
+                <EmptyState text="No components match your search." icon="component" noTopMargin />
               </div>
               <div
                 class="w-full relative flex flex-col"
@@ -105,25 +85,14 @@
                   :key="row.index"
                   :idx="row.index"
                   :style="{
-                    height:
-                      addComponentRowHeight(
-                        categoryAndSchemaRows[row.index]?.type,
-                      ) + 'px',
+                    height: addComponentRowHeight(categoryAndSchemaRows[row.index]?.type) + 'px',
                     transform: `translateY(${row.start}px)`,
                   }"
                   :rowData="categoryAndSchemaRows[row.index]!"
                   :open="openFromIndex(row.index)"
-                  :selected="
-                    compareKeys(
-                      selectedAsset?.key,
-                      schemaFromVirtualRowIndex(row.index)?.key,
-                    )
-                  "
+                  :selected="compareKeys(selectedAsset?.key, schemaFromVirtualRowIndex(row.index)?.key)"
                   :submitted="
-                    compareKeys(
-                      selectedAsset?.key,
-                      schemaFromVirtualRowIndex(row.index)?.key,
-                    ) && api.inFlight.value
+                    compareKeys(selectedAsset?.key, schemaFromVirtualRowIndex(row.index)?.key) && api.inFlight.value
                   "
                   :createFailed="componentCreateFailed"
                   @click="() => assetClick(row.index)"
@@ -134,46 +103,24 @@
         </div>
         <!-- Right side - documentation -->
         <template v-if="selectedAsset">
-          <div
-            :class="
-              clsx(
-                'docs border overflow-hidden break-words',
-                'flex flex-col flex-1 pb-xs gap-2xs',
-              )
-            "
-          >
-            <TruncateWithTooltip
-              :class="clsx('text-lg font-bold flex-none px-xs py-2xs border-b')"
-            >
+          <div :class="clsx('docs border overflow-hidden break-words', 'flex flex-col flex-1 pb-xs gap-2xs')">
+            <TruncateWithTooltip :class="clsx('text-lg font-bold flex-none px-xs py-2xs border-b')">
               {{ selectedAsset.name }}
             </TruncateWithTooltip>
-            <div
-              class="flex flex-col gap-2xs px-xs scrollable flex-1 min-h-0 [&>.markdown_*]:text-sm"
-            >
+            <div class="flex flex-col gap-2xs px-xs scrollable flex-1 min-h-0 [&>.markdown_*]:text-sm">
               <a
                 v-if="selectedAsset.variant.link"
                 target="_blank"
                 :href="selectedAsset.variant.link"
-                :class="
-                  clsx(
-                    'flex-none italic hover:underline',
-                    themeClasses('text-action-500', 'text-action-300'),
-                  )
-                "
+                :class="clsx('flex-none italic hover:underline', themeClasses('text-action-500', 'text-action-300'))"
               >
                 {{ selectedAsset.variant.link }}
               </a>
               <p v-if="selectedAsset.variant.description" class="markdown">
-                <MarkdownRender
-                  :source="selectedAsset.variant.description"
-                  removeMargins
-                />
+                <MarkdownRender :source="selectedAsset.variant.description" removeMargins />
               </p>
               <div
-                v-if="
-                  !selectedAsset.variant.link &&
-                  !selectedAsset.variant.description
-                "
+                v-if="!selectedAsset.variant.link && !selectedAsset.variant.description"
                 class="h-full flex flex-row items-center justify-center pb-lg"
               >
                 <EmptyState icon="docs" text="No Documentation Available" />
@@ -214,9 +161,7 @@ import {
   CachedDefaultVariant,
 } from "@/workers/types/entity_kind_types";
 import { getKind, useMakeArgs, useMakeKey } from "@/store/realtime/heimdall";
-import AddComponentModalListRow, {
-  AddComponentRowData,
-} from "@/newhotness/AddComponentModalListRow.vue";
+import AddComponentModalListRow, { AddComponentRowData } from "@/newhotness/AddComponentModalListRow.vue";
 import { trackEvent } from "@/utils/tracking";
 import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import { useFzf } from "./logic_composables/fzf";
@@ -248,10 +193,7 @@ const scrollToSelected = async () => {
   } else {
     // Otherwise, we need to scroll using the virtualizer
     if (selectionIndex.value !== undefined && selectionIndex.value >= 0) {
-      virtualList.value.scrollToIndex(
-        controlIndexToVirtualizerIndex(selectionIndex.value),
-        { align: "center" },
-      );
+      virtualList.value.scrollToIndex(controlIndexToVirtualizerIndex(selectionIndex.value), { align: "center" });
     }
   }
 };
@@ -260,9 +202,7 @@ const selectAsset = async (asset: UIAsset, noScroll?: boolean) => {
   selectedAsset.value = asset;
   // if you have a selected asset from this category open the category
   categoryIsOpen.value.add(asset.uiCategory.name);
-  selectionIndex.value = filteredAssetsFlat.value.findIndex((a) =>
-    compareKeys(a.key, asset.key),
-  );
+  selectionIndex.value = filteredAssetsFlat.value.findIndex((a) => compareKeys(a.key, asset.key));
 
   if (!noScroll) {
     scrollToSelected();
@@ -317,28 +257,19 @@ const onEnter = async () => {
     viewId: explore.viewId.value,
   });
 
-  const { req, newChangeSetId } =
-    await call.post<componentTypes.CreateComponentPayload>(payload);
+  const { req, newChangeSetId } = await call.post<componentTypes.CreateComponentPayload>(payload);
 
   if (api.ok(req)) {
     // Set the new component and attribute tree in the query cache
-    const componentQueryKey = makeKey(
-      EntityKind.Component,
-      req.data.componentId,
-    ).value;
-    const attributeTreeQueryKey = makeKey(
-      EntityKind.AttributeTree,
-      req.data.componentId,
-    ).value;
+    const componentQueryKey = makeKey(EntityKind.Component, req.data.componentId).value;
+    const attributeTreeQueryKey = makeKey(EntityKind.AttributeTree, req.data.componentId).value;
     // replace old change set id with new one for the query key
     if (newChangeSetId) {
       componentQueryKey.forEach((v, idx) => {
-        if (v === route.params.changeSetId)
-          componentQueryKey[idx] = newChangeSetId;
+        if (v === route.params.changeSetId) componentQueryKey[idx] = newChangeSetId;
       });
       attributeTreeQueryKey.forEach((v, idx) => {
-        if (v === route.params.changeSetId)
-          attributeTreeQueryKey[idx] = newChangeSetId;
+        if (v === route.params.changeSetId) attributeTreeQueryKey[idx] = newChangeSetId;
       });
     }
 
@@ -351,10 +282,7 @@ const onEnter = async () => {
     };
     queryClient.setQueryData(componentQueryKey, bifrostComponent);
 
-    queryClient.setQueryData(
-      attributeTreeQueryKey,
-      req.data.attributeTreeMaterializedView,
-    );
+    queryClient.setQueryData(attributeTreeQueryKey, req.data.attributeTreeMaterializedView);
 
     const to = {
       name: "new-hotness-component",
@@ -381,8 +309,7 @@ const onUp = (e: KeyboardEvent) => {
   // Reset component create error
   componentCreateFailed.value = false;
 
-  const goByCategory =
-    e.key !== "Tab" && (e.shiftKey || e.ctrlKey || e.metaKey);
+  const goByCategory = e.key !== "Tab" && (e.shiftKey || e.ctrlKey || e.metaKey);
 
   if (selectionIndex.value === undefined) {
     selectionIndex.value = filteredAssetsFlat.value.length - 1;
@@ -405,8 +332,7 @@ const onDown = (e: KeyboardEvent) => {
   // Reset component create error
   componentCreateFailed.value = false;
 
-  const goByCategory =
-    e.key !== "Tab" && (e.shiftKey || e.ctrlKey || e.metaKey);
+  const goByCategory = e.key !== "Tab" && (e.shiftKey || e.ctrlKey || e.metaKey);
 
   if (selectionIndex.value === undefined) {
     selectionIndex.value = 0;
@@ -424,9 +350,7 @@ const onDown = (e: KeyboardEvent) => {
   }
 };
 const changeFilterLeft = () => {
-  let currentFilterIndex = componentFilters.value.findIndex(
-    (filter) => filter.name === selectedFilter.value,
-  );
+  let currentFilterIndex = componentFilters.value.findIndex((filter) => filter.name === selectedFilter.value);
 
   if (currentFilterIndex < 1) {
     currentFilterIndex = componentFilters.value.length - 1;
@@ -443,9 +367,7 @@ const changeFilterLeft = () => {
   }
 };
 const changeFilterRight = () => {
-  let currentFilterIndex = componentFilters.value.findIndex(
-    (filter) => filter.name === selectedFilter.value,
-  );
+  let currentFilterIndex = componentFilters.value.findIndex((filter) => filter.name === selectedFilter.value);
 
   if (currentFilterIndex === componentFilters.value.length - 1) {
     currentFilterIndex = 0;
@@ -483,16 +405,12 @@ const selectFirstInNextCategory = (currentIndex: number, direction: 1 | -1) => {
   const currentSelection = filteredAssetsFlat.value[currentIndex];
   if (!currentSelection) return;
   const currentCategoryIndex = filteredCategories.value.findIndex((category) =>
-    category.assets.find((asset) =>
-      compareKeys(asset.key, currentSelection.key),
-    ),
+    category.assets.find((asset) => compareKeys(asset.key, currentSelection.key)),
   );
   if (currentCategoryIndex > -1) {
-    const nextCategory =
-      filteredCategories.value[currentCategoryIndex + direction];
+    const nextCategory = filteredCategories.value[currentCategoryIndex + direction];
     const firstCategoryAsset = filteredCategories.value[0]?.assets[0];
-    const lastCategoryAsset =
-      filteredCategories.value[filteredCategories.value.length - 1]?.assets[0];
+    const lastCategoryAsset = filteredCategories.value[filteredCategories.value.length - 1]?.assets[0];
     if (nextCategory && nextCategory.assets[0]) {
       selectAsset(nextCategory.assets[0], true);
     } else if (direction === 1 && firstCategoryAsset) {
@@ -537,9 +455,7 @@ const defaultSchemaKey = makeKey(EntityKind.CachedDefaultVariant);
 const defaultSchemas = useQuery({
   queryKey: defaultSchemaKey,
   queryFn: async () => {
-    const schemas = await getKind<CachedDefaultVariant>(
-      makeArgs(EntityKind.CachedDefaultVariant),
-    );
+    const schemas = await getKind<CachedDefaultVariant>(makeArgs(EntityKind.CachedDefaultVariant));
 
     return schemas;
   },
@@ -548,8 +464,7 @@ const defaultSchemas = useQuery({
 const installedVariantsKey = makeKey(EntityKind.SchemaVariant);
 const installedVariants = useQuery({
   queryKey: installedVariantsKey,
-  queryFn: async () =>
-    await getKind<SchemaVariant>(makeArgs(EntityKind.SchemaVariant)),
+  queryFn: async () => await getKind<SchemaVariant>(makeArgs(EntityKind.SchemaVariant)),
 });
 
 const categories = computed(() => {
@@ -560,11 +475,7 @@ const categories = computed(() => {
     installedVariants.data.value.forEach((variant) => {
       // Only show installed variants that are either the default or are editing.
       const members = ctx.schemaMembers?.value[variant.schemaId];
-      if (
-        members?.defaultVariantId !== variant.id &&
-        members?.editingVariantId !== variant.id
-      )
-        return;
+      if (members?.defaultVariantId !== variant.id && members?.editingVariantId !== variant.id) return;
 
       const catName = variant.category || "SI";
       let category = categories[catName];
@@ -625,15 +536,9 @@ const categories = computed(() => {
   });
 });
 
-const compareKeys = (
-  key1: UISchemaKey | undefined,
-  key2: UISchemaKey | undefined,
-) => {
+const compareKeys = (key1: UISchemaKey | undefined, key2: UISchemaKey | undefined) => {
   if (!key1 || !key2) return false;
-  return (
-    key1.schemaId === key2.schemaId &&
-    key1.schemaVariantId === key2.schemaVariantId
-  );
+  return key1.schemaId === key2.schemaId && key1.schemaVariantId === key2.schemaVariantId;
 };
 
 // Memoized fuzzy search instance to avoid recreating on every search
@@ -644,10 +549,7 @@ const fzfInstance = computed(() => {
   // Get the same filtering logic for consistency
   if (selectedFilter.value) {
     filteredResults.push(
-      ...getCategoriesAndCountForFilterStrings(
-        selectedFilter.value,
-        selectedFilterObject.value?.startsWith,
-      ).categories,
+      ...getCategoriesAndCountForFilterStrings(selectedFilter.value, selectedFilterObject.value?.startsWith).categories,
     );
   } else {
     filteredResults.push(...categories.value);
@@ -665,10 +567,7 @@ const filteredCategories = computed(() => {
   // Filtering by the selected top level category filter
   if (selectedFilter.value) {
     filteredResults.push(
-      ...getCategoriesAndCountForFilterStrings(
-        selectedFilter.value,
-        selectedFilterObject.value?.startsWith,
-      ).categories,
+      ...getCategoriesAndCountForFilterStrings(selectedFilter.value, selectedFilterObject.value?.startsWith).categories,
     );
   } else {
     filteredResults.push(...categories.value);
@@ -676,9 +575,7 @@ const filteredCategories = computed(() => {
 
   if (debouncedSearchString.value !== "") {
     // Use the memoized fzf instance
-    const results = fzfInstance.value.find(
-      debouncedSearchString.value,
-    ) as FzfResultItem<UIAsset>[];
+    const results = fzfInstance.value.find(debouncedSearchString.value) as FzfResultItem<UIAsset>[];
     const items: UIAsset[] = results.map((fz) => fz.item);
 
     // reconstruct categories from the results (this is why asset.category exists)
@@ -715,9 +612,7 @@ const filteredAssetsFlat = computed(() => {
 const controlIndexToVirtualizerIndex = (idx: number) => {
   const asset = filteredAssetsFlat.value[idx];
   if (asset) {
-    return categoryAndSchemaRows.value.findIndex(
-      (row) => row.type === "schema" && compareKeys(asset.key, row.key),
-    );
+    return categoryAndSchemaRows.value.findIndex((row) => row.type === "schema" && compareKeys(asset.key, row.key));
   } else {
     // default to the search bar if you don't find it!
     return -1;
@@ -735,10 +630,7 @@ const fuzzySearchString = ref<string>("");
 const debouncedSearchString = ref<string>("");
 const selectedFilter = ref<string | undefined>(undefined);
 const selectedFilterObject = computed(() =>
-  componentFilters.value.find(
-    (filter) =>
-      filter.name.toLowerCase() === selectedFilter.value?.toLowerCase(),
-  ),
+  componentFilters.value.find((filter) => filter.name.toLowerCase() === selectedFilter.value?.toLowerCase()),
 );
 
 // Debounce the search string updates to avoid expensive filtering on every keystroke
@@ -816,15 +708,12 @@ const assetClick = (idx: number) => {
 
   const cat = categoryFromVirtualRowIndex(idx);
   if (cat) {
-    if (categoryIsOpen.value.has(cat.name))
-      categoryIsOpen.value.delete(cat.name);
+    if (categoryIsOpen.value.has(cat.name)) categoryIsOpen.value.delete(cat.name);
     else categoryIsOpen.value.add(cat.name);
   }
   const schema = schemaFromVirtualRowIndex(idx);
   if (schema) {
-    const asset = filteredAssetsFlat.value.find((a) =>
-      compareKeys(a.key, schema.key),
-    );
+    const asset = filteredAssetsFlat.value.find((a) => compareKeys(a.key, schema.key));
     if (asset) {
       if (compareKeys(asset.key, selectedAsset.value?.key)) onEnter();
       else selectAsset(asset, true);
@@ -850,15 +739,10 @@ const openFromIndex = (idx: number) => {
   return categoryIsOpen.value.has(cat.name);
 };
 
-const foundCategoryMatch = (
-  categoryName: string,
-  category: UICategory,
-  startsWith: boolean,
-) => {
+const foundCategoryMatch = (categoryName: string, category: UICategory, startsWith: boolean) => {
   if (categoryName === "All") return true;
   if (categoryName === "Templates") return category.name === "Templates";
-  if (startsWith)
-    return category.name.toLowerCase().startsWith(categoryName.toLowerCase());
+  if (startsWith) return category.name.toLowerCase().startsWith(categoryName.toLowerCase());
   return category.name.toLowerCase().includes(categoryName.toLowerCase());
 };
 
@@ -969,18 +853,9 @@ const onClick = (e: MouseEvent | undefined) => {
 
   const target = e.target;
 
-  if (
-    !leftSideRef.value ||
-    !(target instanceof Node) ||
-    !document.contains(target)
-  )
-    return;
+  if (!leftSideRef.value || !(target instanceof Node) || !document.contains(target)) return;
 
-  if (
-    (!showResults.value || !selectedAsset.value) &&
-    !leftSideRef.value.contains(target) &&
-    !justCleared.value
-  ) {
+  if ((!showResults.value || !selectedAsset.value) && !leftSideRef.value.contains(target) && !justCleared.value) {
     // clicking the empty area inside the modal
     close();
   }
@@ -1023,10 +898,9 @@ const addComponentRowHeight = (type?: string) => {
 
 const virtualizerOptions = computed(() => ({
   count: categoryAndSchemaRows.value.length,
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+
   getScrollElement: () => scrollRef.value!,
-  estimateSize: (i: number) =>
-    addComponentRowHeight(categoryAndSchemaRows.value[i]?.type),
+  estimateSize: (i: number) => addComponentRowHeight(categoryAndSchemaRows.value[i]?.type),
   getItemKey: (i: number) => {
     const row = categoryAndSchemaRows.value[i];
     if (row?.type === "category") {

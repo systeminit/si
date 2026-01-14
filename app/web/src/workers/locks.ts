@@ -19,36 +19,24 @@ export class ReadWriteLock {
   }
 
   async readLock(callback: AnyFn): Promise<SqlValue[][]> {
-    return await navigator.locks.request(
-      `${this.name}-reader`,
-      { mode: "shared" },
-      async () => {
-        this.readerCount++;
-        try {
-          return await callback();
-        } finally {
-          this.readerCount--;
-        }
-      },
-    );
+    return await navigator.locks.request(`${this.name}-reader`, { mode: "shared" }, async () => {
+      this.readerCount++;
+      try {
+        return await callback();
+      } finally {
+        this.readerCount--;
+      }
+    });
   }
 
   async writeLock(callback: AnyFn): Promise<SqlValue[][]> {
     try {
-      return await navigator.locks.request(
-        `${this.name}-reader`,
-        { mode: "exclusive" },
-        async () => {
-          return await navigator.locks.request(
-            `${this.name}-writer`,
-            { mode: "exclusive" },
-            async () => {
-              this.writeLockAcquired = true;
-              return await callback();
-            },
-          );
-        },
-      );
+      return await navigator.locks.request(`${this.name}-reader`, { mode: "exclusive" }, async () => {
+        return await navigator.locks.request(`${this.name}-writer`, { mode: "exclusive" }, async () => {
+          this.writeLockAcquired = true;
+          return await callback();
+        });
+      });
     } finally {
       this.writeLockAcquired = false;
     }
@@ -56,22 +44,15 @@ export class ReadWriteLock {
 
   async query() {
     const state = await navigator.locks.query();
-    const readerLocks = state.held?.filter(
-      (lock) => lock.name === `${this.name}-reader`,
-    );
-    const writerLocks = state.held?.filter(
-      (lock) => lock.name === `${this.name}-writer`,
-    );
+    const readerLocks = state.held?.filter((lock) => lock.name === `${this.name}-reader`);
+    const writerLocks = state.held?.filter((lock) => lock.name === `${this.name}-writer`);
 
     return {
       readers: readerLocks?.length ?? 0,
       writers: writerLocks?.length ?? 0,
       pending:
-        state.pending?.filter(
-          (lock) =>
-            lock.name === `${this.name}-reader` ||
-            lock.name === `${this.name}-writer`,
-        ).length ?? 0,
+        state.pending?.filter((lock) => lock.name === `${this.name}-reader` || lock.name === `${this.name}-writer`)
+          .length ?? 0,
     };
   }
 }

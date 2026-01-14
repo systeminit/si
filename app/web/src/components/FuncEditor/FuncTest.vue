@@ -4,33 +4,19 @@
       <div
         class="flex flex-row gap-xs items-center p-xs justify-between border-y border-neutral-200 dark:border-neutral-600"
       >
-        <div
-          class="font-bold text-xl text-center overflow-hidden text-ellipsis flex-grow break-words"
-        >
+        <div class="font-bold text-xl text-center overflow-hidden text-ellipsis flex-grow break-words">
           Test {{ funcStore.selectedFuncSummary?.kind + " " || "" }}Function
           <span class="italic"
-            >"{{
-              funcStore.selectedFuncSummary?.displayName ||
-              funcStore.selectedFuncSummary?.name
-            }}"</span
+            >"{{ funcStore.selectedFuncSummary?.displayName || funcStore.selectedFuncSummary?.name }}"</span
           >
         </div>
-        <StatusIndicatorIcon
-          v-if="runningTest"
-          :status="testStatus"
-          type="funcTest"
-        />
+        <StatusIndicatorIcon v-if="runningTest" :status="testStatus" type="funcTest" />
       </div>
 
-      <div
-        class="flex flex-col border dark:border-neutral-600 p-xs m-xs rounded"
-      >
+      <div class="flex flex-col border dark:border-neutral-600 p-xs m-xs rounded">
         <div class="pb-xs">
           Select the
-          <span
-            v-if="assetStore.selectedSchemaVariant"
-            class="italic font-bold"
-          >
+          <span v-if="assetStore.selectedSchemaVariant" class="italic font-bold">
             {{ assetStore.selectedSchemaVariant.schemaName }}
           </span>
           component to use as the input for your test:
@@ -38,9 +24,7 @@
         <FuncTestSelector
           v-if="selectedAsset"
           ref="funcTestSelectorRef"
-          :isAttributeFunc="
-            funcStore.selectedFuncSummary?.kind === FuncKind.Attribute
-          "
+          :isAttributeFunc="funcStore.selectedFuncSummary?.kind === FuncKind.Attribute"
           :readyToTest="readyToTest"
           :schemaVariantId="selectedAsset?.schemaVariantId"
           :testStatus="testStatus"
@@ -49,13 +33,8 @@
         />
       </div>
       <!-- DRY RUN SECTION -->
-      <div
-        v-if="dryRunConfig === 'choose'"
-        class="border dark:border-neutral-600 p-xs m-xs rounded"
-      >
-        <div class="pb-xs">
-          Do you want the results of this test to be applied to the component?
-        </div>
+      <div v-if="dryRunConfig === 'choose'" class="border dark:border-neutral-600 p-xs m-xs rounded">
+        <div class="pb-xs">Do you want the results of this test to be applied to the component?</div>
         <VormInput
           v-model="dryRun"
           class="flex-grow justify-center"
@@ -67,15 +46,10 @@
         />
       </div>
       <div v-else class="py-xs px-sm rounded text-center italic">
-        <span
-          v-if="dryRunConfig === 'dry'"
-          class="text-neutral-500 dark:text-neutral-400"
-        >
+        <span v-if="dryRunConfig === 'dry'" class="text-neutral-500 dark:text-neutral-400">
           The results of this test will not be applied to the component.
         </span>
-        <span v-else class="font-bold">
-          WARNING: The results of this test will be applied to the component!
-        </span>
+        <span v-else class="font-bold"> WARNING: The results of this test will be applied to the component! </span>
       </div>
       <!-- END DRY RUN SECTION -->
     </template>
@@ -89,10 +63,7 @@
       variant="secondary"
     >
       <TabGroupItem label="Input" slug="input">
-        <CodeViewer
-          :code="testInputCode"
-          :title="`Input: ${testComponentDisplayName}`"
-        />
+        <CodeViewer :code="testInputCode" :title="`Input: ${testComponentDisplayName}`" />
       </TabGroupItem>
       <TabGroupItem label="Execution Logs" slug="logs">
         <div class="w-full h-full overflow-hidden flex flex-col absolute">
@@ -101,14 +72,8 @@
             <div
               class="border dark:border-neutral-600 dark:bg-shade-100 bg-neutral-100 rounded-xl m-xs p-xs flex flex-row items-center gap-xs flex-none"
             >
-              <StatusIndicatorIcon
-                :status="testLogs.status"
-                size="2xl"
-                type="funcTest"
-              />
-              <div class="text-xl font-bold capitalize">
-                Status: {{ testLogs.status }}
-              </div>
+              <StatusIndicatorIcon :status="testLogs.status" size="2xl" type="funcTest" />
+              <div class="text-xl font-bold capitalize">Status: {{ testLogs.status }}</div>
               <div class="flex-grow text-right">
                 <a
                   class="text-action-400 font-bold text-sm hover:underline cursor-pointer"
@@ -121,24 +86,14 @@
                   :title="`Output Information For Test On ${testComponentDisplayName}`"
                 >
                   <div class="w-full max-h-[50vh] relative overflow-auto">
-                    <CodeViewer
-                      :code="testLogs.output"
-                      :title="`Output Info: ${testComponentDisplayName}`"
-                    />
+                    <CodeViewer :code="testLogs.output" :title="`Output Info: ${testComponentDisplayName}`" />
                   </div>
                 </Modal>
               </div>
             </div>
 
-            <div
-              v-if="testLogs.stdout"
-              class="relative flex-shrink overflow-auto basis-full"
-            >
-              <CodeViewer
-                :code="testLogs.stdout"
-                :title="`stdout: ${testComponentDisplayName}`"
-                showTitle
-              />
+            <div v-if="testLogs.stdout" class="relative flex-shrink overflow-auto basis-full">
+              <CodeViewer :code="testLogs.stdout" :title="`stdout: ${testComponentDisplayName}`" showTitle />
             </div>
             <div
               v-else
@@ -146,15 +101,8 @@
             >
               No stdout logs to show.
             </div>
-            <div
-              v-if="testLogs.stderr"
-              class="relative flex-shrink overflow-auto basis-full"
-            >
-              <CodeViewer
-                :code="testLogs.stderr"
-                :title="`stderr: ${testComponentDisplayName}`"
-                showTitle
-              />
+            <div v-if="testLogs.stderr" class="relative flex-shrink overflow-auto basis-full">
+              <CodeViewer :code="testLogs.stderr" :title="`stderr: ${testComponentDisplayName}`" showTitle />
             </div>
             <div
               v-else
@@ -168,53 +116,29 @@
             class="w-full p-md text-center text-neutral-500 dark:text-neutral-400 flex flex-col items-center"
           >
             <template v-if="testStatus === 'running'">
-              <div class="pb-sm">
-                Awaiting logs for the currently running test...
-              </div>
-              <StatusIndicatorIcon
-                :status="testStatus"
-                size="2xl"
-                tone="neutral"
-                type="funcTest"
-              />
+              <div class="pb-sm">Awaiting logs for the currently running test...</div>
+              <StatusIndicatorIcon :status="testStatus" size="2xl" tone="neutral" type="funcTest" />
             </template>
             <template v-else>No logs available for this test.</template>
           </div>
-          <div
-            v-else
-            class="w-full p-md text-center text-neutral-500 dark:text-neutral-400"
-          >
+          <div v-else class="w-full p-md text-center text-neutral-500 dark:text-neutral-400">
             Run a test to see the execution logs.
           </div>
         </div>
       </TabGroupItem>
       <TabGroupItem label="Output" slug="output">
-        <CodeViewer
-          v-if="testOutputCode"
-          :code="testOutputCode"
-          :title="`Output: ${testComponentDisplayName}`"
-        />
+        <CodeViewer v-if="testOutputCode" :code="testOutputCode" :title="`Output: ${testComponentDisplayName}`" />
         <div
           v-else-if="runningTest"
           class="w-full p-md text-center text-neutral-500 dark:text-neutral-400 flex flex-col items-center"
         >
           <template v-if="testStatus === 'running'">
-            <div class="pb-sm">
-              Awaiting output for the currently running test...
-            </div>
-            <StatusIndicatorIcon
-              :status="testStatus"
-              size="2xl"
-              tone="neutral"
-              type="funcTest"
-            />
+            <div class="pb-sm">Awaiting output for the currently running test...</div>
+            <StatusIndicatorIcon :status="testStatus" size="2xl" tone="neutral" type="funcTest" />
           </template>
           <template v-else>No output available for this test.</template>
         </div>
-        <div
-          v-else
-          class="w-full p-md text-center text-neutral-500 dark:text-neutral-400"
-        >
+        <div v-else class="w-full p-md text-center text-neutral-500 dark:text-neutral-400">
           Run a test to see the output.
         </div>
       </TabGroupItem>
@@ -224,13 +148,7 @@
 
 <script lang="ts" setup>
 import * as _ from "lodash-es";
-import {
-  VormInput,
-  ScrollArea,
-  TabGroupItem,
-  TabGroup,
-  Modal,
-} from "@si/vue-lib/design-system";
+import { VormInput, ScrollArea, TabGroupItem, TabGroup, Modal } from "@si/vue-lib/design-system";
 import { computed, ref } from "vue";
 import { useFuncStore } from "@/store/func/funcs.store";
 import { useAssetStore } from "@/store/asset.store";
@@ -255,10 +173,7 @@ const selectedAsset = computed(() => assetStore.selectedSchemaVariant);
 
 const enableTestTabGroup = computed((): boolean => {
   if (funcStore.selectedFuncSummary?.kind === FuncKind.Attribute) {
-    if (
-      funcTestSelectorRef.value?.selectedComponentId &&
-      funcTestSelectorRef.value?.selectedOutputLocationId
-    ) {
+    if (funcTestSelectorRef.value?.selectedComponentId && funcTestSelectorRef.value?.selectedOutputLocationId) {
       return true;
     }
     return false;
@@ -291,9 +206,7 @@ const dryRunConfig = computed(() => {
 
 const testComponentDisplayName = computed(() => {
   if (funcTestSelectorRef.value?.selectedComponentId) {
-    return componentsStore.allComponentsById[
-      funcTestSelectorRef.value.selectedComponentId
-    ]?.def.displayName;
+    return componentsStore.allComponentsById[funcTestSelectorRef.value.selectedComponentId]?.def.displayName;
   } else return "ERROR";
 });
 
@@ -304,9 +217,7 @@ const testStatus = computed((): TestStatus => {
   else if (status.isSuccess) return "success";
   else return "failure";
 });
-const rawTestLogs = ref<
-  { stream: string; level: string; message: string; timestamp: string }[]
->([]);
+const rawTestLogs = ref<{ stream: string; level: string; message: string; timestamp: string }[]>([]);
 const testLogs = computed(() => {
   const logs = {
     stdout: "",
@@ -322,18 +233,14 @@ const testLogs = computed(() => {
       } else if (log.stream === "stderr") {
         if (logs.stderr !== "") logs.stderr += "\n";
         logs.stderr += log.message;
-      } else if (
-        log.stream === "output" &&
-        log.message.slice(0, 8) === "Output: "
-      ) {
+      } else if (log.stream === "output" && log.message.slice(0, 8) === "Output: ") {
         logs.output = log.message.slice(8);
         const outputJSON = JSON.parse(logs.output);
         logs.status = (outputJSON.status as Status) ?? "unknown";
       }
     });
     if (logs.status === "running" && testOutput.value) {
-      logs.status =
-        (testOutput.value as { result: Status }).result ?? "running";
+      logs.status = (testOutput.value as { result: Status }).result ?? "running";
     }
   }
 
@@ -357,38 +264,25 @@ const loadInput = async () => {
 };
 
 const prepareTest = async () => {
-  if (
-    !funcStore.selectedFuncId ||
-    !funcTestSelectorRef.value?.selectedComponentId
-  )
-    return;
+  if (!funcStore.selectedFuncId || !funcTestSelectorRef.value?.selectedComponentId) return;
 
   resetTestData();
 
   if (funcStore.selectedFuncSummary?.kind === FuncKind.Attribute) {
     if (!funcTestSelectorRef.value.selectedOutputLocationId) {
-      throw new Error(
-        "cannot prepare test for attribute func without a selected output location",
-      );
+      throw new Error("cannot prepare test for attribute func without a selected output location");
     }
 
-    const propId =
-      funcTestSelectorRef.value.selectedOutputLocationId.startsWith("p_")
-        ? funcTestSelectorRef.value.selectedOutputLocationId.replace("p_", "")
-        : undefined;
-    const outputSocketId =
-      funcTestSelectorRef.value.selectedOutputLocationId.startsWith("s_")
-        ? funcTestSelectorRef.value.selectedOutputLocationId.replace("s_", "")
-        : undefined;
+    const propId = funcTestSelectorRef.value.selectedOutputLocationId.startsWith("p_")
+      ? funcTestSelectorRef.value.selectedOutputLocationId.replace("p_", "")
+      : undefined;
+    const outputSocketId = funcTestSelectorRef.value.selectedOutputLocationId.startsWith("s_")
+      ? funcTestSelectorRef.value.selectedOutputLocationId.replace("s_", "")
+      : undefined;
 
-    const res = await funcStore.FETCH_PROTOTYPE_ARGUMENTS(
-      propId,
-      outputSocketId,
-    );
+    const res = await funcStore.FETCH_PROTOTYPE_ARGUMENTS(propId, outputSocketId);
     if (!res.result.success) {
-      throw new Error(
-        "could not fetch prototype arguments needed for preparing test",
-      );
+      throw new Error("could not fetch prototype arguments needed for preparing test");
     }
 
     const preparedArguments = res.result.data.preparedArguments;
@@ -401,21 +295,14 @@ const prepareTest = async () => {
     funcStore.selectedFuncSummary?.kind === FuncKind.CodeGeneration ||
     funcStore.selectedFuncSummary?.kind === FuncKind.Qualification
   ) {
-    const res = await componentsStore.FETCH_COMPONENT_JSON(
-      funcTestSelectorRef.value.selectedComponentId,
-    );
+    const res = await componentsStore.FETCH_COMPONENT_JSON(funcTestSelectorRef.value.selectedComponentId);
     if (!res.result.success) {
-      throw new Error(
-        "could not fetch component json needed for preparing test",
-      );
+      throw new Error("could not fetch component json needed for preparing test");
     }
 
     const json = res.result.data.json;
 
-    const props: Record<string, unknown> | null = json as Record<
-      string,
-      unknown
-    >;
+    const props: Record<string, unknown> | null = json as Record<string, unknown>;
 
     const toSnakeCase = (inputString: string) => {
       return inputString
@@ -437,9 +324,8 @@ const prepareTest = async () => {
       selectedInputs =
         funcStore.codegenBindings[funcStore.selectedFuncId]?.find((b) => {
           const schemaVariantId =
-            componentsStore.allComponentsById[
-              funcTestSelectorRef.value?.selectedComponentId || ""
-            ]?.def.schemaVariantId;
+            componentsStore.allComponentsById[funcTestSelectorRef.value?.selectedComponentId || ""]?.def
+              .schemaVariantId;
           if (schemaVariantId) return b.schemaVariantId === schemaVariantId;
           return false;
         })?.inputs || [];
@@ -448,9 +334,8 @@ const prepareTest = async () => {
       selectedInputs =
         funcStore.qualificationBindings[funcStore.selectedFuncId]?.find((b) => {
           const schemaVariantId =
-            componentsStore.allComponentsById[
-              funcTestSelectorRef.value?.selectedComponentId || ""
-            ]?.def.schemaVariantId;
+            componentsStore.allComponentsById[funcTestSelectorRef.value?.selectedComponentId || ""]?.def
+              .schemaVariantId;
           if (schemaVariantId) return b.schemaVariantId === schemaVariantId;
           return false;
         })?.inputs || [];
@@ -464,20 +349,13 @@ const prepareTest = async () => {
     testInputCode.value = JSON.stringify(properties, null, 2);
     testInputProperties.value = properties;
   } else if (funcStore.selectedFuncSummary?.kind === FuncKind.Management) {
-    const res = await componentsStore.FETCH_COMPONENT_JSON(
-      funcTestSelectorRef.value.selectedComponentId,
-    );
+    const res = await componentsStore.FETCH_COMPONENT_JSON(funcTestSelectorRef.value.selectedComponentId);
     if (!res.result.success) {
-      throw new Error(
-        "could not fetch component json needed for preparing test",
-      );
+      throw new Error("could not fetch component json needed for preparing test");
     }
 
     const json = res.result.data.json;
-    const props: Record<string, unknown> | null = json as Record<
-      string,
-      unknown
-    >;
+    const props: Record<string, unknown> | null = json as Record<string, unknown>;
 
     const geometry = { x: 0, y: 0, width: 500, height: 500 };
     // TODO recursive toSnakeCase all props
@@ -498,12 +376,7 @@ const prepareTest = async () => {
 };
 
 const startTest = async () => {
-  if (
-    !funcStore.selectedFuncCode ||
-    !funcTestSelectorRef.value?.selectedComponentId ||
-    !readyToTest.value
-  )
-    return;
+  if (!funcStore.selectedFuncCode || !funcTestSelectorRef.value?.selectedComponentId || !readyToTest.value) return;
 
   prepareTest();
   readyToTest.value = false;
@@ -540,8 +413,7 @@ const startTest = async () => {
       }
     } else {
       testOutput.value = null;
-      testOutputCode.value =
-        "ERROR: Test Execution Request Succeeded, But Func Run Not Found";
+      testOutputCode.value = "ERROR: Test Execution Request Succeeded, But Func Run Not Found";
     }
   } else {
     testOutput.value = null;

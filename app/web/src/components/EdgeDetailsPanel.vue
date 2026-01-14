@@ -6,24 +6,14 @@
           v-if="!featureFlagsStore.SIMPLE_SOCKET_UI"
           :selected="menuSelected"
           @click="
-            (e) => {
+            (e: MouseEvent) => {
               emit('openMenu', e);
             }
           "
         />
       </SidebarSubpanelTitle>
-      <div
-        v-if="featureFlagsStore.SIMPLE_SOCKET_UI"
-        class="p-xs border-b dark:border-neutral-600 flex flex-row"
-      >
-        <VButton
-          class="grow"
-          icon="plus"
-          label="Add Connection"
-          size="sm"
-          variant="ghost"
-          @click="addConnection"
-        />
+      <div v-if="featureFlagsStore.SIMPLE_SOCKET_UI" class="p-xs border-b dark:border-neutral-600 flex flex-row">
+        <VButton class="grow" icon="plus" label="Add Connection" size="sm" variant="ghost" @click="addConnection" />
       </div>
     </template>
 
@@ -32,19 +22,10 @@
       :key="connection.uniqueKeyForVue"
       class="border-b dark:border-neutral-600 p-xs"
     >
-      <Connection
-        :connection="connection"
-        :showMenu="featureFlagsStore.SIMPLE_SOCKET_UI"
-      />
+      <Connection :connection="connection" :showMenu="featureFlagsStore.SIMPLE_SOCKET_UI" />
     </div>
 
-    <Stack
-      v-if="
-        selectedEdge.changeStatus === 'deleted' &&
-        !featureFlagsStore.SIMPLE_SOCKET_UI
-      "
-      class="px-xs py-sm"
-    >
+    <Stack v-if="selectedEdge.changeStatus === 'deleted' && !featureFlagsStore.SIMPLE_SOCKET_UI" class="px-xs py-sm">
       <ErrorMessage icon="alert-triangle" tone="warning">
         This edge will be removed from your model when this change set is merged
       </ErrorMessage>
@@ -63,16 +44,8 @@
 <script lang="ts" setup>
 import * as _ from "lodash-es";
 import { computed } from "vue";
-import {
-  VButton,
-  Stack,
-  ErrorMessage,
-  ScrollArea,
-} from "@si/vue-lib/design-system";
-import {
-  ConnectionDirection,
-  useComponentsStore,
-} from "@/store/components.store";
+import { VButton, Stack, ErrorMessage, ScrollArea } from "@si/vue-lib/design-system";
+import { ConnectionDirection, useComponentsStore } from "@/store/components.store";
 import { useViewsStore } from "@/store/views.store";
 import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import { Edge, isSocketEdge } from "@/api/sdf/dal/component";
@@ -93,10 +66,8 @@ const selectedEdge = computed(() => viewsStore.selectedEdge);
 
 const connections = computed(() => {
   if (!selectedEdge.value) return [];
-  const fromComponent =
-    componentsStore.allComponentsById[selectedEdge.value.fromComponentId];
-  const toComponent =
-    componentsStore.allComponentsById[selectedEdge.value.toComponentId];
+  const fromComponent = componentsStore.allComponentsById[selectedEdge.value.fromComponentId];
+  const toComponent = componentsStore.allComponentsById[selectedEdge.value.toComponentId];
   if (!fromComponent || !toComponent) return [];
 
   let edgesToDisplay: Edge[];
@@ -115,14 +86,10 @@ const connections = computed(() => {
     if (isSocketEdge(edge)) {
       return {
         ...edge,
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-        fromSocket: fromComponent.sockets.find(
-          (socket) => isSocketEdge(edge) && socket.def.id === edge.fromSocketId,
-        )!,
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-        toSocket: toComponent.sockets.find(
-          (socket) => isSocketEdge(edge) && socket.def.id === edge.toSocketId,
-        )!,
+
+        fromSocket: fromComponent.sockets.find((socket) => isSocketEdge(edge) && socket.def.id === edge.fromSocketId)!,
+
+        toSocket: toComponent.sockets.find((socket) => isSocketEdge(edge) && socket.def.id === edge.toSocketId)!,
         uniqueKeyForVue: `${edge.fromSocketId}-${edge.toSocketId}`,
       };
     } else {

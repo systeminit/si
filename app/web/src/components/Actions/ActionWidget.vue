@@ -11,29 +11,16 @@
     @click="clickHandler"
   >
     <Toggle :selected="!!action" class="flex-none" />
-    <StatusIndicatorIcon
-      type="action"
-      :status="binding.kind"
-      tone="inherit"
-      class="flex-none"
-    />
+    <StatusIndicatorIcon type="action" :status="binding.kind" tone="inherit" class="flex-none" />
     <div class="font-bold leading-normal">
       {{ binding.displayName || binding.name }}
     </div>
 
-    <Icon
-      v-if="addRequestStatus.isPending || removeRequestStatus.isPending"
-      name="loader"
-      class="ml-auto"
-      size="sm"
-    />
+    <Icon v-if="addRequestStatus.isPending || removeRequestStatus.isPending" name="loader" class="ml-auto" size="sm" />
     <div
       v-else
       :class="
-        clsx(
-          'ml-auto mr-2xs hover:underline font-bold select-none',
-          themeClasses('text-action-500', 'text-action-300'),
-        )
+        clsx('ml-auto mr-2xs hover:underline font-bold select-none', themeClasses('text-action-500', 'text-action-300'))
       "
       @click.stop="onClickView"
     >
@@ -54,10 +41,7 @@ import { Action } from "@/api/sdf/dal/func";
 import { useViewsStore } from "@/store/views.store";
 import { ComponentType } from "@/api/sdf/dal/schema";
 import StatusIndicatorIcon from "../StatusIndicatorIcon.vue";
-import {
-  DiagramGroupData,
-  DiagramNodeData,
-} from "../ModelingDiagram/diagram_types";
+import { DiagramGroupData, DiagramNodeData } from "../ModelingDiagram/diagram_types";
 
 interface BindingWithDisplayName extends Action {
   displayName?: string | null;
@@ -85,18 +69,12 @@ function clickHandler() {
   if (action.value?.id) {
     actionsStore.CANCEL([action.value.id]);
   } else if (props.binding?.actionPrototypeId) {
-    actionsStore.ADD_ACTION(
-      props.component.def.id,
-      props.binding?.actionPrototypeId,
-    );
+    actionsStore.ADD_ACTION(props.component.def.id, props.binding?.actionPrototypeId);
   }
 }
 
 function onClickView() {
-  if (
-    props.binding &&
-    selectedComponent.value?.def.componentType !== ComponentType.View
-  ) {
+  if (props.binding && selectedComponent.value?.def.componentType !== ComponentType.View) {
     router.push({
       name: "workspace-lab-assets",
       query: {

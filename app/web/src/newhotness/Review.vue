@@ -4,10 +4,7 @@
       :class="
         clsx(
           'header flex-none flex flex-row items-center gap-xs px-sm py-xs border-b',
-          themeClasses(
-            'bg-white border-neutral-300',
-            'bg-neutral-800 border-neutral-600',
-          ),
+          themeClasses('bg-white border-neutral-300', 'bg-neutral-800 border-neutral-600'),
         )
       "
     >
@@ -16,12 +13,7 @@
         tooltipPlacement="top"
         icon="x"
         tone="empty"
-        :class="
-          clsx(
-            'active:bg-white active:text-black',
-            themeClasses('hover:bg-neutral-200', 'hover:bg-neutral-600'),
-          )
-        "
+        :class="clsx('active:bg-white active:text-black', themeClasses('hover:bg-neutral-200', 'hover:bg-neutral-600'))"
         @click="exitReview"
       />
       <div class="flex-1 text-sm font-medium">Review Changes</div>
@@ -31,38 +23,24 @@
           :class="
             clsx(
               'text-sm px-xs py-2xs rounded',
-              themeClasses(
-                'text-neutral-600 bg-neutral-100',
-                'text-neutral-400 bg-neutral-700',
-              ),
+              themeClasses('text-neutral-600 bg-neutral-100', 'text-neutral-400 bg-neutral-700'),
             )
           "
         >
           {{
             selectedComponentId
-              ? `${currentComponentIndex + 1} / ${
-                  filteredAndOrderedComponentList.length
-                }`
+              ? `${currentComponentIndex + 1} / ${filteredAndOrderedComponentList.length}`
               : filteredAndOrderedComponentList.length
           }}
         </div>
-        <NewButton
-          label="Previous"
-          :disabled="!canGoBack"
-          @click.stop.prevent="goToPreviousComponent"
-        >
+        <NewButton label="Previous" :disabled="!canGoBack" @click.stop.prevent="goToPreviousComponent">
           <template #icon>
             <div class="border border-neutral-400 rounded p-3xs mr-2xs">
               <Icon name="arrow--left" size="xs" />
             </div>
           </template>
         </NewButton>
-        <NewButton
-          label="Next"
-          tone="action"
-          :disabled="!canGoForward"
-          @click.stop.prevent="goToNextComponent"
-        >
+        <NewButton label="Next" tone="action" :disabled="!canGoForward" @click.stop.prevent="goToNextComponent">
           <template #iconRight>
             <div class="border border-action-200 rounded p-3xs ml-2xs">
               <Icon name="arrow--right" size="xs" />
@@ -71,15 +49,8 @@
         </NewButton>
       </div>
     </div>
-    <section
-      v-if="ctx.onHead.value"
-      class="p-lg flex flex-col items-center gap-sm"
-    >
-      <EmptyState
-        icon="x"
-        text="You are on HEAD"
-        secondaryText="There are no changes to review"
-      />
+    <section v-if="ctx.onHead.value" class="p-lg flex flex-col items-center gap-sm">
+      <EmptyState icon="x" text="You are on HEAD" secondaryText="There are no changes to review" />
       <NewButton label="Exit" icon="chevron--left" @click="exitReview" />
     </section>
     <section v-else class="grid review w-full min-h-0 grow flex-1 p-xs">
@@ -88,10 +59,7 @@
           clsx(
             'left',
             'flex flex-col gap-xs m-xs p-xs border',
-            themeClasses(
-              'border-neutral-400 bg-white',
-              'border-neutral-600 bg-neutral-800',
-            ),
+            themeClasses('border-neutral-400 bg-white', 'border-neutral-600 bg-neutral-800'),
           )
         "
       >
@@ -109,12 +77,7 @@
           @keydown.down.prevent.stop="controlDown"
         />
         <div ref="componentListRef" class="flex-1 min-h-0 scrollable">
-          <EmptyState
-            v-if="componentList.length === 0"
-            icon="diff"
-            text="No components changed"
-            class="p-sm"
-          />
+          <EmptyState v-if="componentList.length === 0" icon="diff" text="No components changed" class="p-sm" />
           <EmptyState
             v-else-if="filteredAndOrderedComponentList?.length === 0"
             icon="diff"
@@ -140,19 +103,13 @@
               :style="{
                 transform: `translateY(${item.start}px)`,
               }"
-              @click="
-                selectComponent(filteredAndOrderedComponentList[item.index]!.id)
-              "
+              @click="selectComponent(filteredAndOrderedComponentList[item.index]!.id)"
             />
           </div>
         </div>
       </div>
       <div class="main flex flex-col gap-sm m-xs">
-        <CollapsingFlexItem
-          v-if="selectedComponentId && selectedComponent"
-          disableCollapse
-          headerTextSize="sm"
-        >
+        <CollapsingFlexItem v-if="selectedComponentId && selectedComponent" disableCollapse headerTextSize="sm">
           <template #header>
             <div
               class="group/title flex flex-row items-center gap-xs w-full cursor-pointer"
@@ -193,23 +150,16 @@
               :class="
                 clsx(
                   'flex flex-row items-center gap-xs p-xs text-sm',
-                  themeClasses(
-                    'text-neutral-800 bg-neutral-300',
-                    'text-neutral-100 bg-neutral-600',
-                  ),
+                  themeClasses('text-neutral-800 bg-neutral-300', 'text-neutral-100 bg-neutral-600'),
                 )
               "
             >
               <template v-if="selectedComponent.toDelete">
                 <div class="mr-auto">
-                  This component will be removed from HEAD once the current
-                  change set is applied.
+                  This component will be removed from HEAD once the current change set is applied.
                 </div>
                 <NewButton
-                  v-if="
-                    selectedComponent.toDelete &&
-                    restoreComponentStatus !== 'succeeded'
-                  "
+                  v-if="selectedComponent.toDelete && restoreComponentStatus !== 'succeeded'"
                   label="Restore"
                   :loading="restoreComponentStatus === 'inProgress'"
                   loadingIcon="loader"
@@ -218,34 +168,23 @@
                 />
               </template>
               <div v-else>
-                This component will be removed from HEAD without queueing a
-                delete action once the current change set is applied. This
-                cannot be undone within this change set.
+                This component will be removed from HEAD without queueing a delete action once the current change set is
+                applied. This cannot be undone within this change set.
               </div>
             </div>
 
             <!-- Show /si/name-->
             <ReviewAttributeItem
-              v-if="
-                selectedComponent.attributeDiffTree?.children?.si?.children
-                  ?.name
-              "
+              v-if="selectedComponent.attributeDiffTree?.children?.si?.children?.name"
               :selectedComponentId="selectedComponentId"
               name="name"
-              :item="
-                selectedComponent.attributeDiffTree.children.si.children.name
-              "
+              :item="selectedComponent.attributeDiffTree.children.si.children.name"
               :disableRevert="disableRevert"
             />
             <!-- Show children of /si/domain -->
-            <template
-              v-if="
-                selectedComponent.attributeDiffTree?.children?.domain?.children
-              "
-            >
+            <template v-if="selectedComponent.attributeDiffTree?.children?.domain?.children">
               <ReviewAttributeItem
-                v-for="(item, name) in selectedComponent.attributeDiffTree
-                  .children.domain.children"
+                v-for="(item, name) in selectedComponent.attributeDiffTree.children.domain.children"
                 :key="name"
                 :selectedComponentId="selectedComponentId"
                 :name="name"
@@ -254,14 +193,9 @@
               />
             </template>
             <!-- Show children of /si/secrets -->
-            <template
-              v-if="
-                selectedComponent.attributeDiffTree?.children?.secrets?.children
-              "
-            >
+            <template v-if="selectedComponent.attributeDiffTree?.children?.secrets?.children">
               <ReviewAttributeItem
-                v-for="(item, name) in selectedComponent.attributeDiffTree
-                  .children.secrets.children"
+                v-for="(item, name) in selectedComponent.attributeDiffTree.children.secrets.children"
                 :key="name"
                 :selectedComponentId="selectedComponentId"
                 :name="name"
@@ -292,10 +226,7 @@
           :class="
             clsx(
               'border grow flex flex-col items-center justify-center',
-              themeClasses(
-                'border-neutral-400 bg-white',
-                'border-neutral-600 bg-neutral-800',
-              ),
+              themeClasses('border-neutral-400 bg-white', 'border-neutral-600 bg-neutral-800'),
             )
           "
         >
@@ -305,29 +236,17 @@
             secondaryText="Select a component to see information about it"
           />
         </div>
-        <CollapsingFlexItem
-          ref="actionsRef"
-          headerTextSize="sm"
-          maxHeightContent
-          :expandable="false"
-        >
+        <CollapsingFlexItem ref="actionsRef" headerTextSize="sm" maxHeightContent :expandable="false">
           <template #header> Actions </template>
           <!--
         For anything related to actions, check if we have both the "selectedComponentId" and the
         "details" to make sure the data comes in atomically and with reactivity.
         -->
           <template v-if="selectedComponent" #headerIcons>
-            <ActionPills
-              :actionCounts="actionCounts"
-              mode="row"
-              showNoPendingActions
-            />
+            <ActionPills :actionCounts="actionCounts" mode="row" showNoPendingActions />
           </template>
           <template v-if="selectedComponent">
-            <ActionsPanel
-              ref="actionsPanelRef"
-              :component="selectedComponent"
-            />
+            <ActionsPanel ref="actionsPanelRef" :component="selectedComponent" />
           </template>
           <EmptyState
             v-else
@@ -342,10 +261,7 @@
         <CollapsingFlexItem open headerTextSize="sm">
           <template #header>Component History</template>
           <template v-if="selectedComponentId && selectedComponent">
-            <ComponentHistory
-              :componentId="selectedComponentId"
-              :enabled="!!selectedComponent"
-            />
+            <ComponentHistory :componentId="selectedComponentId" :enabled="!!selectedComponent" />
           </template>
           <EmptyState
             v-else
@@ -361,10 +277,8 @@
             v-if="selectedComponent"
             :title="`${selectedComponent.name}: ${selectedComponent.schemaName}`"
             :code="
-              (selectedComponent.componentDiff?.resourceDiff?.diff ??
-                undefined) ||
-              (selectedComponent.componentDiff?.resourceDiff?.current ??
-                undefined)
+              (selectedComponent.componentDiff?.resourceDiff?.diff ?? undefined) ||
+              (selectedComponent.componentDiff?.resourceDiff?.current ?? undefined)
             "
             codeLanguage="diff"
             copyTooltip="Copy diff to clipboard"
@@ -383,34 +297,15 @@
 </template>
 
 <script setup lang="ts">
-/* eslint-disable @typescript-eslint/no-non-null-assertion */
 import { useQueries, useQuery, useQueryClient } from "@tanstack/vue-query";
-import {
-  computed,
-  nextTick,
-  onBeforeUnmount,
-  onMounted,
-  ref,
-  watch,
-} from "vue";
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import clsx from "clsx";
-import {
-  Icon,
-  SiSearch,
-  themeClasses,
-  TruncateWithTooltip,
-  NewButton,
-} from "@si/vue-lib/design-system";
+import { Icon, SiSearch, themeClasses, TruncateWithTooltip, NewButton } from "@si/vue-lib/design-system";
 import { useRouter, useRoute } from "vue-router";
 import * as _ from "lodash-es";
 import { sleep } from "@si/ts-lib/src/async-sleep";
 import { useVirtualizer } from "@tanstack/vue-virtual";
-import {
-  bifrost,
-  bifrostList,
-  useMakeArgs,
-  useMakeKey,
-} from "@/store/realtime/heimdall";
+import { bifrost, bifrostList, useMakeArgs, useMakeKey } from "@/store/realtime/heimdall";
 import {
   ActionDiffList,
   ActionDiffView,
@@ -468,22 +363,16 @@ const args = useMakeArgs();
 const changeSetComponentListQuery = useQuery({
   queryKey: key(EntityKind.ComponentList),
   enabled: ctx.queriesEnabled,
-  queryFn: async () =>
-    await bifrostList<ComponentInList[]>(args(EntityKind.ComponentList)),
+  queryFn: async () => await bifrostList<ComponentInList[]>(args(EntityKind.ComponentList)),
 });
-const changeSetComponentList = computed(
-  () => changeSetComponentListQuery.data.value ?? [],
-);
+const changeSetComponentList = computed(() => changeSetComponentListQuery.data.value ?? []);
 
 /** Queries for complete attribute-by-attribute diff of every component */
 const componentDiffQueries = useQueries({
   queries: computed(() =>
     changeSetComponentList.value.map((component) => ({
       queryKey: key(EntityKind.ComponentDiff, component.id),
-      queryFn: async () =>
-        await bifrost<ComponentDiff>(
-          args(EntityKind.ComponentDiff, component.id),
-        ),
+      queryFn: async () => await bifrost<ComponentDiff>(args(EntityKind.ComponentDiff, component.id)),
     })),
   ),
 });
@@ -491,16 +380,14 @@ const componentDiffQueries = useQueries({
 const erasedComponents = useQuery({
   queryKey: key(EntityKind.ErasedComponents),
   enabled: ctx.queriesEnabled,
-  queryFn: async () =>
-    await bifrost<ErasedComponents>(args(EntityKind.ErasedComponents)),
+  queryFn: async () => await bifrost<ErasedComponents>(args(EntityKind.ErasedComponents)),
 });
 
 /** Query to get actions that have changed relative to HEAD. */
 const actionDiffListQuery = useQuery({
   queryKey: key(EntityKind.ActionDiffList),
   enabled: ctx.queriesEnabled,
-  queryFn: async () =>
-    await bifrost<ActionDiffList>(args(EntityKind.ActionDiffList)),
+  queryFn: async () => await bifrost<ActionDiffList>(args(EntityKind.ActionDiffList)),
 });
 
 /**
@@ -530,9 +417,7 @@ const rawComponentList = computed(() => {
  */
 const componentList = computed(() => {
   const componentActionDiffs: { [id in ComponentId]?: ActionDiffView[] } = {};
-  for (const actionDiff of Object.values(
-    actionDiffListQuery.data.value?.actionDiffs ?? [],
-  )) {
+  for (const actionDiff of Object.values(actionDiffListQuery.data.value?.actionDiffs ?? [])) {
     if (actionDiff.diffStatus !== "None") {
       componentActionDiffs[actionDiff.componentId] ??= [];
       componentActionDiffs[actionDiff.componentId]?.push(actionDiff);
@@ -540,12 +425,9 @@ const componentList = computed(() => {
   }
 
   // Add component and action diffs to each component in the change set, and include "removed"
-  const componentDiffs: { [id in ComponentId]?: ComponentDiff } =
-    Object.fromEntries(
-      componentDiffQueries.value.map(
-        (query) => [query.data?.id, query.data] as const,
-      ),
-    );
+  const componentDiffs: { [id in ComponentId]?: ComponentDiff } = Object.fromEntries(
+    componentDiffQueries.value.map((query) => [query.data?.id, query.data] as const),
+  );
   const mapped = rawComponentList.value
     .map((component) => {
       const componentDiff = componentDiffs[component.id];
@@ -560,11 +442,7 @@ const componentList = computed(() => {
       // If the diffStatus *was* Modified, but none of the diffs were worth showing, then we
       // don't want to show it. (If it's Added or Removed, or has other things that are worth
       // showing, we will bring the status back in the next few.)
-      if (
-        diffStatus === "Modified" &&
-        !attributeDiffTree.diff &&
-        !attributeDiffTree.children
-      ) {
+      if (diffStatus === "Modified" && !attributeDiffTree.diff && !attributeDiffTree.children) {
         // There's an issue here where we skip restored components! They won't have an attributeDiffTree diff
         // or children but we are intentionall skipping them!
         // We may want to revist this behaviour - I am not 100% sure why it was added this way
@@ -597,9 +475,7 @@ const componentList = computed(() => {
     .filter((component) => component.diffStatus !== "None");
 
   // Add erased components
-  for (const { diff, component } of Object.values(
-    erasedComponents.data.value?.erased ?? {},
-  )) {
+  for (const { diff, component } of Object.values(erasedComponents.data.value?.erased ?? {})) {
     const actionDiffs = componentActionDiffs[component.id];
     const attributeDiffTree = toAttributeDiffTree(diff);
     mapped.push({
@@ -671,7 +547,7 @@ function toAttributeDiffTree(componentDiff?: ComponentDiff): AttributeDiffTree {
         const path = `${child.path}/${segment}` as AttributePath;
         child.children ??= {};
         child.children[segment] ??= { path };
-        child = child.children[segment] as AttributeDiffTree;
+        child = child.children[segment];
       }
     }
     child.diff = diff;
@@ -682,10 +558,7 @@ function toAttributeDiffTree(componentDiff?: ComponentDiff): AttributeDiffTree {
   return tree;
 }
 
-function shouldIncludeDiff(
-  attributePathSegments: string[],
-  diff: AttributeDiff,
-) {
+function shouldIncludeDiff(attributePathSegments: string[], diff: AttributeDiff) {
   // If the values and sources are equal (which could happen in some cases on component
   // upgrade), don't show this diff.
   if (_.isEqual(diff.new, diff.old)) return false;
@@ -717,17 +590,13 @@ function shouldIncludeDiff(
  * This is where we put any fixups we need while working in the frontend; any changes here need
  * to move to the backend MV.
  */
-function fixAttributeSourceAndValue(
-  sourceAndValue?: null | AttributeSourceAndValue,
-) {
+function fixAttributeSourceAndValue(sourceAndValue?: null | AttributeSourceAndValue) {
   if (!sourceAndValue) return undefined;
   const { $source } = sourceAndValue;
   // Add componentName to $source
   if ("component" in $source) {
     const component = $source.component;
-    const componentName = rawComponentList.value.find(
-      (c) => c.id === component,
-    )?.name;
+    const componentName = rawComponentList.value.find((c) => c.id === component)?.name;
     return {
       ...sourceAndValue,
       $source: {
@@ -763,14 +632,9 @@ function fixAttributeSourceAndValue(
 // });
 
 /** The currently-selected component data, including diffs */
-const selectedComponent = computed(
-  () =>
-    componentList.value.find((c) => c.id === selectedComponentId.value) || null,
-);
+const selectedComponent = computed(() => componentList.value.find((c) => c.id === selectedComponentId.value) || null);
 
-const disableRevert = computed(
-  () => selectedComponent.value?.diffStatus === "Removed",
-);
+const disableRevert = computed(() => selectedComponent.value?.diffStatus === "Removed");
 
 // When absolutely anything in the selected component changes, or the selection itself changes,
 // invalidate the audit logs query for that component.
@@ -779,8 +643,7 @@ watch(
   (newSelectedComponent) => {
     if (newSelectedComponent) {
       queryClient.invalidateQueries({
-        queryKey: key(EntityKind.AuditLogsForComponent, newSelectedComponent.id)
-          .value,
+        queryKey: key(EntityKind.AuditLogsForComponent, newSelectedComponent.id).value,
       });
     }
   },
@@ -833,9 +696,7 @@ const scrollSelectedComponentIntoView = async () => {
   // First, wait one tick for the dom classes to update
   await nextTick();
   // Then, see if the element exists in the DOM
-  const el = componentListRef.value.querySelector(
-    `[data-component-id="${selectedComponentId.value}"]`,
-  );
+  const el = componentListRef.value.querySelector(`[data-component-id="${selectedComponentId.value}"]`);
 
   if (el) {
     // If it does, scroll it to the center
@@ -844,9 +705,7 @@ const scrollSelectedComponentIntoView = async () => {
     });
   } else {
     // Otherwise, we need to scroll using the virtualizer
-    const selectionIndex = filteredAndOrderedComponentList.value.findIndex(
-      (c) => c.id === selectedComponentId.value,
-    );
+    const selectionIndex = filteredAndOrderedComponentList.value.findIndex((c) => c.id === selectedComponentId.value);
     if (selectionIndex >= 0) {
       virtualList.value.scrollToIndex(selectionIndex, { align: "center" });
     } else {
@@ -886,8 +745,7 @@ watch(
 );
 
 // Calculate action counts for the selected component, only including actions with count > 0
-const { actionPrototypeViews, actionByPrototype } =
-  useComponentActions(selectedComponent);
+const { actionPrototypeViews, actionByPrototype } = useComponentActions(selectedComponent);
 const actionCounts = computed(() => {
   const results: Record<string, { count: number; hasFailed: boolean }> = {};
   if (!selectedComponentId.value) return results;
@@ -899,10 +757,7 @@ const actionCounts = computed(() => {
 
       // Group Other actions with Manual
       let actionName = action.name;
-      if (
-        actionName.toLowerCase() === "other" ||
-        action.kind?.toLowerCase() === "other"
-      ) {
+      if (actionName.toLowerCase() === "other" || action.kind?.toLowerCase() === "other") {
         actionName = "Manual";
       }
 
@@ -921,9 +776,7 @@ const actionCounts = computed(() => {
   }
 
   // Filter out entries with count of 0
-  return Object.fromEntries(
-    Object.entries(results).filter(([_, value]) => value.count > 0),
-  );
+  return Object.fromEntries(Object.entries(results).filter(([_, value]) => value.count > 0));
 });
 
 const exitReview = () => {
@@ -936,9 +789,7 @@ const exitReview = () => {
 const currentComponentIndex = computed(() => {
   if (!selectedComponentId.value) return -1;
   return (
-    filteredAndOrderedComponentList.value?.findIndex(
-      (component) => component.id === selectedComponentId.value,
-    ) ?? -1
+    filteredAndOrderedComponentList.value?.findIndex((component) => component.id === selectedComponentId.value) ?? -1
   );
 });
 
@@ -969,17 +820,13 @@ const goToPreviousComponent = (e?: Event) => {
     }
   } else if (currentComponentIndex.value > 0) {
     // Go to previous component
-    const prevComponent =
-      filteredAndOrderedComponentList.value?.[currentComponentIndex.value - 1];
+    const prevComponent = filteredAndOrderedComponentList.value?.[currentComponentIndex.value - 1];
     if (prevComponent) {
       selectComponent(prevComponent.id);
     }
   } else {
     // At first component, wrap around to last component
-    const lastComponent =
-      filteredAndOrderedComponentList.value?.[
-        filteredAndOrderedComponentList.value.length - 1
-      ];
+    const lastComponent = filteredAndOrderedComponentList.value?.[filteredAndOrderedComponentList.value.length - 1];
     if (lastComponent) {
       selectComponent(lastComponent.id);
     }
@@ -1001,13 +848,9 @@ const goToNextComponent = (e?: Event) => {
     if (firstComponent) {
       selectComponent(firstComponent.id);
     }
-  } else if (
-    currentComponentIndex.value <
-    (filteredAndOrderedComponentList.value?.length ?? 0) - 1
-  ) {
+  } else if (currentComponentIndex.value < (filteredAndOrderedComponentList.value?.length ?? 0) - 1) {
     // Go to next component
-    const nextComponent =
-      filteredAndOrderedComponentList.value?.[currentComponentIndex.value + 1];
+    const nextComponent = filteredAndOrderedComponentList.value?.[currentComponentIndex.value + 1];
     if (nextComponent) {
       selectComponent(nextComponent.id);
     }
@@ -1021,10 +864,7 @@ const goToNextComponent = (e?: Event) => {
 };
 
 const focusSearchFirst = () => {
-  if (
-    !selectedComponentId.value &&
-    searchRef.value?.inputDOMEl !== document.activeElement
-  ) {
+  if (!selectedComponentId.value && searchRef.value?.inputDOMEl !== document.activeElement) {
     searchRef.value?.focusSearch();
     return true;
   }
@@ -1036,19 +876,14 @@ const controlUp = () => {
   }
 
   if (currentComponentIndex.value - 1 > -1) {
-    selectedComponentId.value =
-      filteredAndOrderedComponentList.value[
-        currentComponentIndex.value - 1
-      ]!.id;
+    selectedComponentId.value = filteredAndOrderedComponentList.value[currentComponentIndex.value - 1]!.id;
     searchRef.value?.blurSearch();
   } else if (searchRef.value?.inputDOMEl !== document.activeElement) {
     deselectComponent();
     searchRef.value?.focusSearch();
   } else {
     selectedComponentId.value =
-      filteredAndOrderedComponentList.value[
-        filteredAndOrderedComponentList.value.length - 1
-      ]!.id;
+      filteredAndOrderedComponentList.value[filteredAndOrderedComponentList.value.length - 1]!.id;
     searchRef.value?.blurSearch();
   }
 };
@@ -1057,14 +892,8 @@ const controlDown = () => {
     return;
   }
 
-  if (
-    currentComponentIndex.value + 1 <
-    filteredAndOrderedComponentList.value.length
-  ) {
-    selectedComponentId.value =
-      filteredAndOrderedComponentList.value[
-        currentComponentIndex.value + 1
-      ]!.id;
+  if (currentComponentIndex.value + 1 < filteredAndOrderedComponentList.value.length) {
+    selectedComponentId.value = filteredAndOrderedComponentList.value[currentComponentIndex.value + 1]!.id;
     searchRef.value?.blurSearch();
   } else if (searchRef.value?.inputDOMEl !== document.activeElement) {
     deselectComponent();
@@ -1177,9 +1006,7 @@ const noAVDiffs = computed(
 );
 
 const selectedComponentErased = computed(
-  () =>
-    selectedComponent.value?.diffStatus === "Removed" &&
-    !selectedComponent.value.toDelete,
+  () => selectedComponent.value?.diffStatus === "Removed" && !selectedComponent.value.toDelete,
 );
 
 const goToComponentDetails = () => {

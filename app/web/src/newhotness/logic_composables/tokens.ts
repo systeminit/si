@@ -28,9 +28,7 @@ export const tokensByWorkspacePk = reactive<Record<string, string>>({});
 
 export const readTokens = () => {
   try {
-    const parsed = JSON.parse(
-      storage.getItem(AUTH_LOCAL_STORAGE_KEYS.USER_TOKENS) || "{}",
-    );
+    const parsed = JSON.parse(storage.getItem(AUTH_LOCAL_STORAGE_KEYS.USER_TOKENS) || "{}");
     Object.entries(parsed).forEach(([k, v]) => {
       tokensByWorkspacePk[k] = v;
     });

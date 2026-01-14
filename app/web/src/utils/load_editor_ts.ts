@@ -1,6 +1,5 @@
 import tsUrl from "@/assets/static/editor_typescript.txt";
 
-/* eslint-disable-next-line */
 let editor_ts: string | null = null;
 
 const loadEditorTs = async (): Promise<string> => {

@@ -1,8 +1,7 @@
 import FontFaceObserver from "fontfaceobserver";
 import { computed, ComputedRef, inject, InjectionKey, provide, ref } from "vue";
 
-const FONTS_LOADED_INJECTION_KEY: InjectionKey<ComputedRef<boolean>> =
-  Symbol("FONTS_LOADED");
+const FONTS_LOADED_INJECTION_KEY: InjectionKey<ComputedRef<boolean>> = Symbol("FONTS_LOADED");
 
 // TODO: pull specific font from tailwind or body's css
 // TODO: support multiple fonts?

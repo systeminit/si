@@ -1,9 +1,4 @@
-import {
-  AttributeTree,
-  AttributeValue,
-  Prop,
-  Secret,
-} from "@/workers/types/entity_kind_types";
+import { AttributeTree, AttributeValue, Prop, Secret } from "@/workers/types/entity_kind_types";
 import { AttributePath, ComponentId } from "@/api/sdf/dal/component";
 import { PropKind } from "@/api/sdf/dal/prop";
 import { componentTypes } from "../api_composables";
@@ -19,21 +14,13 @@ export interface AttrTree {
   componentId: string;
 }
 
-export const makeAvTree = (
-  data: AttributeTree,
-  avId: string,
-  isBuildable: boolean,
-  parent?: string,
-): AttrTree => {
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+export const makeAvTree = (data: AttributeTree, avId: string, isBuildable: boolean, parent?: string): AttrTree => {
   const av = data.attributeValues[avId]!;
   const prop = av.propId ? data.props[av.propId] : undefined;
   const secret = av.secret ?? undefined;
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+
   const childrenIds = data.treeInfo[avId]!.children;
-  const children = childrenIds.map((id) =>
-    makeAvTree(data, id, ["array", "map"].includes(prop?.kind ?? ""), avId),
-  );
+  const children = childrenIds.map((id) => makeAvTree(data, id, ["array", "map"].includes(prop?.kind ?? ""), avId));
   const tree: AttrTree = {
     componentId: data.id,
     id: avId,
@@ -47,11 +34,7 @@ export const makeAvTree = (
   return tree;
 };
 
-export const arrayAttrTreeIntoTree = (
-  matches: AttrTree[],
-  map: Record<string, AttrTree>,
-  stopAtId?: string,
-) => {
+export const arrayAttrTreeIntoTree = (matches: AttrTree[], map: Record<string, AttrTree>, stopAtId?: string) => {
   // get new instances of all the objects with empty children arrays
   const parentsWithoutChildren = Object.values(map)
     .map((attr) => {
@@ -80,10 +63,8 @@ export const arrayAttrTreeIntoTree = (
       if (p) {
         if (prevPid) {
           const lastParent = matchesAsTree[prevPid];
-          if (lastParent && !p.children.some((c) => c.id === lastParent.id))
-            p.children.push(lastParent);
-        } else if (!p.children.some((c) => c.id === attr.id))
-          p.children.push(attr);
+          if (lastParent && !p.children.some((c) => c.id === lastParent.id)) p.children.push(lastParent);
+        } else if (!p.children.some((c) => c.id === attr.id)) p.children.push(attr);
 
         matchesAsTree[p.id] = p;
 

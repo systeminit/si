@@ -1,4 +1,4 @@
-<!-- eslint-disable vue/component-tags-order,import/first -->
+<!-- eslint-disable vue/block-order,import/first -->
 <script lang="ts">
 // set this boolean to true to enable dev debugging features
 // should ALWAYS be set to false before merging code!
@@ -50,7 +50,7 @@ export type GraphData = {
 };
 </script>
 
-<!-- eslint-disable vue/no-multiple-template-root,vue/component-tags-order,import/first -->
+<!-- eslint-disable vue/no-multiple-template-root,vue/block-order,import/first -->
 <template>
   <ExploreMapSkeleton v-if="showSkeleton" />
   <section
@@ -65,9 +65,7 @@ export type GraphData = {
     <div
       v-if="selectedComponent && selectedComponents.size === 1"
       id="selection"
-      :class="
-        clsx('absolute top-[110px] w-[435px] right-3', 'flex flex-col gap-xs')
-      "
+      :class="clsx('absolute top-[110px] w-[435px] right-3', 'flex flex-col gap-xs')"
       style="max-height: calc(100vh - 115px)"
     >
       <div
@@ -97,10 +95,7 @@ export type GraphData = {
       </div>
     </div>
 
-    <div
-      id="controls"
-      class="absolute left-0 bottom-0 flex flex-col gap-xs m-sm items-start"
-    >
+    <div id="controls" class="absolute left-0 bottom-0 flex flex-col gap-xs m-sm items-start">
       <!-- Minimap -->
       <MiniMap
         v-show="showMinimap"
@@ -120,11 +115,7 @@ export type GraphData = {
         >
           <Icon name="minimap" size="sm" />
         </div>
-        <div
-          v-tooltip="'Zoom Out'"
-          :class="getButtonClasses(zoomLevel >= MAX_ZOOM)"
-          @click="zoomOut"
-        >
+        <div v-tooltip="'Zoom Out'" :class="getButtonClasses(zoomLevel >= MAX_ZOOM)" @click="zoomOut">
           <Icon name="minus" size="sm" />
         </div>
         <div
@@ -132,34 +123,19 @@ export type GraphData = {
           :class="
             clsx(
               'border p-2xs rounded select-none',
-              themeClasses(
-                'text-black border-black bg-white',
-                'text-white border-white bg-black',
-              ),
+              themeClasses('text-black border-black bg-white', 'text-white border-white bg-black'),
             )
           "
         >
           {{ Math.round(zoomLevel * 100) }}%
         </div>
-        <div
-          v-tooltip="'Zoom In'"
-          :class="getButtonClasses(zoomLevel >= MAX_ZOOM)"
-          @click="zoomIn"
-        >
+        <div v-tooltip="'Zoom In'" :class="getButtonClasses(zoomLevel >= MAX_ZOOM)" @click="zoomIn">
           <Icon name="plus" size="sm" />
         </div>
-        <div
-          v-tooltip="'Reset'"
-          :class="getButtonClasses(false)"
-          @click="reset"
-        >
+        <div v-tooltip="'Reset'" :class="getButtonClasses(false)" @click="reset">
           <Icon name="empty-square" size="sm" />
         </div>
-        <div
-          v-tooltip="'Help'"
-          :class="getButtonClasses(false)"
-          @click="emit('help')"
-        >
+        <div v-tooltip="'Help'" :class="getButtonClasses(false)" @click="emit('help')">
           <Icon name="question-circle" size="sm" />
         </div>
       </div>
@@ -179,12 +155,7 @@ export type GraphData = {
     >
       <!-- Provider logo icon defs -->
       <defs v-for="logo in logos" :key="logo">
-        <pattern
-          :id="`${logo}`"
-          width="1"
-          height="1"
-          patternUnits="objectBoundingBox"
-        >
+        <pattern :id="`${logo}`" width="1" height="1" patternUnits="objectBoundingBox">
           <IconNoWrapper
             :name="logo"
             :class="themeClasses('text-black', 'text-white')"
@@ -197,32 +168,15 @@ export type GraphData = {
       <!-- Other icons needed for the map defs -->
       <template v-for="icon in icons" :key="icon">
         <defs v-for="tone in tones" :key="tone">
-          <pattern
-            :id="`${icon}-${tone}`"
-            width="1"
-            height="1"
-            patternUnits="objectBoundingBox"
-          >
-            <IconNoWrapper
-              :name="icon"
-              :tone="tone"
-              size="sm"
-              :forcedSizeNumbers="getIconForcedSizeNumbers(icon)"
-            />
+          <pattern :id="`${icon}-${tone}`" width="1" height="1" patternUnits="objectBoundingBox">
+            <IconNoWrapper :name="icon" :tone="tone" size="sm" :forcedSizeNumbers="getIconForcedSizeNumbers(icon)" />
           </pattern>
         </defs>
       </template>
 
       <!-- Arrow markers for connection directions defs -->
       <defs>
-        <marker
-          id="arrowhead"
-          markerWidth="10"
-          markerHeight="7"
-          refX="8"
-          refY="3.5"
-          orient="auto"
-        >
+        <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="8" refY="3.5" orient="auto">
           <path
             d="M 0,0 L 8,3.5 L 0,7"
             fill="none"
@@ -231,14 +185,7 @@ export type GraphData = {
             stroke-linejoin="miter"
           />
         </marker>
-        <marker
-          id="arrowhead-highlighted"
-          markerWidth="10"
-          markerHeight="7"
-          refX="8"
-          refY="3.5"
-          orient="auto"
-        >
+        <marker id="arrowhead-highlighted" markerWidth="10" markerHeight="7" refX="8" refY="3.5" orient="auto">
           <path
             d="M 0,0 L 8,3.5 L 0,7"
             fill="none"
@@ -247,14 +194,7 @@ export type GraphData = {
             stroke-linejoin="miter"
           />
         </marker>
-        <marker
-          id="arrowhead-greyed"
-          markerWidth="10"
-          markerHeight="7"
-          refX="8"
-          refY="3.5"
-          orient="auto"
-        >
+        <marker id="arrowhead-greyed" markerWidth="10" markerHeight="7" refX="8" refY="3.5" orient="auto">
           <path
             d="M 0,0 L 8,3.5 L 0,7"
             fill="none"
@@ -270,17 +210,11 @@ export type GraphData = {
       <g id="mapRootGroup" :transform="`matrix(${transformMatrix})`"></g>
     </svg>
 
-    <ComponentContextMenu
-      ref="componentContextMenuRef"
-      onGrid
-      hidePin
-      hideBulk
-      @edit="navigateToSelectedComponent"
-    />
+    <ComponentContextMenu ref="componentContextMenuRef" onGrid hidePin hideBulk @edit="navigateToSelectedComponent" />
   </section>
 </template>
 
-<!-- eslint-disable vue/component-tags-order,import/first -->
+<!-- eslint-disable vue/block-order,import/first -->
 <script lang="ts" setup>
 import { useQuery } from "@tanstack/vue-query";
 import {
@@ -293,33 +227,16 @@ import {
   useTheme,
   ICON_FORCED_SIZE_NUMBERS,
 } from "@si/vue-lib/design-system";
-import {
-  computed,
-  inject,
-  nextTick,
-  onMounted,
-  onUnmounted,
-  reactive,
-  ref,
-  watch,
-} from "vue";
+import { computed, inject, nextTick, onMounted, onUnmounted, reactive, ref, watch } from "vue";
 import ELK from "elkjs/lib/elk.bundled.js";
-import * as d3 from "d3";
+import { line, symbol, symbolSquare, select, easeCubicOut } from "d3";
 import clsx from "clsx";
 import { tw } from "@si/vue-lib";
 import { useRoute, useRouter } from "vue-router";
 import * as _ from "lodash-es";
 import { ComponentId } from "@/api/sdf/dal/component";
-import {
-  IncomingConnections,
-  ComponentInList,
-  EntityKind,
-} from "@/workers/types/entity_kind_types";
-import {
-  bifrostList,
-  useMakeArgs,
-  useMakeKey,
-} from "@/store/realtime/heimdall";
+import { IncomingConnections, ComponentInList, EntityKind } from "@/workers/types/entity_kind_types";
+import { bifrostList, useMakeArgs, useMakeKey } from "@/store/realtime/heimdall";
 import ExploreMapSkeleton from "@/newhotness/skeletons/ExploreMapSkeleton.vue";
 import { SelectionsInQueryString } from "./Workspace.vue";
 import { KeyDetails } from "./logic_composables/emitters";
@@ -349,14 +266,11 @@ const componentsById = computed<Record<ComponentId, ComponentInList>>(() => {
   }, {} as Record<ComponentId, ComponentInList>);
 });
 
-const componentContextMenuRef =
-  ref<InstanceType<typeof ComponentContextMenu>>();
+const componentContextMenuRef = ref<InstanceType<typeof ComponentContextMenu>>();
 
 const selectedComponents = ref<Set<ComponentInList>>(new Set());
 // Store selected component IDs to maintain selection across component updates
-const selectedComponentIds = computed(
-  () => new Set(Array.from(selectedComponents.value).map((c) => c.id)),
-);
+const selectedComponentIds = computed(() => new Set(Array.from(selectedComponents.value).map((c) => c.id)));
 
 // Watch for componentsById changes and update selectedComponents with new object references
 watch(componentsById, (newComponentsById) => {
@@ -378,8 +292,7 @@ const showMinimap = ref((props.components?.length ?? 0) > 0);
 watch(
   () => props.components?.length ?? 0,
   (newLength, oldLength) => {
-    const isHideUnconnected =
-      router.currentRoute.value.query.hideSubscriptions === "1";
+    const isHideUnconnected = router.currentRoute.value.query.hideSubscriptions === "1";
 
     if (oldLength === 0 && newLength > 0) {
       // Only show minimap if not in hideSubscriptions mode
@@ -415,10 +328,7 @@ const selectedComponent = computed<ComponentInList | null>(() => {
 
 // Check if selected component has failed actions
 const selectedComponentHasFailedActions = computed(() => {
-  return (
-    selectedComponent.value &&
-    props.componentsWithFailedActions.has(selectedComponent.value.id)
-  );
+  return selectedComponent.value && props.componentsWithFailedActions.has(selectedComponent.value.id);
 });
 
 const ctx = inject<Context>("CONTEXT");
@@ -491,22 +401,12 @@ const applyZoom = () => {
   const newTranslateX = svgCenterX - worldX * newScale;
   const newTranslateY = svgCenterY - worldY * newScale;
 
-  transformMatrix.splice(
-    0,
-    6,
-    newScale,
-    0,
-    0,
-    newScale,
-    newTranslateX,
-    newTranslateY,
-  );
+  transformMatrix.splice(0, 6, newScale, 0, 0, newScale, newTranslateX, newTranslateY);
 };
 
 const pan = (dx: number, dy: number) => {
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
   const x = transformMatrix[4]!;
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+
   const y = transformMatrix[5]!;
   transformMatrix.splice(4, 1, x + dx);
   transformMatrix.splice(5, 1, y + dy);
@@ -522,12 +422,7 @@ const pan = (dx: number, dy: number) => {
 let currentPanAnimationId: number | null = null;
 let lastUserPanTime = 0;
 
-const smoothPan = (
-  totalDx: number,
-  totalDy: number,
-  duration = 400,
-  isUserInitiated = false,
-) => {
+const smoothPan = (totalDx: number, totalDy: number, duration = 400, isUserInitiated = false) => {
   // Cancel any ongoing animation
   if (currentPanAnimationId !== null) {
     cancelAnimationFrame(currentPanAnimationId);
@@ -580,17 +475,12 @@ const preserveViewportCenter = () => {
   };
 };
 
-const restoreViewportCenter = (
-  snapshot: ReturnType<typeof preserveViewportCenter>,
-  layoutData: GraphData | null,
-) => {
+const restoreViewportCenter = (snapshot: ReturnType<typeof preserveViewportCenter>, layoutData: GraphData | null) => {
   if (!layoutData?.children) return;
 
   const scale = transformMatrix[0] ?? 1;
-  const newTranslateX =
-    windowDimensions.value.width / 2 - snapshot.worldCenterX * scale;
-  const newTranslateY =
-    windowDimensions.value.height / 2 - snapshot.worldCenterY * scale;
+  const newTranslateX = windowDimensions.value.width / 2 - snapshot.worldCenterX * scale;
+  const newTranslateY = windowDimensions.value.height / 2 - snapshot.worldCenterY * scale;
 
   transformMatrix.splice(4, 1, newTranslateX);
   transformMatrix.splice(5, 1, newTranslateY);
@@ -608,9 +498,7 @@ const addNodeElements = (group: any, d: layoutNode) => {
       const classes = [`node`, `id-${d.component.id}`];
 
       // Check if this component is in the current selection
-      const isSelected = Array.from(selectedComponents.value).some(
-        (c) => c.id === d.component.id,
-      );
+      const isSelected = Array.from(selectedComponents.value).some((c) => c.id === d.component.id);
       if (isSelected) {
         classes.push("selected");
       }
@@ -634,7 +522,7 @@ const addNodeElements = (group: any, d: layoutNode) => {
   group
     .append("path")
     .attr("d", () => {
-      const lineGenerator = d3.line();
+      const lineGenerator = line();
       return lineGenerator([
         [0, 0],
         [0, HEIGHT],
@@ -647,7 +535,7 @@ const addNodeElements = (group: any, d: layoutNode) => {
   // provider logo
   group
     .append("path")
-    .attr("d", d3.symbol().size(1000).type(d3.symbolSquare))
+    .attr("d", symbol().size(1000).type(symbolSquare))
     .attr("transform", "translate(23, 35)")
     .attr("pointer-events", "none")
     .style("fill", () => {
@@ -681,13 +569,12 @@ const addNodeElements = (group: any, d: layoutNode) => {
 
   // qual & resource icons
   d.icons.forEach((icon: string | null, idx: number) => {
-    const x =
-      WIDTH - ICON_EDGE_DISTANCE - (ICON_PADDING + ICON_SIZE_FACTOR) * idx;
+    const x = WIDTH - ICON_EDGE_DISTANCE - (ICON_PADDING + ICON_SIZE_FACTOR) * idx;
     const y = HEIGHT - ICON_EDGE_DISTANCE;
 
     group
       .append("path")
-      .attr("d", d3.symbol().size(1000).type(d3.symbolSquare))
+      .attr("d", symbol().size(1000).type(symbolSquare))
       .attr("transform", `translate(${x}, ${y})`)
       .attr("pointer-events", "none")
       .style("fill", icon ? `url(#${icon})` : "none");
@@ -697,19 +584,16 @@ const addNodeElements = (group: any, d: layoutNode) => {
   if (d.component.hasSocketConnections || DEBUG_MODE) {
     group
       .append("path")
-      .attr("d", d3.symbol().size(1000).type(d3.symbolSquare))
+      .attr("d", symbol().size(1000).type(symbolSquare))
       .attr("transform", () => {
         const iconOffset = d.icons.length * (ICON_PADDING + ICON_SIZE_FACTOR);
-        return `translate(${WIDTH - iconOffset - ICON_EDGE_DISTANCE}, ${
-          HEIGHT - ICON_EDGE_DISTANCE
-        })`;
+        return `translate(${WIDTH - iconOffset - ICON_EDGE_DISTANCE}, ${HEIGHT - ICON_EDGE_DISTANCE})`;
       })
       .attr("pointer-events", "none")
       .style("fill", "url(#alert-triangle-filled-warning)");
   }
 };
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const getEdgeStyling = (edgeId: string) => {
   const [targetId, sourceId] = edgeId.split("-");
   const isConnectedToSelected = Array.from(selectedComponents.value).some(
@@ -730,9 +614,7 @@ const getEdgeStyling = (edgeId: string) => {
   if (hasSelection) {
     stroke = isConnectedToSelected ? connectedColor : greyedColor;
     opacity = isConnectedToSelected ? "1" : "0.3";
-    markerEnd = isConnectedToSelected
-      ? "url(#arrowhead-highlighted)"
-      : "url(#arrowhead-greyed)";
+    markerEnd = isConnectedToSelected ? "url(#arrowhead-highlighted)" : "url(#arrowhead-greyed)";
   }
 
   return {
@@ -757,7 +639,7 @@ const renderEdges = (svg: any, edges: layoutLine[]) => {
     })
     .attr("data-edge-id", (d: layoutLine) => d.id)
     .attr("d", (d: layoutLine) => {
-      const lineGenerator = d3.line();
+      const lineGenerator = line();
 
       const points: xy[] = [];
       d.sections.forEach((section) => {
@@ -778,16 +660,12 @@ const renderEdges = (svg: any, edges: layoutLine[]) => {
 // Update edge styling without redrawing
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const updateEdgeStyling = (svg: any) => {
-  // eslint-disable-next-line func-names
   svg.selectAll(".edge").each(function (this: SVGPathElement) {
-    const edgeId = d3.select(this).attr("data-edge-id");
+    const edgeId = select(this).attr("data-edge-id");
     if (edgeId) {
       const styling = getEdgeStyling(edgeId);
-      d3.select(this)
-        .attr(
-          "class",
-          `edge ${styling.isConnectedToSelected ? "connected" : ""}`,
-        )
+      select(this)
+        .attr("class", `edge ${styling.isConnectedToSelected ? "connected" : ""}`)
         .attr("marker-end", styling.markerEnd)
         .style("stroke", styling.stroke)
         .style("stroke-width", styling.strokeWidth)
@@ -806,9 +684,7 @@ const applySelectionState = () => {
 
   // Apply selection to currently selected components
   selectedComponents.value.forEach((component) => {
-    const element = document.querySelector(
-      `#map > svg rect.node.id-${component.id}`,
-    );
+    const element = document.querySelector(`#map > svg rect.node.id-${component.id}`);
     if (element) {
       element.classList.add("selected");
     }
@@ -821,8 +697,7 @@ const applySelectionState = () => {
       ?.substring(3);
 
     if (componentId) {
-      const hasFailedActions =
-        props.componentsWithFailedActions.has(componentId);
+      const hasFailedActions = props.componentsWithFailedActions.has(componentId);
       if (hasFailedActions) {
         element.classList.add("failed-actions");
       } else {
@@ -840,9 +715,7 @@ const panToComponent = (componentId: string, isUserInitiated = false) => {
   }
 
   // Find the node for this component
-  const node = dataAsGraph.value.children.find(
-    (n: layoutNode) => n.component.id === componentId,
-  );
+  const node = dataAsGraph.value.children.find((n: layoutNode) => n.component.id === componentId);
   if (!node) {
     // Node not found in layout, retry after a short delay
     setTimeout(() => panToComponent(componentId, isUserInitiated), 100);
@@ -1089,16 +962,12 @@ const onEscape = () => {
 };
 const onE = (_e: KeyDetails["e"]) => {
   if (selectedComponents.value.size > 0) {
-    componentContextMenuRef.value?.componentsStartErase(
-      Array.from(selectedComponents.value),
-    );
+    componentContextMenuRef.value?.componentsStartErase(Array.from(selectedComponents.value));
   }
 };
 const onD = (e: KeyDetails["d"]) => {
   if (selectedComponents.value.size > 0 && (e.metaKey || e.ctrlKey)) {
-    const componentIds = Array.from(selectedComponents.value).map(
-      (component) => component.id,
-    );
+    const componentIds = Array.from(selectedComponents.value).map((component) => component.id);
     componentContextMenuRef.value?.duplicateComponentStart(componentIds);
   }
 };
@@ -1114,9 +983,7 @@ const onU = (_e: KeyDetails["u"]) => {
 };
 const onBackspace = (_e: KeyDetails["Backspace"]) => {
   if (selectedComponents.value.size > 0) {
-    const componentsToDelete = Array.from(selectedComponents.value).filter(
-      (component) => !component.toDelete,
-    );
+    const componentsToDelete = Array.from(selectedComponents.value).filter((component) => !component.toDelete);
     if (componentsToDelete.length > 0) {
       componentContextMenuRef.value?.componentsStartDelete(componentsToDelete);
     }
@@ -1124,9 +991,7 @@ const onBackspace = (_e: KeyDetails["Backspace"]) => {
 };
 const onR = (_e: KeyDetails["r"]) => {
   if (selectedComponents.value.size > 0) {
-    const componentsToRestore = Array.from(selectedComponents.value).filter(
-      (component) => component.toDelete,
-    );
+    const componentsToRestore = Array.from(selectedComponents.value).filter((component) => component.toDelete);
     if (componentsToRestore.length > 0) {
       const componentIds = componentsToRestore.map((component) => component.id);
       componentContextMenuRef.value?.componentsRestore(componentIds);
@@ -1175,21 +1040,14 @@ const getIconForcedSizeNumbers = (iconName: IconNames) => {
   return ICON_FORCED_SIZE_NUMBERS[iconName] ?? undefined;
 };
 
-const icons = reactive<IconNames[]>([
-  "check-hex-outline",
-  "check-hex",
-  "x-hex-outline",
-  "alert-triangle-filled",
-]);
+const icons = reactive<IconNames[]>(["check-hex-outline", "check-hex", "x-hex-outline", "alert-triangle-filled"]);
 const tones = reactive<Tones[]>(["success", "destructive", "warning"]);
 
 const connections = useQuery<IncomingConnections[]>({
   queryKey,
   enabled: () => active.value, // Only run query when map view is active
   queryFn: async () => {
-    const d = await bifrostList<IncomingConnections[] | null>(
-      args(EntityKind.IncomingConnectionsList),
-    );
+    const d = await bifrostList<IncomingConnections[] | null>(args(EntityKind.IncomingConnectionsList));
     return d ?? [];
   },
 });
@@ -1203,8 +1061,7 @@ const mapData = computed(() => {
   }
 
   // Check if we should filter to only show connected components
-  const shouldHideUnconnected =
-    router.currentRoute.value.query.hideSubscriptions === "1";
+  const shouldHideUnconnected = router.currentRoute.value.query.hideSubscriptions === "1";
 
   const showOnlyDiff = router.currentRoute.value.query.showDiff === "1";
 
@@ -1221,11 +1078,7 @@ const mapData = computed(() => {
     allComponents.set(c.id, component);
 
     c.connections.forEach((e) => {
-      if (
-        !componentsById.value[e.toComponentId] ||
-        !componentsById.value[e.fromComponentId]
-      )
-        return;
+      if (!componentsById.value[e.toComponentId] || !componentsById.value[e.fromComponentId]) return;
 
       const edge = `${e.toComponentId}-${e.fromComponentId}`;
       allConnections.add(edge);
@@ -1272,12 +1125,7 @@ const mapData = computed(() => {
     // Only include edges between visible components
     allConnections.forEach((edgeId) => {
       const [targetId, sourceId] = edgeId.split("-");
-      if (
-        targetId &&
-        sourceId &&
-        connectedIds.has(targetId) &&
-        connectedIds.has(sourceId)
-      ) {
+      if (targetId && sourceId && connectedIds.has(targetId) && connectedIds.has(sourceId)) {
         edges.add(edgeId);
       }
     });
@@ -1344,7 +1192,7 @@ const clickedNode = (e: MouseEvent, n: layoutNode) => {
 
       // Update edge styling immediately without redrawing
       // This prevents jitter from edges being removed/redrawn during pan
-      const svg = d3.select("#map > svg g");
+      const svg = select("#map > svg g");
       updateEdgeStyling(svg);
 
       // Pan to center the selected component (mark as user-initiated)
@@ -1373,10 +1221,7 @@ const rightClickedNode = (e: MouseEvent, n: layoutNode) => {
   }, 500);
 };
 
-const showContextMenuForSelection = (
-  anchorComponent: ComponentInList,
-  componentEl?: Element,
-) => {
+const showContextMenuForSelection = (anchorComponent: ComponentInList, componentEl?: Element) => {
   nextTick(() => {
     let element = componentEl;
     if (!element) {
@@ -1443,11 +1288,7 @@ onUnmounted(() => {
 watch(
   [componentsById, fillDefault],
   () => {
-    if (
-      fillDefault.value &&
-      fillDefault.value.length > 0 &&
-      Object.keys(componentsById.value).length > 0
-    ) {
+    if (fillDefault.value && fillDefault.value.length > 0 && Object.keys(componentsById.value).length > 0) {
       nextTick(() => {
         const selectedComps: ComponentInList[] = [];
         fillDefault.value?.forEach((componentId) => {
@@ -1479,15 +1320,9 @@ watch(
   [dataAsGraph, selectedComponents],
   () => {
     // If we have a pending pan request and the layout is now available
-    if (
-      pendingPanComponent.value &&
-      dataAsGraph.value?.children &&
-      selectedComponents.value.size > 0
-    ) {
+    if (pendingPanComponent.value && dataAsGraph.value?.children && selectedComponents.value.size > 0) {
       const componentId = pendingPanComponent.value;
-      const node = dataAsGraph.value.children.find(
-        (n: layoutNode) => n.component.id === componentId,
-      );
+      const node = dataAsGraph.value.children.find((n: layoutNode) => n.component.id === componentId);
 
       if (node) {
         // Use nextTick to ensure DOM is updated
@@ -1513,20 +1348,12 @@ watch(
   _.debounce(
     async () => {
       // if we filtered away our selection remove it
-      if (
-        selectedComponent.value?.id &&
-        !mapData.value.components[selectedComponent.value.id]
-      )
-        deselect();
+      if (selectedComponent.value?.id && !mapData.value.components[selectedComponent.value.id]) deselect();
 
       const children: node[] = [...mapData.value.nodes].map((nId) => {
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
         const component = mapData.value.components[nId]!;
-        const icons: [string | null] = [
-          component.hasResource ? "check-hex-success" : null,
-        ];
-        if (component.qualificationTotals.failed > 0)
-          icons.push("x-hex-outline-destructive");
+        const icons: [string | null] = [component.hasResource ? "check-hex-success" : null];
+        if (component.qualificationTotals.failed > 0) icons.push("x-hex-outline-destructive");
         else icons.push("check-hex-outline-success");
         return { id: nId, width: WIDTH, height: HEIGHT, component, icons };
       });
@@ -1573,7 +1400,7 @@ watch(
       }
 
       nextTick(() => {
-        const svg = d3.select("#map > svg #mapRootGroup");
+        const svg = select("#map > svg #mapRootGroup");
         // the viewbox should be based on "how much of the coordinate space is in use"
 
         // the types generated aren't exactly matching the actual data!
@@ -1582,8 +1409,7 @@ watch(
         const edges = layoutedData.edges as layoutLine[];
 
         // Check if we should animate or do immediate update
-        const shouldAnimate =
-          previousLayout.value && previousLayout.value.children;
+        const shouldAnimate = previousLayout.value && previousLayout.value.children;
 
         if (shouldAnimate && previousLayout.value) {
           // Animate existing nodes to new positions
@@ -1593,12 +1419,7 @@ watch(
           // Remove deleted nodes with fade out
           oldNodes.forEach((oldNode) => {
             if (!newNodeIds.has(oldNode.id)) {
-              svg
-                .select(`g:has(rect.node.id-${oldNode.id})`)
-                .transition()
-                .duration(300)
-                .style("opacity", 0)
-                .remove();
+              svg.select(`g:has(rect.node.id-${oldNode.id})`).transition().duration(300).style("opacity", 0).remove();
             }
           });
 
@@ -1618,25 +1439,21 @@ watch(
            * opacity "halfway through" animating. You need to have (opacity, 1) in the transition
            * definition (even if its redundant for everything already at opacity = 1)
            * */
-          children.forEach(async (newNode) => {
-            const existingGroup = svg.select(
-              `g:has(rect.node.id-${newNode.id})`,
-            );
+          children.forEach((newNode) => {
+            const existingGroup = svg.select(`g:has(rect.node.id-${newNode.id})`);
             if (!existingGroup.empty()) {
               // Animate to new position
               existingGroup
                 .transition()
                 .duration(600)
-                .ease(d3.easeCubicOut)
+                .ease(easeCubicOut)
                 .style("opacity", 1)
                 .attr("transform", `translate(${newNode.x}, ${newNode.y})`);
 
               // Update selection state on existing nodes
               const rect = existingGroup.select("rect.node");
               const isSelected = selectedComponentIds.value.has(newNode.id);
-              const hasFailedActions = props.componentsWithFailedActions.has(
-                newNode.id,
-              );
+              const hasFailedActions = props.componentsWithFailedActions.has(newNode.id);
 
               rect.attr("class", () => {
                 const classes = [`node`, `id-${newNode.id}`];
@@ -1675,9 +1492,7 @@ watch(
           svg.selectAll("*").remove();
 
           children.forEach((node) => {
-            const group = svg
-              .append("g")
-              .attr("transform", `translate(${node.x}, ${node.y})`);
+            const group = svg.append("g").attr("transform", `translate(${node.x}, ${node.y})`);
             addNodeElements(group, node);
           });
 

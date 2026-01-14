@@ -13,19 +13,11 @@
             )
           "
         >
-          <div
-            class="w-4 h-4 mr-2 bg-neutral-300 dark:bg-neutral-700 rounded skeleton-shimmer"
-          ></div>
-          <div
-            class="w-16 h-4 bg-neutral-300 dark:bg-neutral-700 rounded skeleton-shimmer"
-          ></div>
+          <div class="w-4 h-4 mr-2 bg-neutral-300 dark:bg-neutral-700 rounded skeleton-shimmer"></div>
+          <div class="w-16 h-4 bg-neutral-300 dark:bg-neutral-700 rounded skeleton-shimmer"></div>
         </h3>
         <div class="flex-1 p-xs space-y-1">
-          <div
-            v-for="n in 8"
-            :key="n"
-            class="h-8 bg-neutral-200 dark:bg-neutral-700 rounded skeleton-shimmer"
-          ></div>
+          <div v-for="n in 8" :key="n" class="h-8 bg-neutral-200 dark:bg-neutral-700 rounded skeleton-shimmer"></div>
         </div>
       </div>
 
@@ -41,19 +33,11 @@
             )
           "
         >
-          <div
-            class="w-4 h-4 mr-2 bg-neutral-300 dark:bg-neutral-700 rounded skeleton-shimmer"
-          ></div>
-          <div
-            class="w-16 h-4 bg-neutral-300 dark:bg-neutral-700 rounded skeleton-shimmer"
-          ></div>
+          <div class="w-4 h-4 mr-2 bg-neutral-300 dark:bg-neutral-700 rounded skeleton-shimmer"></div>
+          <div class="w-16 h-4 bg-neutral-300 dark:bg-neutral-700 rounded skeleton-shimmer"></div>
         </h3>
         <div class="flex-1 p-xs space-y-1">
-          <div
-            v-for="n in 8"
-            :key="n"
-            class="h-8 bg-neutral-200 dark:bg-neutral-700 rounded skeleton-shimmer"
-          ></div>
+          <div v-for="n in 8" :key="n" class="h-8 bg-neutral-200 dark:bg-neutral-700 rounded skeleton-shimmer"></div>
         </div>
       </div>
     </div>

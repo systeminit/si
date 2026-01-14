@@ -1,7 +1,5 @@
 <template>
-  <span :class="themeClasses('text-destructive-500', 'text-destructive-300')">
-    *
-  </span>
+  <span :class="themeClasses('text-destructive-500', 'text-destructive-300')"> * </span>
 </template>
 
 <script setup lang="ts">

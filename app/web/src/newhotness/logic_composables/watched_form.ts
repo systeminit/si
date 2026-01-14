@@ -1,12 +1,4 @@
-import {
-  ref,
-  watch,
-  inject,
-  MaybeRefOrGetter,
-  toValue,
-  WatchSource,
-  nextTick,
-} from "vue";
+import { ref, watch, inject, MaybeRefOrGetter, toValue, WatchSource, nextTick } from "vue";
 import { useForm, formOptions } from "@tanstack/vue-form";
 import { trace } from "@opentelemetry/api";
 import { assertIsDefined, Context } from "../types";
@@ -38,10 +30,7 @@ const tracer = trace.getTracer("si-vue");
  * So the user know their form submission worked and we're waiting
  * for updated data
  */
-export const useWatchedForm = <Data extends Record<string, string>>(
-  label: string,
-  resetBlank?: boolean,
-) => {
+export const useWatchedForm = <Data extends Record<string, string>>(label: string, resetBlank?: boolean) => {
   /**
    * Lifecycle of `bifrosting`
    *
@@ -61,9 +50,7 @@ export const useWatchedForm = <Data extends Record<string, string>>(
   const ctx = inject<Context>("CONTEXT");
   assertIsDefined(ctx);
 
-  type ValidationFn = (props: {
-    value: Data;
-  }) => (string | undefined) | { fields: Record<string, string | undefined> };
+  type ValidationFn = (props: { value: Data }) => (string | undefined) | { fields: Record<string, string | undefined> };
   type Validators = Partial<{
     onSubmit: ValidationFn;
     onChanged: ValidationFn;
@@ -124,8 +111,7 @@ export const useWatchedForm = <Data extends Record<string, string>>(
             "watched.label": label,
           });
           bifrosting.value = true;
-          if (ctx.changeSetId.value !== ctx.headChangeSetId.value)
-            rainbow.add(ctx.changeSetId.value, label);
+          if (ctx.changeSetId.value !== ctx.headChangeSetId.value) rainbow.add(ctx.changeSetId.value, label);
 
           // Mark submission as complete and remove the rainbow spinner
           const markComplete = () => {

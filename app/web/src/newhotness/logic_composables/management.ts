@@ -5,9 +5,7 @@ import { ManagementFuncJobState } from "../api_composables/management_func_job_s
 import { useApi, routes } from "../api_composables";
 import { assertIsDefined, Context } from "../types";
 
-export const useManagementFuncJobState = (
-  funcRun: ComputedRef<FuncRun | undefined>,
-) => {
+export const useManagementFuncJobState = (funcRun: ComputedRef<FuncRun | undefined>) => {
   const ctx = inject<Context>("CONTEXT");
   assertIsDefined(ctx);
 
@@ -16,26 +14,15 @@ export const useManagementFuncJobState = (
 
   const { data } = useQuery<ManagementFuncJobState | undefined>({
     enabled: () => funcRun.value?.functionKind === FuncKind.Management,
-    queryKey: computed(() => [
-      ctx.changeSetId.value,
-      "managementFuncJobStateByFuncRunId",
-      funcRun.value?.id,
-    ]),
+    queryKey: computed(() => [ctx.changeSetId.value, "managementFuncJobStateByFuncRunId", funcRun.value?.id]),
     queryFn: async () => {
       if (!funcRun.value) return undefined;
-      const call = api.endpoint<ManagementFuncJobState>(
-        routes.MgmtFuncGetJobState,
-        {
-          funcRunId: funcRun.value.id,
-        },
-      );
+      const call = api.endpoint<ManagementFuncJobState>(routes.MgmtFuncGetJobState, {
+        funcRunId: funcRun.value.id,
+      });
       const req = await call.get();
       if (api.ok(req)) {
-        pollInterval.value = ["executing", "operating", "pending"].includes(
-          req.data.state,
-        )
-          ? 5000
-          : false;
+        pollInterval.value = ["executing", "operating", "pending"].includes(req.data.state) ? 5000 : false;
         return req.data;
       }
     },

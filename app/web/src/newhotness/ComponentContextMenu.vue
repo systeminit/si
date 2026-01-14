@@ -1,10 +1,10 @@
-<!-- eslint-disable vue/component-tags-order,import/first -->
+<!-- eslint-disable vue/block-order,import/first -->
 <script lang="ts">
 // Toggle this to true to show debugging info on the menu
 export const DEBUG_MODE = false;
 </script>
 
-<!-- eslint-disable vue/component-tags-order,import/first -->
+<!-- eslint-disable vue/block-order,import/first -->
 <template>
   <div>
     <DropdownMenu
@@ -21,33 +21,20 @@ export const DEBUG_MODE = false;
       @enterPressedNoSelection="() => emit('edit')"
     />
     <EraseModal ref="eraseModalRef" @confirm="componentsFinishErase" />
-    <DeleteModal
-      ref="deleteModalRef"
-      @delete="(mode) => componentsFinishDelete(mode)"
-    />
-    <DuplicateComponentsModal
-      ref="duplicateComponentsModalRef"
-      @confirm="duplicateComponentsFinish"
-    />
+    <DeleteModal ref="deleteModalRef" @delete="(mode) => componentsFinishDelete(mode)" />
+    <DuplicateComponentsModal ref="duplicateComponentsModalRef" @confirm="duplicateComponentsFinish" />
   </div>
 </template>
 
-<!-- eslint-disable vue/component-tags-order,import/first -->
+<!-- eslint-disable vue/block-order,import/first -->
 <script lang="ts" setup>
-import {
-  DropdownMenu,
-  DropdownMenuItemObjectDef,
-} from "@si/vue-lib/design-system";
+import { DropdownMenu, DropdownMenuItemObjectDef } from "@si/vue-lib/design-system";
 import { useQuery } from "@tanstack/vue-query";
 import { computed, inject, nextTick, ref } from "vue";
 import { RouteLocationRaw, useRoute } from "vue-router";
 import { bifrost, useMakeArgs, useMakeKey } from "@/store/realtime/heimdall";
 import { ComponentId } from "@/api/sdf/dal/component";
-import {
-  ComponentInList,
-  EntityKind,
-  SchemaVariant,
-} from "@/workers/types/entity_kind_types";
+import { ComponentInList, EntityKind, SchemaVariant } from "@/workers/types/entity_kind_types";
 import EraseModal from "./EraseModal.vue";
 import DeleteModal, { DeleteMode } from "./DeleteModal.vue";
 import { useApi, routes } from "./api_composables";
@@ -56,10 +43,7 @@ import { useComponentDeletion } from "./composables/useComponentDeletion";
 import { useComponentUpgrade } from "./composables/useComponentUpgrade";
 import { useComponentActions } from "./logic_composables/component_actions";
 import DuplicateComponentsModal from "./DuplicateComponentsModal.vue";
-import {
-  availableViewListOptionsForComponentIds,
-  useComponentsAndViews,
-} from "./logic_composables/view";
+import { availableViewListOptionsForComponentIds, useComponentsAndViews } from "./logic_composables/view";
 
 const props = defineProps<{
   onGrid?: boolean;
@@ -86,8 +70,7 @@ const components = ref<ComponentInList[]>([]);
 const componentIds = computed(() => components.value?.map((c) => c.id));
 
 // Use shared deletion composable with view context
-const { deleteComponents, eraseComponents, restoreComponents } =
-  useComponentDeletion(explore.viewId.value);
+const { deleteComponents, eraseComponents, restoreComponents } = useComponentDeletion(explore.viewId.value);
 
 // Use shared upgrade composable
 const { upgradeComponents } = useComponentUpgrade();
@@ -95,12 +78,8 @@ const { upgradeComponents } = useComponentUpgrade();
 // Use shared composable for components and views
 const componentsAndViews = useComponentsAndViews();
 
-const atLeastOneGhostedComponent = computed(() =>
-  components.value.some((c) => c.toDelete),
-);
-const atLeastOneNormalComponent = computed(() =>
-  components.value.some((c) => !c.toDelete),
-);
+const atLeastOneGhostedComponent = computed(() => components.value.some((c) => c.toDelete));
+const atLeastOneNormalComponent = computed(() => components.value.some((c) => !c.toDelete));
 
 // ================================================================================================
 // HANDLE SINGLE COMPONENT MENU OPTIONS
@@ -112,44 +91,31 @@ const singleComponent = computed(() => {
 });
 
 // Use the composable for action functionality
-const { actionPrototypeViews, actionByPrototype, toggleActionHandler } =
-  useComponentActions(singleComponent);
+const { actionPrototypeViews, actionByPrototype, toggleActionHandler } = useComponentActions(singleComponent);
 
-const schemaVariantId = computed(
-  () => singleComponent.value?.schemaVariantId ?? "",
-);
+const schemaVariantId = computed(() => singleComponent.value?.schemaVariantId ?? "");
 const schemaVariantQuery = useQuery<SchemaVariant | null>({
   enabled: () => singleComponent.value !== undefined,
   queryKey: key(EntityKind.SchemaVariant, schemaVariantId),
   queryFn: async () => {
-    return await bifrost<SchemaVariant>(
-      args(EntityKind.SchemaVariant, singleComponent.value?.schemaVariantId),
-    );
+    return await bifrost<SchemaVariant>(args(EntityKind.SchemaVariant, singleComponent.value?.schemaVariantId));
   },
 });
-const managementFunctions = computed(
-  () => schemaVariantQuery.data.value?.mgmtFunctions ?? [],
-);
+const managementFunctions = computed(() => schemaVariantQuery.data.value?.mgmtFunctions ?? []);
 
 // ================================================================================================
 // HANDLE VIEW MENU OPTIONS
 const availableViewListOptions = computed(() =>
-  availableViewListOptionsForComponentIds(
-    componentIds.value,
-    props.viewListOptions ?? [],
-    componentsAndViews,
-  ),
+  availableViewListOptionsForComponentIds(componentIds.value, props.viewListOptions ?? [], componentsAndViews),
 );
 
 const removeFromViewTooltip = computed(() => {
-  if (availableViewListOptions.value.removeFromView.length > 0)
-    return undefined;
+  if (availableViewListOptions.value.removeFromView.length > 0) return undefined;
   const unprocessedOptions = props.viewListOptions ?? [];
   for (const unprocessedOption of unprocessedOptions) {
     const viewId = unprocessedOption.value;
     for (const componentId of componentIds.value) {
-      const soleViewIdForCurrentComponent =
-        componentsAndViews.componentsInOnlyOneView.value[componentId];
+      const soleViewIdForCurrentComponent = componentsAndViews.componentsInOnlyOneView.value[componentId];
       if (soleViewIdForCurrentComponent === viewId)
         return "Cannot remove components from their final view. A given component must exist in at least one view.";
     }
@@ -202,13 +168,10 @@ const rightClickMenuItems = computed(() => {
   const upgradeableComponents = explore.upgradeableComponents.value;
 
   // Get only the components that are actually upgradeable
-  const upgradeableSelectedComponentIds = componentIds.value.filter((cId) =>
-    upgradeableComponents.has(cId),
-  );
+  const upgradeableSelectedComponentIds = componentIds.value.filter((cId) => upgradeableComponents.has(cId));
 
   if (upgradeableSelectedComponentIds.length > 0) {
-    const allUpgradeable =
-      upgradeableSelectedComponentIds.length === components.value.length;
+    const allUpgradeable = upgradeableSelectedComponentIds.length === components.value.length;
     const label = allUpgradeable
       ? "Upgrade"
       : `Upgrade (${upgradeableSelectedComponentIds.length}/${components.value.length})`;
@@ -301,8 +264,7 @@ const rightClickMenuItems = computed(() => {
     for (const option of availableViewListOptions.value.removeFromView) {
       submenuItems.push({
         label: option.label,
-        onSelect: () =>
-          componentsRemoveFromView(option.value, componentIds.value),
+        onSelect: () => componentsRemoveFromView(option.value, componentIds.value),
       });
     }
     items.push({
@@ -318,10 +280,7 @@ const rightClickMenuItems = computed(() => {
     const actionsSubmenuItems: DropdownMenuItemObjectDef[] = [];
     for (const actionPrototype of actionPrototypeViews.value) {
       const existingActionId = actionByPrototype.value[actionPrototype.id]?.id;
-      const { handleToggle } = toggleActionHandler(
-        actionPrototype,
-        () => existingActionId,
-      );
+      const { handleToggle } = toggleActionHandler(actionPrototype, () => existingActionId);
       actionsSubmenuItems.push({
         label: actionPrototype.displayName || actionPrototype.name,
         toggleIcon: true,
@@ -367,11 +326,7 @@ const rightClickMenuItems = computed(() => {
   }
 
   // multiple components, nothing `toDelete`
-  if (
-    components.value.length > 1 &&
-    !atLeastOneGhostedComponent.value &&
-    !props.hideBulk
-  ) {
+  if (components.value.length > 1 && !atLeastOneGhostedComponent.value && !props.hideBulk) {
     items.push({
       label: "Bulk",
       shortcut: "B",
@@ -459,8 +414,7 @@ const componentsFinishDelete = async (mode: DeleteMode) => {
 };
 
 const duplicateComponentIds = ref<ComponentId[]>([]);
-const duplicateComponentsModalRef =
-  ref<InstanceType<typeof DuplicateComponentsModal>>();
+const duplicateComponentsModalRef = ref<InstanceType<typeof DuplicateComponentsModal>>();
 const isDuplicating = ref(false);
 
 const duplicateComponentStart = (componentIds: ComponentId[]) => {
@@ -471,8 +425,7 @@ const duplicateComponentStart = (componentIds: ComponentId[]) => {
 
 const duplicateComponentsFinish = async (name: string) => {
   if (isDuplicating.value) return;
-  if (!duplicateComponentIds.value || duplicateComponentIds.value.length < 1)
-    return;
+  if (!duplicateComponentIds.value || duplicateComponentIds.value.length < 1) return;
 
   isDuplicating.value = true;
   try {
@@ -487,10 +440,7 @@ const duplicateComponentsFinish = async (name: string) => {
 };
 const duplicateComponentApi = useApi();
 
-const duplicateComponents = async (
-  componentIds: ComponentId[],
-  name: string,
-) => {
+const duplicateComponents = async (componentIds: ComponentId[], name: string) => {
   const call = duplicateComponentApi.endpoint(routes.DuplicateComponents, {
     viewId: explore.viewId.value,
   });
@@ -517,10 +467,7 @@ const duplicateComponents = async (
 
 const addToViewApi = useApi();
 const removeFromViewApi = useApi();
-const componentsAddToView = async (
-  viewId: string,
-  componentIds: ComponentId[],
-) => {
+const componentsAddToView = async (viewId: string, componentIds: ComponentId[]) => {
   const call = addToViewApi.endpoint(routes.ViewAddComponents, {
     viewId,
   });
@@ -542,10 +489,7 @@ const componentsAddToView = async (
     );
   }
 };
-const componentsRemoveFromView = async (
-  viewId: string,
-  componentIds: ComponentId[],
-) => {
+const componentsRemoveFromView = async (viewId: string, componentIds: ComponentId[]) => {
   const call = removeFromViewApi.endpoint(routes.ViewEraseComponents, {
     viewId,
   });
@@ -573,13 +517,9 @@ const componentsUpgrade = async (componentIds: ComponentId[]) => {
   close();
 };
 
-// eslint-disable-next-line @typescript-eslint/ban-types
 const anchor = ref<HTMLElement | object | undefined>(undefined);
 
-function open(
-  anchorTo: HTMLElement | object,
-  componentsForMenu: ComponentInList[],
-) {
+function open(anchorTo: HTMLElement | object, componentsForMenu: ComponentInList[]) {
   const oldAnchor = anchor.value;
   anchor.value = anchorTo;
   components.value = componentsForMenu;

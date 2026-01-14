@@ -26,12 +26,7 @@ export type Bounds = {
   bottom: number;
   right: number;
 };
-export function toRequiredBounds({
-  left,
-  right,
-  top,
-  bottom,
-}: Partial<Bounds>): Bounds {
+export function toRequiredBounds({ left, right, top, bottom }: Partial<Bounds>): Bounds {
   if (left === undefined) throw new Error("no left!");
   if (right === undefined) throw new Error("no right!");
   if (top === undefined) throw new Error("no top!");
@@ -54,11 +49,7 @@ export type SideAndCornerIdentifiers =
 export type DiagramElementUniqueKey = string;
 
 export abstract class DiagramElementData {
-  abstract get def():
-    | DiagramNodeDef
-    | DiagramSocketDef
-    | DiagramEdgeDef
-    | DiagramViewDef;
+  abstract get def(): DiagramNodeDef | DiagramSocketDef | DiagramEdgeDef | DiagramViewDef;
 
   abstract get uniqueKey(): DiagramElementUniqueKey;
 }
@@ -69,20 +60,14 @@ export interface DiagramSocketDataWithPosition extends DiagramSocketData {
 abstract class DiagramNodeHasSockets extends DiagramElementData {
   public sockets: DiagramSocketData[];
   public diagramSockets: DiagramSocketData[]; // contains both actual sockets and data sockets which show on the diagram in Simple Socket UI
-  public readonly socketStartingY: number =
-    NODE_HEADER_HEIGHT + SOCKET_TOP_MARGIN + SOCKET_MARGIN_TOP;
+  public readonly socketStartingY: number = NODE_HEADER_HEIGHT + SOCKET_TOP_MARGIN + SOCKET_MARGIN_TOP;
 
   constructor(readonly def: DiagramNodeDef) {
     super();
-    this.sockets =
-      def.sockets?.map((s) => new DiagramSocketData(this, s)) || [];
+    this.sockets = def.sockets?.map((s) => new DiagramSocketData(this, s)) || [];
     const featureFlagsStore = useFeatureFlagsStore();
     if (featureFlagsStore.SIMPLE_SOCKET_UI) {
-      this.diagramSockets = [
-        ...this.diagramSocketsLeft(),
-        ...this.diagramSocketsRight(),
-        ...this.sockets,
-      ];
+      this.diagramSockets = [...this.diagramSocketsLeft(), ...this.diagramSocketsRight(), ...this.sockets];
     } else {
       this.diagramSockets = this.sockets;
     }
@@ -92,10 +77,7 @@ abstract class DiagramNodeHasSockets extends DiagramElementData {
     return (
       SOCKET_TOP_MARGIN +
       SOCKET_MARGIN_TOP +
-      SOCKET_GAP *
-        (this.layoutLeftSockets(0).sockets.length +
-          this.layoutRightSockets(0).sockets.length -
-          1) +
+      SOCKET_GAP * (this.layoutLeftSockets(0).sockets.length + this.layoutRightSockets(0).sockets.length - 1) +
       SOCKET_SIZE / 2 +
       GROUP_BOTTOM_INTERNAL_PADDING
     );
@@ -113,9 +95,7 @@ abstract class DiagramNodeHasSockets extends DiagramElementData {
     const featureFlagsStore = useFeatureFlagsStore();
 
     // Always return the management socket first
-    const sockets = this.sockets.filter(
-      (s) => s.def.isManagement && s.def.nodeSide === "left",
-    );
+    const sockets = this.sockets.filter((s) => s.def.isManagement && s.def.nodeSide === "left");
 
     if (featureFlagsStore.SIMPLE_SOCKET_UI) {
       sockets.push(
@@ -131,12 +111,7 @@ abstract class DiagramNodeHasSockets extends DiagramElementData {
     } else {
       // Not single-socket UI, so add the real data sockets
       const dataSockets = _.sortBy(
-        this.sockets.filter(
-          (s) =>
-            s.def.label !== "Frame" &&
-            s.def.nodeSide === "left" &&
-            !s.def.isManagement,
-        ),
+        this.sockets.filter((s) => s.def.label !== "Frame" && s.def.nodeSide === "left" && !s.def.isManagement),
         (s) => s.def.label,
       );
       sockets.push(...dataSockets);
@@ -149,9 +124,7 @@ abstract class DiagramNodeHasSockets extends DiagramElementData {
     const featureFlagsStore = useFeatureFlagsStore();
 
     // Always return the management socket first
-    const sockets = this.sockets.filter(
-      (s) => s.def.isManagement && s.def.nodeSide === "right",
-    );
+    const sockets = this.sockets.filter((s) => s.def.isManagement && s.def.nodeSide === "right");
 
     if (featureFlagsStore.SIMPLE_SOCKET_UI) {
       sockets.push(
@@ -167,12 +140,7 @@ abstract class DiagramNodeHasSockets extends DiagramElementData {
     } else {
       // Not single-socket UI, so add the real data sockets
       const dataSockets = _.sortBy(
-        this.sockets.filter(
-          (s) =>
-            s.def.label !== "Frame" &&
-            s.def.nodeSide === "right" &&
-            !s.def.isManagement,
-        ),
+        this.sockets.filter((s) => s.def.label !== "Frame" && s.def.nodeSide === "right" && !s.def.isManagement),
         (s) => s.def.label,
       );
       sockets.push(...dataSockets);
@@ -202,12 +170,8 @@ abstract class DiagramNodeHasSockets extends DiagramElementData {
     const sockets = this.diagramSocketsRight();
     const layout: DiagramSocketDataWithPosition[] = [];
 
-    const numLeft = this.sockets
-      .filter((s) => s.def.nodeSide === "left")
-      .filter((s) => s.def.label !== "Frame").length;
-    const leftManagementSocket = this.sockets.find(
-      (s) => s.def.isManagement && s.def.nodeSide === "left",
-    );
+    const numLeft = this.sockets.filter((s) => s.def.nodeSide === "left").filter((s) => s.def.label !== "Frame").length;
+    const leftManagementSocket = this.sockets.find((s) => s.def.isManagement && s.def.nodeSide === "left");
     let numLeftSimple = leftManagementSocket ? 2 : 1;
     if (numLeft < 2) numLeftSimple = numLeft;
 
@@ -218,9 +182,7 @@ abstract class DiagramNodeHasSockets extends DiagramElementData {
       layout.push(socket as DiagramSocketDataWithPosition);
     }
     const featureFlagsStore = useFeatureFlagsStore();
-    const socketGapMult = featureFlagsStore.SIMPLE_SOCKET_UI
-      ? numLeftSimple
-      : numLeft;
+    const socketGapMult = featureFlagsStore.SIMPLE_SOCKET_UI ? numLeftSimple : numLeft;
     return {
       x: nodeWidth / 2,
       y: this.socketStartingY + SOCKET_GAP * socketGapMult,
@@ -242,9 +204,7 @@ export class DiagramNodeData extends DiagramNodeHasSockets {
       NODE_SUBTITLE_TEXT_HEIGHT +
       SOCKET_MARGIN_TOP +
       SOCKET_GAP *
-        (this.layoutLeftSockets(this.width).sockets.length +
-          this.layoutRightSockets(this.width).sockets.length -
-          1) +
+        (this.layoutLeftSockets(this.width).sockets.length + this.layoutRightSockets(this.width).sockets.length - 1) +
       SOCKET_SIZE / 2 +
       // TODO: this isn't right yet!
       NODE_PADDING_BOTTOM +
@@ -267,8 +227,7 @@ export class DiagramNodeData extends DiagramNodeHasSockets {
 }
 
 export class DiagramGroupData extends DiagramNodeHasSockets {
-  public readonly socketStartingY: number =
-    SOCKET_TOP_MARGIN + SOCKET_MARGIN_TOP;
+  public readonly socketStartingY: number = SOCKET_TOP_MARGIN + SOCKET_MARGIN_TOP;
 
   get uniqueKey() {
     return DiagramGroupData.generateUniqueKey(this.def.id);
@@ -304,18 +263,12 @@ export class DiagramViewData extends DiagramElementData {
 export class DiagramSocketData extends DiagramElementData {
   position?: Vector2d;
 
-  constructor(
-    readonly parent: DiagramNodeData | DiagramGroupData,
-    readonly def: DiagramSocketDef,
-  ) {
+  constructor(readonly parent: DiagramNodeData | DiagramGroupData, readonly def: DiagramSocketDef) {
     super();
   }
 
   get uniqueKey() {
-    return DiagramSocketData.generateUniqueKey(
-      this.parent.uniqueKey,
-      this.def.id,
-    );
+    return DiagramSocketData.generateUniqueKey(this.parent.uniqueKey, this.def.id);
   }
 
   static generateUniqueKey(parentKey: string, id: string | number) {
@@ -351,8 +304,7 @@ export class DiagramEdgeData extends DiagramElementData {
 
   // helpers to get the unique key of the node and sockets this edge is connected to
   get fromNodeKey() {
-    const comp =
-      useComponentsStore().allComponentsById[this.def.fromComponentId];
+    const comp = useComponentsStore().allComponentsById[this.def.fromComponentId];
     if (comp?.def.isGroup) {
       return DiagramGroupData.generateUniqueKey(this.def.fromComponentId);
     }
@@ -368,8 +320,7 @@ export class DiagramEdgeData extends DiagramElementData {
   }
 
   get simpleDisplayFromSocketKey() {
-    const comp =
-      useComponentsStore().allComponentsById[this.def.fromComponentId];
+    const comp = useComponentsStore().allComponentsById[this.def.fromComponentId];
     return DiagramSocketData.generateUniqueKey(
       `${comp?.def.isGroup ? "g" : "n"}-${this.def.fromComponentId}`,
       `${this.def.fromComponentId}-outputsocket`,
@@ -396,8 +347,7 @@ export class DiagramSocketEdgeData extends DiagramEdgeData {
     if (!("fromSocketId" in this.def)) {
       throw new Error("fromSocketId is required for fromSocketKey");
     }
-    const comp =
-      useComponentsStore().allComponentsById[this.def.fromComponentId];
+    const comp = useComponentsStore().allComponentsById[this.def.fromComponentId];
     if (comp?.def.isGroup) {
       return DiagramSocketData.generateUniqueKey(
         DiagramGroupData.generateUniqueKey(this.def.fromComponentId),
@@ -563,9 +513,7 @@ export interface DiagramSocketEdgeDef extends DiagramEdgeDef {
   fromSocketId: DiagramElementId;
   toSocketId: DiagramElementId;
 }
-export function isDiagramSocketEdgeDef(
-  edge: DiagramEdgeDef,
-): edge is DiagramSocketEdgeDef {
+export function isDiagramSocketEdgeDef(edge: DiagramEdgeDef): edge is DiagramSocketEdgeDef {
   return "fromSocketId" in edge;
 }
 

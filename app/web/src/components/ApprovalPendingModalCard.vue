@@ -27,11 +27,7 @@
           )
         "
       >
-        <Timestamp
-          :date="changeSet.mergeRequestedAt"
-          showTimeIfToday
-          size="extended"
-        />
+        <Timestamp :date="changeSet.mergeRequestedAt" showTimeIfToday size="extended" />
 
         by {{ changeSet.mergeRequestedByUser }}
       </div>
@@ -44,13 +40,7 @@
         tone="destructive"
         @click.stop="rejectChangeSet(changeSet.id)"
       />
-      <VButton
-        size="xs"
-        tone="success"
-        class="grow"
-        label="Approve"
-        @click.stop="approveChangeSet(changeSet.id)"
-      />
+      <VButton size="xs" tone="success" class="grow" label="Approve" @click.stop="approveChangeSet(changeSet.id)" />
     </div>
   </div>
 </template>

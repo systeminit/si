@@ -58,9 +58,7 @@
         v-if="filteredComponents.length === 0"
         :icon="activeFilterStr.length === 0 ? 'search' : 'x'"
         :text="
-          activeFilterStr.length === 0
-            ? 'Type to search for a component to manage'
-            : 'No components match your search'
+          activeFilterStr.length === 0 ? 'Type to search for a component to manage' : 'No components match your search'
         "
       />
       <ManagementConnectionCard
@@ -79,11 +77,7 @@
 
 <script setup lang="ts">
 import clsx from "clsx";
-import {
-  Icon,
-  themeClasses,
-  TruncateWithTooltip,
-} from "@si/vue-lib/design-system";
+import { Icon, themeClasses, TruncateWithTooltip } from "@si/vue-lib/design-system";
 import { debounce } from "lodash-es";
 import { computed, nextTick, PropType, reactive, ref, watch } from "vue";
 import { Fzf } from "fzf";
@@ -162,18 +156,12 @@ const blur = () => {
 
 const possibleConnections = computed(() => {
   const componentIds = Object.keys(ctx.componentDetails.value);
-  const alreadyConnectedComponentIds = props.existingEdges.map(
-    (edge) => edge.componentId,
-  );
+  const alreadyConnectedComponentIds = props.existingEdges.map((edge) => edge.componentId);
 
   // TODO(Wendy) - maybe instead of just filtering out the components that are already connected
   // we might wanna show them but have some indication that they are already connected?
   return componentIds
-    .filter(
-      (id) =>
-        id !== props.parentComponentId &&
-        !alreadyConnectedComponentIds.includes(id),
-    )
+    .filter((id) => id !== props.parentComponentId && !alreadyConnectedComponentIds.includes(id))
     .map(
       (id) =>
         ({
@@ -248,9 +236,7 @@ const resetSearch = () => {
 
 const api = useApi();
 
-const createManagementConnection = (
-  component?: PossibleConnectionComponent,
-) => {
+const createManagementConnection = (component?: PossibleConnectionComponent) => {
   let toBeManagedComponentId;
   if (component) {
     toBeManagedComponentId = component.id;

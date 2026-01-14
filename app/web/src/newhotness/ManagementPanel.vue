@@ -6,10 +6,7 @@
     icon="tools"
     class="p-sm"
   />
-  <div
-    v-else-if="component && componentId && latestFuncRuns && managementData"
-    class="p-xs flex flex-col gap-xs"
-  >
+  <div v-else-if="component && componentId && latestFuncRuns && managementData" class="p-xs flex flex-col gap-xs">
     <ul class="flex flex-col gap-xs">
       <ManagementFuncCard
         v-for="func in mgmtFuncs"
@@ -19,11 +16,7 @@
         :funcRun="latestFuncRuns[func.id]"
       />
     </ul>
-    <ManagementConnectionsList
-      v-if="incoming.length > 0"
-      :edges="incoming"
-      titleText="Managed By Components"
-    />
+    <ManagementConnectionsList v-if="incoming.length > 0" :edges="incoming" titleText="Managed By Components" />
     <ManagementConnectionsList
       :edges="outgoing"
       titleText="Managing Components"
@@ -32,30 +25,15 @@
       :parentComponentId="componentId"
     />
   </div>
-  <EmptyState
-    v-else
-    text="No management information available"
-    icon="tools"
-    class="p-sm"
-  />
+  <EmptyState v-else text="No management information available" icon="tools" class="p-sm" />
 </template>
 
 <script setup lang="ts">
 import { computed, PropType } from "vue";
 import { useQuery } from "@tanstack/vue-query";
 import { FuncRun } from "@/newhotness/api_composables/func_run";
-import {
-  Connection,
-  EntityKind,
-  BifrostComponent,
-  ManagementConnections,
-} from "@/workers/types/entity_kind_types";
-import {
-  bifrost,
-  getIncomingManagement,
-  useMakeArgs,
-  useMakeKey,
-} from "@/store/realtime/heimdall";
+import { Connection, EntityKind, BifrostComponent, ManagementConnections } from "@/workers/types/entity_kind_types";
+import { bifrost, getIncomingManagement, useMakeArgs, useMakeKey } from "@/store/realtime/heimdall";
 import EmptyState from "./EmptyState.vue";
 import ManagementFuncCard from "./ManagementFuncCard.vue";
 import { SimpleConnection } from "./layout_components/ConnectionLayout.vue";
@@ -66,9 +44,7 @@ const props = defineProps({
   latestFuncRuns: { type: Object as PropType<Record<string, FuncRun>> },
 });
 
-const mgmtFuncs = computed(
-  () => props.component?.schemaVariant.mgmtFunctions ?? [],
-);
+const mgmtFuncs = computed(() => props.component?.schemaVariant.mgmtFunctions ?? []);
 
 const key = useMakeKey();
 const args = useMakeArgs();
@@ -79,9 +55,7 @@ const mgmtConnectionsQuery = useQuery<ManagementConnections | null>({
   enabled: () => componentId.value !== "",
   queryKey: key(EntityKind.ManagementConnections, componentId),
   queryFn: async () => {
-    return await bifrost<ManagementConnections>(
-      args(EntityKind.ManagementConnections, componentId.value),
-    );
+    return await bifrost<ManagementConnections>(args(EntityKind.ManagementConnections, componentId.value));
   },
 });
 
@@ -96,9 +70,7 @@ const myIncoming = computed<Connection[]>(() => {
 const incomingQuery = useQuery({
   queryKey: key(EntityKind.IncomingManagementConnections),
   queryFn: async () => {
-    const inc = await getIncomingManagement(
-      args(EntityKind.IncomingManagementConnections),
-    );
+    const inc = await getIncomingManagement(args(EntityKind.IncomingManagementConnections));
     return inc;
   },
 });

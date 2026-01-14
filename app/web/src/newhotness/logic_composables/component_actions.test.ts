@@ -25,19 +25,12 @@ let mockQueryResponses: Map<string, unknown>;
 // Mock heimdall using the inner pattern like other tests
 type HeimdallInner = typeof import("@/store/realtime/heimdall_inner");
 vi.mock("@/store/realtime/heimdall", async () => {
-  const inner = await vi.importActual<HeimdallInner>(
-    "@/store/realtime/heimdall_inner",
-  );
+  const inner = await vi.importActual<HeimdallInner>("@/store/realtime/heimdall_inner");
   return {
     useMakeKey: () => inner.innerUseMakeKey(CONTEXT.value),
     useMakeKeyForHead: () => (kind: string, id?: string) => {
       const ctx = CONTEXT.value;
-      return computed(() => [
-        ctx.workspacePk.value,
-        ctx.headChangeSetId.value,
-        kind,
-        id ?? ctx.workspacePk.value,
-      ]);
+      return computed(() => [ctx.workspacePk.value, ctx.headChangeSetId.value, kind, id ?? ctx.workspacePk.value]);
     },
     useMakeArgs: () => inner.innerUseMakeArgs(CONTEXT.value),
     useMakeArgsForHead: () => (kind: string, id?: string) => {
@@ -93,10 +86,7 @@ vi.mock("@tanstack/vue-query", () => ({
       .map((item) => {
         // Unwrap refs/computed
         const unwrapped =
-          item !== null &&
-          typeof item === "object" &&
-          "value" in item &&
-          "effect" in item
+          item !== null && typeof item === "object" && "value" in item && "effect" in item
             ? (item as { value: unknown }).value
             : item;
 
@@ -184,10 +174,7 @@ test("refreshEnabled returns true when on HEAD with resource and refresh action"
     `${ctx.workspacePk.value}|${ctx.changeSetId.value}|ActionViewList|${ctx.workspacePk.value}`,
     mockActionViewList,
   );
-  mockQueryResponses.set(
-    `${ctx.workspacePk.value}|${ctx.headChangeSetId.value}|ComponentInList|test-component`,
-    true,
-  );
+  mockQueryResponses.set(`${ctx.workspacePk.value}|${ctx.headChangeSetId.value}|ComponentInList|test-component`, true);
 
   const { useComponentActions } = await import("./component_actions");
   const { refreshEnabled } = useComponentActions(mockComponent);

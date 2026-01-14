@@ -17,11 +17,7 @@
   >
     <template #rightOfInput>
       <DropdownMenu ref="contextMenuRef" :forceAbove="false">
-        <DropdownMenuItem
-          label="Change Configuration"
-          header
-          class="uppercase"
-        />
+        <DropdownMenuItem label="Change Configuration" header class="uppercase" />
         <DropdownMenuItem
           label="Unset"
           checkable
@@ -41,12 +37,8 @@
           :checked="selectedFilter === 'propForIdentity'"
           @select="selectFilter('propForIdentity')"
         />
-        <span v-if="normalizeToArrayFuncId" class="flex pl-xs text-neutral-500"
-          >Normalize to Array</span
-        >
-        <span v-else class="flex pl-xs text-neutral-500"
-          >Normalize to Array (Regenerate to Install)</span
-        >
+        <span v-if="normalizeToArrayFuncId" class="flex pl-xs text-neutral-500">Normalize to Array</span>
+        <span v-else class="flex pl-xs text-neutral-500">Normalize to Array (Regenerate to Install)</span>
         <DropdownMenuItem
           label="Bind to Input Socket"
           checkable
@@ -66,7 +58,7 @@
         :disabled="isLocked"
         :selected="contextMenuRef?.isOpen"
         @click="
-          (e) => {
+          (e: MouseEvent) => {
             if (!props.isLocked) contextMenuRef?.open(e, false);
           }
         "
@@ -77,22 +69,9 @@
 
 <script lang="ts" setup>
 import { ref, computed, watch, toRaw } from "vue";
-import {
-  VormInput,
-  DropdownMenu,
-  DropdownMenuItem,
-} from "@si/vue-lib/design-system";
-import {
-  FuncKind,
-  FuncId,
-  PropDisplay,
-  IntrinsicDisplay,
-} from "@/api/sdf/dal/func";
-import {
-  SchemaVariantId,
-  groupedPropsFor,
-  inputSocketsFor,
-} from "@/api/sdf/dal/schema";
+import { VormInput, DropdownMenu, DropdownMenuItem } from "@si/vue-lib/design-system";
+import { FuncKind, FuncId, PropDisplay, IntrinsicDisplay } from "@/api/sdf/dal/func";
+import { SchemaVariantId, groupedPropsFor, inputSocketsFor } from "@/api/sdf/dal/schema";
 import { useFuncStore } from "@/store/func/funcs.store";
 import { useAssetStore } from "@/store/asset.store";
 import DetailsPanelMenuIcon from "./DetailsPanelMenuIcon.vue";
@@ -147,42 +126,34 @@ const funcStore = useFuncStore();
 const assetStore = useAssetStore();
 
 const identityFuncId = computed(() => {
-  const func = funcStore.funcList.find(
-    (func) => func.kind === FuncKind.Intrinsic && func.name === "si:identity",
-  );
+  const func = funcStore.funcList.find((func) => func.kind === FuncKind.Intrinsic && func.name === "si:identity");
   return func?.funcId as FuncId;
 });
 
 const normalizeToArrayFuncId = computed(() => {
   const func = funcStore.funcList.find(
-    (func) =>
-      func.kind === FuncKind.Intrinsic && func.name === "si:normalizeToArray",
+    (func) => func.kind === FuncKind.Intrinsic && func.name === "si:normalizeToArray",
   );
   return func?.funcId as FuncId;
 });
 
 const unsetFuncId = computed(() => {
-  const func = funcStore.funcList.find(
-    (func) => func.kind === FuncKind.Intrinsic && func.name === "si:unset",
-  );
+  const func = funcStore.funcList.find((func) => func.kind === FuncKind.Intrinsic && func.name === "si:unset");
   return func?.funcId as FuncId;
 });
 
 const icon = computed(() => {
   if (display.value?.funcId === identityFuncId.value) return "input-socket";
-  else if (display.value?.funcId === normalizeToArrayFuncId.value)
-    return "brackets-square";
+  else if (display.value?.funcId === normalizeToArrayFuncId.value) return "brackets-square";
   return "circle-slash";
 });
 
 const initialFilter = (): DropdownFilter | null => {
   if (display.value?.value?.startsWith("s_")) {
-    if (display.value?.funcId === normalizeToArrayFuncId.value)
-      return "inputSocketForNormalizeToArray";
+    if (display.value?.funcId === normalizeToArrayFuncId.value) return "inputSocketForNormalizeToArray";
     return "inputSocketForIdentity";
   } else if (display.value?.value?.startsWith("p_")) {
-    if (display.value?.funcId === normalizeToArrayFuncId.value)
-      return "propForNormalizeToArray";
+    if (display.value?.funcId === normalizeToArrayFuncId.value) return "propForNormalizeToArray";
     return "propForIdentity";
   } else if (display.value?.funcId === unsetFuncId.value) {
     return "unset";
@@ -206,10 +177,7 @@ const selectFilter = (item: DropdownFilter) => {
 
   if (item === "unset") {
     emit("changeIntrinsicFunc", "unset", display.value);
-  } else if (
-    item === "propForNormalizeToArray" ||
-    item === "inputSocketForNormalizeToArray"
-  ) {
+  } else if (item === "propForNormalizeToArray" || item === "inputSocketForNormalizeToArray") {
     emit("changeIntrinsicFunc", "normalizeToArray", display.value);
   } else {
     emit("changeIntrinsicFunc", "identity", display.value);
@@ -221,10 +189,7 @@ const optionsForIntrinsicDisplay = computed(() => {
   const variant = assetStore.variantFromListById[props.schemaVariantId];
   if (!variant) return {};
 
-  if (
-    selectedFilter.value === "propForIdentity" ||
-    selectedFilter.value === "propForNormalizeToArray"
-  ) {
+  if (selectedFilter.value === "propForIdentity" || selectedFilter.value === "propForNormalizeToArray") {
     return groupedPropsFor(variant);
   } else if (
     selectedFilter.value === "inputSocketForIdentity" ||

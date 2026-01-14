@@ -1,13 +1,5 @@
 <template>
-  <div
-    ref="mainDivRef"
-    :class="
-      clsx(
-        'flex flex-col w-full overflow-hidden relative',
-        !disableScroll && 'max-h-full',
-      )
-    "
-  >
+  <div ref="mainDivRef" :class="clsx('flex flex-col w-full overflow-hidden relative', !disableScroll && 'max-h-full')">
     <div
       v-if="showTitle"
       class="flex flex-row items-center justify-between p-xs text-base align-middle"
@@ -35,12 +27,7 @@
       icon="clipboard-copy"
       iconTone="shade"
       tooltipPlacement="top"
-      :class="
-        clsx(
-          'absolute z-10 right-xs',
-          mainDivTallEnoughForCopyIconPadding ? 'top-xs' : 'top-0',
-        )
-      "
+      :class="clsx('absolute z-10 right-xs', mainDivTallEnoughForCopyIconPadding ? 'top-xs' : 'top-0')"
       @click="copyCodeToClipboard"
     />
     <div
@@ -52,27 +39,14 @@
         )
       "
     >
-      <div
-        ref="editorMountRef"
-        class="w-full h-full overflow-auto scrollable"
-        @keyup.stop
-        @keydown.stop
-      ></div>
+      <div ref="editorMountRef" class="w-full h-full overflow-auto scrollable" @keyup.stop @keydown.stop></div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import * as _ from "lodash-es";
-import {
-  ref,
-  computed,
-  watch,
-  PropType,
-  onMounted,
-  onBeforeMount,
-  nextTick,
-} from "vue";
+import { ref, computed, watch, PropType, onMounted, onBeforeMount, nextTick } from "vue";
 import { basicSetup, EditorView } from "codemirror";
 import { StreamLanguage } from "@codemirror/language";
 
@@ -80,23 +54,13 @@ import { keymap } from "@codemirror/view";
 import { indentWithTab } from "@codemirror/commands";
 import { githubLight } from "@fsegurai/codemirror-theme-github-light";
 import { githubDark } from "@fsegurai/codemirror-theme-github-dark";
-import {
-  EditorState,
-  Compartment,
-  Extension,
-  StateEffect,
-} from "@codemirror/state";
+import { EditorState, Compartment, Extension, StateEffect } from "@codemirror/state";
 
 import { properties as JsonModeParser } from "@codemirror/legacy-modes/mode/properties";
 import { yaml as YamlModeParser } from "@codemirror/legacy-modes/mode/yaml";
 import { diff as DiffModeParser } from "@codemirror/legacy-modes/mode/diff";
 import clsx from "clsx";
-import {
-  IconButton,
-  themeClasses,
-  TruncateWithTooltip,
-  useTheme,
-} from "@si/vue-lib/design-system";
+import { IconButton, themeClasses, TruncateWithTooltip, useTheme } from "@si/vue-lib/design-system";
 import { javascript as CodemirrorJsLang } from "@codemirror/lang-javascript";
 import { CodeLanguage } from "@/api/sdf/dal/code_view";
 
@@ -125,8 +89,7 @@ const numberOfLinesInCode = computed(() => {
 const mainDivRef = ref<HTMLElement>();
 
 const mainDivTallEnoughForCopyIconPadding = computed(
-  () =>
-    mainDivRef.value && mainDivRef.value?.getBoundingClientRect().height > 32,
+  () => mainDivRef.value && mainDivRef.value?.getBoundingClientRect().height > 32,
 );
 
 const { theme } = useTheme();

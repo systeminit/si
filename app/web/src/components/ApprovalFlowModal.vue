@@ -4,27 +4,14 @@
     <Modal ref="modalRef" title="Changes To Be Applied">
       <div class="max-h-[70vh] overflow-hidden flex flex-col">
         <div class="text-md mb-xs">
-          Applying this change set may create, modify, or destroy real resources
-          in the cloud.
+          Applying this change set may create, modify, or destroy real resources in the cloud.
         </div>
-        <div class="text-sm mb-sm">
-          These actions will be applied to the real world:
-        </div>
-        <div
-          class="flex-grow overflow-y-auto mb-sm border border-neutral-100 dark:border-neutral-700"
-        >
+        <div class="text-sm mb-sm">These actions will be applied to the real world:</div>
+        <div class="flex-grow overflow-y-auto mb-sm border border-neutral-100 dark:border-neutral-700">
           <ActionsList slim kind="proposed" noInteraction />
         </div>
-        <div
-          class="flex flex-row w-full items-center justify-center gap-sm mt-xs"
-        >
-          <VButton
-            label="Cancel"
-            icon="x"
-            variant="ghost"
-            tone="warning"
-            @click="closeModalHandler"
-          />
+        <div class="flex flex-row w-full items-center justify-center gap-sm mt-xs">
+          <VButton label="Cancel" icon="x" variant="ghost" tone="warning" @click="closeModalHandler" />
           <VButton
             icon="tools"
             :tone="workspaceHasOneUser ? 'success' : undefined"

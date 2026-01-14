@@ -35,14 +35,7 @@
 </template>
 
 <script setup lang="ts">
-import {
-  IconNames,
-  Modal,
-  NewButton,
-  ButtonTones,
-  useModal,
-  VormInput,
-} from "@si/vue-lib/design-system";
+import { IconNames, Modal, NewButton, ButtonTones, useModal, VormInput } from "@si/vue-lib/design-system";
 import { ApiRequestStatus } from "@si/vue-lib/pinia";
 import { nextTick, PropType, ref } from "vue";
 
@@ -53,9 +46,7 @@ const props = defineProps({
   confirmIcon: { type: String as PropType<IconNames> },
   confirmTone: { type: String as PropType<ButtonTones> },
   size: {
-    type: String as PropType<
-      "sm" | "md" | "lg" | "xl" | "2xl" | "4xl" | "4wxl" | "6xl" | "7xl" | "max"
-    >,
+    type: String as PropType<"sm" | "md" | "lg" | "xl" | "2xl" | "4xl" | "4wxl" | "6xl" | "7xl" | "max">,
     default: "lg",
   },
   loading: { type: Boolean },

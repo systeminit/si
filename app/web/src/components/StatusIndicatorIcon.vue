@@ -7,6 +7,51 @@
   />
 </template>
 
+<script lang="ts" setup>
+import { computed } from "vue";
+import { Icon, IconSizes, IconNames, Tones } from "@si/vue-lib/design-system";
+
+// TODO: remove this after refactoring StatusMessageBox
+// TODO(nick,paulo,paul,wendy): remove "neverStarted" once the fix flow is working again.
+export type Status =
+  | "success"
+  | "failure"
+  | "unknown"
+  | "warning"
+  | "running"
+  | "added"
+  | "modified"
+  | "neverStarted"
+  | "unmodified"
+  | "deleted"
+  | "show"
+  | "pending"
+  | "error";
+
+// NOTE - would ideally pull in the real types here but generics are not yet supported
+// could also think about breaking this into multiple components, but it's nice to keep things consistent
+const props = defineProps<{
+  type: keyof typeof CONFIG;
+  status?: string | null;
+  size?: IconSizes;
+  tone?: Tones | "inherit";
+}>();
+
+const iconName = computed<IconNames>(
+  () =>
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (CONFIG as any)[props.type]?.[props.status || "_default"]?.iconName || "question-circle",
+);
+const iconTone = computed<Tones>(
+  () =>
+    props.tone ||
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (CONFIG as any)[props.type]?.[props.status || "_default"]?.tone ||
+    "warning",
+);
+</script>
+
+<!-- eslint-disable vue/component-tags-order,import/first -->
 <script lang="ts">
 const CONFIG = {
   diff: {
@@ -83,50 +128,4 @@ const CONFIG = {
 };
 
 export type IconType = keyof typeof CONFIG;
-</script>
-
-<!-- eslint-disable vue/component-tags-order,import/first -->
-<script lang="ts" setup>
-import { computed } from "vue";
-import { Icon, IconSizes, IconNames, Tones } from "@si/vue-lib/design-system";
-
-// TODO: remove this after refactoring StatusMessageBox
-// TODO(nick,paulo,paul,wendy): remove "neverStarted" once the fix flow is working again.
-export type Status =
-  | "success"
-  | "failure"
-  | "unknown"
-  | "warning"
-  | "running"
-  | "added"
-  | "modified"
-  | "neverStarted"
-  | "unmodified"
-  | "deleted"
-  | "show"
-  | "pending"
-  | "error";
-
-// NOTE - would ideally pull in the real types here but generics are not yet supported
-// could also think about breaking this into multiple components, but it's nice to keep things consistent
-const props = defineProps<{
-  type: keyof typeof CONFIG;
-  status?: string | null;
-  size?: IconSizes;
-  tone?: Tones | "inherit";
-}>();
-
-const iconName = computed<IconNames>(
-  () =>
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (CONFIG as any)[props.type]?.[props.status || "_default"]?.iconName ||
-    "question-circle",
-);
-const iconTone = computed<Tones>(
-  () =>
-    props.tone ||
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (CONFIG as any)[props.type]?.[props.status || "_default"]?.tone ||
-    "warning",
-);
 </script>

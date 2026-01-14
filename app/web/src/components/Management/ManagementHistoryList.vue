@@ -1,6 +1,6 @@
 <template>
   <ul>
-    <template v-for="item in managementHistory" :key="item.funcRunId">
+    <template v-for="item in managementHistory" :key="item.id">
       <ManagementHistoryCard
         :item="item"
         :selected="item.id === funcRunId"
@@ -21,9 +21,7 @@ const props = defineProps({
   managementHistory: { type: Array<ManagementHistoryItem> },
   funcRunId: { type: String as PropType<FuncRunId> },
   clickItem: {
-    type: Function as PropType<
-      (item: ManagementHistoryItem, e: MouseEvent) => void
-    >,
+    type: Function as PropType<(item: ManagementHistoryItem, e: MouseEvent) => void>,
     default: undefined,
   },
 });

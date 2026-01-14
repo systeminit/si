@@ -2,11 +2,7 @@
   <div class="bg-neutral-800 rounded border border-neutral-600">
     <div
       :class="
-        clsx(
-          'p-sm border-neutral-600 select-none rounded-t',
-          isOpen && 'border-b',
-          !blockOpening && 'cursor-pointer',
-        )
+        clsx('p-sm border-neutral-600 select-none rounded-t', isOpen && 'border-b', !blockOpening && 'cursor-pointer')
       "
       @click="tryToggleOpen"
     >

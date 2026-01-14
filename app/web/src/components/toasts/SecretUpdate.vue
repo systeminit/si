@@ -9,9 +9,7 @@
   >
     <template v-if="!props.success">
       <Icon name="loader" size="xl" tone="action" />
-      <p class="text-sm">
-        {{ newSecret ? "Adding" : "Updating" }} secret "{{ props.secretName }}"
-      </p>
+      <p class="text-sm">{{ newSecret ? "Adding" : "Updating" }} secret "{{ props.secretName }}"</p>
     </template>
     <template v-else>
       <Icon name="check" size="xl" tone="success" />

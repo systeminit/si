@@ -1,12 +1,6 @@
 import { Ref, unref } from "vue";
-import {
-  BRAND_COLOR_FILTER_HEX_CODES,
-  IconNames,
-} from "@si/vue-lib/design-system";
-import {
-  AttributeTree,
-  AttributeValue,
-} from "@/workers/types/entity_kind_types";
+import { BRAND_COLOR_FILTER_HEX_CODES, IconNames } from "@si/vue-lib/design-system";
+import { AttributeTree, AttributeValue } from "@/workers/types/entity_kind_types";
 import { AttributePath } from "@/api/sdf/dal/component";
 import { Toggle } from "./logic_composables/toggle_containers";
 
@@ -15,13 +9,11 @@ export type BrandColorKey = keyof typeof BRAND_COLOR_FILTER_HEX_CODES;
 export const getAssetColor = (name: string) => {
   const lowerCaseName = name.toLowerCase();
 
-  const key = (
-    Object.keys(BRAND_COLOR_FILTER_HEX_CODES) as BrandColorKey[]
-  ).find((key) => lowerCaseName.startsWith(key.toLowerCase()));
+  const key = (Object.keys(BRAND_COLOR_FILTER_HEX_CODES) as BrandColorKey[]).find((key) =>
+    lowerCaseName.startsWith(key.toLowerCase()),
+  );
 
-  return key
-    ? BRAND_COLOR_FILTER_HEX_CODES[key]
-    : BRAND_COLOR_FILTER_HEX_CODES.Custom; // fallback to Custom
+  return key ? BRAND_COLOR_FILTER_HEX_CODES[key] : BRAND_COLOR_FILTER_HEX_CODES.Custom; // fallback to Custom
 };
 
 // This version allows for "azure" or "gcp" as strings
@@ -56,8 +48,7 @@ export const pickBrandIconByString = (name: string): IconNames => {
  * Specify the height of a collapsed grid when its closed (e.g. just enough to show a header)
  * When its open use the fractional unit so it grows to the available size, sharing the remaining space with other open grid items
  */
-export const gridCollapseStyle = (open: boolean | Ref<boolean, boolean>) =>
-  unref(open) ? "1fr" : "2.5em";
+export const gridCollapseStyle = (open: boolean | Ref<boolean, boolean>) => (unref(open) ? "1fr" : "2.5em");
 
 /**
  * Generates the styles for a vertical grid of collapsing panels
@@ -65,13 +56,9 @@ export const gridCollapseStyle = (open: boolean | Ref<boolean, boolean>) =>
  * @param gridStates a list of open / closed states that represent the grid items
  * @returns { gridTemplateRows: string of sizes in the grid order you passed in }
  */
-export const collapsingGridStyles = (
-  gridStates: (Pick<Toggle, "open"> | undefined)[],
-): Record<string, string> => {
+export const collapsingGridStyles = (gridStates: (Pick<Toggle, "open"> | undefined)[]): Record<string, string> => {
   // NOTE: the optional `gs` and coalesce is for rendering states before template refs are instantiated (that is what the | undefined above represents)
-  const sizes = gridStates.map((gs): string =>
-    gridCollapseStyle(gs?.open ?? true),
-  );
+  const sizes = gridStates.map((gs): string => gridCollapseStyle(gs?.open ?? true));
   return {
     gridTemplateRows: sizes.join(" "),
   };
@@ -81,7 +68,6 @@ export const collapsingGridStyles = (
 export const findAvsAtPropPath = (data: AttributeTree, parts: string[]) => {
   const path = parts.join("/");
   const propId = Object.keys(data.props).find((pId) => {
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const p = data.props[pId]!;
     if (p.path === path) return true;
     return false;
@@ -93,9 +79,9 @@ export const findAvsAtPropPath = (data: AttributeTree, parts: string[]) => {
     return false;
   });
   if (avIds.length === 0) return null;
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+
   const prop = data.props[propId]!;
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+
   const attributeValues = avIds.map((avId) => data.attributeValues[avId]!);
   return { prop, attributeValues };
 };
@@ -119,10 +105,7 @@ export function objectKeys<T extends object>(obj: T): Array<keyof T> {
 }
 
 export const openWorkspaceMigrationDocumentation = () => {
-  globalThis.window?.open(
-    "https://docs.systeminit.com/explanation/workspace-migration",
-    "_blank",
-  );
+  globalThis.window?.open("https://docs.systeminit.com/explanation/workspace-migration", "_blank");
 };
 
 /**

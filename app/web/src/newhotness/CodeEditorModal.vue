@@ -1,20 +1,9 @@
 <template>
-  <Modal
-    ref="modalRef"
-    :title="title"
-    size="4xl"
-    hideExitButton
-    @close="cancel"
-  >
+  <Modal ref="modalRef" :title="title" size="4xl" hideExitButton @close="cancel">
     <template #titleIcons>
       <button
         v-tooltip="'Cancel'"
-        :class="
-          clsx(
-            'modal-close-button',
-            'hover:scale-110 rounded-full opacity-80 hover:opacity-100 -mr-2 -my-2',
-          )
-        "
+        :class="clsx('modal-close-button', 'hover:scale-110 rounded-full opacity-80 hover:opacity-100 -mr-2 -my-2')"
         @click="cancel"
       >
         <Icon name="x" size="md" />
@@ -33,11 +22,7 @@
         )
       "
     >
-      <CodeEditor
-        :id="codeEditorId"
-        v-model="newValueString"
-        :recordId="codeEditorId"
-      />
+      <CodeEditor :id="codeEditorId" v-model="newValueString" :recordId="codeEditorId" />
     </div>
 
     <div class="flex justify-end gap-sm mt-sm">
@@ -48,13 +33,7 @@
 </template>
 
 <script setup lang="ts">
-import {
-  Icon,
-  Modal,
-  NewButton,
-  themeClasses,
-  useModal,
-} from "@si/vue-lib/design-system";
+import { Icon, Modal, NewButton, themeClasses, useModal } from "@si/vue-lib/design-system";
 import clsx from "clsx";
 import { onBeforeUnmount, ref, watch } from "vue";
 import CodeEditor from "@/components/CodeEditor.vue";

@@ -21,9 +21,7 @@ let mockApiCalls: Array<{
 // Mock heimdall using the inner pattern like other tests
 type HeimdallInner = typeof import("@/store/realtime/heimdall_inner");
 vi.mock("@/store/realtime/heimdall", async () => {
-  const inner = await vi.importActual<HeimdallInner>(
-    "@/store/realtime/heimdall_inner",
-  );
+  const inner = await vi.importActual<HeimdallInner>("@/store/realtime/heimdall_inner");
   return {
     useMakeKey: () => inner.innerUseMakeKey(CONTEXT.value),
     useMakeArgs: () => inner.innerUseMakeArgs(CONTEXT.value),
@@ -102,9 +100,7 @@ describe("setKey API integration with escaped keys", () => {
     expect(mockApiCalls).toHaveLength(1);
     expect(mockApiCalls[0]?.route).toBe("update-component-attributes");
     expect(mockApiCalls[0]?.method).toBe("PUT");
-    expect(mockApiCalls[0]?.payload).toHaveProperty(
-      "/domain/config/test~1paul",
-    );
+    expect(mockApiCalls[0]?.payload).toHaveProperty("/domain/config/test~1paul");
     expect(mockApiCalls[0]?.payload["/domain/config/test~1paul"]).toEqual({});
   });
 
@@ -131,9 +127,7 @@ describe("setKey API integration with escaped keys", () => {
 
     // Then: The tilde should be escaped as ~0 in the API payload
     expect(mockApiCalls).toHaveLength(1);
-    expect(mockApiCalls[0]?.payload).toHaveProperty(
-      "/domain/settings/config~0key",
-    );
+    expect(mockApiCalls[0]?.payload).toHaveProperty("/domain/settings/config~0key");
     expect(mockApiCalls[0]?.payload["/domain/settings/config~0key"]).toBe("");
   });
 
@@ -160,12 +154,8 @@ describe("setKey API integration with escaped keys", () => {
 
     // Then: Both characters should be properly escaped (/ → ~1, ~ → ~0)
     expect(mockApiCalls).toHaveLength(1);
-    expect(mockApiCalls[0]?.payload).toHaveProperty(
-      "/domain/IamPolicies/policy~1~0admin",
-    );
-    expect(
-      mockApiCalls[0]?.payload["/domain/IamPolicies/policy~1~0admin"],
-    ).toEqual({ role: "admin" });
+    expect(mockApiCalls[0]?.payload).toHaveProperty("/domain/IamPolicies/policy~1~0admin");
+    expect(mockApiCalls[0]?.payload["/domain/IamPolicies/policy~1~0admin"]).toEqual({ role: "admin" });
   });
 
   test("API receives correctly escaped real-world AWS ARN with forward slash", async () => {
@@ -191,14 +181,8 @@ describe("setKey API integration with escaped keys", () => {
 
     // Then: The forward slash in the ARN should be escaped
     expect(mockApiCalls).toHaveLength(1);
-    expect(mockApiCalls[0]?.payload).toHaveProperty(
-      "/domain/IamRoles/arn:aws:iam::123456789012~1role-name",
-    );
-    expect(
-      mockApiCalls[0]?.payload[
-        "/domain/IamRoles/arn:aws:iam::123456789012~1role-name"
-      ],
-    ).toEqual({ arn: key });
+    expect(mockApiCalls[0]?.payload).toHaveProperty("/domain/IamRoles/arn:aws:iam::123456789012~1role-name");
+    expect(mockApiCalls[0]?.payload["/domain/IamRoles/arn:aws:iam::123456789012~1role-name"]).toEqual({ arn: key });
   });
 
   test("API receives multiple escaped forward slashes in path-like keys", async () => {
@@ -224,12 +208,8 @@ describe("setKey API integration with escaped keys", () => {
 
     // Then: All forward slashes should be escaped
     expect(mockApiCalls).toHaveLength(1);
-    expect(mockApiCalls[0]?.payload).toHaveProperty(
-      "/domain/FilePaths/path~1to~1resource",
-    );
-    expect(
-      mockApiCalls[0]?.payload["/domain/FilePaths/path~1to~1resource"],
-    ).toEqual({ location: key });
+    expect(mockApiCalls[0]?.payload).toHaveProperty("/domain/FilePaths/path~1to~1resource");
+    expect(mockApiCalls[0]?.payload["/domain/FilePaths/path~1to~1resource"]).toEqual({ location: key });
   });
 
   test("API receives normal keys without modification", async () => {
@@ -255,9 +235,7 @@ describe("setKey API integration with escaped keys", () => {
 
     // Then: The key should remain unchanged in the API payload
     expect(mockApiCalls).toHaveLength(1);
-    expect(mockApiCalls[0]?.payload).toHaveProperty(
-      "/domain/config/normalKey123",
-    );
+    expect(mockApiCalls[0]?.payload).toHaveProperty("/domain/config/normalKey123");
     expect(mockApiCalls[0]?.payload["/domain/config/normalKey123"]).toEqual({
       setting: "value",
     });
@@ -278,9 +256,7 @@ describe("API integration with clearing input fields", () => {
   test("API receives { $source: null } when user clears a string input", async () => {
     // Given: The API composable and makeSavePayload function (as used in AttributePanel)
     const { useApi, routes } = await import("./api_composables");
-    const { makeSavePayload } = await import(
-      "./logic_composables/attribute_tree"
-    );
+    const { makeSavePayload } = await import("./logic_composables/attribute_tree");
     const { PropKind } = await import("@/api/sdf/dal/prop");
     const api = useApi();
 
@@ -307,9 +283,7 @@ describe("API integration with clearing input fields", () => {
   test("API receives { $source: null } when user clears an integer input", async () => {
     // Given: The API composable and makeSavePayload function
     const { useApi, routes } = await import("./api_composables");
-    const { makeSavePayload } = await import(
-      "./logic_composables/attribute_tree"
-    );
+    const { makeSavePayload } = await import("./logic_composables/attribute_tree");
     const { PropKind } = await import("@/api/sdf/dal/prop");
     const api = useApi();
 
@@ -334,9 +308,7 @@ describe("API integration with clearing input fields", () => {
   test("API receives actual value when user enters text in string input", async () => {
     // Given: The API composable and makeSavePayload function
     const { useApi, routes } = await import("./api_composables");
-    const { makeSavePayload } = await import(
-      "./logic_composables/attribute_tree"
-    );
+    const { makeSavePayload } = await import("./logic_composables/attribute_tree");
     const { PropKind } = await import("@/api/sdf/dal/prop");
     const api = useApi();
 
@@ -361,9 +333,7 @@ describe("API integration with clearing input fields", () => {
   test("API receives coerced integer when user enters number in integer input", async () => {
     // Given: The API composable and makeSavePayload function
     const { useApi, routes } = await import("./api_composables");
-    const { makeSavePayload } = await import(
-      "./logic_composables/attribute_tree"
-    );
+    const { makeSavePayload } = await import("./logic_composables/attribute_tree");
     const { PropKind } = await import("@/api/sdf/dal/prop");
     const api = useApi();
 
@@ -388,9 +358,7 @@ describe("API integration with clearing input fields", () => {
   test("API receives subscription format when connecting components", async () => {
     // Given: The API composable and makeSavePayload function
     const { useApi, routes } = await import("./api_composables");
-    const { makeSavePayload } = await import(
-      "./logic_composables/attribute_tree"
-    );
+    const { makeSavePayload } = await import("./logic_composables/attribute_tree");
     const { PropKind } = await import("@/api/sdf/dal/prop");
     const api = useApi();
 
@@ -400,12 +368,7 @@ describe("API integration with clearing input fields", () => {
     const connectingComponentId = "source-component-123" as ComponentId;
 
     // When: Simulating subscription creation
-    const payload = makeSavePayload(
-      path,
-      value,
-      PropKind.String,
-      connectingComponentId,
-    );
+    const payload = makeSavePayload(path, value, PropKind.String, connectingComponentId);
     const call = api.endpoint(routes.UpdateComponentAttributes, {
       id: componentId,
     });
@@ -433,9 +396,7 @@ describe("API integration with clearing input fields", () => {
 describe("makeSavePayload unit tests", () => {
   test("makeSavePayload returns { $source: null } for empty string value", async () => {
     // Given: The makeSavePayload function
-    const { makeSavePayload } = await import(
-      "./logic_composables/attribute_tree"
-    );
+    const { makeSavePayload } = await import("./logic_composables/attribute_tree");
     const { PropKind } = await import("@/api/sdf/dal/prop");
 
     // When: User clears an input field (value becomes empty string)
@@ -453,17 +414,11 @@ describe("makeSavePayload unit tests", () => {
 
   test("makeSavePayload returns string value when value is not empty", async () => {
     // Given: The makeSavePayload function
-    const { makeSavePayload } = await import(
-      "./logic_composables/attribute_tree"
-    );
+    const { makeSavePayload } = await import("./logic_composables/attribute_tree");
     const { PropKind } = await import("@/api/sdf/dal/prop");
 
     // When: User enters a string value
-    const payload = makeSavePayload(
-      "/domain/image" as AttributePath,
-      "my-image:v1",
-      PropKind.String,
-    );
+    const payload = makeSavePayload("/domain/image" as AttributePath, "my-image:v1", PropKind.String);
 
     // Then: Payload should contain the string value
     expect(payload).toEqual({
@@ -473,17 +428,11 @@ describe("makeSavePayload unit tests", () => {
 
   test("makeSavePayload returns coerced integer for integer prop", async () => {
     // Given: The makeSavePayload function
-    const { makeSavePayload } = await import(
-      "./logic_composables/attribute_tree"
-    );
+    const { makeSavePayload } = await import("./logic_composables/attribute_tree");
     const { PropKind } = await import("@/api/sdf/dal/prop");
 
     // When: User enters an integer value
-    const payload = makeSavePayload(
-      "/domain/count" as AttributePath,
-      "42",
-      PropKind.Integer,
-    );
+    const payload = makeSavePayload("/domain/count" as AttributePath, "42", PropKind.Integer);
 
     // Then: Payload should contain the coerced integer
     expect(payload).toEqual({
@@ -493,9 +442,7 @@ describe("makeSavePayload unit tests", () => {
 
   test("makeSavePayload returns { $source: null } for cleared integer prop", async () => {
     // Given: The makeSavePayload function
-    const { makeSavePayload } = await import(
-      "./logic_composables/attribute_tree"
-    );
+    const { makeSavePayload } = await import("./logic_composables/attribute_tree");
     const { PropKind } = await import("@/api/sdf/dal/prop");
 
     // When: User clears an integer input field
@@ -513,17 +460,11 @@ describe("makeSavePayload unit tests", () => {
 
   test("makeSavePayload returns coerced boolean for boolean prop", async () => {
     // Given: The makeSavePayload function
-    const { makeSavePayload } = await import(
-      "./logic_composables/attribute_tree"
-    );
+    const { makeSavePayload } = await import("./logic_composables/attribute_tree");
     const { PropKind } = await import("@/api/sdf/dal/prop");
 
     // When: User enters a boolean value
-    const payload = makeSavePayload(
-      "/domain/enabled" as AttributePath,
-      "true",
-      PropKind.Boolean,
-    );
+    const payload = makeSavePayload("/domain/enabled" as AttributePath, "true", PropKind.Boolean);
 
     // Then: Payload should contain the coerced boolean
     expect(payload).toEqual({
@@ -533,17 +474,11 @@ describe("makeSavePayload unit tests", () => {
 
   test("makeSavePayload returns coerced float for float prop", async () => {
     // Given: The makeSavePayload function
-    const { makeSavePayload } = await import(
-      "./logic_composables/attribute_tree"
-    );
+    const { makeSavePayload } = await import("./logic_composables/attribute_tree");
     const { PropKind } = await import("@/api/sdf/dal/prop");
 
     // When: User enters a float value
-    const payload = makeSavePayload(
-      "/domain/price" as AttributePath,
-      "19.99",
-      PropKind.Float,
-    );
+    const payload = makeSavePayload("/domain/price" as AttributePath, "19.99", PropKind.Float);
 
     // Then: Payload should contain the coerced float
     expect(payload).toEqual({
@@ -553,9 +488,7 @@ describe("makeSavePayload unit tests", () => {
 
   test("makeSavePayload returns subscription format when connecting component", async () => {
     // Given: The makeSavePayload function
-    const { makeSavePayload } = await import(
-      "./logic_composables/attribute_tree"
-    );
+    const { makeSavePayload } = await import("./logic_composables/attribute_tree");
     const { PropKind } = await import("@/api/sdf/dal/prop");
 
     // When: User creates a subscription connection
@@ -579,9 +512,7 @@ describe("makeSavePayload unit tests", () => {
 
   test("makeSavePayload returns subscription format even with empty path", async () => {
     // Given: The makeSavePayload function
-    const { makeSavePayload } = await import(
-      "./logic_composables/attribute_tree"
-    );
+    const { makeSavePayload } = await import("./logic_composables/attribute_tree");
     const { PropKind } = await import("@/api/sdf/dal/prop");
 
     // When: Creating a subscription with empty path (edge case)

@@ -1,12 +1,5 @@
 <template>
-  <div
-    :class="
-      clsx(
-        'skeleton-shimmer flex-none rounded-sm',
-        themeClasses('bg-neutral-400', 'bg-neutral-700'),
-      )
-    "
-  />
+  <div :class="clsx('skeleton-shimmer flex-none rounded-sm', themeClasses('bg-neutral-400', 'bg-neutral-700'))" />
 </template>
 
 <script setup lang="ts">

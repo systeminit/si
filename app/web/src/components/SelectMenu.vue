@@ -1,21 +1,12 @@
 <template>
-  <Listbox
-    v-model="selectedOptions"
-    :disabled="disabledBySelfOrParent"
-    as="div"
-  >
+  <Listbox v-model="selectedOptions" :disabled="disabledBySelfOrParent" as="div">
     <div class="relative">
       <ListboxButton
         class="cursor-default relative w-full rounded-[0.1875rem] border border-neutral-300 bg-shade-0 py-1.5 pl-3 pr-10 text-left text-neutral-900 shadow-sm hover:border-neutral-400 focus:border-neutral-500 focus:outline-none focus:ring-1 disabled:opacity-50 dark:border-neutral-600 dark:bg-neutral-900 dark:text-neutral-50"
       >
         <span class="block truncate text-sm">{{ selectedLabel }}</span>
-        <span
-          class="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2"
-        >
-          <Icon
-            name="selector"
-            class="h-5 w-5 rounded-[0.1875rem] bg-neutral-300 text-shade-0"
-          />
+        <span class="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2">
+          <Icon name="selector" class="h-5 w-5 rounded-[0.1875rem] bg-neutral-300 text-shade-0" />
         </span>
       </ListboxButton>
 
@@ -27,10 +18,7 @@
         <ListboxOptions
           class="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-md bg-shade-0 py-1 shadow-lg ring-1 ring-black ring-opacity-5 type-regular-xs focus:outline-none dark:bg-neutral-900"
         >
-          <div
-            v-if="canFilter"
-            :class="clsx('filter-container', `--theme-${theme}`)"
-          >
+          <div v-if="canFilter" :class="clsx('filter-container', `--theme-${theme}`)">
             <input
               v-model="filterString"
               class="filter-string"
@@ -49,20 +37,11 @@
             >
               <li
                 :class="[
-                  active
-                    ? 'bg-action-500 text-neutral-50'
-                    : 'text-neutral-900 dark:text-neutral-50',
+                  active ? 'bg-action-500 text-neutral-50' : 'text-neutral-900 dark:text-neutral-50',
                   'cursor-default relative select-none py-2 pl-3 pr-9',
                 ]"
               >
-                <span
-                  :class="[
-                    isSelected(option, selected)
-                      ? 'font-semibold'
-                      : 'font-normal',
-                    'block truncate',
-                  ]"
-                >
+                <span :class="[isSelected(option, selected) ? 'font-semibold' : 'font-normal', 'block truncate']">
                   {{ option.label }}
                 </span>
 
@@ -78,16 +57,9 @@
               </li>
             </ListboxOption>
           </template>
-          <template
-            v-if="
-              filteredGroupOptions &&
-              Object.keys(filteredGroupOptions).length > 0
-            "
-          >
+          <template v-if="filteredGroupOptions && Object.keys(filteredGroupOptions).length > 0">
             <ul
-              v-for="[groupLabel, groupOptions] in Object.entries(
-                filteredGroupOptions,
-              )"
+              v-for="[groupLabel, groupOptions] in Object.entries(filteredGroupOptions)"
               :key="groupLabel"
               class="pl-3 py-2"
             >
@@ -101,20 +73,11 @@
               >
                 <li
                   :class="[
-                    active
-                      ? 'bg-action-500 text-neutral-50'
-                      : 'text-neutral-900 dark:text-neutral-50',
+                    active ? 'bg-action-500 text-neutral-50' : 'text-neutral-900 dark:text-neutral-50',
                     'cursor-default relative select-none py-2 pl-3 pr-9',
                   ]"
                 >
-                  <span
-                    :class="[
-                      isSelected(option, selected)
-                        ? 'font-semibold'
-                        : 'font-normal',
-                      'block truncate',
-                    ]"
-                  >
+                  <span :class="[isSelected(option, selected) ? 'font-semibold' : 'font-normal', 'block truncate']">
                     {{ option.label }}
                   </span>
 
@@ -139,17 +102,8 @@
 
 <script lang="ts" setup>
 import { computed, toRefs, ref } from "vue";
-import {
-  Listbox,
-  ListboxButton,
-  ListboxOption,
-  ListboxOptions,
-} from "@headlessui/vue";
-import {
-  Icon,
-  useDisabledBySelfOrParent,
-  useTheme,
-} from "@si/vue-lib/design-system";
+import { Listbox, ListboxButton, ListboxOption, ListboxOptions } from "@headlessui/vue";
+import { Icon, useDisabledBySelfOrParent, useTheme } from "@si/vue-lib/design-system";
 import clsx from "clsx";
 
 export interface Option {
@@ -190,11 +144,9 @@ const filteredGroupOptions = computed(() => {
   if (!filterString.value) return props.options;
 
   const filtered = {} as GroupedOptions;
-  const grouped = props.options as GroupedOptions;
+  const grouped = props.options;
   Object.keys(grouped).forEach((key) => {
-    const options = grouped[key]?.filter((o) =>
-      o.label.includes(filterString.value),
-    );
+    const options = grouped[key]?.filter((o) => o.label.includes(filterString.value));
     if (options && options.length > 0) filtered[key] = options;
   });
   return filtered;
@@ -203,8 +155,7 @@ const filteredGroupOptions = computed(() => {
 const disabledBySelfOrParent = useDisabledBySelfOrParent(disabled);
 
 const isSelected = (option: Option, selected: boolean) =>
-  selected ||
-  ("length" in props.modelValue && props.modelValue.includes(option));
+  selected || ("length" in props.modelValue && props.modelValue.includes(option));
 
 const toggleSelection = (selection: Option) => {
   if (!("length" in props.modelValue)) {
@@ -226,7 +177,7 @@ const selectedOptions = computed<Option | Option[]>({
     if ("value" in props.modelValue && "value" in value) {
       emit("update:modelValue", value.value === "" ? null : value);
     } else if ("length" in props.modelValue && "value" in value) {
-      emit("update:modelValue", toggleSelection(value as Option));
+      emit("update:modelValue", toggleSelection(value));
     } else {
       // should not be hit, but just in case
       emit("update:modelValue", value);
@@ -243,9 +194,7 @@ const selectedLabel = computed<string>(() => {
       case 1:
         return selectedOptions.value[0]?.label ?? "label missing";
       default:
-        return `${selectedOptions.value[0]?.label} (+${
-          selectedOptions.value.length - 1
-        })`;
+        return `${selectedOptions.value[0]?.label} (+${selectedOptions.value.length - 1})`;
     }
   }
 

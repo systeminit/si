@@ -5,16 +5,9 @@
     primaryText="No Function Selected"
     secondaryText="Select a function from the list on the left panel to view its details here."
   />
-  <div
-    v-else-if="editingFunc"
-    :class="clsx('h-full w-full flex flex-col overflow-hidden')"
-  >
+  <div v-else-if="editingFunc" :class="clsx('h-full w-full flex flex-col overflow-hidden')">
     <div class="flex flex-col">
-      <SidebarSubpanelTitle
-        :label="editingFunc.displayName || editingFunc.name"
-        icon="func"
-        variant="subtitle"
-      >
+      <SidebarSubpanelTitle :label="editingFunc.displayName || editingFunc.name" icon="func" variant="subtitle">
         <div class="flex flex-row gap-xs">
           <EditingPill v-if="!editingFunc.isLocked" color="#666" />
           <IconButton
@@ -39,22 +32,12 @@
           />
         </div>
       </SidebarSubpanelTitle>
-      <ErrorMessage
-        v-if="isConnectedToOtherSchemas"
-        icon="alert-triangle"
-        tone="warning"
-        variant="block"
-      >
+      <ErrorMessage v-if="isConnectedToOtherSchemas" icon="alert-triangle" tone="warning" variant="block">
         This function is connected to other
         {{ editingFunc.kind === FuncKind.Attribute ? "attributes" : "assets" }}.
       </ErrorMessage>
-      <ErrorMessage
-        v-if="editingFunc.kind === FuncKind.Action"
-        icon="alert-triangle"
-        tone="warning"
-        variant="block"
-        >Executing this will run on all attached components and may affect your
-        real-world resources!
+      <ErrorMessage v-if="editingFunc.kind === FuncKind.Action" icon="alert-triangle" tone="warning" variant="block"
+        >Executing this will run on all attached components and may affect your real-world resources!
       </ErrorMessage>
       <ErrorMessage
         v-if="latestFuncExecutionReqStatus?.isError"
@@ -65,10 +48,7 @@
         class="flex flex-row gap-2xs items-center justify-evenly py-xs border-b border-neutral-200 dark:border-neutral-600"
       >
         <IconButton
-          :disabled="
-            !(editingFunc.kind !== FuncKind.Authentication) ||
-            editingFunc.isLocked
-          "
+          :disabled="!(editingFunc.kind !== FuncKind.Authentication) || editingFunc.isLocked"
           :requestStatus="execFuncReqStatus"
           icon="save"
           iconTone="success"
@@ -114,14 +94,7 @@
               noIndentationOrLeftBorder
             >
               <Stack class="p-xs" spacing="none">
-                <VormInput
-                  id="name"
-                  v-model="editingFunc.name"
-                  compact
-                  disabled
-                  label="Name"
-                  required
-                />
+                <VormInput id="name" v-model="editingFunc.name" compact disabled label="Name" required />
                 <VormInput
                   id="displayName"
                   v-model="editingFunc.displayName"
@@ -205,17 +178,11 @@
               labelClasses="border-b border-neutral-200 dark:border-neutral-600"
               leftBorderSize="none"
             >
-              <FuncArguments
-                :disabled="editingFunc.isLocked"
-                :funcId="editingFunc.funcId"
-              />
+              <FuncArguments :disabled="editingFunc.isLocked" :funcId="editingFunc.funcId" />
             </TreeNode>
 
             <TreeNode
-              v-if="
-                editingFunc?.kind === FuncKind.Attribute &&
-                $props.schemaVariantId
-              "
+              v-if="editingFunc?.kind === FuncKind.Attribute && $props.schemaVariantId"
               alwaysShowArrow
               childrenContainerClasses="border-b border-neutral-200 dark:border-neutral-600"
               defaultOpen
@@ -234,11 +201,7 @@
           </div>
         </TabGroupItem>
 
-        <TabGroupItem
-          v-if="editingFunc?.kind === FuncKind.Attribute"
-          label="Bindings"
-          slug="bindings"
-        >
+        <TabGroupItem v-if="editingFunc?.kind === FuncKind.Attribute" label="Bindings" slug="bindings">
           <AttributeBindings
             ref="detachRef"
             :funcId="editingFunc.funcId"
@@ -252,10 +215,7 @@
       </TabGroup>
     </div>
   </div>
-  <div
-    v-else
-    class="px-2 py-sm text-center text-neutral-400 dark:text-neutral-300"
-  >
+  <div v-else class="px-2 py-sm text-center text-neutral-400 dark:text-neutral-300">
     Function "{{ funcId }}" does not exist!
   </div>
 </template>
@@ -274,12 +234,7 @@ import {
 } from "@si/vue-lib/design-system";
 import clsx from "clsx";
 import { ApiRequestStatus } from "@si/vue-lib/pinia";
-import {
-  FuncKind,
-  FuncId,
-  FuncBindingKind,
-  FuncSummary,
-} from "@/api/sdf/dal/func";
+import { FuncKind, FuncId, FuncBindingKind, FuncSummary } from "@/api/sdf/dal/func";
 import { useFuncStore } from "@/store/func/funcs.store";
 import { useAssetStore } from "@/store/asset.store";
 import AuthenticationDetails from "@/components/FuncEditor/AuthenticationDetails.vue";
@@ -319,8 +274,11 @@ const emit = defineEmits<{
 
 type DetachType =
   | InstanceType<typeof ActionDetails>
+  // eslint-disable-next-line @typescript-eslint/no-duplicate-type-constituents
   | InstanceType<typeof AttributeBindings>
+  // eslint-disable-next-line @typescript-eslint/no-duplicate-type-constituents
   | InstanceType<typeof CodeGenerationDetails>
+  // eslint-disable-next-line @typescript-eslint/no-duplicate-type-constituents
   | InstanceType<typeof QualificationDetails>;
 
 const detachRef = ref<DetachType>();
@@ -343,18 +301,14 @@ const editingFunc = ref(_.cloneDeep(funcStore.selectedFuncSummary));
 function resetEditingFunc() {
   const data = _.cloneDeep(funcStore.selectedFuncSummary);
   if (!data) return;
-  if (focusedFormField.value)
-    delete data[focusedFormField.value as keyof FuncSummary];
+  if (focusedFormField.value) delete data[focusedFormField.value as keyof FuncSummary];
   if (editingFunc.value) Object.assign(editingFunc.value, data);
 }
 
 watch(
   () => props.funcId,
   () => {
-    if (
-      funcDetailsTabGroupRef.value &&
-      funcDetailsTabGroupRef.value.tabExists("properties")
-    ) {
+    if (funcDetailsTabGroupRef.value && funcDetailsTabGroupRef.value.tabExists("properties")) {
       funcDetailsTabGroupRef.value.selectTab("properties");
     }
   },
@@ -382,10 +336,7 @@ const unlock = async () => {
   if (editingFunc.value?.funcId === undefined) return;
 
   unlocking.value = true;
-  await funcStore.CREATE_UNLOCKED_COPY(
-    editingFunc.value.funcId,
-    assetStore.selectedVariantId,
-  );
+  await funcStore.CREATE_UNLOCKED_COPY(editingFunc.value.funcId, assetStore.selectedVariantId);
 
   unlocking.value = false;
 };

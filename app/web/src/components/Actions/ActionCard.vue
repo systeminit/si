@@ -16,12 +16,7 @@
     <template v-if="actionProposed">
       <Icon
         v-if="actionQueued"
-        :class="
-          clsx(
-            themeClasses('text-neutral-600', 'text-neutral-300'),
-            'translate-y-[-2px]',
-          )
-        "
+        :class="clsx(themeClasses('text-neutral-600', 'text-neutral-300'), 'translate-y-[-2px]')"
         name="nested-arrow-right"
         size="sm"
       />
@@ -36,10 +31,7 @@
         :class="
           clsx(
             holdStatusInfluencedBy.length > 0
-              ? [
-                  'opacity-30',
-                  themeClasses('text-warning-500', 'text-warning-300'),
-                ]
+              ? ['opacity-30', themeClasses('text-warning-500', 'text-warning-300')]
               : themeClasses('text-warning-400', 'text-warning-300'),
           )
         "
@@ -54,9 +46,7 @@
           @click.stop="retry"
         />
         <Icon
-          :class="
-            clsx(themeClasses('text-destructive-500', 'text-destructive-600'))
-          "
+          :class="clsx(themeClasses('text-destructive-500', 'text-destructive-600'))"
           name="x-hex-outline"
           size="sm"
         />
@@ -65,36 +55,23 @@
     <template v-else-if="actionHistory">
       <Icon :class="resultIconClass" :name="resultIcon" size="sm" />
     </template>
-    <Icon
-      :class="actionIconClass(props.action.kind)"
-      :name="actionIcon(props.action.kind)"
-      size="sm"
-    />
+    <Icon :class="actionIconClass(props.action.kind)" :name="actionIcon(props.action.kind)" size="sm" />
     <div class="flex flex-col flex-grow min-w-0">
       <TruncateWithTooltip class="w-full">
-        <span class="font-bold">
-          {{ actionKindToAbbreviation(props.action.kind) }}:
-        </span>
+        <span class="font-bold"> {{ actionKindToAbbreviation(props.action.kind) }}: </span>
         <span
           :class="
             clsx(
               themeClasses('text-neutral-700', 'text-neutral-200'),
               !noInteraction &&
-                themeClasses(
-                  'group-hover/actioncard:text-action-500',
-                  'group-hover/actioncard:text-action-300',
-                ),
+                themeClasses('group-hover/actioncard:text-action-500', 'group-hover/actioncard:text-action-300'),
             )
           "
         >
           <template v-if="component">
             {{ component?.def.schemaName }}
             {{ component?.def.displayName ?? "unknown" }}
-            {{
-              props.action.kind === ActionKind.Manual
-                ? props.action.description
-                : ""
-            }}
+            {{ props.action.kind === ActionKind.Manual ? props.action.description : "" }}
           </template>
           <template v-else-if="actionHistory">
             {{ actionHistory.schemaName }}
@@ -102,18 +79,11 @@
           </template>
         </span>
       </TruncateWithTooltip>
-      <div
-        v-if="props.action.actor"
-        class="text-neutral-500 dark:text-neutral-400 truncate"
-      >
+      <div v-if="props.action.actor" class="text-neutral-500 dark:text-neutral-400 truncate">
         <span class="font-bold">By:</span> {{ props.action.actor }}
       </div>
     </div>
-    <ConfirmHoldModal
-      v-if="!props.noInteraction"
-      ref="confirmRef"
-      :ok="finishHold"
-    />
+    <ConfirmHoldModal v-if="!props.noInteraction" ref="confirmRef" :ok="finishHold" />
     <DropdownMenu
       v-if="!props.noInteraction && actionProposed"
       ref="contextMenuRef"
@@ -144,16 +114,8 @@
       <hr class="border-neutral-600 my-xs" />
       <h5 class="text-neutral-400 pl-2xs">APPLY BEFORE:</h5>
       <ol v-if="myDependencies.length > 0">
-        <li
-          v-for="a in myDependencies"
-          :key="a.id"
-          class="flex flex-row items-center px-2xs gap-xs"
-        >
-          <Icon
-            :class="actionIconClass(a.kind)"
-            :name="actionIcon(a.kind)"
-            size="sm"
-          />
+        <li v-for="a in myDependencies" :key="a.id" class="flex flex-row items-center px-2xs gap-xs">
+          <Icon :class="actionIconClass(a.kind)" :name="actionIcon(a.kind)" size="sm" />
           <span class="align-baseline leading-[30px]"
             ><strong>{{ actionKindToAbbreviation(a.kind) }}:</strong>
             {{ a.component?.def.schemaName }}
@@ -164,16 +126,8 @@
       <p v-else class="ml-xs">None</p>
       <h5 class="text-neutral-400 pl-2xs">WAITING ON:</h5>
       <ol v-if="dependentOn.length > 0">
-        <li
-          v-for="a in dependentOn"
-          :key="a.id"
-          class="flex flex-row items-center px-2xs gap-xs"
-        >
-          <Icon
-            :class="actionIconClass(a.kind)"
-            :name="actionIcon(a.kind)"
-            size="sm"
-          />
+        <li v-for="a in dependentOn" :key="a.id" class="flex flex-row items-center px-2xs gap-xs">
+          <Icon :class="actionIconClass(a.kind)" :name="actionIcon(a.kind)" size="sm" />
           <span class="align-baseline leading-[30px]"
             ><strong>{{ actionKindToAbbreviation(a.kind) }}:</strong>
             {{ a.component?.def.schemaName }}
@@ -186,7 +140,7 @@
     <DetailsPanelMenuIcon
       v-if="!props.noInteraction"
       @click="
-        (e) => {
+        (e: MouseEvent) => {
           contextMenuRef?.open(e, false);
         }
       "
@@ -213,19 +167,11 @@ import {
 import clsx from "clsx";
 import { useComponentsStore } from "@/store/components.store";
 import { ActionKind, ActionState, ActionId } from "@/api/sdf/dal/action";
-import {
-  ActionView,
-  useActionsStore,
-  ActionProposedView,
-  ActionHistoryView,
-} from "@/store/actions.store";
+import { ActionView, useActionsStore, ActionProposedView, ActionHistoryView } from "@/store/actions.store";
 import ConfirmHoldModal from "./ConfirmHoldModal.vue";
 import FuncRunTabDropdown from "../FuncRunTabDropdown.vue";
 
-import {
-  DiagramGroupData,
-  DiagramNodeData,
-} from "../ModelingDiagram/diagram_types";
+import { DiagramGroupData, DiagramNodeData } from "../ModelingDiagram/diagram_types";
 import DetailsPanelMenuIcon from "../DetailsPanelMenuIcon.vue";
 
 const componentsStore = useComponentsStore();
@@ -283,25 +229,19 @@ const contextMenuRef = ref<InstanceType<typeof DropdownMenu>>();
 
 const actionOnHold = computed(() => {
   if (actionProposed.value && "state" in actionProposed.value)
-    return (
-      actionProposed.value.state === ActionState.OnHold ||
-      actionProposed.value.holdStatusInfluencedBy?.length > 0
-    );
+    return actionProposed.value.state === ActionState.OnHold || actionProposed.value.holdStatusInfluencedBy?.length > 0;
   else return false;
 });
 const actionFailed = computed(() => {
-  if (actionProposed.value)
-    return actionProposed.value.state === ActionState.Failed;
+  if (actionProposed.value) return actionProposed.value.state === ActionState.Failed;
   else return false;
 });
 const actionRunning = computed(() => {
-  if (actionProposed.value)
-    return actionProposed.value.state === ActionState.Running;
+  if (actionProposed.value) return actionProposed.value.state === ActionState.Running;
   else return false;
 });
 const actionQueued = computed(() => {
-  if (actionProposed.value)
-    return actionProposed.value.state === ActionState.Queued;
+  if (actionProposed.value) return actionProposed.value.state === ActionState.Queued;
   else return false;
 });
 

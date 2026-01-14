@@ -1,9 +1,6 @@
 <template>
   <div class="flex flex-col min-h-full">
-    <div
-      v-if="showSubheader"
-      :class="clsx('header flex flex-col px-2xs pb-2xs')"
-    >
+    <div v-if="showSubheader" :class="clsx('header flex flex-col px-2xs pb-2xs')">
       <div class="flex flex-row justify-between items-center"></div>
       <div
         :class="
@@ -58,12 +55,7 @@
 
     <div
       ref="scrollContainerRef"
-      :class="
-        clsx(
-          'scrollable',
-          showSubheader ? 'min-h-[calc(100%-28px)]' : 'min-h-full',
-        )
-      "
+      :class="clsx('scrollable', showSubheader ? 'min-h-[calc(100%-28px)]' : 'min-h-full')"
       @scroll="handleScroll"
     >
       <TransitionGroup name="func-run-item">
@@ -76,19 +68,13 @@
       </TransitionGroup>
 
       <!-- Loading indicator at bottom -->
-      <div
-        v-if="isFetchingNextPage"
-        class="py-2 text-center text-sm text-neutral-500"
-      >
+      <div v-if="isFetchingNextPage" class="py-2 text-center text-sm text-neutral-500">
         <Icon name="loader" size="sm" class="animate-spin mr-1" />
         Loading more...
       </div>
 
       <!-- End of list message -->
-      <div
-        v-if="!hasNextPage && funcRuns.length > 0"
-        class="py-2 text-center text-sm text-neutral-500"
-      >
+      <div v-if="!hasNextPage && funcRuns.length > 0" class="py-2 text-center text-sm text-neutral-500">
         No more function runs
       </div>
 
@@ -116,12 +102,7 @@
 
 <script lang="ts" setup>
 import { computed, ref } from "vue";
-import {
-  Icon,
-  themeClasses,
-  DropdownMenuButton,
-  DropdownMenuItem,
-} from "@si/vue-lib/design-system";
+import { Icon, themeClasses, DropdownMenuButton, DropdownMenuItem } from "@si/vue-lib/design-system";
 import { useRouter, useRoute } from "vue-router";
 import clsx from "clsx";
 import FuncRunCard from "../FuncRunCard.vue";
@@ -164,9 +145,7 @@ const funcKindOptions = computed(() => {
 });
 
 // Show subheader if there are func runs or currently loading
-const showSubheader = computed(
-  () => props.funcRuns.length > 0 || props.isLoading,
-);
+const showSubheader = computed(() => props.funcRuns.length > 0 || props.isLoading);
 
 // Handle scroll to implement infinite loading
 const handleScroll = (event: Event) => {

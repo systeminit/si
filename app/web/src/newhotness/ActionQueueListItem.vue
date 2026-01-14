@@ -9,10 +9,7 @@
             'border-destructive-500 bg-destructive-50',
             'border-destructive-400 bg-newhotness-destructive2',
           ),
-          OnHold: themeClasses(
-            'border-warning-500 bg-warning-50',
-            'border-warning-300 bg-newhotness-warningdark',
-          ),
+          OnHold: themeClasses('border-warning-500 bg-warning-50', 'border-warning-300 bg-newhotness-warningdark'),
           Queued: themeClasses('border-neutral-400', 'border-neutral-600'),
           Dispatched: runningClasses,
           Running: runningClasses,
@@ -30,12 +27,7 @@
       />
       <Icon
         v-else-if="action.state === ActionState.OnHold"
-        :class="
-          clsx(
-            'flex-none',
-            themeClasses('text-warning-400', 'text-warning-300'),
-          )
-        "
+        :class="clsx('flex-none', themeClasses('text-warning-400', 'text-warning-300'))"
         name="circle-stop"
         size="sm"
       />
@@ -48,12 +40,7 @@
         class="flex-none"
         @click.stop="retry"
       />
-      <Icon
-        v-else
-        :class="clsx(actionIconClass(action.kind), 'flex-none')"
-        :name="actionIcon(action.kind)"
-        size="sm"
-      />
+      <Icon v-else :class="clsx(actionIconClass(action.kind), 'flex-none')" :name="actionIcon(action.kind)" size="sm" />
 
       <TruncateWithTooltip class="flex-grow min-w-0 text-xs py-2xs">
         <template v-if="action.componentId">
@@ -72,12 +59,7 @@
         @click.stop="(e: MouseEvent) => contextMenuRef?.open(e, false)"
       />
     </div>
-    <template
-      v-if="
-        action.state === ActionState.OnHold ||
-        action.state === ActionState.Queued
-      "
-    >
+    <template v-if="action.state === ActionState.OnHold || action.state === ActionState.Queued">
       <ActionQueueListItem
         v-for="subaction in childActions"
         :key="subaction.id"
@@ -92,11 +74,7 @@
     <ConfirmHoldModal ref="confirmRef" :ok="finishHold" />
     <DropdownMenu ref="contextMenuRef" variant="actionmenu" forceAlignRight>
       <!-- View action details -->
-      <DropdownMenuItem
-        icon="func"
-        label="Go to action function"
-        @select="navigateToActionDetails"
-      />
+      <DropdownMenuItem icon="func" label="Go to action function" @select="navigateToActionDetails" />
 
       <!-- Go to component -->
       <DropdownMenuItem
@@ -123,17 +101,10 @@
       />
       <hr class="border-neutral-600" />
       <DropdownMenuItem
-        v-if="
-          action.state !== ActionState.Running &&
-          action.state !== ActionState.Dispatched
-        "
+        v-if="action.state !== ActionState.Running && action.state !== ActionState.Dispatched"
         icon="minus-circle-outline"
         destructiveOption
-        :label="
-          action.state === ActionState.Failed
-            ? 'Remove from list'
-            : 'Remove from queue'
-        "
+        :label="action.state === ActionState.Failed ? 'Remove from list' : 'Remove from queue'"
         @select="remove"
       />
     </DropdownMenu>
@@ -213,10 +184,7 @@ const childActions = computed(() => {
 });
 
 const actionRunning = computed(() => {
-  return (
-    props.action.state === ActionState.Dispatched ||
-    props.action.state === ActionState.Running
-  );
+  return props.action.state === ActionState.Dispatched || props.action.state === ActionState.Running;
 });
 
 // Action handling methods
@@ -255,9 +223,6 @@ const remove = async () => {
 };
 
 const runningClasses = computed(() =>
-  themeClasses(
-    tw`border-action-500 bg-action-50`,
-    tw`border-action-300 bg-neutral-700`,
-  ),
+  themeClasses(tw`border-action-500 bg-action-50`, tw`border-action-300 bg-neutral-700`),
 );
 </script>

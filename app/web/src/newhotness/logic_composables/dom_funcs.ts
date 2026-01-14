@@ -1,7 +1,4 @@
-export function elementIsScrolledIntoView(
-  el?: HTMLElement,
-  container?: HTMLElement,
-) {
+export function elementIsScrolledIntoView(el?: HTMLElement, container?: HTMLElement) {
   if (!el || !document.body.contains(el)) return false;
   const rect = el.getBoundingClientRect();
   if (container) {

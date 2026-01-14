@@ -1,31 +1,16 @@
 <template>
   <div class="mt-[14px] ml-xs relative">
-    <StatusPanelIcon
-      :status="status[changeSetId]"
-      @faded="() => delete status[changeSetId]"
-    />
+    <StatusPanelIcon :status="status[changeSetId]" @faded="() => delete status[changeSetId]" />
   </div>
 </template>
 
 <script lang="ts" setup>
-import {
-  computed,
-  ref,
-  watch,
-  onMounted,
-  onUnmounted,
-  unref,
-  onBeforeUnmount,
-  reactive,
-} from "vue";
+import { computed, ref, watch, onMounted, onUnmounted, unref, onBeforeUnmount, reactive } from "vue";
 import { useQuery } from "@tanstack/vue-query";
 import { debounce } from "lodash-es";
 import StatusPanelIcon from "@/newhotness/StatusPanelIcon.vue";
 import { useMakeKey, bifrost, useMakeArgs } from "@/store/realtime/heimdall";
-import {
-  DependentValueComponentList,
-  EntityKind,
-} from "@/workers/types/entity_kind_types";
+import { DependentValueComponentList, EntityKind } from "@/workers/types/entity_kind_types";
 import { useRainbow } from "@/newhotness/logic_composables/rainbow_counter";
 import { useRealtimeStore } from "@/store/realtime/realtime.store";
 import { ChangeSetId, ChangeSetStatus } from "@/api/sdf/dal/change_set";
@@ -54,18 +39,12 @@ const tickMs = 1000;
 const key = useMakeKey();
 const args = useMakeArgs();
 
-const dependentValueComponentListQuery =
-  useQuery<DependentValueComponentList | null>({
-    enabled: ctx.queriesEnabled,
-    queryKey: key(EntityKind.DependentValueComponentList),
-    queryFn: async () =>
-      await bifrost<DependentValueComponentList>(
-        args(EntityKind.DependentValueComponentList),
-      ),
-  });
-const componentsInFlight = computed(
-  () => dependentValueComponentListQuery.data.value?.componentIds ?? [],
-);
+const dependentValueComponentListQuery = useQuery<DependentValueComponentList | null>({
+  enabled: ctx.queriesEnabled,
+  queryKey: key(EntityKind.DependentValueComponentList),
+  queryFn: async () => await bifrost<DependentValueComponentList>(args(EntityKind.DependentValueComponentList)),
+});
+const componentsInFlight = computed(() => dependentValueComponentListQuery.data.value?.componentIds ?? []);
 watch(
   () => componentsInFlight.value,
   (newComponentsInFlight) => {
@@ -77,10 +56,7 @@ watch(
         superBucket[changeSetId.value] = bucket;
       }
       bucket.componentsInFlight = Date.now();
-    } else if (
-      newComponentsInFlight.length === 0 &&
-      superBucket[changeSetId.value]?.componentsInFlight
-    ) {
+    } else if (newComponentsInFlight.length === 0 && superBucket[changeSetId.value]?.componentsInFlight) {
       // BUCKET ITEM -- REMOVE -- COMPONENTS IN FLIGHT, DVU ROOTS, ETC.
       delete superBucket[changeSetId.value]?.componentsInFlight;
     }
@@ -109,75 +85,65 @@ watch(
 );
 
 const STATUS_PANEL_KEY = "statusPanel";
-realtimeStore.subscribe(
-  STATUS_PANEL_KEY,
-  `workspace/${ctx.workspacePk.value}`,
-  [
-    {
-      eventType: "ChangeSetStatusChanged",
-      callback: async (data) => {
-        if (
-          [
-            ChangeSetStatus.Abandoned,
-            ChangeSetStatus.Applied,
-            ChangeSetStatus.Closed,
-          ].includes(data.changeSet.status) &&
-          data.changeSet.id !== ctx.headChangeSetId.value
-        ) {
-          if (status[data.changeSet.id]) {
-            delete status[data.changeSet.id];
-          }
-          delete superBucket[data.changeSet.id];
+realtimeStore.subscribe(STATUS_PANEL_KEY, `workspace/${ctx.workspacePk.value}`, [
+  {
+    eventType: "ChangeSetStatusChanged",
+    callback: async (data) => {
+      if (
+        [ChangeSetStatus.Abandoned, ChangeSetStatus.Applied, ChangeSetStatus.Closed].includes(data.changeSet.status) &&
+        data.changeSet.id !== ctx.headChangeSetId.value
+      ) {
+        if (status[data.changeSet.id]) {
+          delete status[data.changeSet.id];
         }
-      },
+        delete superBucket[data.changeSet.id];
+      }
     },
-    {
-      eventType: "ManagementOperationsComplete",
-      callback: async (payload, meta) => {
-        if (!payload.requestUlid) return;
-        const key = `management-${payload.requestUlid}`;
-        if (superBucket[meta.change_set_id]?.[key]) {
-          // BUCKET ITEM -- REMOVE -- MANAGEMENT FUNCS
-          delete superBucket[meta.change_set_id]?.[key];
-        }
-      },
+  },
+  {
+    eventType: "ManagementOperationsComplete",
+    callback: async (payload, meta) => {
+      if (!payload.requestUlid) return;
+      const key = `management-${payload.requestUlid}`;
+      if (superBucket[meta.change_set_id]?.[key]) {
+        // BUCKET ITEM -- REMOVE -- MANAGEMENT FUNCS
+        delete superBucket[meta.change_set_id]?.[key];
+      }
     },
-    {
-      eventType: "ManagementOperationsFailed",
-      callback: async (payload, meta) => {
-        // BUCKET ITEM -- ADD -- MANAGEMENT FUNCS
-        const key = `management-${payload.requestUlid}`;
-        let bucket = superBucket[meta.change_set_id];
-        if (!bucket) {
-          bucket = {};
-          superBucket[meta.change_set_id] = bucket;
-        }
-        bucket[key] = Date.now();
-      },
+  },
+  {
+    eventType: "ManagementOperationsFailed",
+    callback: async (payload, meta) => {
+      // BUCKET ITEM -- ADD -- MANAGEMENT FUNCS
+      const key = `management-${payload.requestUlid}`;
+      let bucket = superBucket[meta.change_set_id];
+      if (!bucket) {
+        bucket = {};
+        superBucket[meta.change_set_id] = bucket;
+      }
+      bucket[key] = Date.now();
     },
-    {
-      eventType: "ManagementOperationsInProgress",
-      callback: async (payload, meta) => {
-        // BUCKET ITEM -- ADD -- MANAGEMENT FUNCS
-        const key = `management-${payload.requestUlid}`;
-        let bucket = superBucket[meta.change_set_id];
-        if (!bucket) {
-          bucket = {};
-          superBucket[meta.change_set_id] = bucket;
-        }
-        bucket[key] = Date.now();
-      },
+  },
+  {
+    eventType: "ManagementOperationsInProgress",
+    callback: async (payload, meta) => {
+      // BUCKET ITEM -- ADD -- MANAGEMENT FUNCS
+      const key = `management-${payload.requestUlid}`;
+      let bucket = superBucket[meta.change_set_id];
+      if (!bucket) {
+        bucket = {};
+        superBucket[meta.change_set_id] = bucket;
+      }
+      bucket[key] = Date.now();
     },
-  ],
-);
+  },
+]);
 
 // This watcher ejects expired items.
 watch([trigger, changeSetId], () => {
   const now = Date.now();
 
-  for (const [key, value] of Object.entries(
-    superBucket[changeSetId.value] ?? {},
-  )) {
+  for (const [key, value] of Object.entries(superBucket[changeSetId.value] ?? {})) {
     if (now - value > timeoutMs) {
       delete superBucket[changeSetId.value]?.[key];
     }

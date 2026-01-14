@@ -74,7 +74,7 @@ automationApiRouter.post("/workspaces/:workspaceId/authTokens", async (ctx) => {
   // And decode it to get the generated values (such as expiration)
   const authToken = await registerAuthToken(name, await decodeSdfAuthToken(token));
 
-  const workspaceOwner = await getUserById(workspace.creatorUserId)!;
+  const workspaceOwner = await getUserById(workspace.creatorUserId);
 
   tracker.trackEvent(authUser, "workspace_api_token_created", {
     workspaceId: workspace.id,
@@ -102,7 +102,7 @@ router.post("/workspaces/:workspaceId/authTokens/:authTokenId/revoke", async (ct
 
   await updateAuthToken(authToken.id, { revokedAt: new Date() });
 
-  const workspaceOwner = await getUserById(workspace.creatorUserId)!;
+  const workspaceOwner = await getUserById(workspace.creatorUserId);
 
   tracker.trackEvent(authUser, "workspace_api_token_revoked", {
     workspaceId: workspace.id,

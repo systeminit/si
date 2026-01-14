@@ -1,10 +1,10 @@
 import * as _ from "lodash-es";
+import type { DebouncedFunc } from "lodash-es";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 type AnyFn = (...args: any[]) => any;
 
-export interface MemoizeDebouncedFn<F extends AnyFn>
-  extends _.DebouncedFunc<F> {
+export interface MemoizeDebouncedFn<F extends AnyFn> extends DebouncedFunc<F> {
   (...args: Parameters<F>): ReturnType<F> | undefined;
   flush: (...args: Parameters<F>) => ReturnType<F> | undefined;
   cancel: (...args: Parameters<F>) => void;
@@ -19,15 +19,11 @@ export function memoizeDebounce<F extends AnyFn>(
   resolver?: (...args: Parameters<F>) => unknown,
 ): MemoizeDebouncedFn<F> {
   const dbMemo = _.memoize<(...args: Parameters<F>) => _.DebouncedFunc<F>>(
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     (..._args: Parameters<F>) => _.debounce(func, wait, options),
     resolver,
   );
 
-  function wrappedFn(
-    this: MemoizeDebouncedFn<F>,
-    ...args: Parameters<F>
-  ): ReturnType<F> | undefined {
+  function wrappedFn(this: MemoizeDebouncedFn<F>, ...args: Parameters<F>): ReturnType<F> | undefined {
     return dbMemo(...args)(...args);
   }
 
@@ -62,18 +58,12 @@ export function memoizeThrottle<F extends AnyFn>(
 
   // return memoized;
 
-  const throttleMemo = _.memoize<
-    (...args: Parameters<F>) => _.DebouncedFunc<F>
-  >(
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const throttleMemo = _.memoize<(...args: Parameters<F>) => _.DebouncedFunc<F>>(
     (..._args: Parameters<F>) => _.throttle(func, wait, options),
     resolver,
   );
 
-  function wrappedFn(
-    this: MemoizeDebouncedFn<F>,
-    ...args: Parameters<F>
-  ): ReturnType<F> | undefined {
+  function wrappedFn(this: MemoizeDebouncedFn<F>, ...args: Parameters<F>): ReturnType<F> | undefined {
     return throttleMemo(...args)(...args);
   }
 

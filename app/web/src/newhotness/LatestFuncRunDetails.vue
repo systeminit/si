@@ -11,9 +11,7 @@
     :errorMessageRaw="''"
   >
     <template #headerList>
-      <template
-        v-if="currentAction.kind && currentAction.kind !== currentAction.name"
-      >
+      <template v-if="currentAction.kind && currentAction.kind !== currentAction.name">
         <dt><Icon name="func" size="xs" /></dt>
         <dd>{{ currentAction.kind }}</dd>
       </template>
@@ -30,46 +28,19 @@
     </template>
 
     <template #grid>
-      <GridItemWithLiveHeader
-        class="row-span-3"
-        title="Code"
-        :live="false"
-        disableCollapse
-      >
-        <CodeViewer
-          v-if="functionCode"
-          :code="functionCode"
-          language="javascript"
-          allowCopy
-        />
-        <div v-else class="text-neutral-400 italic text-xs p-xs">
-          No code available
-        </div>
+      <GridItemWithLiveHeader class="row-span-3" title="Code" :live="false" disableCollapse>
+        <CodeViewer v-if="functionCode" :code="functionCode" language="javascript" allowCopy />
+        <div v-else class="text-neutral-400 italic text-xs p-xs">No code available</div>
       </GridItemWithLiveHeader>
 
-      <GridItemWithLiveHeader
-        class="row-span-3"
-        title="Arguments"
-        :live="false"
-        disableCollapse
-      >
-        <CodeViewer
-          v-if="argsJson"
-          :code="argsJson"
-          language="json"
-          allowCopy
-        />
-        <div v-else class="text-neutral-400 italic text-xs p-xs">
-          No arguments available
-        </div>
+      <GridItemWithLiveHeader class="row-span-3" title="Arguments" :live="false" disableCollapse>
+        <CodeViewer v-if="argsJson" :code="argsJson" language="json" allowCopy />
+        <div v-else class="text-neutral-400 italic text-xs p-xs">No arguments available</div>
       </GridItemWithLiveHeader>
     </template>
   </FuncRunDetailsLayout>
   <FuncRunDetails v-else-if="funcRunId" :funcRunId="funcRunId" />
-  <div
-    v-else
-    class="flex items-center justify-center h-full bg-neutral-900 text-white"
-  >
+  <div v-else class="flex items-center justify-center h-full bg-neutral-900 text-white">
     <div class="text-center p-6">
       <Icon name="loader" size="lg" class="mb-sm mx-auto text-action-500" />
       <p class="text-neutral-400">Looking for details...</p>
@@ -83,10 +54,7 @@ import { useQuery, useQueryClient } from "@tanstack/vue-query";
 import { computed, watch } from "vue";
 import { bifrost, useMakeArgs, useMakeKey } from "@/store/realtime/heimdall";
 import { ActionState } from "@/api/sdf/dal/action";
-import {
-  BifrostActionViewList,
-  EntityKind,
-} from "@/workers/types/entity_kind_types";
+import { BifrostActionViewList, EntityKind } from "@/workers/types/entity_kind_types";
 import CodeViewer from "@/components/CodeViewer.vue";
 import FuncRunDetailsLayout from "./layout_components/FuncRunDetailsLayout.vue";
 import GridItemWithLiveHeader from "./layout_components/GridItemWithLiveHeader.vue";
@@ -108,27 +76,23 @@ const props = defineProps<{
 // Query the action view list to watch for changes to our specific action
 const actionViewListRaw = useQuery<BifrostActionViewList | null>({
   queryKey: key(EntityKind.ActionViewList),
-  queryFn: async () =>
-    await bifrost<BifrostActionViewList>(args(EntityKind.ActionViewList)),
+  queryFn: async () => await bifrost<BifrostActionViewList>(args(EntityKind.ActionViewList)),
 });
 
 // Computed that finds our specific action
 const currentAction = computed(() => {
   if (!props.actionId || !actionViewListRaw.data.value?.actions) return null;
-  return actionViewListRaw.data.value.actions.find(
-    (action) => action.id === props.actionId,
-  );
+  return actionViewListRaw.data.value.actions.find((action) => action.id === props.actionId);
 });
 
 type QueuedDetails = { code: string; args: string };
 const actionDetailQuery = useQuery<QueuedDetails>({
   queryKey: ["action_queued_details", props.actionId],
   staleTime: 100,
-  enabled: () =>
-    !!props.actionId && currentAction.value?.state === ActionState.Queued,
+  enabled: () => !!props.actionId && currentAction.value?.state === ActionState.Queued,
   queryFn: async () => {
     const call = api.endpoint<QueuedDetails>(routes.ActionQueuedDetails, {
-      id: props.actionId as string,
+      id: props.actionId,
     });
     const resp = await call.get();
     return resp.data;
@@ -151,7 +115,7 @@ const actionFuncRunQuery = useQuery<string>({
   enabled: () => !!props.actionId,
   queryFn: async () => {
     const call = api.endpoint<{ funcRunId: string }>(routes.ActionFuncRunId, {
-      id: props.actionId as string,
+      id: props.actionId,
     });
     const resp = await call.get();
     return resp.data.funcRunId;
@@ -173,8 +137,7 @@ watch(
   { deep: true },
 );
 
-export interface ActionProposedViewWithHydratedChildren
-  extends ActionProposedView {
+export interface ActionProposedViewWithHydratedChildren extends ActionProposedView {
   dependentOnActions: ActionProposedView[];
   myDependentActions: ActionProposedView[];
   holdStatusInfluencedByActions: ActionProposedView[];

@@ -5,25 +5,16 @@ import { mount } from "@vue/test-utils";
 import { plugins } from "@/newhotness/testing/index";
 
 // FIXTURES for this test
-import {
-  ATTRIBUTEINPUT,
-  ATTRIBUTE_ERRORS,
-  CONTEXT,
-} from "@/newhotness/testing/context1";
+import { ATTRIBUTEINPUT, ATTRIBUTE_ERRORS, CONTEXT } from "@/newhotness/testing/context1";
 import { component, attributeTree } from "@/newhotness/testing/fixture1";
-import {
-  PossibleConnection,
-  ComponentInList,
-} from "@/workers/types/entity_kind_types";
+import { PossibleConnection, ComponentInList } from "@/workers/types/entity_kind_types";
 import { makeAvTree } from "../logic_composables/attribute_tree";
 import AttributeInput from "./AttributeInput.vue";
 
 // EVERY TEST needs to copypasta this, and add any specific items you need ala getPossibleConnections
 type HeimdallInner = typeof import("@/store/realtime/heimdall_inner");
 vi.mock("@/store/realtime/heimdall", async () => {
-  const inner = await vi.importActual<HeimdallInner>(
-    "@/store/realtime/heimdall_inner",
-  );
+  const inner = await vi.importActual<HeimdallInner>("@/store/realtime/heimdall_inner");
   return {
     useMakeKey: () => inner.innerUseMakeKey(CONTEXT.value),
     useMakeArgs: () => inner.innerUseMakeArgs(CONTEXT.value),
@@ -50,7 +41,6 @@ vi.mock("@/store/realtime/heimdall", async () => {
 test("create-only property is editable when component is Added (not on HEAD) with resource", () => {
   // Find a create-only property in the fixture
   const rootId = Object.keys(attributeTree.treeInfo).find((avId) => {
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const av = attributeTree.treeInfo[avId]!;
     if (!av.parent) return true;
     return false;
@@ -111,7 +101,6 @@ test("create-only property is editable when component is Added (not on HEAD) wit
 
 test("create-only property is read-only when component is Modified (exists on HEAD) with resource", () => {
   const rootId = Object.keys(attributeTree.treeInfo).find((avId) => {
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const av = attributeTree.treeInfo[avId]!;
     if (!av.parent) return true;
     return false;
@@ -172,7 +161,6 @@ test("create-only property is read-only when component is Modified (exists on HE
 
 test("create-only property is read-only when component diffStatus is None (exists on HEAD) with resource", () => {
   const rootId = Object.keys(attributeTree.treeInfo).find((avId) => {
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const av = attributeTree.treeInfo[avId]!;
     if (!av.parent) return true;
     return false;
@@ -233,7 +221,6 @@ test("create-only property is read-only when component diffStatus is None (exist
 
 test("create-only property is editable when component has no resource (regardless of diffStatus)", () => {
   const rootId = Object.keys(attributeTree.treeInfo).find((avId) => {
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const av = attributeTree.treeInfo[avId]!;
     if (!av.parent) return true;
     return false;
@@ -294,7 +281,6 @@ test("create-only property is editable when component has no resource (regardles
 
 test("non-create-only property is always editable (with resource and exists on HEAD)", () => {
   const rootId = Object.keys(attributeTree.treeInfo).find((avId) => {
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const av = attributeTree.treeInfo[avId]!;
     if (!av.parent) return true;
     return false;
@@ -304,9 +290,7 @@ test("non-create-only property is always editable (with resource and exists on H
   const tree = makeAvTree(attributeTree, rootId, false);
   const domain = tree?.children.find((c) => c.prop?.name === "domain");
   // Find a non-create-only property
-  const instanceType = domain?.children.find(
-    (c) => c.prop?.name === "InstanceType" && c.prop?.createOnly === false,
-  );
+  const instanceType = domain?.children.find((c) => c.prop?.name === "InstanceType" && c.prop?.createOnly === false);
   if (!instanceType || !instanceType.prop) {
     throw new Error("NON-CREATE-ONLY PROPERTY SETUP FAILURE");
   }
@@ -356,7 +340,6 @@ test("non-create-only property is always editable (with resource and exists on H
 
 test("any property is read-only when component toDelete is true", () => {
   const rootId = Object.keys(attributeTree.treeInfo).find((avId) => {
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const av = attributeTree.treeInfo[avId]!;
     if (!av.parent) return true;
     return false;
@@ -365,9 +348,7 @@ test("any property is read-only when component toDelete is true", () => {
 
   const tree = makeAvTree(attributeTree, rootId, false);
   const domain = tree?.children.find((c) => c.prop?.name === "domain");
-  const instanceType = domain?.children.find(
-    (c) => c.prop?.name === "InstanceType",
-  );
+  const instanceType = domain?.children.find((c) => c.prop?.name === "InstanceType");
   if (!instanceType || !instanceType.prop) {
     throw new Error("PROPERTY SETUP FAILURE");
   }
@@ -418,7 +399,6 @@ test("any property is read-only when component toDelete is true", () => {
 
 test("any property is read-only when forceReadOnly is true", () => {
   const rootId = Object.keys(attributeTree.treeInfo).find((avId) => {
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const av = attributeTree.treeInfo[avId]!;
     if (!av.parent) return true;
     return false;
@@ -427,9 +407,7 @@ test("any property is read-only when forceReadOnly is true", () => {
 
   const tree = makeAvTree(attributeTree, rootId, false);
   const domain = tree?.children.find((c) => c.prop?.name === "domain");
-  const instanceType = domain?.children.find(
-    (c) => c.prop?.name === "InstanceType",
-  );
+  const instanceType = domain?.children.find((c) => c.prop?.name === "InstanceType");
   if (!instanceType || !instanceType.prop) {
     throw new Error("PROPERTY SETUP FAILURE");
   }

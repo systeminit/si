@@ -16,31 +16,21 @@
             <div
               v-if="
                 actionBatch.status === 'success' &&
-                actionBatch.actions.filter((f) => f.status === 'success')
-                  .length === actionBatch.actions.length
+                actionBatch.actions.filter((f) => f.status === 'success').length === actionBatch.actions.length
               "
               class="text-lg whitespace-nowrap"
             >
               All actions applied
             </div>
             <div v-else>
-              {{
-                actionBatch.actions.filter((f) => f.status === "success").length
-              }}
-              of {{ actionBatch.actions.length }} action{{
-                actionBatch.actions.length > 1 ? "s" : ""
-              }}
+              {{ actionBatch.actions.filter((f) => f.status === "success").length }}
+              of {{ actionBatch.actions.length }} action{{ actionBatch.actions.length > 1 ? "s" : "" }}
               applied
             </div>
           </div>
           <span
             v-if="actionBatch.startedAt"
-            :class="
-              clsx(
-                'text-xs italic',
-                themeClasses('text-neutral-700', 'text-neutral-300'),
-              )
-            "
+            :class="clsx('text-xs italic', themeClasses('text-neutral-700', 'text-neutral-300'))"
           >
             <Timestamp
               v-tooltip="timestampTooltip"
@@ -84,12 +74,7 @@
 <script lang="ts" setup>
 import * as _ from "lodash-es";
 import clsx from "clsx";
-import {
-  themeClasses,
-  Timestamp,
-  dateString,
-  TreeNode,
-} from "@si/vue-lib/design-system";
+import { themeClasses, Timestamp, dateString, TreeNode } from "@si/vue-lib/design-system";
 import { computed } from "vue";
 import { DeprecatedActionBatch } from "@/store/actions.store";
 import StatusIndicatorIcon from "./StatusIndicatorIcon.vue";
@@ -110,19 +95,14 @@ const timestampTooltip = computed(() => {
   };
 
   if (props.actionBatch.finishedAt) {
-    const finishedStr = dateString(
-      new Date(props.actionBatch.finishedAt),
-      "long",
-    );
+    const finishedStr = dateString(new Date(props.actionBatch.finishedAt), "long");
     tooltip.content += `<div><span class='font-bold'>Finished At:</span> ${finishedStr}</div>`;
   }
 
   return tooltip;
 });
 
-const hasCollaborators = computed(
-  () => props.actionBatch.actors && props.actionBatch.actors.length > 0,
-);
+const hasCollaborators = computed(() => props.actionBatch.actors && props.actionBatch.actors.length > 0);
 const collaborators = computed(() => props.actionBatch.actors || []);
 const collaboratorsTooltip = computed(() => {
   const tooltip = { content: "", theme: "html" };

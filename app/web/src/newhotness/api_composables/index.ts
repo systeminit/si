@@ -2,10 +2,7 @@ import { computed, ComputedRef, inject, Ref, ref, unref, watch } from "vue";
 import { AxiosInstance, AxiosResponse } from "axios";
 import { Span, trace } from "@opentelemetry/api";
 import { RouteLocationRaw } from "vue-router";
-import {
-  authApiInstance as auth,
-  sdfApiInstance as sdf,
-} from "@/store/apis.web";
+import { authApiInstance as auth, sdfApiInstance as sdf } from "@/store/apis.web";
 import { changeSetExists, muspelheimStatuses } from "@/store/realtime/heimdall";
 import router from "@/router";
 import { ChangeSetId } from "@/api/sdf/dal/change_set";
@@ -95,9 +92,7 @@ const CAN_MUTATE_ON_HEAD: readonly routes[] = [
   routes.CheckDismissedOnboarding,
 ] as const;
 
-const COMPRESSED_ROUTES: readonly routes[] = [
-  routes.UpdateComponentAttributes,
-] as const;
+const COMPRESSED_ROUTES: readonly routes[] = [routes.UpdateComponentAttributes] as const;
 
 const _routes: Record<routes, string> = {
   AbandonChangeSet: "/abandon",
@@ -187,14 +182,8 @@ const setLabel = (obs: Obs, label: string): LabeledObs => {
   };
 };
 
-export type ApiContext = Pick<
-  Context,
-  "changeSetId" | "workspacePk" | "onHead" | "user"
->;
-export const apiContextForChangeSet = (
-  ctx: Context,
-  changeSetId: ChangeSetId,
-): ApiContext => {
+export type ApiContext = Pick<Context, "changeSetId" | "workspacePk" | "onHead" | "user">;
+export const apiContextForChangeSet = (ctx: Context, changeSetId: ChangeSetId): ApiContext => {
   return {
     workspacePk: ctx.workspacePk,
     user: ctx.user,
@@ -257,13 +246,7 @@ export class APICall<Response, Args> {
   }
 
   url(): string {
-    if (
-      [
-        _routes.Workspaces,
-        _routes.CheckDismissedOnboarding,
-        _routes.DismissOnboarding,
-      ].includes(this.path)
-    ) {
+    if ([_routes.Workspaces, _routes.CheckDismissedOnboarding, _routes.DismissOnboarding].includes(this.path)) {
       return this.pathWithArgs();
     }
     if ([_routes.GenerateApiToken].includes(this.path)) {
@@ -333,9 +316,7 @@ export class APICall<Response, Args> {
         },
       });
 
-      const compressedStream = readableStream.pipeThrough(
-        new CompressionStream("gzip"),
-      );
+      const compressedStream = readableStream.pipeThrough(new CompressionStream("gzip"));
       formattedData = await new Response(compressedStream).arrayBuffer();
 
       headers["Content-Encoding"] = "gzip";
@@ -366,17 +347,10 @@ export class APICall<Response, Args> {
     // We have two shapes of errors from sdf: data.error as a string and data.error.message as a string
     // This code extracts both of those as an errorMessage value for the caller.
     let errorMessage;
-    const err =
-      req.data instanceof Object && "error" in req.data
-        ? req.data.error
-        : undefined;
+    const err = req.data instanceof Object && "error" in req.data ? req.data.error : undefined;
     if (typeof err === "string") {
       errorMessage = err;
-    } else if (
-      err instanceof Object &&
-      "message" in err &&
-      typeof err.message === "string"
-    ) {
+    } else if (err instanceof Object && "message" in err && typeof err.message === "string") {
       errorMessage = err.message;
     }
 
@@ -464,15 +438,10 @@ export type UseApi<A = EndpointArgs> = {
   requestStatuses: ComputedRef<ApiRequestStatus>;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   setWatchFn: (fn: () => any) => void;
-  navigateToNewChangeSet: (
-    to: RouteLocationRaw,
-    newChangeSetId: string,
-  ) => Promise<void>;
+  navigateToNewChangeSet: (to: RouteLocationRaw, newChangeSetId: string) => Promise<void>;
 };
 
-export const useApi = <SpecificArgs extends EndpointArgs = EndpointArgs>(
-  ctx?: ApiContext,
-): UseApi<SpecificArgs> => {
+export const useApi = <SpecificArgs extends EndpointArgs = EndpointArgs>(ctx?: ApiContext): UseApi<SpecificArgs> => {
   if (!ctx) ctx = inject<Context>("CONTEXT");
   assertIsDefined(ctx);
 
@@ -499,9 +468,7 @@ export const useApi = <SpecificArgs extends EndpointArgs = EndpointArgs>(
     const canMutateHead = CAN_MUTATE_ON_HEAD.includes(key);
     const mustCompress = COMPRESSED_ROUTES.includes(key);
     const argList = args ? Object.entries(args).flatMap((m) => m) : [];
-    const desc = `${
-      key === routes.DeleteComponents ? "Remove Component" : key
-    } ${argList.join(": ")} by ${
+    const desc = `${key === routes.DeleteComponents ? "Remove Component" : key} ${argList.join(": ")} by ${
       ctx.user?.name
     } on ${new Date().toLocaleDateString()}`;
     labeledObs = setLabel(obs, `${key}.${argList.join(".")}`);
@@ -536,10 +503,7 @@ export const useApi = <SpecificArgs extends EndpointArgs = EndpointArgs>(
         assertIsDefined(ctx);
         clearTimeout(timeout);
         labeledObs.bifrosting.value = false;
-        rainbow.remove(
-          labeledObs.changeSetIdExecutedAgainst ?? ctx.changeSetId.value,
-          labeledObs.label,
-        );
+        rainbow.remove(labeledObs.changeSetIdExecutedAgainst ?? ctx.changeSetId.value, labeledObs.label);
         if (labeledObs.span) labeledObs.span.end();
       },
       { once: true },
@@ -549,22 +513,17 @@ export const useApi = <SpecificArgs extends EndpointArgs = EndpointArgs>(
   const INTERVAL = 50; // 50ms
   const MAX_WAIT_IN_SEC = 10;
   const MAX_RETRY = (MAX_WAIT_IN_SEC * 1000) / INTERVAL; // "how many attempts to reach N seconds?"
-  const navigateToNewChangeSet = async (
-    to: RouteLocationRaw,
-    newChangeSetId: string,
-  ) => {
+  const navigateToNewChangeSet = async (to: RouteLocationRaw, newChangeSetId: string) => {
     await new Promise<void>((resolve, reject) => {
       let retry = 0;
       const interval = setInterval(async () => {
         assertIsDefined(ctx);
         if (retry >= MAX_RETRY) {
           clearInterval(interval);
+          // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors
           reject();
         }
-        const exists = await changeSetExists(
-          ctx.workspacePk.value,
-          newChangeSetId,
-        );
+        const exists = await changeSetExists(ctx.workspacePk.value, newChangeSetId);
         if (exists) {
           clearInterval(interval);
           muspelheimStatuses.value[newChangeSetId] = true;

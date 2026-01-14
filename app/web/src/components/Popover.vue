@@ -3,13 +3,7 @@
     <div
       ref="internalRef"
       :style="computedStyle"
-      :class="
-        clsx(
-          'absolute ml-sm',
-          onTopOfEverything ? 'z-100' : 'z-50',
-          isRepositioning && 'invisible',
-        )
-      "
+      :class="clsx('absolute ml-sm', onTopOfEverything ? 'z-100' : 'z-50', isRepositioning && 'invisible')"
     >
       <slot />
     </div>
@@ -17,14 +11,7 @@
 </template>
 
 <script setup lang="ts">
-import {
-  ref,
-  onBeforeUnmount,
-  PropType,
-  computed,
-  onMounted,
-  onUnmounted,
-} from "vue";
+import { ref, onBeforeUnmount, PropType, computed, onMounted, onUnmounted } from "vue";
 import * as _ from "lodash-es";
 import clsx from "clsx";
 import { windowListenerManager } from "@si/vue-lib";
@@ -61,10 +48,7 @@ const anchorEl = ref<HTMLElement>();
 const anchorPos = ref<{ x: number; y: number }>();
 
 function onWindowMousedown(e: MouseEvent) {
-  if (
-    (e.target instanceof Element && internalRef.value?.contains(e.target)) ||
-    props.noExit
-  ) {
+  if ((e.target instanceof Element && internalRef.value?.contains(e.target)) || props.noExit) {
     return; // Don't close on click inside popover or if noExit is set
   }
 
@@ -174,8 +158,7 @@ function readjustPosition() {
   } else if (props.anchorAlignY === "top") {
     anchorPos.value.y = anchorRect.top;
   } else {
-    anchorPos.value.y =
-      anchorRect.top + anchorRect.height / 2 - popoverRect.height / 2;
+    anchorPos.value.y = anchorRect.top + anchorRect.height / 2 - popoverRect.height / 2;
   }
 }
 

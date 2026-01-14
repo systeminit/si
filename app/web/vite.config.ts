@@ -38,19 +38,21 @@ const dotPathFixPlugin = () => ({
   },
 });
 
-
 const gitHashFile = (file: string) => {
   const cmd = `git hash-object '${file}'`;
   return child_process.execSync(cmd).toString().trim();
-}
+};
 const webWorkerPath = path.resolve(__dirname, "src/workers/webworker.ts");
 const webWorkerHash = JSON.stringify(gitHashFile(webWorkerPath));
 
-const sharedWorkerPath = path.resolve(__dirname, "src/workers/shared_webworker.ts");
+const sharedWorkerPath = path.resolve(
+  __dirname,
+  "src/workers/shared_webworker.ts",
+);
 const sharedWorkerHash = JSON.stringify(gitHashFile(sharedWorkerPath));
 
 const headCommitHash = JSON.stringify(
-  child_process.execSync("git rev-parse HEAD").toString().trim()
+  child_process.execSync("git rev-parse HEAD").toString().trim(),
 );
 
 // see https://vitejs.dev/config/ for more info
@@ -62,7 +64,7 @@ export default (opts: { mode: string }) => {
   return defineConfig({
     // NOTE: these constants only update at build time, or if you restart the vite server
     define: {
-      __COMMIT_HASH__:  headCommitHash,
+      __COMMIT_HASH__: headCommitHash,
       __SHARED_WORKER_HASH__: sharedWorkerHash,
       __WEBWORKER_HASH__: webWorkerHash,
     },
@@ -73,12 +75,12 @@ export default (opts: { mode: string }) => {
 
       // using "raw" as icon compiler (rather than `vue3`) because we need raw svgs for use in konva
       // our Icon component knows how to deal with raw SVGs
-      IconsPlugin({compiler: "raw"}),
+      IconsPlugin({ compiler: "raw" }),
 
       process.env.NODE_ENV !== "production" &&
         checkerPlugin({
-          vueTsc: true,
           eslint: {
+            useFlatConfig: true,
             lintCommand: packageJson.scripts.lint,
             // I _think_ we only want to pop up an error on the screen for proper errors
             // otherwise we can get a lot of unused var errors when you comment something out temporarily

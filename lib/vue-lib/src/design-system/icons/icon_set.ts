@@ -1,4 +1,5 @@
-/* eslint-disable import/no-unresolved,import/extensions,import/order */
+// @ts-nocheck
+/* eslint-disable import/no-unresolved */
 
 // browse available icons at https://icones.js.org/ (or https://iconify.design/icon-sets/)
 import Loader from "~icons/gg/spinner";

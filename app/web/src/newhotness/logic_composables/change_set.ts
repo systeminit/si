@@ -4,10 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/vue-query";
 import { RouteLocationNormalizedLoadedGeneric, Router } from "vue-router";
 import { ChangeSetId, ChangeSetStatus } from "@/api/sdf/dal/change_set";
 import { WorkspaceMetadata } from "@/api/sdf/dal/workspace";
-import {
-  BifrostActionViewList,
-  EntityKind,
-} from "@/workers/types/entity_kind_types";
+import { BifrostActionViewList, EntityKind } from "@/workers/types/entity_kind_types";
 import { useMakeKeyForHead } from "@/store/realtime/heimdall";
 import { ApprovalData, Context, UserId } from "../types";
 import { ApiContext, routes, useApi } from "../api_composables";
@@ -37,9 +34,7 @@ export const useChangeSets = (ctx: ComputedRef<ApiContext>) => {
   const headChangeSetId = computed(() => {
     return changeSetQuery.data.value?.defaultChangeSetId ?? "";
   });
-  const defaultApprovers = computed(
-    () => changeSetQuery.data.value?.approvers || [],
-  );
+  const defaultApprovers = computed(() => changeSetQuery.data.value?.approvers || []);
 
   const openChangeSets = computed(() => {
     const changeSets = _.keyBy(changeSetQuery.data.value?.changeSets, "id");
@@ -109,13 +104,7 @@ export const navigateToExistingChangeSet = async (
   reset();
 };
 
-export const approverForChangeSet = (
-  userId: UserId,
-  approvalData: ApprovalData,
-) =>
+export const approverForChangeSet = (userId: UserId, approvalData: ApprovalData) =>
   approvalData.requirements.some((r) =>
-    Object.values(r.approverGroups)
-      .flat()
-      .concat(r.approverIndividuals)
-      .includes(userId),
+    Object.values(r.approverGroups).flat().concat(r.approverIndividuals).includes(userId),
   );

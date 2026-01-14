@@ -1,10 +1,5 @@
 <template>
-  <IconButton
-    icon="dots-vertical"
-    iconIdleTone="neutral"
-    :selected="selected"
-    :disabled="disabled"
-  />
+  <IconButton icon="dots-vertical" iconIdleTone="neutral" :selected="selected" :disabled="disabled" />
 </template>
 
 <script lang="ts" setup>

@@ -17,10 +17,7 @@
         <StatusBox
           v-if="showStatusBanner"
           :kind="
-            specialCaseManagementExecutionStatus === 'Running' ||
-            attributePanelRef?.importing
-              ? 'loading'
-              : 'error'
+            specialCaseManagementExecutionStatus === 'Running' || attributePanelRef?.importing ? 'loading' : 'error'
           "
           :text="statusBannerText"
         >
@@ -37,21 +34,12 @@
         <div
           v-else-if="component.toDelete"
           :class="
-            clsx(
-              'flex flex-row items-center gap-xs px-sm py-xs',
-              themeClasses('bg-neutral-300', 'bg-neutral-600'),
-            )
+            clsx('flex flex-row items-center gap-xs px-sm py-xs', themeClasses('bg-neutral-300', 'bg-neutral-600'))
           "
         >
-          <NewButton
-            v-tooltip="'Close (Esc)'"
-            label="Marked for deletion"
-            class="flex-none"
-            @click="close"
-          />
+          <NewButton v-tooltip="'Close (Esc)'" label="Marked for deletion" class="flex-none" @click="close" />
           <TruncateWithTooltip class="py-2xs text-sm">
-            This component will be removed from HEAD once the current change set
-            is applied.
+            This component will be removed from HEAD once the current change set is applied.
           </TruncateWithTooltip>
         </div>
 
@@ -62,39 +50,24 @@
           :class="
             clsx(
               'flex flex-row items-center gap-xs px-sm py-xs border',
-              themeClasses(
-                'bg-warning-50 border-warning-400 text-neutral-900',
-                'border-warning-400 text-neutral-100',
-              ),
+              themeClasses('bg-warning-50 border-warning-400 text-neutral-900', 'border-warning-400 text-neutral-100'),
             )
           "
           :style="{ backgroundColor: 'rgba(125, 74, 23, 0.25)' }"
         >
-          <Icon
-            name="alert-triangle-filled"
-            size="sm"
-            :class="themeClasses('text-warning-600', 'text-warning-300')"
-          />
+          <Icon name="alert-triangle-filled" size="sm" :class="themeClasses('text-warning-600', 'text-warning-300')" />
           <TruncateWithTooltip class="py-2xs text-sm flex-1">
-            Some settings in this component are incompatible with the new
-            experience. To learn how to update them, check out our
-            documentation.
+            Some settings in this component are incompatible with the new experience. To learn how to update them, check
+            out our documentation.
           </TruncateWithTooltip>
-          <NewButton
-            label="Learn more"
-            tone="action"
-            @click="openWorkspaceMigrationDocumentation"
-          />
+          <NewButton label="Learn more" tone="action" @click="openWorkspaceMigrationDocumentation" />
         </div>
       </template>
       <!-- No component banner -->
       <template v-else-if="showComponentExists">
         <div
           :class="
-            clsx(
-              'flex flex-row items-center gap-xs px-sm py-xs',
-              themeClasses('bg-neutral-300', 'bg-neutral-600'),
-            )
+            clsx('flex flex-row items-center gap-xs px-sm py-xs', themeClasses('bg-neutral-300', 'bg-neutral-600'))
           "
         >
           <NewButton
@@ -103,10 +76,7 @@
             icon="x"
             tone="empty"
             :class="
-              clsx(
-                'active:bg-white active:text-black',
-                themeClasses('hover:bg-neutral-400', 'hover:bg-neutral-500'),
-              )
+              clsx('active:bg-white active:text-black', themeClasses('hover:bg-neutral-400', 'hover:bg-neutral-500'))
             "
             @click="close"
           />
@@ -127,10 +97,7 @@
         :class="
           clsx(
             'name flex flex-row items-center gap-xs border-b',
-            themeClasses(
-              'bg-white border-neutral-300',
-              'bg-neutral-800 border-neutral-600',
-            ),
+            themeClasses('bg-white border-neutral-300', 'bg-neutral-800 border-neutral-600'),
           )
         "
       >
@@ -140,18 +107,13 @@
           icon="x"
           tone="empty"
           :class="
-            clsx(
-              'active:bg-white active:text-black',
-              themeClasses('hover:bg-neutral-200', 'hover:bg-neutral-600'),
-            )
+            clsx('active:bg-white active:text-black', themeClasses('hover:bg-neutral-200', 'hover:bg-neutral-600'))
           "
           @click="close"
         />
         <div class="flex-none text-sm">{{ component.schemaVariantName }}</div>
         <div class="flex-none">/</div>
-        <TruncateWithTooltip
-          class="flex-1 min-w-0 m-[-4px] py-2xs px-xs text-sm"
-        >
+        <TruncateWithTooltip class="flex-1 min-w-0 m-[-4px] py-2xs px-xs text-sm">
           {{ component.name }}
         </TruncateWithTooltip>
         <div class="ml-auto flex flex-row gap-xs">
@@ -167,18 +129,8 @@
             @click="restoreComponent"
           />
           <template v-else>
-            <NewButton
-              v-tooltip="'Erase (E)'"
-              label="Erase"
-              tone="destructive"
-              @click="eraseComponent"
-            />
-            <NewButton
-              v-tooltip="'Delete (⌫)'"
-              label="Delete"
-              tone="destructive"
-              @click="deleteComponent"
-            />
+            <NewButton v-tooltip="'Erase (E)'" label="Erase" tone="destructive" @click="eraseComponent" />
+            <NewButton v-tooltip="'Delete (⌫)'" label="Delete" tone="destructive" @click="deleteComponent" />
             <template v-if="isUpgradeable">
               <div class="w-px h-6 bg-neutral-600 self-center" />
               <NewButton
@@ -195,14 +147,7 @@
         </div>
       </div>
 
-      <div
-        :class="
-          clsx(
-            'attrs flex flex-col',
-            !showStatusBanner && !component?.toDelete && 'attrs-no-banner',
-          )
-        "
-      >
+      <div :class="clsx('attrs flex flex-col', !showStatusBanner && !component?.toDelete && 'attrs-no-banner')">
         <CollapsingFlexItem ref="attrRef" :expandable="false" open>
           <template #header>
             <span class="text-sm">Attributes</span>
@@ -210,26 +155,15 @@
           <template #headerIcons>
             <NewButton
               v-if="specialCaseManagementFuncKind === 'import'"
-              v-tooltip="
-                attributePanelRef?.importing
-                  ? undefined
-                  : 'Import Existing Resource (𝙸)'
-              "
+              v-tooltip="attributePanelRef?.importing ? undefined : 'Import Existing Resource (𝙸)'"
               label="Import a resource"
               :loading="attributePanelRef?.importing"
               loadingText="Importing..."
               @click.stop.prevent="openImportModal"
             />
             <NewButton
-              v-else-if="
-                specialCaseManagementFuncKind === 'runTemplate' &&
-                specialCaseManagementFunc?.id
-              "
-              :label="
-                specialCaseManagementExecutionStatus === 'Failure'
-                  ? 'Re-run template'
-                  : 'Run template'
-              "
+              v-else-if="specialCaseManagementFuncKind === 'runTemplate' && specialCaseManagementFunc?.id"
+              :label="specialCaseManagementExecutionStatus === 'Failure' ? 'Re-run template' : 'Run template'"
               tone="action"
               :loading="specialCaseManagementExecutionStatus === 'Running'"
               loadingText="Running template"
@@ -247,45 +181,27 @@
             @focused="(path) => focused(path)"
           />
         </CollapsingFlexItem>
-        <CollapsingFlexItem
-          v-if="hasResourceValueProps"
-          ref="resourceRef"
-          :expandable="false"
-        >
+        <CollapsingFlexItem v-if="hasResourceValueProps" ref="resourceRef" :expandable="false">
           <template #header>
             <div class="flex place-content-between w-full">
               <span class="text-sm">Resource Values</span>
             </div>
           </template>
-          <ResourceValuesPanel
-            :component="component"
-            :attributeTree="attributeTree || undefined"
-          />
+          <ResourceValuesPanel :component="component" :attributeTree="attributeTree || undefined" />
         </CollapsingFlexItem>
         <CollapsingFlexItem ref="actionRef" :expandable="false">
           <template #header><span class="text-sm">Actions</span></template>
-          <ActionsPanel
-            :component="component"
-            :attributeValueId="component.rootAttributeValueId"
-          />
+          <ActionsPanel :component="component" :attributeValueId="component.rootAttributeValueId" />
         </CollapsingFlexItem>
         <CollapsingFlexItem ref="mgmtRef" :expandable="false">
           <template #header><span class="text-sm">Management</span></template>
-          <ManagementPanel
-            :component="component"
-            :latestFuncRuns="latestFuncRuns"
-          />
+          <ManagementPanel :component="component" :latestFuncRuns="latestFuncRuns" />
         </CollapsingFlexItem>
       </div>
 
       <div
         v-if="docsOpen"
-        :class="
-          clsx(
-            'docs flex flex-col',
-            !showStatusBanner && !component?.toDelete && 'docs-no-banner',
-          )
-        "
+        :class="clsx('docs flex flex-col', !showStatusBanner && !component?.toDelete && 'docs-no-banner')"
       >
         <DocumentationPanel
           :component="component"
@@ -297,23 +213,11 @@
         />
       </div>
 
-      <div
-        :class="
-          clsx(
-            'right flex flex-col',
-            !showStatusBanner && !component?.toDelete && 'right-no-banner',
-          )
-        "
-      >
+      <div :class="clsx('right flex flex-col', !showStatusBanner && !component?.toDelete && 'right-no-banner')">
         <CollapsingFlexItem>
-          <template #header
-            ><span class="text-sm">Qualifications</span></template
-          >
+          <template #header><span class="text-sm">Qualifications</span></template>
           <template #headerIcons>
-            <MinimizedComponentQualificationStatus
-              :component="component"
-              :dependentValues="dependentValues"
-            />
+            <MinimizedComponentQualificationStatus :component="component" :dependentValues="dependentValues" />
           </template>
           <QualificationPanel
             :component="component"
@@ -322,15 +226,9 @@
           />
         </CollapsingFlexItem>
         <CollapsingFlexItem ref="connectionsFlex" expandable>
-          <template #header
-            ><span class="text-sm">Subscriptions</span></template
-          >
+          <template #header><span class="text-sm">Subscriptions</span></template>
           <template #headerIcons>
-            <NewButton
-              label="Visualize Subscriptions"
-              truncateText
-              @click="navigateToMap"
-            />
+            <NewButton label="Visualize Subscriptions" truncateText @click="navigateToMap" />
           </template>
           <ConnectionsPanel
             v-if="componentConnections && component"
@@ -341,11 +239,7 @@
         </CollapsingFlexItem>
         <CollapsingFlexItem expandable>
           <template #header><span class="text-sm">Code Gen</span></template>
-          <CodePanel
-            v-if="attributeTree"
-            :component="component"
-            :attributeTree="attributeTree"
-          />
+          <CodePanel v-if="attributeTree" :component="component" :attributeTree="attributeTree" />
         </CollapsingFlexItem>
         <CollapsingFlexItem expandable>
           <template #header><span class="text-sm">Diff</span></template>
@@ -363,42 +257,19 @@
               :disabled="refreshBifrosting"
               @click.stop="executeRefresh"
             />
-            <Icon
-              v-if="component.hasResource"
-              name="check-hex"
-              size="sm"
-              tone="success"
-            />
+            <Icon v-if="component.hasResource" name="check-hex" size="sm" tone="success" />
           </template>
-          <ResourcePanel
-            :component="component"
-            :attributeTree="attributeTree ?? undefined"
-          />
+          <ResourcePanel :component="component" :attributeTree="attributeTree ?? undefined" />
         </CollapsingFlexItem>
-        <CollapsingFlexItem
-          v-if="useFeatureFlagsStore().COMPONENT_HISTORY_FUNCS"
-        >
+        <CollapsingFlexItem v-if="useFeatureFlagsStore().COMPONENT_HISTORY_FUNCS">
           <template #header><span class="text-sm">History</span></template>
-          <ComponentHistory
-            :componentId="component.id"
-            :enabled="componentExists"
-          />
+          <ComponentHistory :componentId="component.id" :enabled="componentExists" />
         </CollapsingFlexItem>
-        <CollapsingFlexItem
-          v-if="useFeatureFlagsStore().COMPONENT_HISTORY_FUNCS"
-        >
-          <template #header
-            ><span class="text-sm">Function Runs</span></template
-          >
-          <ComponentFuncRunList
-            :componentId="component.id"
-            :enabled="componentExists"
-          />
+        <CollapsingFlexItem v-if="useFeatureFlagsStore().COMPONENT_HISTORY_FUNCS">
+          <template #header><span class="text-sm">Function Runs</span></template>
+          <ComponentFuncRunList :componentId="component.id" :enabled="componentExists" />
         </CollapsingFlexItem>
-        <CollapsingFlexItem
-          v-if="useFeatureFlagsStore().SQLITE_TOOLS"
-          expandable
-        >
+        <CollapsingFlexItem v-if="useFeatureFlagsStore().SQLITE_TOOLS" expandable>
           <template #header>
             <span class="text-sm">Debug</span>
           </template>
@@ -414,10 +285,7 @@
       </div>
     </template>
     <EraseModal ref="eraseModalRef" @confirm="componentsFinishErase" />
-    <DeleteModal
-      ref="deleteModalRef"
-      @delete="(mode) => componentsFinishDelete(mode)"
-    />
+    <DeleteModal ref="deleteModalRef" @delete="(mode) => componentsFinishDelete(mode)" />
     <ComponentImportModal ref="importModalRef" @submit="doImport" />
   </section>
 </template>
@@ -425,30 +293,11 @@
 <!-- eslint-disable vue/component-tags-order,import/first -->
 <script lang="ts" setup>
 import { useQuery, useQueryClient } from "@tanstack/vue-query";
-import {
-  Icon,
-  themeClasses,
-  TruncateWithTooltip,
-  NewButton,
-} from "@si/vue-lib/design-system";
-import {
-  computed,
-  ref,
-  onMounted,
-  onBeforeUnmount,
-  inject,
-  watch,
-  useTemplateRef,
-  nextTick,
-} from "vue";
+import { Icon, themeClasses, TruncateWithTooltip, NewButton } from "@si/vue-lib/design-system";
+import { computed, ref, onMounted, onBeforeUnmount, inject, watch, useTemplateRef, nextTick } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import clsx from "clsx";
-import {
-  bifrost,
-  bifrostExists,
-  useMakeArgs,
-  useMakeKey,
-} from "@/store/realtime/heimdall";
+import { bifrost, bifrostExists, useMakeArgs, useMakeKey } from "@/store/realtime/heimdall";
 import {
   AttributeTree,
   BifrostComponent,
@@ -458,17 +307,13 @@ import {
   MgmtFuncKind,
 } from "@/workers/types/entity_kind_types";
 import { ExploreContext } from "@/newhotness/types";
-import { funcRunStatus, FuncRun } from "@/newhotness/api_composables/func_run";
+import { funcRunStatus, FuncRun, FuncKind } from "@/newhotness/api_composables/func_run";
 import { useRealtimeStore } from "@/store/realtime/realtime.store";
 import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import ComponentDetailsSkeleton from "@/newhotness/skeletons/ComponentDetailsSkeleton.vue";
 import AttributePanel from "./AttributePanel.vue";
 import ResourceValuesPanel from "./ResourceValuesPanel.vue";
-import {
-  attributeEmitter,
-  KeyDetails,
-  keyEmitter,
-} from "./logic_composables/emitters";
+import { attributeEmitter, KeyDetails, keyEmitter } from "./logic_composables/emitters";
 import CollapsingFlexItem from "./layout_components/CollapsingFlexItem.vue";
 import StatusBox from "./layout_components/StatusBox.vue";
 import { useApi, routes } from "./api_composables";
@@ -496,9 +341,7 @@ import { useContext } from "./logic_composables/context";
 import ComponentImportModal from "./ComponentImportModal.vue";
 
 const showSkeleton = computed(
-  () =>
-    attributeTreeQuery.isLoading.value ||
-    (!attributeTree.value && componentQuery.isLoading.value), // Prevent going back to skeleton after user changes
+  () => attributeTreeQuery.isLoading.value || (!attributeTree.value && componentQuery.isLoading.value), // Prevent going back to skeleton after user changes
 );
 
 const props = defineProps<{
@@ -523,21 +366,15 @@ const attributePanelRef = ref<InstanceType<typeof AttributePanel>>();
 const componentQuery = useQuery<BifrostComponent | null>({
   queryKey: key(EntityKind.Component, componentId),
   queryFn: async (queryContext) => {
-    const c = await bifrost<BifrostComponent>(
-      args(EntityKind.Component, componentId.value),
-    );
+    const c = await bifrost<BifrostComponent>(args(EntityKind.Component, componentId.value));
     if (c) return c;
-    const d = queryContext.client.getQueryData(
-      key(EntityKind.Component, componentId).value,
-    ) as BifrostComponent | undefined;
+    const d = queryContext.client.getQueryData<BifrostComponent | null>(key(EntityKind.Component, componentId).value);
     if (d) return d;
     return null;
   },
 });
 
-const enableExists = computed(
-  () => componentQuery.isFetched && !componentQuery.data.value,
-);
+const enableExists = computed(() => componentQuery.isFetched && !componentQuery.data.value);
 const componentExistsInIndexQuery = useQuery<boolean>({
   queryKey: key(EntityKind.Component, componentId, "exists"),
   queryFn: async () => {
@@ -549,13 +386,9 @@ const componentExistsInIndexQuery = useQuery<boolean>({
 const attributeTreeQuery = useQuery<AttributeTree | null>({
   queryKey: key(EntityKind.AttributeTree, componentId),
   queryFn: async (queryContext) => {
-    const a = await bifrost<AttributeTree>(
-      args(EntityKind.AttributeTree, componentId.value),
-    );
+    const a = await bifrost<AttributeTree>(args(EntityKind.AttributeTree, componentId.value));
     if (a) return a;
-    const d = queryContext.client.getQueryData(
-      key(EntityKind.AttributeTree, componentId).value,
-    ) as AttributeTree | undefined;
+    const d = queryContext.client.getQueryData<AttributeTree | null>(key(EntityKind.AttributeTree, componentId).value);
     if (d) return d;
     return null;
   },
@@ -564,8 +397,7 @@ const attributeTree = computed(() => attributeTreeQuery.data.value);
 
 const dependentValuesQuery = useQuery<DependentValues | null>({
   queryKey: key(EntityKind.DependentValues),
-  queryFn: async () =>
-    await bifrost<DependentValues>(args(EntityKind.DependentValues)),
+  queryFn: async () => await bifrost<DependentValues>(args(EntityKind.DependentValues)),
 });
 const dependentValues = computed(() => dependentValuesQuery.data.value);
 
@@ -573,16 +405,13 @@ const dependentValues = computed(() => dependentValuesQuery.data.value);
 // this would return 'true', but fore "AWS Region", this would return false.
 const hasResourceValueProps = computed(() => {
   if (!attributeTree.value) return false;
-  const propMatch = Object.entries(attributeTree.value.props).find(
-    ([_, prop]) => prop.path === "root/resource_value",
-  );
+  const propMatch = Object.entries(attributeTree.value.props).find(([_, prop]) => prop.path === "root/resource_value");
   if (!propMatch) return false;
-  const attributeValueMatch = Object.entries(
-    attributeTree.value.attributeValues,
-  ).find(([_, attributeValue]) => attributeValue.propId === propMatch[0]);
+  const attributeValueMatch = Object.entries(attributeTree.value.attributeValues).find(
+    ([_, attributeValue]) => attributeValue.propId === propMatch[0],
+  );
   if (!attributeValueMatch) return false;
-  const resourceValueSubtree =
-    attributeTree.value.treeInfo[attributeValueMatch[0]];
+  const resourceValueSubtree = attributeTree.value.treeInfo[attributeValueMatch[0]];
   const subtreeChildCount = resourceValueSubtree?.children?.length;
   if (!subtreeChildCount) return false;
   return subtreeChildCount > 0;
@@ -590,28 +419,19 @@ const hasResourceValueProps = computed(() => {
 
 const hasSocketConnection = computed(() => {
   if (!attributeTree.value) return false;
-  return Object.values(attributeTree.value.attributeValues).some(
-    (av) => av.hasSocketConnection,
-  );
+  return Object.values(attributeTree.value.attributeValues).some((av) => av.hasSocketConnection);
 });
 
 const component = computed(() => componentQuery.data.value || null);
 
-const componentExists = computed(
-  () => !!component.value || (componentExistsInIndexQuery.data.value ?? false),
-);
+const componentExists = computed(() => !!component.value || (componentExistsInIndexQuery.data.value ?? false));
 
-const showComponentExists = computed(
-  () => !component.value && componentExistsInIndexQuery.isFetched.value,
-);
+const showComponentExists = computed(() => !component.value && componentExistsInIndexQuery.isFetched.value);
 
 // Actions composable - reactive to component changes
-const { refreshEnabled, refreshActionRunning, runRefreshHandler } =
-  useComponentActions(component);
+const { refreshEnabled, refreshActionRunning, runRefreshHandler } = useComponentActions(component);
 const { executeRefresh, bifrosting: refreshBifrosting } = runRefreshHandler();
-const mgmtFuncs = computed(
-  () => component.value?.schemaVariant.mgmtFunctions ?? [],
-);
+const mgmtFuncs = computed(() => component.value?.schemaVariant.mgmtFunctions ?? []);
 
 const componentConnectionsQuery = useQuery<IncomingConnections | null>({
   queryKey: key(EntityKind.IncomingConnections, componentId),
@@ -622,14 +442,10 @@ const componentConnectionsQuery = useQuery<IncomingConnections | null>({
     return incomingConnections;
   },
 });
-const componentConnections = computed(
-  () => componentConnectionsQuery.data.value,
-);
+const componentConnections = computed(() => componentConnectionsQuery.data.value);
 
-const connectionsPanel =
-  useTemplateRef<typeof ConnectionsPanel>("connectionsPanel");
-const connectionsFlex =
-  useTemplateRef<typeof CollapsingFlexItem>("connectionsFlex");
+const connectionsPanel = useTemplateRef<typeof ConnectionsPanel>("connectionsPanel");
+const connectionsFlex = useTemplateRef<typeof CollapsingFlexItem>("connectionsFlex");
 const focused = async (path: string) => {
   if (connectionsFlex.value) connectionsFlex.value.openState.open.value = true;
   await nextTick();
@@ -707,34 +523,24 @@ export type NameFormData = {
 
 // Special case management funcs
 const specialCaseManagementFunc = computed(() => {
-  const importFunc = mgmtFuncs.value.find(
-    (f) => f.kind === MgmtFuncKind.Import,
-  );
-  const runTemplateFunc = mgmtFuncs.value.find(
-    (f) => f.kind === MgmtFuncKind.RunTemplate,
-  );
+  const importFunc = mgmtFuncs.value.find((f) => f.kind === MgmtFuncKind.Import);
+  const runTemplateFunc = mgmtFuncs.value.find((f) => f.kind === MgmtFuncKind.RunTemplate);
   if (importFunc) return importFunc; // chose import first if both appear (they shouldn't!)
   if (runTemplateFunc) return runTemplateFunc;
   return undefined;
 });
 const specialCaseManagementFuncKind = computed(() => {
-  if (specialCaseManagementFunc.value?.kind === MgmtFuncKind.Import)
-    return "import";
-  if (specialCaseManagementFunc.value?.kind === MgmtFuncKind.RunTemplate)
-    return "runTemplate";
+  if (specialCaseManagementFunc.value?.kind === MgmtFuncKind.Import) return "import";
+  if (specialCaseManagementFunc.value?.kind === MgmtFuncKind.RunTemplate) return "runTemplate";
   return undefined;
 });
 const dispatchedSpecialCaseManagementFunc = ref(false);
 
 const importFunc = computed(() =>
-  specialCaseManagementFuncKind.value === "import"
-    ? specialCaseManagementFunc.value
-    : undefined,
+  specialCaseManagementFuncKind.value === "import" ? specialCaseManagementFunc.value : undefined,
 );
 const importFuncRun = computed(() =>
-  specialCaseManagementFuncKind.value === "import"
-    ? specialCaseManagementFuncRun.value
-    : undefined,
+  specialCaseManagementFuncKind.value === "import" ? specialCaseManagementFuncRun.value : undefined,
 );
 
 // API to run special case management funcs
@@ -773,9 +579,7 @@ const runMgmtFunc = async (funcId: string) => {
 const importModalRef = ref<InstanceType<typeof ComponentImportModal>>();
 const openImportModal = () => {
   if (attributePanelRef.value?.resourceIdValue) {
-    importModalRef.value?.open(
-      attributePanelRef.value?.resourceIdValue as string,
-    );
+    importModalRef.value?.open(attributePanelRef.value?.resourceIdValue as string);
   } else {
     importModalRef.value?.open();
   }
@@ -807,7 +611,7 @@ const latestFuncRuns = computed(() => {
   if (!componentId.value || !componentExists.value) return runs;
 
   for (const funcRun of funcRuns.value) {
-    if (funcRun.functionKind !== "Management") continue;
+    if (funcRun.functionKind !== FuncKind.Management) continue;
     if (funcRun.componentId !== componentId.value) continue;
     if (!funcRun.actionPrototypeId) continue;
 
@@ -843,18 +647,11 @@ const specialCaseManagementFuncRun = computed(() => {
   if (!specialCaseManagementFuncId) return undefined;
   return latestFuncRuns.value[specialCaseManagementFuncId];
 });
-const specialCaseManagementFuncJobStateComposable = useManagementFuncJobState(
-  specialCaseManagementFuncRun,
-);
-const specialCaseManagementFuncJobState = computed(
-  () => specialCaseManagementFuncJobStateComposable.value.value,
-);
+const specialCaseManagementFuncJobStateComposable = useManagementFuncJobState(specialCaseManagementFuncRun);
+const specialCaseManagementFuncJobState = computed(() => specialCaseManagementFuncJobStateComposable.value.value);
 const specialCaseManagementExecutionStatus = computed(() => {
   if (dispatchedSpecialCaseManagementFunc.value) return "Running";
-  return funcRunStatus(
-    specialCaseManagementFuncRun.value,
-    specialCaseManagementFuncJobState.value?.state,
-  );
+  return funcRunStatus(specialCaseManagementFuncRun.value, specialCaseManagementFuncJobState.value?.state);
 });
 
 // When absolutely anything in the component changes, invalidate the audit logs query for that component.
@@ -981,8 +778,7 @@ const importFailure = computed(
   () =>
     specialCaseManagementFuncKind.value === "import" &&
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (specialCaseManagementFuncRun.value?.resultValue as any)?.health ===
-      "error",
+    (specialCaseManagementFuncRun.value?.resultValue as any)?.health === "error",
 );
 const showComponentStateBanner = computed(() => !component.value);
 const showStatusBanner = computed(
@@ -995,18 +791,12 @@ const showStatusBanner = computed(
 const seeFuncRunLabel = "See Func Run";
 const statusBannerText = computed(() => {
   if (specialCaseManagementFuncKind.value === "import")
-    if (
-      specialCaseManagementExecutionStatus.value === "Running" ||
-      attributePanelRef.value?.importing
-    )
+    if (specialCaseManagementExecutionStatus.value === "Running" || attributePanelRef.value?.importing)
       return "Importing...";
-    else
-      return `Error executing Import function. Click "${seeFuncRunLabel}" for more details.`;
+    else return `Error executing Import function. Click "${seeFuncRunLabel}" for more details.`;
   if (specialCaseManagementFuncKind.value === "runTemplate")
-    if (specialCaseManagementExecutionStatus.value === "Running")
-      return "Extracting components from the template...";
-    else
-      return `Error executing Run Template function. Click "${seeFuncRunLabel}" for more details.`;
+    if (specialCaseManagementExecutionStatus.value === "Running") return "Extracting components from the template...";
+    else return `Error executing Run Template function. Click "${seeFuncRunLabel}" for more details.`;
   return "";
 });
 
@@ -1016,10 +806,7 @@ const gridStateClass = computed(() => {
     return "no-component";
   }
 
-  const hasBanner =
-    showStatusBanner.value ||
-    component.value?.toDelete ||
-    hasSocketConnection.value;
+  const hasBanner = showStatusBanner.value || component.value?.toDelete || hasSocketConnection.value;
 
   if (docsOpen.value) {
     return hasBanner ? "docs-open-with-banner" : "docs-open-without-banner";
@@ -1030,12 +817,10 @@ const gridStateClass = computed(() => {
 
 const deleteModalRef = ref<InstanceType<typeof DeleteModal>>();
 const eraseModalRef = ref<InstanceType<typeof EraseModal>>();
-const {
-  convertBifrostToComponentInList,
-  deleteComponents,
-  eraseComponents,
-  restoreComponents,
-} = useComponentDeletion(undefined, true);
+const { convertBifrostToComponentInList, deleteComponents, eraseComponents, restoreComponents } = useComponentDeletion(
+  undefined,
+  true,
+);
 
 const { upgradeComponents } = useComponentUpgrade();
 
