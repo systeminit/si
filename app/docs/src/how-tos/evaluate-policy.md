@@ -453,4 +453,4 @@ Now that you understand policy evaluation:
 1. Create policies for your organization's compliance requirements
 2. Set up automated policy evaluation in CI/CD pipelines
 3. Use policy reports to demonstrate compliance during audits
-4. Combine with [component qualifications](../reference/qualification) and [native cloud policies](./aws-scp-policy) for comprehensive governance
+4. Combine with [component qualifications](../reference/qualification) and [native cloud policies](./aws-scp-policy) for comprehensive governance across [policy layers](../explanation/policy-layers)
