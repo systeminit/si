@@ -19,11 +19,22 @@ const AUTH_LOCAL_STORAGE_KEYS = {
   USER_TOKENS: "si-auth",
 };
 
-type TokenData = {
+// V1 token format (legacy)
+type TokenDataV1 = {
   user_pk: string;
   workspace_pk: string;
-  // isImpersonating?: boolean;
 };
+
+// V2 token format (new secure tokens)
+type TokenDataV2 = {
+  version: "2";
+  userId: string;
+  workspaceId: string;
+  role: string;
+  jti: string;
+};
+
+type TokenData = TokenDataV1 | TokenDataV2;
 
 interface LoginResponse {
   user: User;
@@ -36,6 +47,27 @@ export interface WorkspaceUser {
   id: string;
   name: string;
   email: string;
+}
+
+// Helper function to normalize token data from V1 or V2 format
+function normalizeTokenData(token: TokenData): {
+  userPk: string;
+  workspacePk: string;
+} {
+  if ("version" in token && token.version === "2") {
+    // V2 token format
+    return {
+      userPk: token.userId,
+      workspacePk: token.workspaceId,
+    };
+  }
+
+  // V1 token format (explicit cast since TypeScript doesn't narrow automatically)
+  const v1Token = token as TokenDataV1;
+  return {
+    userPk: v1Token.user_pk,
+    workspacePk: v1Token.workspace_pk,
+  };
 }
 
 export const useAuthStore = () => {
@@ -213,10 +245,11 @@ export const useAuthStore = () => {
         const tokens = _.values(tokensByWorkspacePk);
         if (!tokens.length) return [];
 
-        // token contains user pk and biling account pk
-        const { user_pk: userPk } =
-          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-          jwtDecode<TokenData>(tokens[0]!);
+        // token contains user pk and workspace pk (normalize V1/V2 format)
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+        const decodedToken = jwtDecode<TokenData>(tokens[0]!);
+        const { userPk } = normalizeTokenData(decodedToken);
+
         this.$patch({
           tokens: tokensByWorkspacePk,
           userPk,
@@ -265,6 +298,29 @@ export const useAuthStore = () => {
           }
         }
       },
+      async logout() {
+        // Call backend to revoke token
+        // Use fetch directly with the workspace token from localStorage
+        try {
+          const workspaceToken = this.selectedWorkspaceToken;
+          if (workspaceToken) {
+            const AUTH_API_URL = import.meta.env.VITE_AUTH_API_URL;
+            await fetch(`${AUTH_API_URL}/session/logout`, {
+              method: "POST",
+              headers: {
+                Authorization: `Bearer ${workspaceToken}`,
+                "Content-Type": "application/json",
+              },
+            });
+          }
+        } catch (error) {
+          // Silently fail - logout will still clear local state
+        }
+
+        // Clear local state and redirect
+        this.localLogout(true);
+      },
+
       localLogout(redirectToAuthPortal = true) {
         storage.removeItem(AUTH_LOCAL_STORAGE_KEYS.USER_TOKENS);
         this.$patch({
@@ -281,11 +337,13 @@ export const useAuthStore = () => {
       // split out so we can reuse for different login methods (password, oauth, magic link, signup, etc)
       finishUserLogin(loginResponse: LoginResponse) {
         const decodedJwt = jwtDecode<TokenData>(loginResponse.token);
+        const { userPk, workspacePk } = normalizeTokenData(decodedJwt);
+
         this.$patch({
-          userPk: decodedJwt.user_pk,
+          userPk,
           tokens: {
             ...this.tokens,
-            [decodedJwt.workspace_pk]: loginResponse.token,
+            [workspacePk]: loginResponse.token,
           },
           user: loginResponse.user,
           userWorkspaceFlags: loginResponse.userWorkspaceFlags,

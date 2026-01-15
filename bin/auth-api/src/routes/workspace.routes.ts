@@ -1,4 +1,5 @@
 import { nanoid } from "nanoid";
+import { ulid } from "ulidx";
 import { z } from "zod";
 import { InstanceEnvType, RoleType } from "@prisma/client";
 import { ApiError } from "../lib/api-error";
@@ -8,7 +9,7 @@ import {
   refreshUserAuth0Profile,
   UserId,
 } from "../services/users.service";
-import { revokeAllWorkspaceTokens } from "../services/auth_tokens.service";
+import { revokeAllWorkspaceTokens, registerAuthToken } from "../services/auth_tokens.service";
 import {
   createWorkspace,
   getUserWorkspaces,
@@ -37,8 +38,10 @@ import { CustomRouteContext } from "../custom-state";
 import {
   makeAuthConnectUrl,
   createSdfAuthToken,
+  decodeSdfAuthToken,
 } from "../services/auth.service";
 import { tracker } from "../lib/tracker";
+import { posthog } from "../lib/posthog";
 import { findLatestTosForUser } from "../services/tos.service";
 import { automationApiRouter, extractAuthUser, router } from ".";
 
@@ -621,11 +624,33 @@ router.post("/complete-auth-connect", async (ctx) => {
   const user = await getUserById(connectPayload.userId);
   if (!user) throw new ApiError("Conflict", "User no longer exists");
 
-  const token = createSdfAuthToken({
-    userId: user.id,
-    workspaceId: workspace.id,
-    role: "web",
-  });
+  // Feature flag check - generate V2 token with tracking if enabled
+  const secureBearerToken = await posthog.isFeatureEnabled("secure-bearer-tokens", user.id);
+
+  let token: string;
+  if (secureBearerToken) {
+    // Generate V2 token with jti and expiration
+    const jti = ulid();
+    token = createSdfAuthToken(
+      {
+        userId: user.id,
+        workspaceId: workspace.id,
+        role: "web",
+      },
+      { jwtid: jti, expiresIn: "30d" },
+    );
+
+    // Register token in database
+    const decoded = await decodeSdfAuthToken(token);
+    await registerAuthToken("Web Session", decoded);
+  } else {
+    // Legacy V1 token
+    token = createSdfAuthToken({
+      userId: user.id,
+      workspaceId: workspace.id,
+      role: "web",
+    });
+  }
 
   ctx.body = {
     user,
@@ -636,6 +661,7 @@ router.post("/complete-auth-connect", async (ctx) => {
 
 router.get("/auth-reconnect", async (ctx) => {
   const authUser = extractAuthUser(ctx);
+
   if (!ctx.state.authWorkspace) {
     throw new ApiError(
       "Unauthorized",

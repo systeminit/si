@@ -8,8 +8,16 @@ const prisma = new PrismaClient();
 export type AuthTokenId = string;
 
 export async function getAuthTokens(workspaceId: WorkspaceId) {
+  // Only return automation tokens, not web session tokens
+  // Filter by role in the claims JSON field
   return await prisma.authToken.findMany({
-    where: { workspaceId },
+    where: {
+      workspaceId,
+      claims: {
+        path: ["role"],
+        equals: "automation",
+      },
+    },
     orderBy: { id: "desc" },
   });
 }
