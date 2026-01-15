@@ -10,9 +10,11 @@ use std::{
 use async_nats::jetstream;
 use tokio_util::sync::CancellationToken;
 use tower::Service;
+use tracing::warn;
 
 use super::{
     future::ResponseFuture,
+    info::Info,
     layer::AckLayer,
     maintain_progress::MaintainProgressTask,
     on_failure::{
@@ -32,7 +34,7 @@ use crate::{
     response::Response,
 };
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Debug)]
 pub struct Ack<S, OnSuccess = DefaultOnSuccess, OnFailure = DefaultOnFailure> {
     pub(crate) inner: S,
     pub(crate) on_success: OnSuccess,
@@ -74,6 +76,30 @@ where
         // Split into jetstream message & extensions
         let (jetstream_message, extensions) = req.split();
 
+        // Extract message info BEFORE splitting (contains delivery count for backoff)
+        let info = Arc::new(match jetstream_message.info() {
+            Ok(info) => Info::from(info),
+            Err(err) => {
+                // This shouldn't happen for valid JetStream messages, but handle gracefully
+                warn!(
+                    si.error.message = ?err,
+                    "failed to parse jetstream message info, using defaults"
+                );
+                Info {
+                    domain: None,
+                    acc_hash: None,
+                    stream: String::new(),
+                    consumer: String::new(),
+                    stream_sequence: 0,
+                    consumer_sequence: 0,
+                    delivered: 1, // Assume first delivery
+                    pending: 0,
+                    published: time::OffsetDateTime::now_utc(),
+                    token: None,
+                }
+            }
+        });
+
         // Split off acker from jetstream message which is now a core message
         let (core_message, acker) = jetstream_message.split();
         let acker = Arc::new(acker);
@@ -110,7 +136,9 @@ where
         let response = self.inner.call(message);
 
         let on_success_fut = self.on_success.call(head.clone(), acker.clone());
-        let on_failure_fut = self.on_failure.call(head.clone(), acker.clone());
+        let on_failure_fut = self
+            .on_failure
+            .call(head.clone(), acker.clone(), info.clone());
 
         ResponseFuture {
             inner: response,
