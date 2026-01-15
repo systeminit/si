@@ -7,11 +7,50 @@ use axum::{
     routing::get,
 };
 use sdf_core::api_error::ApiError;
+use serde::Serialize;
+use si_db::PolicyReport;
+use si_id::{
+    ChangeSetId,
+    PolicyReportId,
+    WorkspacePk,
+};
 use thiserror::Error;
 
 use crate::AppState;
 
 mod fetch_batch;
+mod grouped_by_name;
+
+// NOTE(nick): we need this to convert to camelcase and to handle timestamp conversion.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct PolicyReportView {
+    id: PolicyReportId,
+    workspace_id: WorkspacePk,
+    change_set_id: ChangeSetId,
+    user_id: Option<dal::UserPk>,
+    created_at: String,
+    name: String,
+    policy: String,
+    report: String,
+    result: si_db::PolicyReportResult,
+}
+
+impl From<PolicyReport> for PolicyReportView {
+    fn from(report: PolicyReport) -> Self {
+        Self {
+            id: report.id,
+            workspace_id: report.workspace_id,
+            change_set_id: report.change_set_id,
+            user_id: report.user_id,
+            created_at: report.created_at.to_rfc3339(),
+            name: report.name,
+            policy: report.policy,
+            report: report.report,
+            result: report.result,
+        }
+    }
+}
 
 #[allow(missing_docs)]
 #[remain::sorted]
@@ -50,4 +89,5 @@ pub fn v2_routes() -> Router<AppState> {
     Router::new()
         .route("/", get(fetch_batch::fetch_batch))
         .route("/:id", get(fetch_batch::fetch_single))
+        .route("/grouped-by-name", get(grouped_by_name::grouped_by_name))
 }
