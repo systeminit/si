@@ -50,11 +50,16 @@ pub async fn search_schemas(
         all_schemas = apply_category_filter(all_schemas, category).await?;
     }
 
+    if payload.upgradable_only == Some(true) {
+        all_schemas = apply_upgradable_filter(all_schemas).await?;
+    }
+
     tracker.track(
         ctx,
         "api_search_schemas",
         json!({
             "category": payload.category,
+            "upgradable_only": payload.upgradable_only,
         }),
     );
 
@@ -78,11 +83,28 @@ async fn apply_category_filter(
     Ok(filtered_schemas)
 }
 
+async fn apply_upgradable_filter(
+    schemas: Vec<SchemaResponse>,
+) -> SchemaResult<Vec<SchemaResponse>> {
+    let mut filtered_schemas = Vec::new();
+
+    for schema in schemas {
+        // Only include schemas that are installed and have an upgrade available
+        if schema.installed && schema.upgrade_available == Some(true) {
+            filtered_schemas.push(schema);
+        }
+    }
+
+    Ok(filtered_schemas)
+}
+
 #[derive(Deserialize, Serialize, Debug, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct SearchSchemasV1Request {
     #[schema(example = "AWS::EC2", required = false)]
     pub category: Option<String>,
+    #[schema(example = true, required = false)]
+    pub upgradable_only: Option<bool>,
 }
 
 #[derive(Deserialize, Serialize, Debug, ToSchema)]

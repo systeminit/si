@@ -59,6 +59,9 @@ pub async fn get_schema(
         let default_variant_id = Schema::default_variant_id(ctx, schema_id).await?;
         let variants = SchemaVariant::list_for_schema(ctx, schema_id).await?;
 
+        // Check if an upgrade is available
+        let upgrade_available = super::check_schema_upgrade_available(ctx, schema_id).await?;
+
         tracker.track(
             ctx,
             "api_get_schema",
@@ -75,6 +78,7 @@ pub async fn get_schema(
             name: schema.name,
             default_variant_id,
             variant_ids: variants.into_iter().map(|v| v.id).collect_vec(),
+            upgrade_available,
         }));
     }
 
@@ -101,6 +105,7 @@ pub async fn get_schema(
                     name: cached_schema.name,
                     default_variant_id: cached_schema.default_variant_id,
                     variant_ids: cached_schema.variant_ids,
+                    upgrade_available: None, // Not installed, so no upgrade check possible
                 }));
             }
         }

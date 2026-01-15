@@ -76,5 +76,6 @@ pub async fn install_schema(
         name: schema.name,
         default_variant_id,
         variant_ids: variants.into_iter().map(|v| v.id).collect_vec(),
+        upgrade_available: Some(false), // Just installed, no upgrade available
     }))
 }

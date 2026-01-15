@@ -93,6 +93,7 @@ pub async fn create_schema(
         default_variant_id: created_schema_variant.id,
         variant_ids: variants.into_iter().map(|v| v.id).collect(),
         schema_id: schema.id(),
+        upgrade_available: None, // Newly created schema, not from a module
     }))
 }
 

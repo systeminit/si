@@ -173,6 +173,13 @@ pub async fn find_schema(
         },
     };
 
+    // Check if an upgrade is available (only applicable if schema is installed)
+    let upgrade_available = if installed {
+        super::check_schema_upgrade_available(ctx, schema_id).await?
+    } else {
+        None
+    };
+
     tracker.track(
         ctx,
         "api_find_schema",
@@ -186,6 +193,7 @@ pub async fn find_schema(
         schema_id,
         category,
         installed,
+        upgrade_available,
     }))
 }
 
@@ -200,6 +208,8 @@ pub struct FindSchemaV1Response {
     pub category: Option<String>,
     #[schema(value_type = bool)]
     pub installed: bool,
+    #[schema(value_type = Option<bool>, example = true)]
+    pub upgrade_available: Option<bool>,
 }
 
 enum SchemaReference {

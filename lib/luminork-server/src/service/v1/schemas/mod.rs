@@ -781,6 +781,8 @@ pub struct GetSchemaV1Response {
     pub default_variant_id: SchemaVariantId,
     #[schema(value_type = Vec<String>, example = json!(["01H9ZQD35JPMBGHH69BT0Q79VZ", "01H9ZQD35JPMBGHH69BT0Q79VY"]))]
     pub variant_ids: Vec<SchemaVariantId>,
+    #[schema(value_type = Option<bool>, example = true)]
+    pub upgrade_available: Option<bool>,
 }
 
 /// The response payload when materialized views or data is being built referenced by present or
@@ -921,6 +923,41 @@ pub struct SchemaResponse {
     pub schema_id: SchemaId,
     #[schema(value_type = bool, example = "false")]
     pub installed: bool,
+    #[schema(value_type = Option<bool>, example = true)]
+    pub upgrade_available: Option<bool>,
+}
+
+/// Checks if an upgrade is available for an installed schema by comparing
+/// the installed module hash with the latest cached module hash.
+///
+/// Returns:
+/// - `None` if the schema is not installed (no comparison possible)
+/// - `Some(true)` if an upgrade is available (hashes differ)
+/// - `Some(false)` if no upgrade is available (hashes match or no cached module found)
+pub async fn check_schema_upgrade_available(
+    ctx: &DalContext,
+    schema_id: SchemaId,
+) -> SchemaResult<Option<bool>> {
+    // Get the latest cached module to find what the latest available version is
+    let Some(cached_module) = CachedModule::find_latest_for_schema_id(ctx, schema_id).await? else {
+        // No cached module found, so we can't determine if an upgrade is available
+        return Ok(Some(false));
+    };
+
+    // Try to find the installed module using the schema_id as the module_schema_id
+    // Convert SchemaId to Ulid
+    let module_schema_id: si_events::ulid::Ulid = schema_id.into();
+    let installed_module = dal::module::Module::find_for_module_schema_id(ctx, module_schema_id).await?;
+
+    let Some(installed_module) = installed_module else {
+        // Schema is not installed, return None to indicate no comparison is possible
+        return Ok(None);
+    };
+
+    // Compare the installed module's root_hash with the cached module's latest_hash
+    let upgrade_available = installed_module.root_hash() != cached_module.latest_hash;
+
+    Ok(Some(upgrade_available))
 }
 
 pub async fn get_full_schema_list(ctx: &DalContext) -> SchemaResult<Vec<SchemaResponse>> {
@@ -941,21 +978,25 @@ pub async fn get_full_schema_list(ctx: &DalContext) -> SchemaResult<Vec<SchemaRe
     for schema_id in &schema_ids {
         if let Some(module) = cached_module_map.get(schema_id) {
             // Schema is both installed and in cache
+            let upgrade_available = check_schema_upgrade_available(ctx, *schema_id).await?;
             all_schemas.push(SchemaResponse {
                 schema_name: module.schema_name.clone(),
                 schema_id: *schema_id,
                 category: module.category.clone(),
                 installed: true,
+                upgrade_available,
             });
         } else {
             // Schema is installed but not in cache - this is a local only schema
             if let Ok(schema) = dal::Schema::get_by_id(ctx, *schema_id).await {
                 let default_variant = SchemaVariant::default_for_schema(ctx, *schema_id).await?;
+                let upgrade_available = check_schema_upgrade_available(ctx, *schema_id).await?;
                 all_schemas.push(SchemaResponse {
                     schema_name: schema.name,
                     schema_id: *schema_id,
                     category: Some(default_variant.category().to_owned()),
                     installed: true,
+                    upgrade_available,
                 });
             }
         }
@@ -971,6 +1012,7 @@ pub async fn get_full_schema_list(ctx: &DalContext) -> SchemaResult<Vec<SchemaRe
             schema_id,
             category: module.category,
             installed: is_installed,
+            upgrade_available: None, // Not installed, so no upgrade check possible
         });
     }
 
