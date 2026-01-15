@@ -92,9 +92,14 @@ impl FromRequestParts<AppState> for ValidatedToken {
             .await
             .map_err(unauthorized_error)?;
 
-        // If it has role: Automation, check with auth API if the token has been revoked
-        // (web tokens are not revocable, so we don't check them.)
-        if token.custom.role() != SiJwtClaimRole::Web {
+        // Check with auth API if the token has been revoked
+        // - Always check automation tokens (V2 format with jti)
+        // - Check web tokens if they have a jti (V2 format with secure-bearer-tokens flag)
+        // - Skip web tokens without jti (V1 format, not revocable)
+        let should_check_revocation =
+            token.custom.role() != SiJwtClaimRole::Web || SiJwtClaims::token_id(&token).is_ok();
+
+        if should_check_revocation {
             let AuthApiClient(client) = parts.extract_with_state(state).await?;
             // status will throw 401 if the token is revoked
             client.status().await.map_err(unauthorized_error)?;

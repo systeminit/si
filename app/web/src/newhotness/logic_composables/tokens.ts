@@ -4,11 +4,22 @@ import jwtDecode from "jwt-decode";
 
 // token logic pulled from authstore
 
-type TokenData = {
+// V1 token format (legacy)
+type TokenDataV1 = {
   user_pk: string;
   workspace_pk: string;
-  // isImpersonating?: boolean;
 };
+
+// V2 token format (new secure tokens)
+type TokenDataV2 = {
+  version: "2";
+  userId: string;
+  workspaceId: string;
+  role: string;
+  jti: string;
+};
+
+type TokenData = TokenDataV1 | TokenDataV2;
 
 const AUTH_LOCAL_STORAGE_KEYS = {
   USER_TOKENS: "si-auth",
@@ -29,8 +40,16 @@ export const readTokens = () => {
 };
 
 export const getUserPkFromToken = (token: string): string => {
-  const { user_pk: userPk } = jwtDecode<TokenData>(token);
-  return userPk;
+  const decoded = jwtDecode<TokenData>(token);
+
+  // Check if V2 token format
+  if ("version" in decoded && decoded.version === "2") {
+    return decoded.userId;
+  }
+
+  // V1 token format
+  const v1Token = decoded as TokenDataV1;
+  return v1Token.user_pk;
 };
 
 readTokens();

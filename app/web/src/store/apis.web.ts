@@ -5,6 +5,7 @@ import Axios, {
   InternalAxiosRequestConfig,
 } from "axios";
 import { useToast } from "vue-toastification";
+import { trackEvent } from "@/utils/tracking";
 import { useAuthStore } from "@/store/auth.store";
 import { useChangeSetsStore } from "@/store/change_sets.store";
 import FiveHundredError from "@/components/toasts/FiveHundredError.vue";
@@ -13,9 +14,9 @@ import UnscheduledDowntime from "@/components/toasts/UnscheduledDowntime.vue";
 
 // api base url - can use a proxy or set a full url
 let apiUrl: string;
-if (import.meta.env.VITE_API_PROXY_PATH)
+if (import.meta.env.VITE_API_PROXY_PATH) {
   apiUrl = `${window.location.origin}${import.meta.env.VITE_API_PROXY_PATH}`;
-else throw new Error("Invalid API env var config");
+} else throw new Error("Invalid API env var config");
 export const API_HTTP_URL = apiUrl;
 
 // set up websocket url, by replacing protocol and appending /ws
@@ -129,11 +130,39 @@ async function handleOutageModes(error: AxiosError) {
   return Promise.reject(error);
 }
 
+async function handle401(error: AxiosError) {
+  if (error?.response?.status === 401) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const errorKind = (error?.response?.data as any)?.kind;
+    if (
+      errorKind === "AuthTokenRevoked" ||
+      errorKind === "AuthTokenInvalid" ||
+      errorKind === "AuthTokenCorrupt"
+    ) {
+      const authStore = useAuthStore();
+
+      // Track automatic logout event
+      if (authStore.user) {
+        trackEvent("automatic_logout_forced", {
+          reason: errorKind,
+          requestUrl: error?.config?.url,
+          userEmail: authStore.user.email,
+          logoutTriggeredAt: new Date().toISOString(),
+        });
+      }
+
+      authStore.localLogout(true);
+    }
+  }
+  return Promise.reject(error);
+}
+
 sdfApiInstance.interceptors.response.use(handleProxyTimeouts, handle500);
 sdfApiInstance.interceptors.response.use(
   handleForcedChangesetRedirection,
   handleOutageModes,
 );
+sdfApiInstance.interceptors.response.use((r) => r, handle401);
 
 export const authApiInstance = Axios.create({
   headers: {
@@ -143,6 +172,7 @@ export const authApiInstance = Axios.create({
   withCredentials: true, // needed to attach the cookie
 });
 authApiInstance.interceptors.request.use(injectBearerTokenAuth);
+authApiInstance.interceptors.response.use((r) => r, handle401);
 
 export const moduleIndexApiInstance = Axios.create({
   headers: {

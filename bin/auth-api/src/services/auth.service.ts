@@ -10,6 +10,7 @@ import { tryCatch } from "../lib/try-catch";
 import { getUserById, UserId } from "./users.service";
 import { getWorkspaceById, WorkspaceId } from "./workspaces.service";
 import { getAuthToken } from "./auth_tokens.service";
+import { posthog } from "../lib/posthog";
 
 export const SI_COOKIE_NAME = "si-auth";
 
@@ -107,7 +108,11 @@ export function createSdfAuthToken(
   function createPayload(): SdfAuthTokenPayload {
     switch (payload.role) {
       case "web":
-        // For web tokens, generate the old version until prod is able to handle new ones.
+        // Generate V2 token if jwtid is provided (secure-bearer-tokens feature flag enabled)
+        // Otherwise generate V1 token for backwards compatibility
+        if (options?.jwtid) {
+          return { version: "2", ...payload };
+        }
         return { user_pk: payload.userId, workspace_pk: payload.workspaceId };
       case "automation":
         // Expire automation tokens quickly right now
@@ -142,9 +147,10 @@ function wipeAuthCookie(ctx: Koa.Context) {
 }
 
 export const loadAuthMiddleware: Koa.Middleware<CustomAppState, CustomAppContext> = async (ctx, next) => {
-  let authToken = ctx.cookies.get(SI_COOKIE_NAME);
-  if (!authToken && ctx.headers.authorization) {
-    authToken = ctx.headers.authorization.split(" ").pop();
+  // Prioritize Authorization header over cookie (workspace tokens use headers)
+  let authToken = ctx.headers.authorization?.split(" ").pop();
+  if (!authToken) {
+    authToken = ctx.cookies.get(SI_COOKIE_NAME);
   }
   if (!authToken) {
     // special auth handling only used in tests
@@ -177,16 +183,6 @@ export const loadAuthMiddleware: Koa.Middleware<CustomAppState, CustomAppContext
   }
   // TODO: deal with various other errors, logout on all devices, etc...
 
-  // Check if the token is revoked
-  if (ctx.state.token.tokenId) {
-    const authToken = await getAuthToken(ctx.state.token.tokenId);
-    if (!authToken || authToken.revokedAt) {
-      wipeAuthCookie(ctx);
-      throw new ApiError("Unauthorized", "AuthTokenRevoked", "Auth token has been revoked");
-    }
-    ctx.state.authToken = authToken;
-  }
-
   const user = await getUserById(ctx.state.token.userId);
 
   if (!user) {
@@ -195,6 +191,47 @@ export const loadAuthMiddleware: Koa.Middleware<CustomAppState, CustomAppContext
   }
 
   ctx.state.authUser = user;
+
+  // Feature flag check - enforce tokenId validation if enabled
+  const secureBearerToken = await posthog.isFeatureEnabled("secure-bearer-tokens", user.id);
+
+  // Only enforce tokenId requirement for workspace-scoped tokens (SDF tokens)
+  // Auth-portal session tokens (without workspaceId) don't need tokenId
+  const isWorkspaceScopedToken = !!ctx.state.token.workspaceId;
+
+  // If secure bearer tokens are enabled for this user, enforce V2 token requirements
+  if (secureBearerToken && isWorkspaceScopedToken) {
+    if (!ctx.state.token.tokenId) {
+      wipeAuthCookie(ctx);
+      throw new ApiError(
+        "Unauthorized",
+        "AuthTokenInvalid",
+        "Token missing required identifier. Please log in again.",
+      );
+    }
+
+    // Check if token is revoked in database
+    const authToken = await getAuthToken(ctx.state.token.tokenId);
+    if (!authToken || authToken.revokedAt) {
+      wipeAuthCookie(ctx);
+      throw new ApiError(
+        "Unauthorized",
+        "AuthTokenRevoked",
+        "Auth token has been revoked",
+      );
+    }
+    ctx.state.authToken = authToken;
+  } else {
+    // Legacy behavior: only check revocation if tokenId exists
+    if (ctx.state.token.tokenId) {
+      const authToken = await getAuthToken(ctx.state.token.tokenId);
+      if (!authToken || authToken.revokedAt) {
+        wipeAuthCookie(ctx);
+        throw new ApiError("Unauthorized", "AuthTokenRevoked", "Auth token has been revoked");
+      }
+      ctx.state.authToken = authToken;
+    }
+  }
 
   // Make sure the workspace exists
   if (ctx.state.token.workspaceId) {
