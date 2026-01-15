@@ -10,3 +10,8 @@ providers:
     allowUiUpdates: true
     options:
       path: /etc/grafana/provisioning/dashboards
+  - name: 'Tempo Examples'
+    folder: 'Tempo'
+    type: file
+    options:
+      path: /etc/grafana/provisioning/dashboards/tempo
