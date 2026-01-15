@@ -50,6 +50,12 @@ See the [AWS Service Control Policy for Cost Control](../how-tos/aws-scp-policy)
 
 **Use case**: When you want to maintain best practices and standards but need flexibility for operators to handle exceptions or special cases. The system alerts you to potential issues, but you maintain control over the response.
 
+:::info
+
+See the [Create a Qualification](../how-tos/create-a-qualification) "how-to" for an example on how to create a [qualification](../reference/qualification) that validates that all [AWS S3 Buckets](https://aws.amazon.com/s3/) have encryption enabled.
+
+:::
+
 ### 3. Control Document Evaluation with AI Agents
 
 **Description**: Write high-level control documents that describe your compliance requirements, then use AI agents to evaluate your infrastructure against those controls.
