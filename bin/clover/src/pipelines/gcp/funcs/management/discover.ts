@@ -121,8 +121,8 @@ async function main({ thisComponent }: Input): Promise<Output> {
   let importCount = 0;
 
   for (const resource of resources) {
-    // The resource ID is typically in the "name" or "id" field
-    const resourceId = resource.name || resource.id || resource.selfLink;
+    // The resource ID is typically in the "id" or "name" field
+    const resourceId = resource.id || resource.name || resource.selfLink;
 
     if (!resourceId) {
       console.log(`Skipping resource without ID`);
