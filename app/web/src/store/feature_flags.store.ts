@@ -12,7 +12,6 @@ const USER_FLAG_MAPPING = {
   // STORE_FLAG_NAME: "posthogFlagName",
   MODULES_TAB: "modules_tab",
   ADMIN_PANEL_ACCESS: "si_admin_panel_access",
-  PRIVATE_SCOPED_MODULES: "private-scoped-modules",
   SIMPLE_SOCKET_UI: "simple-socket-ui",
   SQLITE_TOOLS: "sqlite-tools",
   COMPONENT_HISTORY_FUNCS: "component-history-funcs",
