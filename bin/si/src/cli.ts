@@ -256,7 +256,7 @@ function buildCommand() {
       })
       .command("completion", new CompletionsCommand())
       // deno-lint-ignore no-explicit-any
-      .command("ai-agent", buildAiAgentCommand() as any)
+      .command("ai-agent", buildAiAgentCommand() as any).alias("agent")
       // deno-lint-ignore no-explicit-any
       .command("change-set", buildChangeSetCommand() as any)
       // deno-lint-ignore no-explicit-any
