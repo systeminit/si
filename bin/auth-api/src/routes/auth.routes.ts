@@ -16,7 +16,7 @@ import {
 } from "../services/auth.service";
 import {
   registerAuthToken,
-  updateAuthToken,
+  revokeWebSessionTokens,
 } from "../services/auth_tokens.service";
 import { getCache, setCache } from "../lib/cache";
 import {
@@ -108,6 +108,8 @@ router.post("/auth/login", async (ctx) => {
   let token: string;
   if (secureBearerToken) {
     // Generate V2 token with jti and expiration
+    // Note: We allow multiple concurrent sessions (multiple tabs/devices)
+    // Each gets its own token, and logout only revokes that specific token
     const jti = ulid();
     token = createSdfAuthToken(
       {
@@ -214,18 +216,19 @@ router.post("/session/logout", async (ctx) => {
       decoded.userId,
     );
 
-    // If secure bearer tokens are enabled and token has jti, revoke it
-    if (secureBearerToken && decoded.jti) {
-      await updateAuthToken(decoded.jti, { revokedAt: new Date() });
+    // If secure bearer tokens are enabled and token has workspace, revoke all web sessions
+    // This logs the user out of all tabs/sessions for this workspace
+    if (secureBearerToken && decoded.workspaceId) {
+      await revokeWebSessionTokens(decoded.userId, decoded.workspaceId);
 
       // Track token revocation event
       tracker.trackEvent(user, "auth_token_revoked", {
-        tokenId: decoded.jti,
         workspaceId: decoded.workspaceId,
         revokedAt: new Date(),
         revokedBy: user.email,
         revocationMethod: "user_logout",
         tokenFormat: "v2",
+        revokedAllSessions: true,
       });
     }
   } catch (error) {
@@ -257,18 +260,19 @@ router.get("/auth/logout", async (ctx) => {
         decoded.userId,
       );
 
-      // If secure bearer tokens are enabled and token has jti, revoke it
-      if (secureBearerToken && decoded.jti && user) {
-        await updateAuthToken(decoded.jti, { revokedAt: new Date() });
+      // If secure bearer tokens are enabled and token has workspace, revoke all web sessions
+      // This logs the user out of all tabs/sessions for this workspace
+      if (secureBearerToken && decoded.workspaceId && user) {
+        await revokeWebSessionTokens(decoded.userId, decoded.workspaceId);
 
         // Track token revocation event
         tracker.trackEvent(user, "auth_token_revoked", {
-          tokenId: decoded.jti,
           workspaceId: decoded.workspaceId,
           revokedAt: new Date(),
           revokedBy: user.email,
           revocationMethod: "auth_portal_logout",
           tokenFormat: "v2",
+          revokedAllSessions: true,
         });
       }
     }

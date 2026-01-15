@@ -630,6 +630,8 @@ router.post("/complete-auth-connect", async (ctx) => {
   let token: string;
   if (secureBearerToken) {
     // Generate V2 token with jti and expiration
+    // Note: We allow multiple concurrent sessions (multiple tabs/devices)
+    // Each gets its own token, and logout only revokes that specific token
     const jti = ulid();
     token = createSdfAuthToken(
       {
