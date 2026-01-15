@@ -68,6 +68,12 @@ See the [AWS Service Control Policy for Cost Control](../how-tos/aws-scp-policy)
 
 **Use case**: When you need to demonstrate compliance with regulatory requirements or internal security standards. The AI agent evaluates your actual deployed infrastructure and generates reports showing which controls are met and which require attention.
 
+:::info
+
+See the [Evaluate Policy](../how-tos/evaluate-policy) "how-to" for a step-by-step guide on writing and evaluating policy with System Initiative.
+
+:::
+
 ## How the Layers Work Together
 
 These three policy layers complement each other to provide defense in depth:
