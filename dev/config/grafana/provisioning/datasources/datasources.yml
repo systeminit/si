@@ -1,13 +1,22 @@
 apiVersion: 1
 
 datasources:
-  - name: Jaeger
-    type: jaeger
-    url: http://dev-jaeger-1:16686
+  - name: Tempo
+    type: tempo
+    url: http://tempo:3200
     basicAuth: false
     access: proxy
     readOnly: false
     isDefault: true
+    jsonData:
+      tracesToLogs:
+        datasourceUid: 'loki'
+      tracesToMetrics:
+        datasourceUid: 'prometheus'
+      serviceMap:
+        datasourceUid: 'prometheus'
+      nodeGraph:
+        enabled: true
   - name: Loki
     type: loki
     access: proxy
