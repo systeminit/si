@@ -1,0 +1,24 @@
+load(
+    "@prelude-si//:macros.bzl",
+    "rust_binary",
+)
+
+rust_binary(
+    name = "fc-load-test",
+    deps = [
+        "//third-party/rust:async-nats",
+        "//third-party/rust:base64",
+        "//third-party/rust:chrono",
+        "//third-party/rust:clap",
+        "//third-party/rust:color-eyre",
+        "//third-party/rust:futures",
+        "//third-party/rust:rand",
+        "//third-party/rust:serde",
+        "//third-party/rust:serde_json",
+        "//third-party/rust:sysinfo",
+        "//third-party/rust:tokio",
+        "//third-party/rust:ulid",
+    ],
+    srcs = glob(["src/**/*.rs"]),
+    env = {"CARGO_BIN_NAME": "fc-load-test"},
+)

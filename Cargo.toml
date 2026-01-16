@@ -5,6 +5,7 @@ members = [
   "bin/bedrock",
   "bin/cyclone",
   "bin/edda",
+  "bin/fc-load-test",
   "bin/forklift",
   "bin/hoist",
   "bin/innit",
