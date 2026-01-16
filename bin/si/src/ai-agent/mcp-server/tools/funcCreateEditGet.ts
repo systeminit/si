@@ -240,7 +240,7 @@ export function funcCreateEditGetTool(server: McpServer) {
 
           if (isBuiltIn) {
             if (funcId) {
-              // EDIT
+              // EDIT or GET
               // Fetch the existing function
               const responseGetFunc = await siFuncsApi.getFunc({
                 workspaceId: workspaceId,
@@ -248,14 +248,7 @@ export function funcCreateEditGetTool(server: McpServer) {
                 funcId,
               });
 
-              // Check if it's locked = overlay functions are unlocked if not yet applied
-              if (responseGetFunc.data.isLocked) {
-                return errorResponse({
-                  message: "Cannot edit locked functions on builtin schemas.",
-                });
-              }
-
-              // If no updates provuded, just return current information
+              // If no updates provided, just return current information (read-only access)
               if (
                 functionCode === undefined &&
                 description === undefined &&
@@ -265,6 +258,14 @@ export function funcCreateEditGetTool(server: McpServer) {
                   funcId: funcId,
                   name: responseGetFunc.data.displayName,
                   functionCode: responseGetFunc.data.code,
+                });
+              }
+
+              // Check if it's locked = overlay functions are unlocked if not yet applied
+              // Only check lock status when actually trying to edit
+              if (responseGetFunc.data.isLocked) {
+                return errorResponse({
+                  message: "Cannot edit locked functions on builtin schemas.",
                 });
               }
 
