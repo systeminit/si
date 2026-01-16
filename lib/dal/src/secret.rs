@@ -46,7 +46,6 @@ use si_data_pg::PgError;
 use si_db::HistoryActor;
 use si_events::{
     ContentHash,
-    EncryptedSecretKey,
     Timestamp,
     encrypted_secret::EncryptedSecretKeyParseError,
     ulid::Ulid,
@@ -150,6 +149,7 @@ pub use event::{
     SecretDeletedPayload,
     SecretUpdatedPayload,
 };
+pub use si_events::EncryptedSecretKey;
 pub use view::{
     SecretView,
     SecretViewError,
@@ -177,7 +177,7 @@ pub enum SecretError {
     #[error("error deserializing message: {0}")]
     DeserializeMessage(#[source] serde_json::Error),
     #[error("encrypted secret key parse error: {0}")]
-    EncryptedSecretKeyParse(#[from] EncryptedSecretKeyParseError),
+    EncryptedSecretKeyParse(#[source] EncryptedSecretKeyParseError),
     #[error("encrypted secret not found for key: {0}")]
     EncryptedSecretNotFound(EncryptedSecretKey),
     #[error("func error: {0}")]
@@ -520,7 +520,8 @@ impl Secret {
     /// value will be a string, which then needs to be parsed to get the [`EncryptedSecretKey`].
     pub fn key_from_value_in_attribute_value(value: Value) -> SecretResult<EncryptedSecretKey> {
         let deserialized: String = serde_json::from_value(value)?;
-        let key = EncryptedSecretKey::from_str(&deserialized)?;
+        let key = EncryptedSecretKey::from_str(&deserialized)
+            .map_err(SecretError::EncryptedSecretKeyParse)?;
         Ok(key)
     }
 
