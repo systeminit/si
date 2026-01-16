@@ -87,7 +87,7 @@ We use [`buck2`](https://github.com/facebook/buck2) to run the stack, run and bu
 
 > [!WARNING]
 > Before continuing, you should stop any locally running services to avoid conflicting ports with the stack.
-> Some of the services that will run include, but are not limited to the following: PostgreSQL, NATS, Jaeger and OpenTelemetry._
+> Some of the services that will run include, but are not limited to the following: PostgreSQL, NATS, Tempo and OpenTelemetry._
 
 Check if you are ready to run the stack before continuing.
 
