@@ -70,10 +70,14 @@ async function main({ thisComponent }: Input): Promise<Output> {
 
   // Handle parent as query parameter for APIs like Resource Manager Folders
   // that don't use parent in the path but require it as a query parameter
+  // Only add parent if it's declared as a valid query parameter in the API
   if (!listUrl.includes("parent=") && !listApiPath.path.includes("{parent}") && !listApiPath.path.includes("{+parent}")) {
-    const parentValue = resolveParamValue(component, "parent", projectId, true);
-    if (parentValue) {
-      listUrl += (listUrl.includes("?") ? "&" : "?") + `parent=${encodeURIComponent(parentValue)}`;
+    const validQueryParams = listApiPath.queryParams || [];
+    if (validQueryParams.includes("parent")) {
+      const parentValue = resolveParamValue(component, "parent", projectId, true);
+      if (parentValue) {
+        listUrl += (listUrl.includes("?") ? "&" : "?") + `parent=${encodeURIComponent(parentValue)}`;
+      }
     }
   }
 
@@ -148,7 +152,13 @@ async function main({ thisComponent }: Input): Promise<Output> {
         } else {
           // Try to get from discovered resource first, then fall back to domain
           paramValue = _.get(resource, [paramName]) ||
-                       _.get(component.properties, ["domain", paramName]);
+            _.get(component.properties, ["domain", paramName]);
+
+          // GCP often returns full URLs for reference fields - extract just the resource name
+          if (paramValue && typeof paramValue === "string" && paramValue.startsWith("https://")) {
+            const urlParts = paramValue.split("/");
+            paramValue = urlParts[urlParts.length - 1];
+          }
         }
 
         if (paramValue) {
@@ -174,15 +184,18 @@ async function main({ thisComponent }: Input): Promise<Output> {
 
     const fullResource = await resourceResponse.json();
 
+    // Normalize the resource to convert full GCP URLs to simple values
+    const normalizedResource = normalizeGcpResourceValues(fullResource);
+
     const properties = {
       si: {
         resourceId,
       },
       domain: {
         ...component.properties?.domain || {},
-        ...fullResource,
+        ...normalizedResource,
       },
-      resource: fullResource,
+      resource: normalizedResource,
     };
 
     // Apply refinement filter

@@ -60,10 +60,14 @@ async function refreshViaList(
   let listUrl = buildUrlWithParams(baseUrl, listApiPath, component, projectId, { forList: true });
 
   // Handle parent as query parameter for some APIs
+  // Only add parent if it's declared as a valid query parameter in the API
   if (!listUrl.includes("parent=") && !listApiPath.path.includes("{parent}") && !listApiPath.path.includes("{+parent}")) {
-    const parentValue = resolveParamValue(component, "parent", projectId, true);
-    if (parentValue) {
-      listUrl += (listUrl.includes("?") ? "&" : "?") + `parent=${encodeURIComponent(parentValue)}`;
+    const validQueryParams = listApiPath.queryParams || [];
+    if (validQueryParams.includes("parent")) {
+      const parentValue = resolveParamValue(component, "parent", projectId, true);
+      if (parentValue) {
+        listUrl += (listUrl.includes("?") ? "&" : "?") + `parent=${encodeURIComponent(parentValue)}`;
+      }
     }
   }
 
@@ -95,7 +99,7 @@ async function refreshViaList(
     for (const resource of items || []) {
       const resourceName = resource.name || resource.id;
       if (resourceName === resourceId || resourceName === domainName ||
-          resourceName?.endsWith(`/${resourceId}`) || resourceId.endsWith(`/${resourceName}`)) {
+        resourceName?.endsWith(`/${resourceId}`) || resourceId.endsWith(`/${resourceName}`)) {
         return { payload: normalizeGcpResourceValues(resource), status: "ok" };
       }
     }

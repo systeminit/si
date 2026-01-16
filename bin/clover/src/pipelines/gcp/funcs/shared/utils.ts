@@ -157,7 +157,7 @@ function isFullResourcePath(resourceId: string, pathTemplate: string): boolean {
 
 function buildUrlWithParams(
   baseUrl: string,
-  apiPath: { path: string; parameterOrder?: string[] },
+  apiPath: { path: string; parameterOrder?: string[]; queryParams?: string[] },
   component: Input,
   projectId: string | undefined,
   options: { resourceId?: string; forList?: boolean } = {}
@@ -187,6 +187,10 @@ function buildUrlWithParams(
       if (paramValue) {
         // Handle {+param} (reserved expansion - don't encode, allows slashes)
         if (url.includes(`{+${paramName}}`)) {
+          // For {+project}, if paramValue doesn't start with "projects/", prepend it
+          if ((paramName === "project" || paramName === "projectId") && !paramValue.startsWith("projects/")) {
+            paramValue = `projects/${paramValue}`;
+          }
           url = url.replace(`{+${paramName}}`, paramValue);
         } else if (url.includes(`{${paramName}}`)) {
           // Handle {param} (simple expansion - encode)
@@ -197,11 +201,22 @@ function buildUrlWithParams(
         }
       }
     }
+  }
 
-    // Add query parameters if any
-    if (queryParams.length > 0) {
-      url += `?${queryParams.join("&")}`;
+  // Handle additional query parameters (e.g., serviceId for Cloud Run)
+  // These are parameters defined with location: "query" in the API spec
+  if (apiPath.queryParams) {
+    for (const paramName of apiPath.queryParams) {
+      const paramValue = resolveParamValue(component, paramName, projectId, options.forList);
+      if (paramValue) {
+        queryParams.push(`${paramName}=${encodeURIComponent(paramValue)}`);
+      }
     }
+  }
+
+  // Add query parameters if any
+  if (queryParams.length > 0) {
+    url += `?${queryParams.join("&")}`;
   }
 
   // Fail fast if URL still contains unresolved placeholders

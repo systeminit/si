@@ -93,9 +93,11 @@ ${errorText}`
   // - Compute Engine uses "kind" containing "operation"
   // - GKE/Container API uses "operationType" field
   // - Other APIs (API Keys, etc.) use "name" starting with "operations/"
+  // - Cloud Run v2 uses "name" containing "/operations/" and has "metadata" with resource details
   const isLRO = (responseJson.kind && responseJson.kind.includes("operation")) ||
     responseJson.operationType ||
-    (responseJson.name && responseJson.name.startsWith("operations/"));
+    (responseJson.name && responseJson.name.startsWith("operations/")) ||
+    (responseJson.name && responseJson.name.includes("/operations/") && responseJson.metadata);
   if (isLRO) {
     console.log(`[CREATE] LRO detected, polling for completion...`);
 

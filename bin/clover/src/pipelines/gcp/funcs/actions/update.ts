@@ -34,6 +34,12 @@ async function main(component: Input): Promise<Output> {
     if (currentResource.fingerprint) {
       updatePayload.fingerprint = currentResource.fingerprint;
     }
+
+    // Some assets requires 'name' in the request body even for updates
+    // Always include it from the current resource if available
+    if (currentResource.name && !updatePayload.name) {
+      updatePayload.name = currentResource.name;
+    }
   }
 
   // Try to get update API path first, fall back to patch
@@ -83,10 +89,21 @@ async function main(component: Input): Promise<Output> {
 
   // Many GCP APIs require or benefit from an updateMask query parameter
   // that specifies which fields are being updated
-  const updateFields = Object.keys(updatePayload).filter(k => k !== 'fingerprint');
+  // Exclude 'fingerprint' (used for concurrency) and 'name' (required in body but immutable)
+  const updateFields = Object.keys(updatePayload).filter(k => k !== 'fingerprint' && k !== 'name');
   if (updateFields.length > 0) {
     const updateMask = updateFields.join(',');
     url += (url.includes('?') ? '&' : '?') + `updateMask=${encodeURIComponent(updateMask)}`;
+  }
+
+  // Some GCP APIs (like Pub/Sub) use a wrapper request type (e.g., UpdateTopicRequest)
+  // where the payload needs to be wrapped under a specific field (e.g., "topic")
+  // If requestWrapperField is set, wrap the payload accordingly
+  let requestBody = updatePayload;
+  if (updateApiPath.requestWrapperField) {
+    requestBody = {
+      [updateApiPath.requestWrapperField]: updatePayload,
+    };
   }
 
   // Make the API request with retry logic
@@ -97,7 +114,7 @@ async function main(component: Input): Promise<Output> {
         "Authorization": `Bearer ${token}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify(updatePayload),
+      body: JSON.stringify(requestBody),
     });
 
     if (!resp.ok) {

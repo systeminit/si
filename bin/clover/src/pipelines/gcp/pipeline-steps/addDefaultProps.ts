@@ -76,10 +76,27 @@ export function addDefaultProps(specs: ExpandedPkgSpec[]): ExpandedPkgSpec[] {
         false,
       );
       insertProp.data.hidden = true;
+
+      // Collect query parameters for the insert method
+      // These are parameters with location: "query" that need to be added to the URL
+      const queryParams: string[] = [];
+      if (gcpSchema.methods.insert.parameters) {
+        for (
+          const [paramName, paramDef] of Object.entries(
+            gcpSchema.methods.insert.parameters,
+          )
+        ) {
+          if (paramDef.location === "query") {
+            queryParams.push(paramName);
+          }
+        }
+      }
+
       insertProp.data.defaultValue = JSON.stringify({
         path: gcpSchema.methods.insert.path,
         httpMethod: gcpSchema.methods.insert.httpMethod,
         parameterOrder: gcpSchema.methods.insert.parameterOrder,
+        ...(queryParams.length > 0 ? { queryParams } : {}),
       });
       extraProp.entries.push(insertProp);
     }
@@ -108,10 +125,25 @@ export function addDefaultProps(specs: ExpandedPkgSpec[]): ExpandedPkgSpec[] {
         false,
       );
       patchProp.data.hidden = true;
+
+      // Detect if the patch request uses a wrapper type (e.g., UpdateTopicRequest)
+      // Wrapper types have a field that contains the resource (e.g., "topic") and an "updateMask" field
+      // If detected, store the wrapper field name so the update action can wrap the payload
+      let requestWrapperField: string | undefined;
+      const patchRequest = gcpSchema.methods.patch.request;
+      if (patchRequest?.properties) {
+        const props = Object.keys(patchRequest.properties);
+        // A wrapper type has exactly 2 properties: the resource wrapper field and updateMask
+        if (props.length === 2 && props.includes("updateMask")) {
+          requestWrapperField = props.find((p) => p !== "updateMask");
+        }
+      }
+
       patchProp.data.defaultValue = JSON.stringify({
         path: gcpSchema.methods.patch.path,
         httpMethod: gcpSchema.methods.patch.httpMethod,
         parameterOrder: gcpSchema.methods.patch.parameterOrder,
+        ...(requestWrapperField ? { requestWrapperField } : {}),
       });
       extraProp.entries.push(patchProp);
     }
@@ -134,6 +166,20 @@ export function addDefaultProps(specs: ExpandedPkgSpec[]): ExpandedPkgSpec[] {
     }
 
     if (gcpSchema.methods.list) {
+      // Extract query parameters from the list method
+      const queryParams: string[] = [];
+      if (gcpSchema.methods.list.parameters) {
+        for (
+          const [paramName, paramDef] of Object.entries(
+            gcpSchema.methods.list.parameters,
+          )
+        ) {
+          if (paramDef.location === "query") {
+            queryParams.push(paramName);
+          }
+        }
+      }
+
       const listProp = createScalarProp(
         "listApiPath",
         "string",
@@ -144,6 +190,7 @@ export function addDefaultProps(specs: ExpandedPkgSpec[]): ExpandedPkgSpec[] {
       listProp.data.defaultValue = JSON.stringify({
         path: gcpSchema.methods.list.path,
         parameterOrder: gcpSchema.methods.list.parameterOrder,
+        queryParams: queryParams, // Store valid query parameters
       });
       extraProp.entries.push(listProp);
     }
@@ -235,6 +282,21 @@ export function addDefaultProps(specs: ExpandedPkgSpec[]): ExpandedPkgSpec[] {
         domain.entries.some((p: ExpandedPropSpec) => p.name === "location")
       ) {
         pathParamsSet.add("location");
+      }
+
+      // Add query parameters from insert method to pathParameters
+      // These are URL params that should NOT be included in the request body
+      // (e.g., serviceId for Cloud Run services)
+      if (gcpSchema.methods.insert?.parameters) {
+        for (
+          const [paramName, param] of Object.entries(
+            gcpSchema.methods.insert.parameters,
+          )
+        ) {
+          if (param.location === "query") {
+            pathParamsSet.add(paramName);
+          }
+        }
       }
 
       const propUsageMap: PropUsageMap = {
