@@ -2,9 +2,7 @@ import { nextTick } from "vue";
 
 // Generic handler for a tab action
 export const handleTab = (e: KeyboardEvent, currentFocus?: HTMLElement) => {
-  const focusable = Array.from(
-    document.querySelectorAll('[tabindex="0"]'),
-  ) as HTMLElement[];
+  const focusable = Array.from(document.querySelectorAll<HTMLElement>('[tabindex="0"]'));
 
   if (!currentFocus) return;
   const index = focusable.indexOf(currentFocus);

@@ -5,29 +5,18 @@
         'max-w-full flex flex-row items-center [&>*]:min-w-0 [&>*]:flex-1 [&>*]:max-w-fit',
         'p-2xs text-sm font-bold',
         strikeout && 'line-through',
-        isSecret &&
-          themeClasses(
-            'text-newhotness-greenlight',
-            'text-newhotness-greendark',
-          ),
+        isSecret && themeClasses('text-newhotness-greenlight', 'text-newhotness-greendark'),
       )
     "
   >
     <TruncateWithTooltip
       v-if="showComponentName"
-      :class="
-        themeClasses(
-          'text-newhotness-purplelight',
-          'text-newhotness-purpledark',
-        )
-      "
+      :class="themeClasses('text-newhotness-purplelight', 'text-newhotness-purpledark')"
     >
       {{ componentName }}
     </TruncateWithTooltip>
     <div v-if="showComponentName" class="flex-none">/</div>
-    <TruncateWithTooltip
-      :class="themeClasses('text-neutral-600', 'text-neutral-400')"
-    >
+    <TruncateWithTooltip :class="themeClasses('text-neutral-600', 'text-neutral-400')">
       <template v-if="!isSecret && value !== 'null'">
         {{ value }}
       </template>

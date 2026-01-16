@@ -1,9 +1,6 @@
 import { PropKind } from "@/api/sdf/dal/prop";
 import { PropertyEditorPropWidgetKindSecret } from "@/api/sdf/dal/property_editor";
-import {
-  AttributeTree,
-  ComponentInList,
-} from "@/workers/types/entity_kind_types";
+import { AttributeTree, ComponentInList } from "@/workers/types/entity_kind_types";
 
 // this is an ec2 instance
 export const component: ComponentInList = {
@@ -1743,7 +1740,7 @@ export const attributeTree: AttributeTree = {
   props: {
     "01JYPVDYG2GPT2P3C81T81P2F0": {
       id: "01JYPVDYG2GPT2P3C81T81P2F0",
-      kind: "string" as PropKind as PropKind,
+      kind: "string" as PropKind,
       name: "AwsResourceType",
       path: "root/domain/extra/AwsResourceType",
       hidden: true,
@@ -1758,7 +1755,7 @@ export const attributeTree: AttributeTree = {
     },
     "01JYPVDYFXW0RFFYFCG057SHNV": {
       id: "01JYPVDYFXW0RFFYFCG057SHNV",
-      kind: "array" as PropKind as PropKind,
+      kind: "array" as PropKind,
       name: "Volumes",
       path: "root/domain/Volumes",
       hidden: false,
@@ -1792,7 +1789,7 @@ export const attributeTree: AttributeTree = {
     },
     "01JYPVDYAA112N69GK0WV6M58E": {
       id: "01JYPVDYAA112N69GK0WV6M58E",
-      kind: "string" as PropKind as PropKind,
+      kind: "string" as PropKind,
       childKind: null,
       name: "last_synced",
       path: "root/resource/last_synced",
@@ -1808,7 +1805,7 @@ export const attributeTree: AttributeTree = {
     },
     "01JYPVDYA3A97JPS416PTEF03W": {
       id: "01JYPVDYA3A97JPS416PTEF03W",
-      kind: "boolean" as PropKind as PropKind,
+      kind: "boolean" as PropKind,
       childKind: null,
       name: "protected",
       path: "root/si/protected",
@@ -1824,7 +1821,7 @@ export const attributeTree: AttributeTree = {
     },
     "01JYPVDYFE258R2H6X7KRTKEZN": {
       id: "01JYPVDYFE258R2H6X7KRTKEZN",
-      kind: "boolean" as PropKind as PropKind,
+      kind: "boolean" as PropKind,
       childKind: null,
       name: "EnableResourceNameDnsARecord",
       path: "root/domain/PrivateDnsNameOptions/EnableResourceNameDnsARecord",
@@ -1842,7 +1839,7 @@ export const attributeTree: AttributeTree = {
     },
     "01JYPVDYGFDDDQT90QZZNYSV7Z": {
       id: "01JYPVDYGFDDDQT90QZZNYSV7Z",
-      kind: "string" as PropKind as PropKind,
+      kind: "string" as PropKind,
       childKind: null,
       widgetKind: {
         secret: {
@@ -1893,8 +1890,7 @@ export const attributeTree: AttributeTree = {
       createOnly: false,
       docLink:
         "https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-ec2-instance.html#cfn-ec2-instance-privatednsname",
-      documentation:
-        "The private DNS name of the specified instance. For example: ip-10-24-34-0.ec2.internal.",
+      documentation: "The private DNS name of the specified instance. For example: ip-10-24-34-0.ec2.internal.",
       validationFormat: null,
       defaultCanBeSetBySocket: false,
       isOriginSecret: false,
@@ -2019,8 +2015,7 @@ export const attributeTree: AttributeTree = {
       createOnly: false,
       docLink:
         "https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-ec2-instance.html#cfn-ec2-instance-publicip",
-      documentation:
-        "The public IP address of the specified instance. For example: 192.0.2.0.",
+      documentation: "The public IP address of the specified instance. For example: 192.0.2.0.",
       validationFormat: null,
       defaultCanBeSetBySocket: false,
       isOriginSecret: false,
@@ -2037,8 +2032,7 @@ export const attributeTree: AttributeTree = {
       createOnly: true,
       docLink:
         "https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-ec2-instance.html#cfn-ec2-instance-subnetid",
-      documentation:
-        "[EC2-VPC] The ID of the subnet to launch the instance into.\n\n",
+      documentation: "[EC2-VPC] The ID of the subnet to launch the instance into.\n\n",
       validationFormat: null,
       defaultCanBeSetBySocket: true,
       isOriginSecret: false,
@@ -2114,8 +2108,7 @@ export const attributeTree: AttributeTree = {
       createOnly: false,
       docLink:
         "https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-ec2-instance.html#cfn-ec2-instance-configured",
-      documentation:
-        "If you set this parameter to true, your instance is enabled for hibernation.",
+      documentation: "If you set this parameter to true, your instance is enabled for hibernation.",
       validationFormat: null,
       defaultCanBeSetBySocket: false,
       isOriginSecret: false,
@@ -2252,8 +2245,7 @@ export const attributeTree: AttributeTree = {
       createOnly: false,
       docLink:
         "https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-ec2-instance.html#cfn-ec2-instance-ebsoptimized",
-      documentation:
-        "Indicates whether the instance is optimized for Amazon EBS I/O.",
+      documentation: "Indicates whether the instance is optimized for Amazon EBS I/O.",
       validationFormat: null,
       defaultCanBeSetBySocket: false,
       isOriginSecret: false,
@@ -2463,8 +2455,7 @@ export const attributeTree: AttributeTree = {
       createOnly: true,
       docLink:
         "https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-ec2-instance.html#cfn-ec2-instance-elasticinferenceaccelerators",
-      documentation:
-        "An elastic inference accelerator to associate with the instance.",
+      documentation: "An elastic inference accelerator to associate with the instance.",
       validationFormat: null,
       defaultCanBeSetBySocket: true,
       isOriginSecret: false,
@@ -2498,8 +2489,7 @@ export const attributeTree: AttributeTree = {
       createOnly: false,
       docLink:
         "https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-ec2-instance.html#cfn-ec2-instance-ssmassociations",
-      documentation:
-        "The SSM document and parameter values in AWS Systems Manager to associate with this instance.",
+      documentation: "The SSM document and parameter values in AWS Systems Manager to associate with this instance.",
       validationFormat: null,
       defaultCanBeSetBySocket: true,
       isOriginSecret: false,
@@ -2586,8 +2576,7 @@ export const attributeTree: AttributeTree = {
       createOnly: false,
       docLink:
         "https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-ec2-instance.html#cfn-ec2-instance-monitoring",
-      documentation:
-        "Specifies whether detailed monitoring is enabled for the instance.",
+      documentation: "Specifies whether detailed monitoring is enabled for the instance.",
       validationFormat: null,
       defaultCanBeSetBySocket: false,
       isOriginSecret: false,
@@ -2655,8 +2644,7 @@ export const attributeTree: AttributeTree = {
       createOnly: false,
       docLink:
         "https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-ec2-instance-metadataoptions.html#cfn-ec2-instance-metadataoptions-httpputresponsehoplimit",
-      documentation:
-        "The number of network hops that the metadata token can travel. Maximum is 64.",
+      documentation: "The number of network hops that the metadata token can travel. Maximum is 64.",
       validationFormat:
         '{"type":"number","rules":[{"name":"integer"},{"name":"min","args":{"limit":1}},{"name":"max","args":{"limit":64}}]}',
       defaultCanBeSetBySocket: false,
@@ -2674,8 +2662,7 @@ export const attributeTree: AttributeTree = {
       createOnly: false,
       docLink:
         "https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-ec2-instance-metadataoptions.html#cfn-ec2-instance-metadataoptions-instancemetadatatags",
-      documentation:
-        "Indicates whether tags from the instance are propagated to the EBS volumes.",
+      documentation: "Indicates whether tags from the instance are propagated to the EBS volumes.",
       validationFormat: null,
       defaultCanBeSetBySocket: false,
       isOriginSecret: false,
@@ -2788,8 +2775,7 @@ export const attributeTree: AttributeTree = {
       createOnly: false,
       docLink:
         "https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-ec2-instance.html#cfn-ec2-instance-sourcedestcheck",
-      documentation:
-        "Specifies whether to enable an instance launched in a VPC to perform NAT.",
+      documentation: "Specifies whether to enable an instance launched in a VPC to perform NAT.",
       validationFormat: null,
       defaultCanBeSetBySocket: false,
       isOriginSecret: false,
@@ -3103,8 +3089,7 @@ export const attributeTree: AttributeTree = {
       createOnly: true,
       docLink:
         "https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-ec2-instance.html#cfn-ec2-instance-hibernationoptions",
-      documentation:
-        "Indicates whether an instance is enabled for hibernation.",
+      documentation: "Indicates whether an instance is enabled for hibernation.",
       validationFormat: null,
       defaultCanBeSetBySocket: false,
       isOriginSecret: false,
@@ -3177,8 +3162,7 @@ export const attributeTree: AttributeTree = {
       createOnly: true,
       docLink:
         "https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-ec2-instance.html#cfn-ec2-instance-enclaveoptions",
-      documentation:
-        "Indicates whether the instance is enabled for AWS Nitro Enclaves.",
+      documentation: "Indicates whether the instance is enabled for AWS Nitro Enclaves.",
       validationFormat: null,
       defaultCanBeSetBySocket: false,
       isOriginSecret: false,
@@ -3353,8 +3337,7 @@ export const attributeTree: AttributeTree = {
       createOnly: false,
       docLink:
         "https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-ec2-instance.html#cfn-ec2-instance-privateip",
-      documentation:
-        "The private IP address of the specified instance. For example: 10.24.34.0.",
+      documentation: "The private IP address of the specified instance. For example: 10.24.34.0.",
       validationFormat: null,
       defaultCanBeSetBySocket: false,
       isOriginSecret: false,
@@ -3468,8 +3451,7 @@ export const attributeTree: AttributeTree = {
       createOnly: true,
       docLink:
         "https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-ec2-instance.html#cfn-ec2-instance-securitygroups",
-      documentation:
-        "the names of the security groups. For a nondefault VPC, you must use security group IDs instead.",
+      documentation: "the names of the security groups. For a nondefault VPC, you must use security group IDs instead.",
       validationFormat: null,
       defaultCanBeSetBySocket: true,
       isOriginSecret: false,
@@ -3780,11 +3762,7 @@ export const attributeTree: AttributeTree = {
     },
     "01K3GTCTXRFGY6KXVT40ASR5W0": {
       parent: "01K3GTCTR629DNZN6S9RHN3VBK",
-      children: [
-        "01K3GTCV1ZD2DS5T0NGZMKYZ76",
-        "01K3GTCV2331QDR3F7XVAQAZVG",
-        "01K3GTCV27TD142NJ0RQBGFGNN",
-      ],
+      children: ["01K3GTCV1ZD2DS5T0NGZMKYZ76", "01K3GTCV2331QDR3F7XVAQAZVG", "01K3GTCV27TD142NJ0RQBGFGNN"],
     },
     "01K3GTCTRCT3MJ0NX97TRS6S6J": {
       parent: "01K3GTCTR0DX65KKBK9RWBAYEZ",
@@ -3805,11 +3783,7 @@ export const attributeTree: AttributeTree = {
     },
     "01K3GTCTXC4S96FMTAX271M9W0": {
       parent: "01K3GTCTR629DNZN6S9RHN3VBK",
-      children: [
-        "01K3GTCV0ZW4F36WZAHHA6KCGH",
-        "01K3GTCV135PEHR0SD7Z43XEZ5",
-        "01K3GTCV173Y7W38KG3N44WFD6",
-      ],
+      children: ["01K3GTCV0ZW4F36WZAHHA6KCGH", "01K3GTCV135PEHR0SD7Z43XEZ5", "01K3GTCV173Y7W38KG3N44WFD6"],
     },
     "01K3GTCTS7A0WX9RNP34B1XAEW": {
       parent: "01K3GTCTR3MBHJKT7YY658Y9CA",
@@ -3993,11 +3967,7 @@ export const attributeTree: AttributeTree = {
     },
     "01K3GTCTY74GBZAP4Y4AV6JHX9": {
       parent: "01K3GTCTR629DNZN6S9RHN3VBK",
-      children: [
-        "01K462Z7TGXB7PWD64MS44GKQ7",
-        "01K462ZM5S6JTV6AH2T33S5FQ4",
-        "01K46306749XMZ0RXXN2TS3TD0",
-      ],
+      children: ["01K462Z7TGXB7PWD64MS44GKQ7", "01K462ZM5S6JTV6AH2T33S5FQ4", "01K46306749XMZ0RXXN2TS3TD0"],
     },
     "01K3GTCTZJ6M58K9Y0C3E1V0H3": {
       parent: "01K3GTCTRG8E7VT90YXS9R8XG6",
@@ -4033,11 +4003,7 @@ export const attributeTree: AttributeTree = {
     },
     "01K3GTCTRK1H42FB0KB5ZPJSJX": {
       parent: "01K3GTCTR0DX65KKBK9RWBAYEZ",
-      children: [
-        "01K3GTCV005KVY98THNHJSZQN7",
-        "01K3GTCV03CP550QWRD5SKR1FS",
-        "01K3GTCV05VR7ZMNKDMC7ABE02",
-      ],
+      children: ["01K3GTCV005KVY98THNHJSZQN7", "01K3GTCV03CP550QWRD5SKR1FS", "01K3GTCV05VR7ZMNKDMC7ABE02"],
     },
     "01K3GTCTS3GWBZX7EXWTGBAJYC": {
       parent: "01K3GTCTR3MBHJKT7YY658Y9CA",

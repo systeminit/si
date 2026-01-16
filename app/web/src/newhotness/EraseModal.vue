@@ -11,41 +11,24 @@
   >
     <div>
       You are about to erase
-      {{
-        components.length > 1
-          ? `these ${components.length} components`
-          : "this component"
-      }}:
+      {{ components.length > 1 ? `these ${components.length} components` : "this component" }}:
     </div>
 
     <div class="scrollable">
-      <ComponentCard
-        v-for="component in components"
-        :key="component.id"
-        :component="component"
-      />
+      <ComponentCard v-for="component in components" :key="component.id" :component="component" />
     </div>
 
     <div>
-      Erase immediately removes the component{{
-        components.length > 1 ? "s" : ""
-      }}
-      and all related data from both HEAD and the current change set. This is an
-      irreversible action that may lead to desynchronization. Are you sure you
-      want to proceed?
+      Erase immediately removes the component{{ components.length > 1 ? "s" : "" }}
+      and all related data from both HEAD and the current change set. This is an irreversible action that may lead to
+      desynchronization. Are you sure you want to proceed?
     </div>
     <div
-      :class="
-        clsx(
-          'flex flex-row items-center gap-xs p-xs rounded',
-          themeClasses('bg-neutral-200', 'bg-neutral-700'),
-        )
-      "
+      :class="clsx('flex flex-row items-center gap-xs p-xs rounded', themeClasses('bg-neutral-200', 'bg-neutral-700'))"
     >
       <Icon name="info-circle" />
       <div>
-        To remove this component from the change set, or set it for deletion
-        when changes are applied, use "Delete"
+        To remove this component from the change set, or set it for deletion when changes are applied, use "Delete"
       </div>
     </div>
   </ConfirmModal>

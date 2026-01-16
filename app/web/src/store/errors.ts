@@ -1,9 +1,4 @@
-import {
-  StoreOnActionListenerContext,
-  StateTree,
-  _GettersTree,
-  _ActionsTree,
-} from "pinia";
+import { StoreOnActionListenerContext, StateTree, _GettersTree, _ActionsTree } from "pinia";
 import opentelemetry, { Span } from "@opentelemetry/api";
 
 const handleStoreError = ({
@@ -11,12 +6,7 @@ const handleStoreError = ({
   store, // store instance, same as `someStore`
   args, // array of parameters passed to the action
   onError, // hook if the action throws or rejects
-}: StoreOnActionListenerContext<
-  string,
-  StateTree,
-  _GettersTree<StateTree>,
-  _ActionsTree
->) => {
+}: StoreOnActionListenerContext<string, StateTree, _GettersTree<StateTree>, _ActionsTree>) => {
   onError((error) => {
     const span = opentelemetry.trace.getActiveSpan();
 

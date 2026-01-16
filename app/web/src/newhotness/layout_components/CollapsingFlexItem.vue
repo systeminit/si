@@ -16,9 +16,7 @@
         variant === 'onboarding' && 'min-h-fit rounded-sm bg-[#00000033]',
       )
     "
-    :style="
-      variant === 'standard' ? `min-height: ${headerHeight}px` : undefined
-    "
+    :style="variant === 'standard' ? `min-height: ${headerHeight}px` : undefined"
   >
     <h3
       ref="headerRef"
@@ -29,16 +27,12 @@
           'flex-none flex items-center px-xs m-0 min-h-[2.5rem]',
           !disableCollapse && [
             'cursor-pointer',
-            variant === 'standard' &&
-              themeClasses('hover:bg-neutral-100', 'hover:bg-neutral-700'),
+            variant === 'standard' && themeClasses('hover:bg-neutral-100', 'hover:bg-neutral-700'),
           ],
           `text-${computedHeaderTextSize}`,
           variant === 'standard' && [
             showOpen && 'border-b',
-            themeClasses(
-              'bg-white border-neutral-400',
-              'bg-neutral-800 border-neutral-600',
-            ),
+            themeClasses('bg-white border-neutral-400', 'bg-neutral-800 border-neutral-600'),
           ],
           variant === 'onboarding' && 'hover:underline',
         )
@@ -56,12 +50,7 @@
         icon="maximize"
         tone="empty"
         size="xs"
-        :class="
-          clsx(
-            'active:bg-white active:text-black',
-            themeClasses('hover:bg-neutral-200', 'hover:bg-neutral-600'),
-          )
-        "
+        :class="clsx('active:bg-white active:text-black', themeClasses('hover:bg-neutral-200', 'hover:bg-neutral-600'))"
         @click.prevent.stop="expand"
       />
     </h3>
@@ -71,8 +60,7 @@
         clsx(
           'min-h-0 flex-1',
           variant === 'standard' && 'scrollable',
-          variant === 'onboarding' &&
-            'p-xs pl-lg pt-0 flex flex-col gap-sm text-sm',
+          variant === 'onboarding' && 'p-xs pl-lg pt-0 flex flex-col gap-sm text-sm',
         )
       "
     >
@@ -95,13 +83,7 @@
 </template>
 
 <script lang="ts" setup>
-import {
-  themeClasses,
-  Modal,
-  SpacingSizes,
-  NewButton,
-  CollapseExpandChevron,
-} from "@si/vue-lib/design-system";
+import { themeClasses, Modal, SpacingSizes, NewButton, CollapseExpandChevron } from "@si/vue-lib/design-system";
 import clsx from "clsx";
 import { computed, onMounted, ref } from "vue";
 import { tw } from "@si/vue-lib";
@@ -160,11 +142,7 @@ const toggleOpen = () => {
 };
 
 const showExpandButton = computed(
-  () =>
-    props.expandable &&
-    showOpen.value &&
-    !props.disableCollapse &&
-    props.variant === "standard",
+  () => props.expandable && showOpen.value && !props.disableCollapse && props.variant === "standard",
 );
 
 defineExpose({

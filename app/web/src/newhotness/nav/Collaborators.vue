@@ -24,11 +24,7 @@
 
     <!-- If there are 7 or more users or if the screen is small and there are multiple users, some are put into this menu -->
     <div
-      v-if="
-        sortedUsers.length !== 1 &&
-        (showOneIcon || sortedUsers.length > 6) &&
-        sortedUsers.length > 0
-      "
+      v-if="sortedUsers.length !== 1 && (showOneIcon || sortedUsers.length > 6) && sortedUsers.length > 0"
       class="h-8 w-0"
     >
       <div
@@ -39,48 +35,27 @@
             'absolute translate-x-[-50%] h-8 w-8 cursor-pointer bg-black',
             'border-2 border-shade-0 rounded-full overflow-hidden',
             'flex flex-row items-center hover:border-action-300',
-            moreUsersNumber < 10
-              ? 'text-base'
-              : moreUsersNumber < 100
-              ? 'text-xs'
-              : 'text-xl',
+            moreUsersNumber < 10 ? 'text-base' : moreUsersNumber < 100 ? 'text-xs' : 'text-xl',
           )
         "
         @click="openMoreUsersPopover"
       >
         <div class="text-center w-full font-bold">
           <Icon v-if="showOneIcon" name="user-circle" size="full" />
-          <template v-else-if="moreUsersNumber < 100"
-            >+{{ moreUsersNumber }}</template
-          >
+          <template v-else-if="moreUsersNumber < 100">+{{ moreUsersNumber }}</template>
           <template v-else>+</template>
         </div>
       </div>
     </div>
     <!-- Overflow menu for users -->
-    <Popover
-      ref="moreUsersPopoverRef"
-      popDown
-      :anchorTo="moreUsersButtonRef"
-      onTopOfEverything
-    >
-      <div
-        class="flex flex-col rounded bg-shade-0 dark:bg-shade-100 border dark:border-neutral-500"
-      >
-        <div
-          class="w-full text-center text-xs italic p-xs text-neutral-500 dark:text-neutral-400"
-        >
+    <Popover ref="moreUsersPopoverRef" popDown :anchorTo="moreUsersButtonRef" onTopOfEverything>
+      <div class="flex flex-col rounded bg-shade-0 dark:bg-shade-100 border dark:border-neutral-500">
+        <div class="w-full text-center text-xs italic p-xs text-neutral-500 dark:text-neutral-400">
           {{ sortedUsers.length }} Users Online
         </div>
-        <SiSearch
-          class="pt-0"
-          placeholder="search users"
-          @search="onSearchUpdated"
-        />
+        <SiSearch class="pt-0" placeholder="search users" @search="onSearchUpdated" />
 
-        <div
-          class="flex flex-col max-w-[250px] max-h-[60vh] overflow-x-hidden overflow-y-auto"
-        >
+        <div class="flex flex-col max-w-[250px] max-h-[60vh] overflow-x-hidden overflow-y-auto">
           <UserCard
             v-for="(user, index) in filteredUsers"
             :key="index"
@@ -157,16 +132,10 @@ const sortedUsers = computed(() => {
   const usersCopy = _.clone(users.value);
   return usersCopy.sort((a, b) => {
     if (ctx.changeSetId.value) {
-      if (
-        a.changeSet !== ctx.changeSetId.value &&
-        b.changeSet === ctx.changeSetId.value
-      ) {
+      if (a.changeSet !== ctx.changeSetId.value && b.changeSet === ctx.changeSetId.value) {
         return 2;
       }
-      if (
-        a.changeSet === ctx.changeSetId.value &&
-        b.changeSet !== ctx.changeSetId.value
-      ) {
+      if (a.changeSet === ctx.changeSetId.value && b.changeSet !== ctx.changeSetId.value) {
         return -2;
       }
     }
@@ -197,21 +166,15 @@ const userTooltips = computed(() => {
   }[];
 
   displayUsers.value.forEach((user) => {
-    const userChangeSet = openChangeSets.value.find(
-      (changeSet) => changeSet.id === user.changeSet,
-    );
+    const userChangeSet = openChangeSets.value.find((changeSet) => changeSet.id === user.changeSet);
 
     tooltips.push({
       content: `<div class='flex flex-col items-center max-w-lg'>
-        <div class='text-center font-bold w-full break-words line-clamp-3 pb-3xs px-sm min-w-0'>${
-          user.name
-        }</div>
+        <div class='text-center font-bold w-full break-words line-clamp-3 pb-3xs px-sm min-w-0'>${user.name}</div>
         <div class='text-xs font-bold w-full text-center line-clamp-3 px-sm'>${
           userChangeSet ? userChangeSet.name : "Head"
         }</div>
-        <div class='text-xs w-full text-center line-clamp-3 px-sm'>${
-          user.status
-        }</div>
+        <div class='text-xs w-full text-center line-clamp-3 px-sm'>${user.status}</div>
         </div>`,
       theme: "user-info",
     });
@@ -279,9 +242,7 @@ const filterModeActive = computed(() => !!filterStringCleaned.value);
 
 const filteredUsers = computed(() => {
   if (filterModeActive.value) {
-    return sortedUsers.value.filter((user) =>
-      user.name.toLowerCase().includes(filterStringCleaned.value),
-    );
+    return sortedUsers.value.filter((user) => user.name.toLowerCase().includes(filterStringCleaned.value));
   } else return sortedUsers.value;
 });
 

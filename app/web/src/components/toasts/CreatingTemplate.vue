@@ -1,12 +1,5 @@
 <template>
-  <div
-    :class="
-      clsx(
-        'container flex flex-row rounded',
-        updating ? 'cursor-progress' : 'cursor-pointer',
-      )
-    "
-  >
+  <div :class="clsx('container flex flex-row rounded', updating ? 'cursor-progress' : 'cursor-pointer')">
     <div class="flex flex-row gap-xs px-sm py-xs items-center">
       <template v-if="updating">
         <Icon name="loader" size="xl" tone="action" />
@@ -16,9 +9,7 @@
         <Icon name="check-hex-outline" size="xl" tone="success" />
         <div class="text-sm">
           Template
-          <span class="font-bold">{{
-            templateName ? `&quot;${templateName}&quot; ` : ""
-          }}</span
+          <span class="font-bold">{{ templateName ? `&quot;${templateName}&quot; ` : "" }}</span
           >has been created successfully!
         </div>
       </template>
@@ -28,10 +19,7 @@
       :class="
         clsx(
           'flex flex-col text-sm items-stretch text-center justify-center border-l',
-          themeClasses(
-            'border-neutral-200 text-action-500',
-            'border-neutral-600 text-action-300',
-          ),
+          themeClasses('border-neutral-200 text-action-500', 'border-neutral-600 text-action-300'),
         )
       "
     >
@@ -39,24 +27,14 @@
         :class="
           clsx(
             'p-xs border-b hover:underline',
-            themeClasses(
-              'border-neutral-200',
-              'border-neutral-600 focus:text-shade-0 focus:bg-action-300',
-            ),
+            themeClasses('border-neutral-200', 'border-neutral-600 focus:text-shade-0 focus:bg-action-300'),
           )
         "
         @click="goToFunc"
       >
         View Code
       </button>
-      <button
-        :class="
-          clsx(
-            'p-xs hover:underline',
-            themeClasses('', 'focus:text-shade-0 focus:bg-action-300'),
-          )
-        "
-      >
+      <button :class="clsx('p-xs hover:underline', themeClasses('', 'focus:text-shade-0 focus:bg-action-300'))">
         Close
       </button>
     </div>

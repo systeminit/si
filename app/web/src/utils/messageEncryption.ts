@@ -31,10 +31,7 @@ export interface PublicKey {
   updated_at: string;
 }
 
-export async function encryptMessage(
-  message: Record<string, string>,
-  publicKey: PublicKey,
-): Promise<number[]> {
+export async function encryptMessage(message: Record<string, string>, publicKey: PublicKey): Promise<number[]> {
   await _sodium.ready;
   const sodium = _sodium;
 

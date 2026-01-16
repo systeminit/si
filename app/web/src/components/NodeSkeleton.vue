@@ -16,24 +16,8 @@
       d="M0.5 12.2008H74.5V45.9993C74.5 47.9323 72.933 49.4993 71 49.4993H4C2.067 49.4993 0.5 47.9323 0.5 45.9993V12.2008Z"
       class="stroke-current fill-white"
     />
-    <rect
-      opacity="0.75"
-      x="15"
-      y="4"
-      width="45"
-      height="5"
-      rx="1"
-      fill="white"
-    />
-    <rect
-      opacity="0.75"
-      x="15"
-      y="19"
-      width="45"
-      height="5"
-      rx="1"
-      fill="#BDBDBD"
-    />
+    <rect opacity="0.75" x="15" y="4" width="45" height="5" rx="1" fill="white" />
+    <rect opacity="0.75" x="15" y="19" width="45" height="5" rx="1" fill="#BDBDBD" />
   </svg>
 </template>
 

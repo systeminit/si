@@ -26,14 +26,7 @@
     </div>
 
     <TruncateWithTooltip
-      :class="
-        clsx(
-          'grow font-bold',
-          variant === 'title'
-            ? 'uppercase text-md leading-6'
-            : 'text-sm break-words',
-        )
-      "
+      :class="clsx('grow font-bold', variant === 'title' ? 'uppercase text-md leading-6' : 'text-sm break-words')"
     >
       <slot name="label">{{ label }}</slot>
     </TruncateWithTooltip>
@@ -44,13 +37,7 @@
 </template>
 
 <script setup lang="ts">
-import {
-  Icon,
-  IconButton,
-  IconNames,
-  themeClasses,
-  TruncateWithTooltip,
-} from "@si/vue-lib/design-system";
+import { Icon, IconButton, IconNames, themeClasses, TruncateWithTooltip } from "@si/vue-lib/design-system";
 import clsx from "clsx";
 import { PropType, ref } from "vue";
 

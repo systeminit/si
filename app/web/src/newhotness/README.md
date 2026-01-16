@@ -1,6 +1,7 @@
 # NEW HOTNESS
 
 <!-- NOTE(nick): added attribution here -->
+
 Author: [@jobelenus](https://github.com/jobelenus)
 
 ## PROBLEM STATEMENT
@@ -23,15 +24,16 @@ Components should do a minimum amount of work. Just enough to get a job done. Us
 
 We want to copy & steal things from the original web app we like working with. We want to re-use things that have hard-boundaries.
 
-We should make components that handle *only* layout, and components with business logic should use those layout components. [A good example](https://github.com/systeminit/si/pull/5862/files#diff-2df1de572e9d0bb6f6f2deb8a7d9464c0b1959d430d1e122dff4015eecb6acb0) is splitting `ActionCard` into `ActionCardHistory`, `ActionCard`, and `ActionCardLayout`
+We should make components that handle _only_ layout, and components with business logic should use those layout components. [A good example](https://github.com/systeminit/si/pull/5862/files#diff-2df1de572e9d0bb6f6f2deb8a7d9464c0b1959d430d1e122dff4015eecb6acb0) is splitting `ActionCard` into `ActionCardHistory`, `ActionCard`, and `ActionCardLayout`
 
 We can use some simple global styling that reduces our need for re-declaring classes. We can have color declarations that use `themeClasses` behind the scenes (or something like it) to define the dark and light colors so each engineer doesn't have to do it bespoke each time.
 
 Use tanStack:
+
 - virtualization, for any variable length list that grows over time
 - form, for large editing forms (like the component editor), not necessary for one or two inputs, or filters
 
-Stores are *only* to be used when components that are not directly hierarchical *must* rely on the same *shared mutable* state. If the state is not mutable that means it should be a prop, or a provide / inject coming from a shared ancestor. (See: the new `Workspace` has a provide for `workspacePk` and `changeSetId` for any descendant to grab, no prop-drilling needed)
+Stores are _only_ to be used when components that are not directly hierarchical _must_ rely on the same _shared mutable_ state. If the state is not mutable that means it should be a prop, or a provide / inject coming from a shared ancestor. (See: the new `Workspace` has a provide for `workspacePk` and `changeSetId` for any descendant to grab, no prop-drilling needed)
 
 ## APPROACH
 
@@ -48,6 +50,7 @@ I haven't found a reason to use a store yet! And I don't necessarily see one, bu
 There are a fair amount of new approaches in here. Look to them for inspiration!
 
 # ACHIEVEMENTS SO FAR
+
 - I believe I fixed the "you could make the app window scroll" and break the layout
 - The main body will never grow larger than the space between the navbar and footer
 - Re-usable accordion style collapsible (with no extra html, its not even a "component" its just CSS) :chefskiss:

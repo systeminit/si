@@ -14,25 +14,12 @@
     "
     @click="openPendingApprovalsModal"
   >
-    <Icon
-      name="bell"
-      :class="
-        clsx(numberICanApprove > 0 ? 'text-destructive-500' : 'text-shade-0')
-      "
-    />
+    <Icon name="bell" :class="clsx(numberICanApprove > 0 ? 'text-destructive-500' : 'text-shade-0')" />
     <template v-if="numberICanApprove > 0 && !compact">
-      <PillCounter
-        :count="numberICanApprove"
-        noColorStyles
-        hideIfZero
-        class="bg-destructive-500 py-2xs"
-      />
+      <PillCounter :count="numberICanApprove" noColorStyles hideIfZero class="bg-destructive-500 py-2xs" />
       <div class="text-xs">Approval{{ numberICanApprove > 1 ? "s" : "" }}</div>
     </template>
-    <ApprovalPendingModal
-      v-if="numberICanApprove > 0"
-      ref="pendingApprovalModalRef"
-    />
+    <ApprovalPendingModal v-if="numberICanApprove > 0" ref="pendingApprovalModalRef" />
   </button>
 </template>
 
@@ -40,19 +27,14 @@
 import clsx from "clsx";
 import { computed, ref, onMounted, onBeforeUnmount } from "vue";
 import { Icon, PillCounter } from "@si/vue-lib/design-system";
-import {
-  approverForChangeSet,
-  useChangeSetsStore,
-} from "@/store/change_sets.store";
+import { approverForChangeSet, useChangeSetsStore } from "@/store/change_sets.store";
 import { useAuthStore } from "@/store/auth.store";
 import ApprovalPendingModal from "../../ApprovalPendingModal.vue";
 
 const changeSetsStore = useChangeSetsStore();
 const authStore = useAuthStore();
 
-const pendingApprovalModalRef = ref<InstanceType<
-  typeof ApprovalPendingModal
-> | null>(null);
+const pendingApprovalModalRef = ref<InstanceType<typeof ApprovalPendingModal> | null>(null);
 
 const numberICanApprove = computed(() => {
   let approvable = 0;

@@ -21,18 +21,12 @@
       :class="
         clsx(
           'min-w-0',
-          themeClasses(
-            'text-newhotness-greenlight bg-neutral-100',
-            'text-newhotness-greendark bg-neutral-900',
-          ),
+          themeClasses('text-newhotness-greenlight bg-neutral-100', 'text-newhotness-greendark bg-neutral-900'),
         )
       "
     >
       <TruncateWithTooltip>
-        {{
-          ctx.componentDetails.value[componentId]?.schemaVariantName ??
-          "unknown"
-        }}
+        {{ ctx.componentDetails.value[componentId]?.schemaVariantName ?? "unknown" }}
       </TruncateWithTooltip>
     </TextPill>
     <TextPill
@@ -40,10 +34,7 @@
       :class="
         clsx(
           'min-w-0 flex flex-row items-center gap-xs',
-          themeClasses(
-            'text-newhotness-purplelight bg-neutral-100',
-            'text-newhotness-purpledark bg-neutral-900',
-          ),
+          themeClasses('text-newhotness-purplelight bg-neutral-100', 'text-newhotness-purpledark bg-neutral-900'),
         )
       "
     >
@@ -57,11 +48,7 @@
 <script setup lang="ts">
 import { inject, ref } from "vue";
 import clsx from "clsx";
-import {
-  TextPill,
-  themeClasses,
-  TruncateWithTooltip,
-} from "@si/vue-lib/design-system";
+import { TextPill, themeClasses, TruncateWithTooltip } from "@si/vue-lib/design-system";
 import { useRouter } from "vue-router";
 import { assertIsDefined, Context } from "./types";
 

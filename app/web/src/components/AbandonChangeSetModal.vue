@@ -8,17 +8,9 @@
       </span>
       and return to HEAD?
     </div>
-    <div class="text-sm mb-sm">
-      Once abandoned, a change set cannot be recovered.
-    </div>
+    <div class="text-sm mb-sm">Once abandoned, a change set cannot be recovered.</div>
     <div class="flex flex-row items-center w-full gap-sm">
-      <VButton
-        label="Cancel"
-        variant="ghost"
-        tone="warning"
-        icon="x"
-        @click="closeModalHandler"
-      />
+      <VButton label="Cancel" variant="ghost" tone="warning" icon="x" @click="closeModalHandler" />
       <template v-if="!changeSetsStore.headSelected">
         <VButton
           label="Abandon Change Set"

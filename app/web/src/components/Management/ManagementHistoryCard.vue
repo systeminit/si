@@ -1,22 +1,12 @@
 <template>
-  <li
-    :class="
-      clsx(
-        'border-b list-none',
-        themeClasses('border-neutral-200', 'border-neutral-600'),
-      )
-    "
-  >
+  <li :class="clsx('border-b list-none', themeClasses('border-neutral-200', 'border-neutral-600'))">
     <div
       :class="
         clsx(
           'cursor-pointer flex flex-row items-center gap-xs p-2xs pl-4 border text-sm border-transparent',
           themeClasses('hover:border-action-500', 'hover:border-action-300'),
           selected
-            ? themeClasses(
-                'bg-action-100 border-action-500',
-                'bg-action-900 border-action-300',
-              )
+            ? themeClasses('bg-action-100 border-action-500', 'bg-action-900 border-action-300')
             : themeClasses('border-neutral-800', ''),
         )
       "
@@ -24,9 +14,7 @@
     >
       <StatusIndicatorIcon type="management" :status="status" />
 
-      <TruncateWithTooltip class="grow">{{
-        item.functionDisplayName ?? item.functionName
-      }}</TruncateWithTooltip>
+      <TruncateWithTooltip class="grow">{{ item.functionDisplayName ?? item.functionName }}</TruncateWithTooltip>
 
       <Timestamp
         :date="item.updatedAt"
@@ -37,10 +25,7 @@
         size="long"
       />
 
-      <FuncRunTabDropdown
-        :funcRunId="item.id"
-        @menuClick="(id, slug) => emit('history', id, slug)"
-      />
+      <FuncRunTabDropdown :funcRunId="item.id" @menuClick="(id, slug) => emit('history', id, slug)" />
     </div>
   </li>
 </template>
@@ -48,11 +33,7 @@
 <script lang="ts" setup>
 import { computed } from "vue";
 import clsx from "clsx";
-import {
-  themeClasses,
-  TruncateWithTooltip,
-  Timestamp,
-} from "@si/vue-lib/design-system";
+import { themeClasses, TruncateWithTooltip, Timestamp } from "@si/vue-lib/design-system";
 import { funcRunStatus } from "@/store/func_runs.store";
 import { ManagementHistoryItem } from "@/store/management_runs.store";
 import StatusIndicatorIcon from "../StatusIndicatorIcon.vue";

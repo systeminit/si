@@ -3,14 +3,10 @@
     <div class="w-64 flex flex-col items-center">
       <EmptyStateIcon :name="iconName" />
     </div>
-    <div
-      class="text-lg font-medium text-center text-neutral-600 dark:text-neutral-300"
-    >
+    <div class="text-lg font-medium text-center text-neutral-600 dark:text-neutral-300">
       {{ primaryText }}
     </div>
-    <div
-      class="text-sm italic text-neutral-500 dark:text-neutral-400 text-center"
-    >
+    <div class="text-sm italic text-neutral-500 dark:text-neutral-400 text-center">
       {{ secondaryText }}
     </div>
   </div>

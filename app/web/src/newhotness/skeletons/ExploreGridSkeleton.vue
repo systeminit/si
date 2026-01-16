@@ -16,10 +16,7 @@ import { computed } from "vue";
 import clsx from "clsx";
 import DelayedComponent from "@/newhotness/layout_components/DelayedComponent.vue";
 import GridTileSkeleton from "./GridTileSkeleton.vue";
-import {
-  windowWidthReactive,
-  windowHeightReactive,
-} from "../logic_composables/emitters";
+import { windowWidthReactive, windowHeightReactive } from "../logic_composables/emitters";
 
 const MIN_GRID_TILE_WIDTH = 250;
 const GRID_TILE_GAP = 16;
@@ -46,10 +43,7 @@ const columnsCount = computed(() => {
 const rowsCount = computed(() => {
   // account for top controls (2 rows ~32px each), footer (~48px), padding, and margins
   const availableHeight = windowHeightReactive.value - 150;
-  return Math.max(
-    3,
-    Math.ceil(availableHeight / (GRID_TILE_HEIGHT + GRID_TILE_GAP)),
-  );
+  return Math.max(3, Math.ceil(availableHeight / (GRID_TILE_HEIGHT + GRID_TILE_GAP)));
 });
 
 const skeletonCount = computed(() => columnsCount.value * rowsCount.value);

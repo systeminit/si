@@ -5,9 +5,7 @@
       v-else
       iconName="no-changes"
       :primaryText="`No ${label} Available`"
-      :secondaryText="`This action did not generate${
-        emptyStateSecondaryTextNeedsAnA ? ' a' : ''
-      } ${label}.`"
+      :secondaryText="`This action did not generate${emptyStateSecondaryTextNeedsAnA ? ' a' : ''} ${label}.`"
     />
   </TabGroupItem>
 </template>

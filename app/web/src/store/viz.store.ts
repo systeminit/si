@@ -5,13 +5,7 @@ import { useChangeSetsStore } from "@/store/change_sets.store";
 import { Visibility } from "@/api/sdf/dal/visibility";
 import { nilId } from "@/utils/nilId";
 
-export type NodeKind =
-  | "Category"
-  | "Content"
-  | "Func"
-  | "Ordering"
-  | "Prop"
-  | "Component";
+export type NodeKind = "Category" | "Content" | "Func" | "Ordering" | "Prop" | "Component";
 
 export type ContentKind =
   | "Root"
@@ -58,8 +52,7 @@ export const useVizStore = addStoreHooks(
     // TODO(nick): we need to allow for empty visibility here. Temporarily send down "nil" to mean that we want the
     // query to find the default change set.
     const visibility: Visibility = {
-      visibility_change_set_pk:
-        selectedChangeSetId ?? changeSetStore.headChangeSetId ?? nilId(),
+      visibility_change_set_pk: selectedChangeSetId ?? changeSetStore.headChangeSetId ?? nilId(),
     };
     const data: VizResponse = reactive({
       edges: [],

@@ -13,12 +13,7 @@
     <template #icons>
       <Icon
         v-if="actionQueued"
-        :class="
-          clsx(
-            themeClasses('text-neutral-600', 'text-neutral-300'),
-            'translate-y-[-2px]',
-          )
-        "
+        :class="clsx(themeClasses('text-neutral-600', 'text-neutral-300'), 'translate-y-[-2px]')"
         name="nested-arrow-right"
         size="sm"
       />
@@ -33,10 +28,7 @@
         :class="
           clsx(
             props.action.holdStatusInfluencedBy.length > 0
-              ? [
-                  'opacity-30',
-                  themeClasses('text-warning-500', 'text-warning-300'),
-                ]
+              ? ['opacity-30', themeClasses('text-warning-500', 'text-warning-300')]
               : themeClasses('text-warning-400', 'text-warning-300'),
           )
         "
@@ -51,31 +43,16 @@
           @click.stop="retry"
         />
         <Icon
-          :class="
-            clsx(themeClasses('text-destructive-500', 'text-destructive-600'))
-          "
+          :class="clsx(themeClasses('text-destructive-500', 'text-destructive-600'))"
           name="x-hex-outline"
           size="sm"
         />
       </template>
-      <Icon
-        :class="actionIconClass(props.action.kind)"
-        :name="actionIcon(props.action.kind)"
-        size="sm"
-      />
+      <Icon :class="actionIconClass(props.action.kind)" :name="actionIcon(props.action.kind)" size="sm" />
     </template>
     <template #interaction>
-      <ConfirmHoldModal
-        v-if="!props.noInteraction"
-        ref="confirmRef"
-        :ok="finishHold"
-      />
-      <DropdownMenu
-        v-if="!props.noInteraction"
-        ref="contextMenuRef"
-        :forceAbove="false"
-        forceAlignRight
-      >
+      <ConfirmHoldModal v-if="!props.noInteraction" ref="confirmRef" :ok="finishHold" />
+      <DropdownMenu v-if="!props.noInteraction" ref="contextMenuRef" :forceAbove="false" forceAlignRight>
         <h5 class="text-neutral-400 pl-2xs">ACTIONS:</h5>
         <DropdownMenuItem
           v-if="props.action.state === ActionState.Queued"
@@ -100,16 +77,8 @@
         <hr class="border-neutral-600 my-xs" />
         <h5 class="text-neutral-400 pl-2xs">APPLY BEFORE:</h5>
         <ol v-if="props.action.myDependentActions.length > 0">
-          <li
-            v-for="a in props.action.myDependentActions"
-            :key="a.id"
-            class="flex flex-row items-center px-2xs gap-xs"
-          >
-            <Icon
-              :class="actionIconClass(a.kind)"
-              :name="actionIcon(a.kind)"
-              size="sm"
-            />
+          <li v-for="a in props.action.myDependentActions" :key="a.id" class="flex flex-row items-center px-2xs gap-xs">
+            <Icon :class="actionIconClass(a.kind)" :name="actionIcon(a.kind)" size="sm" />
             <span class="align-baseline leading-[30px]"
               ><strong>{{ actionKindToAbbreviation(a.kind) }}:</strong>
               {{ a.componentSchemaName ?? "unknown" }}
@@ -120,16 +89,8 @@
         <p v-else class="ml-xs">None</p>
         <h5 class="text-neutral-400 pl-2xs">WAITING ON:</h5>
         <ol v-if="props.action.dependentOnActions.length > 0">
-          <li
-            v-for="a in props.action.dependentOnActions"
-            :key="a.id"
-            class="flex flex-row items-center px-2xs gap-xs"
-          >
-            <Icon
-              :class="actionIconClass(a.kind)"
-              :name="actionIcon(a.kind)"
-              size="sm"
-            />
+          <li v-for="a in props.action.dependentOnActions" :key="a.id" class="flex flex-row items-center px-2xs gap-xs">
+            <Icon :class="actionIconClass(a.kind)" :name="actionIcon(a.kind)" size="sm" />
             <span class="align-baseline leading-[30px]"
               ><strong>{{ actionKindToAbbreviation(a.kind) }}:</strong>
               {{ a.componentSchemaName ?? "unknown" }}
@@ -154,20 +115,10 @@
 <script lang="ts" setup>
 import { computed, ref } from "vue";
 
-import {
-  Icon,
-  themeClasses,
-  DropdownMenu,
-  DropdownMenuItem,
-} from "@si/vue-lib/design-system";
+import { Icon, themeClasses, DropdownMenu, DropdownMenuItem } from "@si/vue-lib/design-system";
 import clsx from "clsx";
 import { ActionKind, ActionState, ActionId } from "@/api/sdf/dal/action";
-import {
-  useActionsStore,
-  actionKindToAbbreviation,
-  actionIconClass,
-  actionIcon,
-} from "@/store/actions.store";
+import { useActionsStore, actionKindToAbbreviation, actionIconClass, actionIcon } from "@/store/actions.store";
 import ConfirmHoldModal from "@/components/Actions/ConfirmHoldModal.vue";
 
 import DetailsPanelMenuIcon from "@/components/DetailsPanelMenuIcon.vue";
@@ -208,10 +159,7 @@ const contextMenuRef = ref<InstanceType<typeof DropdownMenu>>();
 
 const actionOnHold = computed(() => {
   if (props.action && "state" in props.action)
-    return (
-      props.action.state === ActionState.OnHold ||
-      props.action.holdStatusInfluencedBy?.length > 0
-    );
+    return props.action.state === ActionState.OnHold || props.action.holdStatusInfluencedBy?.length > 0;
   else return false;
 });
 const actionFailed = computed(() => {

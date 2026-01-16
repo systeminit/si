@@ -31,9 +31,7 @@ export enum CustomizableFuncKind {
 }
 
 // TODO(nick,wendy): this is ugly to use in some places. We probably need to think of a better interface. Blame me, not Wendy.
-export function customizableFuncKindToFuncKind(
-  customizableFuncKind: CustomizableFuncKind,
-): FuncKind {
+export function customizableFuncKindToFuncKind(customizableFuncKind: CustomizableFuncKind): FuncKind {
   switch (customizableFuncKind) {
     case CustomizableFuncKind.Action:
       return FuncKind.Action;
@@ -48,9 +46,7 @@ export function customizableFuncKindToFuncKind(
     case CustomizableFuncKind.Management:
       return FuncKind.Management;
     default:
-      throw new Error(
-        "this should not be possible since CustomizableFuncKind is a subset of FuncKind",
-      );
+      throw new Error("this should not be possible since CustomizableFuncKind is a subset of FuncKind");
   }
 }
 
@@ -84,8 +80,7 @@ export const CUSTOMIZABLE_FUNC_TYPES: FUNC_TYPES = {
   },
 };
 
-export const isCustomizableFuncKind = (f: FuncKind) =>
-  f in CUSTOMIZABLE_FUNC_TYPES;
+export const isCustomizableFuncKind = (f: FuncKind) => f in CUSTOMIZABLE_FUNC_TYPES;
 
 export enum FuncArgumentKind {
   Array = "array",
@@ -116,7 +111,6 @@ export enum FuncBackendKind {
   Float = "Float",
   Integer = "Integer",
   JsAction = "JsAction",
-  JsAttribute = "JsAction",
   JsAuthentication = "JsAuthentication",
   Json = "Json",
   JsReconciliation = "JsReconciliation",
@@ -223,20 +217,9 @@ export interface Qualification {
   inputs: LeafInputLocation[];
 }
 
-export type FuncBinding =
-  | Action
-  | Attribute
-  | Authentication
-  | CodeGeneration
-  | Qualification
-  | Management;
+export type FuncBinding = Action | Attribute | Authentication | CodeGeneration | Qualification | Management;
 
-export type LeafInputLocation =
-  | "code"
-  | "deletedAt"
-  | "domain"
-  | "resource"
-  | "secrets";
+export type LeafInputLocation = "code" | "deletedAt" | "domain" | "resource" | "secrets";
 
 export interface BindingWithBackendKind extends Attribute {
   backendKind: FuncBackendKind;
@@ -247,13 +230,13 @@ export interface PropDisplay {
   id: PropId;
   path: string;
   name: string;
+  // eslint-disable-next-line @typescript-eslint/no-duplicate-type-constituents
   value?: PropId | InputSocketId;
   attributePrototypeId?: AttributePrototypeId;
   funcId: FuncId;
 }
 
-export interface BindingWithBackendKindAndPropId
-  extends BindingWithBackendKind {
+export interface BindingWithBackendKindAndPropId extends BindingWithBackendKind {
   propId: NonNullable<PropId>;
 }
 
@@ -262,13 +245,13 @@ export interface IntrinsicDisplay {
   outputSocketId: OutputSocketId;
   socketName: string;
   backendKind: FuncBackendKind;
+  // eslint-disable-next-line @typescript-eslint/no-duplicate-type-constituents
   value: InputSocketId | PropId | undefined;
   funcId: FuncId;
 }
 
 // PSA: this is how to type guard filter so later operations know the field
 // is no longer nullable b/c the filter removed any objects where the property was null
-export interface BindingWithBackendKindAndOutputSocket
-  extends BindingWithBackendKind {
+export interface BindingWithBackendKindAndOutputSocket extends BindingWithBackendKind {
   outputSocketId: NonNullable<OutputSocketId>;
 }

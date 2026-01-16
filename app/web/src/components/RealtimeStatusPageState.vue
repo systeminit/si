@@ -11,19 +11,9 @@
       )
     "
   >
-    <Icon
-      name="alert-triangle-filled"
-      size="xs"
-      :class="themeClasses('text-warning-600', 'text-warning-400')"
-    />
+    <Icon name="alert-triangle-filled" size="xs" :class="themeClasses('text-warning-600', 'text-warning-400')" />
     System is currently {{ status }} -
-    <a
-      class="hover:underline"
-      href="https://status.systeminit.com"
-      target="_blank"
-    >
-      View status
-    </a>
+    <a class="hover:underline" href="https://status.systeminit.com" target="_blank"> View status </a>
   </div>
 </template>
 

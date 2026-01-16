@@ -15,9 +15,7 @@
     @click.right.prevent
   >
     <template #label>
-      <div
-        class="text-xs w-full truncate flex flex-row items-center gap-2xs h-[20px]"
-      >
+      <div class="text-xs w-full truncate flex flex-row items-center gap-2xs h-[20px]">
         <div class="truncate">
           {{ schemaVariantDisplayName(a) }}
           <template v-if="!a.canCreateNewComponents">
@@ -35,14 +33,7 @@
             tooltip="Contribute"
             tooltipPlacement="top"
           />
-          <Icon
-            v-if="canUpdate"
-            name="code-deployed"
-            size="xs"
-            tone="action"
-            tooltip="Update"
-            tooltipPlacement="top"
-          />
+          <Icon v-if="canUpdate" name="code-deployed" size="xs" tone="action" tooltip="Update" tooltipPlacement="top" />
         </div>
       </div>
     </template>
@@ -69,19 +60,12 @@ const moduleStore = useModuleStore();
 
 const { selectedSchemaVariants: selectedAssets } = storeToRefs(assetStore);
 
-const isSelected = computed(() =>
-  selectedAssets.value.includes(props.a.schemaVariantId),
-);
+const isSelected = computed(() => selectedAssets.value.includes(props.a.schemaVariantId));
 
-const canUpdate = computed(
-  () => !!moduleStore.upgradeableModules[props.a.schemaVariantId],
-);
+const canUpdate = computed(() => !!moduleStore.upgradeableModules[props.a.schemaVariantId]);
 
 const canContribute = computed(() => {
-  return (
-    moduleStore.contributableModules.includes(props.a.schemaVariantId) ||
-    props.a.canContribute
-  );
+  return moduleStore.contributableModules.includes(props.a.schemaVariantId) || props.a.canContribute;
 });
 
 const onClick = (e: MouseEvent) => {

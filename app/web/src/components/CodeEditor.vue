@@ -1,24 +1,11 @@
 <template>
   <div class="w-full h-full ph-no-capture">
     <div v-if="!noVim" class="absolute right-xs top-xs flex gap-xs">
-      <VButton
-        v-if="disabled"
-        class="pointer-events-none"
-        icon="read-only"
-        size="xs"
-        tone="warning"
-        variant="ghost"
-      >
+      <VButton v-if="disabled" class="pointer-events-none" icon="read-only" size="xs" tone="warning" variant="ghost">
         Read-only
       </VButton>
       <template v-else>
-        <VButton
-          v-if="canFormat"
-          label="Format"
-          size="xs"
-          tone="neutral"
-          @click="format"
-        />
+        <VButton v-if="canFormat" label="Format" size="xs" tone="neutral" @click="format" />
         <VButton
           v-tooltip="vimEnabled ? 'Disable Vim Mode' : 'Enable Vim Mode'"
           :tone="vimEnabled ? 'success' : 'neutral'"
@@ -37,14 +24,7 @@ import { onBeforeUnmount, computed, ref, watch } from "vue";
 import * as _ from "lodash-es";
 import { basicSetup, EditorView } from "codemirror";
 import { Compartment, EditorState, StateEffect } from "@codemirror/state";
-import {
-  ViewUpdate,
-  keymap,
-  hoverTooltip,
-  Tooltip,
-  showTooltip,
-  getTooltip,
-} from "@codemirror/view";
+import { ViewUpdate, keymap, hoverTooltip, Tooltip, showTooltip, getTooltip } from "@codemirror/view";
 import { indentWithTab, historyField } from "@codemirror/commands";
 import { githubLight } from "@fsegurai/codemirror-theme-github-light";
 import { githubDark } from "@fsegurai/codemirror-theme-github-dark";
@@ -61,10 +41,7 @@ import { WebsocketProvider } from "y-websocket";
 import { yCollab, yUndoManagerKeymap } from "yjs-codemirror-plugin";
 import { useAuthStore } from "@/store/auth.store";
 import { useChangeSetsStore } from "@/store/change_sets.store";
-import {
-  createTypescriptSource,
-  GetTooltipFromPos,
-} from "@/utils/typescriptLinter";
+import { createTypescriptSource, GetTooltipFromPos } from "@/utils/typescriptLinter";
 
 const props = defineProps({
   id: String,
@@ -108,11 +85,7 @@ function getCursorInfo(state: EditorState) {
   };
 }
 
-function setCursorPosition(
-  view: EditorView,
-  lineNumber: number,
-  column: number,
-) {
+function setCursorPosition(view: EditorView, lineNumber: number, column: number) {
   const line = view.state.doc.line(lineNumber);
   const position = Math.min(line.from + column, line.to);
 
@@ -135,11 +108,7 @@ const format = (): boolean => {
     if (text !== view.state.doc.toString()) {
       yText.delete(0, yText.length);
       yText.insert(0, text);
-      setCursorPosition(
-        view,
-        preFormatPosition.lineNumber,
-        preFormatPosition.column,
-      );
+      setCursorPosition(view, preFormatPosition.lineNumber, preFormatPosition.column);
     }
   }
   return true;
@@ -157,14 +126,8 @@ function onEditorValueUpdated(update: ViewUpdate) {
 
   const serializedState = update.view.state.toJSON({ history: historyField });
   if (serializedState.history) {
-    serializedState.history.done.splice(
-      0,
-      Math.max(serializedState.history.done.length - 50, 0),
-    );
-    serializedState.history.undone.splice(
-      0,
-      Math.max(serializedState.history.undone.length - 50, 0),
-    );
+    serializedState.history.done.splice(0, Math.max(serializedState.history.done.length - 50, 0));
+    serializedState.history.undone.splice(0, Math.max(serializedState.history.undone.length - 50, 0));
     window.localStorage.setItem(
       localStorageHistoryBufferKey.value,
       JSON.stringify({
@@ -189,9 +152,7 @@ const yCompartment = new Compartment();
 
 // Theme / style ///////////////////////////////////////////////////////////////////////////////////////////
 const { theme: appTheme } = useTheme();
-const codeMirrorTheme = computed(() =>
-  appTheme.value === "dark" ? githubDark : githubLight,
-);
+const codeMirrorTheme = computed(() => (appTheme.value === "dark" ? githubDark : githubLight));
 
 const styleExtension = computed(() => {
   const activeLineHighlight = appTheme.value === "dark" ? "#2d333b" : "#f6f8fa";
@@ -262,9 +223,7 @@ watch(codeMirrorTheme, () => {
 
 // VIM MODE ////////////////////////////////////////////////////////////////////////////////////////
 const VIM_MODE_STORAGE_KEY = "SI:VIM_MODE";
-const vimEnabled = ref(
-  !props.noVim && storage.getItem(VIM_MODE_STORAGE_KEY) === "true",
-);
+const vimEnabled = ref(!props.noVim && storage.getItem(VIM_MODE_STORAGE_KEY) === "true");
 watch(vimEnabled, (useVim) => {
   storage.setItem(VIM_MODE_STORAGE_KEY, useVim ? "true" : "false");
   view.dispatch({
@@ -290,9 +249,7 @@ const codeTooltip = {
   update() {
     this.currentTooltip = GetTooltipFromPos(view.state.selection.main.head);
     view.dispatch({
-      effects: [
-        StateEffect.appendConfig.of(showTooltip.of(this.currentTooltip)),
-      ],
+      effects: [StateEffect.appendConfig.of(showTooltip.of(this.currentTooltip))],
     });
   },
   toggle() {
@@ -318,23 +275,13 @@ const mountEditor = async () => {
 
   if (props.typescript) {
     if (!props.noLint) {
-      const {
-        lintSource,
-        autocomplete,
-        hoverTooltipSource,
-        removeTooltipOnUpdateSource,
-      } = await createTypescriptSource(props.typescript);
+      const { lintSource, autocomplete, hoverTooltipSource, removeTooltipOnUpdateSource } =
+        await createTypescriptSource(props.typescript);
 
       extensions.push(autocompleteCompartment.of(autocomplete));
       extensions.push(lintCompartment.of(linter(lintSource)));
-      extensions.push(
-        hoverTooltipCompartment.of(hoverTooltip(hoverTooltipSource)),
-      );
-      extensions.push(
-        removeTooltipOnUpdateCompartment.of(
-          removeTooltipOnUpdateSource(codeTooltip),
-        ),
-      );
+      extensions.push(hoverTooltipCompartment.of(hoverTooltip(hoverTooltipSource)));
+      extensions.push(removeTooltipOnUpdateCompartment.of(removeTooltipOnUpdateSource(codeTooltip)));
       extensions.push(lintGutter());
     }
     extensions.push(language.of(CodemirrorJsLang()));
@@ -415,8 +362,7 @@ const mountEditor = async () => {
       const json = window.localStorage.getItem(key);
       if (!json) continue;
       const obj = JSON.parse(json);
-      const millisSince =
-        new Date().getTime() - new Date(obj.timestamp).getTime();
+      const millisSince = new Date().getTime() - new Date(obj.timestamp).getTime();
       const weekInMillis = 7 * 24 * 60 * 1000;
       if (millisSince > weekInMillis) {
         window.localStorage.removeItem(key);

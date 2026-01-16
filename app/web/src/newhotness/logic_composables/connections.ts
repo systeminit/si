@@ -1,17 +1,8 @@
 import { computed, inject, ref } from "vue";
 import { useQuery } from "@tanstack/vue-query";
 import { ComponentId } from "@/api/sdf/dal/component";
-import {
-  Connection,
-  EntityKind,
-  IncomingConnections,
-} from "@/workers/types/entity_kind_types";
-import {
-  bifrost,
-  getOutgoingConnections,
-  useMakeArgs,
-  useMakeKey,
-} from "@/store/realtime/heimdall";
+import { Connection, EntityKind, IncomingConnections } from "@/workers/types/entity_kind_types";
+import { bifrost, getOutgoingConnections, useMakeArgs, useMakeKey } from "@/store/realtime/heimdall";
 import { assertIsDefined, Context } from "../types";
 import { SimpleConnection } from "../layout_components/ConnectionLayout.vue";
 
@@ -33,15 +24,11 @@ export const useConnections = () => {
   const incomingQuery = useQuery<IncomingConnections | null>({
     enabled: () => enableLookup.value && id.value !== "",
     queryKey: key(EntityKind.IncomingConnections, id),
-    queryFn: async () =>
-      await bifrost<IncomingConnections>(
-        args(EntityKind.IncomingConnections, id.value),
-      ),
+    queryFn: async () => await bifrost<IncomingConnections>(args(EntityKind.IncomingConnections, id.value)),
   });
   const allOutgoingQuery = useQuery({
     queryKey: key(EntityKind.OutgoingConnections),
-    queryFn: async () =>
-      await getOutgoingConnections(args(EntityKind.OutgoingConnections)),
+    queryFn: async () => await getOutgoingConnections(args(EntityKind.OutgoingConnections)),
   });
 
   return (componentId: ComponentId, connections?: IncomingConnections) => {
@@ -74,49 +61,45 @@ export const useConnections = () => {
         return Object.values(mine);
       });
 
-      const incoming: SimpleConnection[] = incomingConnections.value.map(
-        (conn) => {
-          if (conn.kind === "management") {
-            // FIXME(nick,jobelenus): we should split the connection type into two now that
-            // management connections have their own MV.
-            return {
-              key: `mgmt-${conn.toComponentId}-${conn.fromComponentId}`,
-              componentId: conn.fromComponentId,
-              self: "Management",
-              other: "-",
-            };
-          } else {
-            return {
-              key: `${conn.toAttributeValueId}-${conn.toComponentId}-${conn.fromComponentId}-${conn.fromAttributeValueId}`,
-              componentId: conn.fromComponentId,
-              self: conn.toAttributeValuePath,
-              other: conn.fromAttributeValuePath,
-            };
-          }
-        },
-      );
+      const incoming: SimpleConnection[] = incomingConnections.value.map((conn) => {
+        if (conn.kind === "management") {
+          // FIXME(nick,jobelenus): we should split the connection type into two now that
+          // management connections have their own MV.
+          return {
+            key: `mgmt-${conn.toComponentId}-${conn.fromComponentId}`,
+            componentId: conn.fromComponentId,
+            self: "Management",
+            other: "-",
+          };
+        } else {
+          return {
+            key: `${conn.toAttributeValueId}-${conn.toComponentId}-${conn.fromComponentId}-${conn.fromAttributeValueId}`,
+            componentId: conn.fromComponentId,
+            self: conn.toAttributeValuePath,
+            other: conn.fromAttributeValuePath,
+          };
+        }
+      });
 
-      const outgoing: SimpleConnection[] = outgoingConnections.value.map(
-        (conn) => {
-          if (conn.kind === "management") {
-            // FIXME(nick,jobelenus): we should split the connection type into two now that
-            // management connections have their own MV.
-            return {
-              key: `mgmt-${conn.toComponentId}-${conn.fromComponentId}`,
-              componentId: conn.fromComponentId,
-              self: "Management",
-              other: "-",
-            };
-          } else {
-            return {
-              key: `${conn.toAttributeValueId}-${conn.toComponentId}-${conn.fromComponentId}-${conn.fromAttributeValueId}`,
-              componentId: conn.fromComponentId,
-              self: conn.toAttributeValuePath,
-              other: conn.fromAttributeValuePath,
-            };
-          }
-        },
-      );
+      const outgoing: SimpleConnection[] = outgoingConnections.value.map((conn) => {
+        if (conn.kind === "management") {
+          // FIXME(nick,jobelenus): we should split the connection type into two now that
+          // management connections have their own MV.
+          return {
+            key: `mgmt-${conn.toComponentId}-${conn.fromComponentId}`,
+            componentId: conn.fromComponentId,
+            self: "Management",
+            other: "-",
+          };
+        } else {
+          return {
+            key: `${conn.toAttributeValueId}-${conn.toComponentId}-${conn.fromComponentId}-${conn.fromAttributeValueId}`,
+            componentId: conn.fromComponentId,
+            self: conn.toAttributeValuePath,
+            other: conn.fromAttributeValuePath,
+          };
+        }
+      });
 
       return { incoming, outgoing };
     });

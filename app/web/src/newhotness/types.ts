@@ -1,19 +1,10 @@
 import { ComputedRef, Reactive, Ref } from "vue";
 import { User } from "@/api/sdf/dal/user";
 import { ComponentId } from "@/api/sdf/dal/component";
-import {
-  ComponentDetails,
-  ComponentInList,
-  SchemaMembers,
-} from "@/workers/types/entity_kind_types";
+import { ComponentDetails, ComponentInList, SchemaMembers } from "@/workers/types/entity_kind_types";
 import { SchemaId } from "@/api/sdf/dal/schema";
 import { ChangeSet, ChangeSetId } from "@/api/sdf/dal/change_set";
-import {
-  ActionId,
-  ActionKind,
-  ActionPrototypeId,
-  ActionState,
-} from "@/api/sdf/dal/action";
+import { ActionId, ActionKind, ActionPrototypeId, ActionState } from "@/api/sdf/dal/action";
 import { FuncRunId } from "./api_composables/func_run";
 
 // === IDs ===
@@ -101,9 +92,7 @@ export interface ExploreContext {
   focusedComponent: ComputedRef<ComponentInList | undefined>;
   componentsHaveActionsWithState: ComputedRef<ComponentsHaveActionsWithState>;
   selectedComponentIndexes: Reactive<Set<number>>;
-  componentsPendingActionNames: ComputedRef<
-    Map<ComponentId, Record<string, { count: number; hasFailed: boolean }>>
-  >;
+  componentsPendingActionNames: ComputedRef<Map<ComponentId, Record<string, { count: number; hasFailed: boolean }>>>;
   allVisibleComponents: ComputedRef<ComponentInList[]>;
   hasMultipleSections: ComputedRef<boolean>;
   focusedComponentRef: Ref<HTMLElement | undefined>;

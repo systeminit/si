@@ -32,22 +32,15 @@
               )
             "
           >
-            <SiLogo
-              class="block h-[30px] w-[30px] ml-[12px] mr-[12px] flex-none"
-            />
+            <SiLogo class="block h-[30px] w-[30px] ml-[12px] mr-[12px] flex-none" />
             CHOOSE A WORKSPACE
           </h1>
           <div class="h-[48px] shrink basis-0">
             <InstructiveVormInput
               :class="clsx('cursor-text')"
-              :activeClasses="
-                themeClasses('border-action-500', 'border-action-300')
-              "
+              :activeClasses="themeClasses('border-action-500', 'border-action-300')"
               :inactiveClasses="
-                themeClasses(
-                  'border-neutral-400 hover:border-black',
-                  'border-neutral-600 hover:border-white',
-                )
+                themeClasses('border-neutral-400 hover:border-black', 'border-neutral-600 hover:border-white')
               "
               @click="searchRef?.focus()"
             >
@@ -106,13 +99,8 @@
             </li>
           </ul>
         </template>
-        <p v-else-if="workspacesReqStatus.isError">
-          Error loading workspaces, please try again.
-        </p>
-        <DelayedLoader
-          v-else-if="workspacesReqStatus.isPending"
-          :size="'full'"
-        />
+        <p v-else-if="workspacesReqStatus.isError">Error loading workspaces, please try again.</p>
+        <DelayedLoader v-else-if="workspacesReqStatus.isPending" :size="'full'" />
       </div>
 
       <NewButton
@@ -126,15 +114,7 @@
 </template>
 
 <script setup lang="ts">
-import {
-  computed,
-  nextTick,
-  onBeforeMount,
-  onBeforeUnmount,
-  onMounted,
-  ref,
-  watch,
-} from "vue";
+import { computed, nextTick, onBeforeMount, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import clsx from "clsx";
 import SiLogo from "@si/vue-lib/brand-assets/si-logo-symbol.svg?component";
@@ -154,10 +134,7 @@ import { AuthApiWorkspace } from "@/newhotness/types";
 import InstructiveVormInput from "@/newhotness/layout_components/InstructiveVormInput.vue";
 import DelayedLoader from "@/newhotness/layout_components/DelayedLoader.vue";
 import { useFeatureFlagsStore } from "@/store/feature_flags.store";
-import {
-  keyEmitter,
-  startKeyEmitter,
-} from "@/newhotness/logic_composables/emitters";
+import { keyEmitter, startKeyEmitter } from "@/newhotness/logic_composables/emitters";
 
 const router = useRouter();
 const route = useRoute();
@@ -178,8 +155,7 @@ const filteredWorkspaces = computed(() => {
 });
 
 const pickLast = () => {
-  selectedWorkspaceId.value =
-    filteredWorkspaces.value[filteredWorkspaces.value.length - 1]?.id || "";
+  selectedWorkspaceId.value = filteredWorkspaces.value[filteredWorkspaces.value.length - 1]?.id || "";
   scrollToSelected();
 };
 const pickFirst = () => {
@@ -226,9 +202,7 @@ const up = () => {
 
 const enter = () => {
   if (!selectedWorkspaceId.value) return;
-  const w = filteredWorkspaces.value.find(
-    (w) => w.id === selectedWorkspaceId.value,
-  );
+  const w = filteredWorkspaces.value.find((w) => w.id === selectedWorkspaceId.value);
   if (!w) return;
   goto(w);
 };
@@ -288,13 +262,9 @@ const redirecting = ref(true);
 
 const workspacesStore = useWorkspacesStore();
 
-const workspacesReqStatus = workspacesStore.getRequestStatus(
-  "FETCH_USER_WORKSPACES",
-);
+const workspacesReqStatus = workspacesStore.getRequestStatus("FETCH_USER_WORKSPACES");
 
-const show = computed(
-  () => workspacesReqStatus.value.completed && !redirecting.value,
-);
+const show = computed(() => workspacesReqStatus.value.completed && !redirecting.value);
 
 async function autoSelectWorkspace() {
   const redirectPath = route.query.redirect as string;

@@ -14,12 +14,7 @@ export interface Breadcrumb {
 
 export const breadcrumbs = reactive<Breadcrumb[]>([]);
 
-export const push = (
-  url: string,
-  name: string,
-  params: params,
-  query: query,
-) => {
+export const push = (url: string, name: string, params: params, query: query) => {
   const prev = breadcrumbs[breadcrumbs.length - 1];
   const data = { url, name, params, query };
   if (!prev) breadcrumbs.push(data);

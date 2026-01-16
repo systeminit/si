@@ -63,10 +63,7 @@ export const usePresenceStore = () => {
         x: null as number | null,
         y: null as number | null,
         diagramCursorsByUserId: {} as Record<UserId, RawDiagramCursor>,
-        usersById: {} as Record<
-          UserId,
-          OnlineUser & { lastOnlineAt: Date; lastActiveAt: Date }
-        >,
+        usersById: {} as Record<UserId, OnlineUser & { lastOnlineAt: Date; lastActiveAt: Date }>,
         now: new Date(),
         lastSeenAt: new Date(),
         leftDrawerOpen: false,
@@ -78,10 +75,7 @@ export const usePresenceStore = () => {
           return _.values(this.usersById);
         },
         usersInChangeSet(): OnlineUser[] {
-          return _.filter(
-            this.users,
-            (u) => u.changeSetId === changeSetsStore.selectedChangeSetId,
-          );
+          return _.filter(this.users, (u) => u.changeSetId === changeSetsStore.selectedChangeSetId);
         },
         diagramCursors: (state): DiagramCursorDef[] => {
           return _.filter(
@@ -97,16 +91,13 @@ export const usePresenceStore = () => {
               return (
                 cursor.x !== null &&
                 cursor.y !== null &&
-                state.usersById[cursor.userId]?.changeSetId ===
-                  changeSetsStore.selectedChangeSetId &&
-                state.usersById[cursor.userId]?.viewId ===
-                  viewStore.selectedViewId
+                state.usersById[cursor.userId]?.changeSetId === changeSetsStore.selectedChangeSetId &&
+                state.usersById[cursor.userId]?.viewId === viewStore.selectedViewId
               );
             },
           );
         },
-        isIdle: (state) =>
-          state.now.getTime() - state.lastSeenAt.getTime() > IDLE_EXPIRATION,
+        isIdle: (state) => state.now.getTime() - state.lastSeenAt.getTime() > IDLE_EXPIRATION,
       },
       actions: {
         getUserColor() {
@@ -139,25 +130,22 @@ export const usePresenceStore = () => {
             },
           });
         },
-        websocketSendCursor: _.debounce(
-          (x: number | null, y: number | null) => {
-            if (!authStore.user) return;
-            realtimeStore.sendMessage({
-              kind: "Cursor",
-              data: {
-                userName: authStore.user.name,
-                userPk: authStore.user.pk,
-                changeSetId: changeSetsStore.selectedChangeSetId ?? null,
-                viewId: viewStore.selectedViewId ?? null,
-                container: null,
-                containerKey: null,
-                x: x !== null ? x.toString() : null,
-                y: y !== null ? y.toString() : null,
-              },
-            });
-          },
-          MOUSE_REFRESH_RATE,
-        ),
+        websocketSendCursor: _.debounce((x: number | null, y: number | null) => {
+          if (!authStore.user) return;
+          realtimeStore.sendMessage({
+            kind: "Cursor",
+            data: {
+              userName: authStore.user.name,
+              userPk: authStore.user.pk,
+              changeSetId: changeSetsStore.selectedChangeSetId ?? null,
+              viewId: viewStore.selectedViewId ?? null,
+              container: null,
+              containerKey: null,
+              x: x !== null ? x.toString() : null,
+              y: y !== null ? y.toString() : null,
+            },
+          });
+        }, MOUSE_REFRESH_RATE),
         sendCursor() {
           this.websocketSendCursor(this.x, this.y);
         },
@@ -173,24 +161,16 @@ export const usePresenceStore = () => {
           // Remove users whose Online ping is too old
           this.usersById = _.pickBy(
             this.usersById,
-            (user) =>
-              new Date().getTime() - user.lastOnlineAt.getTime() <
-              ONLINE_EXPIRATION,
+            (user) => new Date().getTime() - user.lastOnlineAt.getTime() < ONLINE_EXPIRATION,
           );
         }, ONLINE_PING_RATE);
 
-        watch(
-          [() => changeSetsStore.selectedChangeSetId, () => this.isIdle],
-          () => {
-            viewStore = useViewsStore(changeSetsStore.selectedChangeSetId);
-            this.sendOnline();
-          },
-        );
+        watch([() => changeSetsStore.selectedChangeSetId, () => this.isIdle], () => {
+          viewStore = useViewsStore(changeSetsStore.selectedChangeSetId);
+          this.sendOnline();
+        });
 
-        watch(
-          [() => viewStore.selectedViewId, () => this.isIdle],
-          this.sendOnline,
-        );
+        watch([() => viewStore.selectedViewId, () => this.isIdle], this.sendOnline);
 
         const timeUpdate = setInterval(() => {
           this.now = new Date();
@@ -201,63 +181,55 @@ export const usePresenceStore = () => {
           () => changeSetsStore.selectedChangeSetId,
           (newChangeSetId) => {
             realtimeStore.unsubscribe(`${this.$id}-changeset`);
-            realtimeStore.subscribe(
-              `${this.$id}-changeset`,
-              `changeset/${newChangeSetId}`,
-              [
-                {
-                  eventType: "Cursor",
-                  callback: (payload) => {
-                    if (payload.userPk === authStore.user?.pk) return;
+            realtimeStore.subscribe(`${this.$id}-changeset`, `changeset/${newChangeSetId}`, [
+              {
+                eventType: "Cursor",
+                callback: (payload) => {
+                  if (payload.userPk === authStore.user?.pk) return;
 
-                    /* eslint-disable no-empty */
-                    try {
-                      this.diagramCursorsByUserId[payload.userPk] = {
-                        changeSetId: payload.changeSetId,
-                        viewId: payload.viewId,
-                        x: payload.x !== null ? parseInt(payload.x) : null,
-                        y: payload.y !== null ? parseInt(payload.y) : null,
-                        timestamp: new Date(),
-                      };
-                      // Triggers watchers of cursors
-                      this.diagramCursorsByUserId = {
-                        ...this.diagramCursorsByUserId,
-                      };
-                    } catch {}
-                  },
+                  /* eslint-disable no-empty */
+                  try {
+                    this.diagramCursorsByUserId[payload.userPk] = {
+                      changeSetId: payload.changeSetId,
+                      viewId: payload.viewId,
+                      x: payload.x !== null ? parseInt(payload.x) : null,
+                      y: payload.y !== null ? parseInt(payload.y) : null,
+                      timestamp: new Date(),
+                    };
+                    // Triggers watchers of cursors
+                    this.diagramCursorsByUserId = {
+                      ...this.diagramCursorsByUserId,
+                    };
+                  } catch {}
                 },
-              ],
-            );
+              },
+            ]);
           },
         );
 
         // This subscribes to events which are for your whole workspace
-        realtimeStore.subscribe(
-          `${this.$id}-workspace`,
-          `workspace/${workspaceId}`,
-          [
-            {
-              eventType: "Online",
-              callback: (payload) => {
-                if (payload.userPk === authStore.user?.pk) return;
-                const needsColor = !this.usersById[payload.userPk];
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                this.usersById[payload.userPk] ||= {} as any;
-                _.assign(this.usersById[payload.userPk], {
-                  pk: payload.userPk,
-                  ..._.pick(payload, "name", "idle", "pictureUrl"),
-                  viewId: payload.viewId,
-                  changeSetId: payload.changeSetId,
-                  lastOnlineAt: new Date(),
-                  ...(!payload.idle && { lastActiveAt: new Date() }),
-                  ...(needsColor && {
-                    color: this.getUserColor(),
-                  }),
-                });
-              },
+        realtimeStore.subscribe(`${this.$id}-workspace`, `workspace/${workspaceId}`, [
+          {
+            eventType: "Online",
+            callback: (payload) => {
+              if (payload.userPk === authStore.user?.pk) return;
+              const needsColor = !this.usersById[payload.userPk];
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              this.usersById[payload.userPk] ||= {} as any;
+              _.assign(this.usersById[payload.userPk], {
+                pk: payload.userPk,
+                ..._.pick(payload, "name", "idle", "pictureUrl"),
+                viewId: payload.viewId,
+                changeSetId: payload.changeSetId,
+                lastOnlineAt: new Date(),
+                ...(!payload.idle && { lastActiveAt: new Date() }),
+                ...(needsColor && {
+                  color: this.getUserColor(),
+                }),
+              });
             },
-          ],
-        );
+          },
+        ]);
 
         window.addEventListener("mousedown", this.updateLastSeen);
         window.addEventListener("mousemove", this.updateLastSeen);

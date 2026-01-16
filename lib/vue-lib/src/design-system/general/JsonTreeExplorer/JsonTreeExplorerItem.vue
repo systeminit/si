@@ -121,7 +121,7 @@ const canHaveChildren = computed(() => {
 
 const valueUrl = computed(() => {
   if (!_.isString(props.value)) return null;
-  if ((props.value as string).match(/https?:\/\//)) {
+  if ((props.value).match(/https?:\/\//)) {
     // TODO: smarter handling - add http if it looks like a url without it
     return props.value;
     // } else if (this.value.match(EMAIL_REGEX)) {

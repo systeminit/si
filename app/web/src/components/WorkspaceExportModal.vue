@@ -1,10 +1,5 @@
 <template>
-  <Modal
-    ref="modalRef"
-    title="Export Workspace"
-    size="lg"
-    @closeComplete="closeHandler"
-  >
+  <Modal ref="modalRef" title="Export Workspace" size="lg" @closeComplete="closeHandler">
     <Stack>
       <template v-if="moduleStore.exportingWorkspaceOperationRunning">
         <p class="flex gap-1 items-center">
@@ -21,10 +16,7 @@
       <template v-else-if="moduleStore.exportingWorkspaceOperationId">
         <template v-if="moduleStore.exportingWorkspaceOperationError">
           <p class="flex gap-1 items-center">
-            <Icon
-              name="x"
-              class="text-destructive-500 dark:text-destructive-600"
-            />
+            <Icon name="x" class="text-destructive-500 dark:text-destructive-600" />
 
             Export Failed!
           </p>
@@ -41,15 +33,13 @@
           </p>
         </template>
 
-        <VButton icon="refresh" @click="moduleStore.resetExportWorkspaceStatus">
-          Export Again
-        </VButton>
+        <VButton icon="refresh" @click="moduleStore.resetExportWorkspaceStatus"> Export Again </VButton>
       </template>
 
       <template v-else>
         <p>
-          You are about to export this workspace to the cloud. You will then be
-          able to import it on this or another running instance of SI.
+          You are about to export this workspace to the cloud. You will then be able to import it on this or another
+          running instance of SI.
         </p>
 
         <p>Click the button below to continue:</p>
@@ -69,14 +59,7 @@
 </template>
 
 <script setup lang="ts">
-import {
-  ErrorMessage,
-  Icon,
-  Modal,
-  Stack,
-  useModal,
-  VButton,
-} from "@si/vue-lib/design-system";
+import { ErrorMessage, Icon, Modal, Stack, useModal, VButton } from "@si/vue-lib/design-system";
 import { ref } from "vue";
 import { useModuleStore } from "@/store/module.store";
 

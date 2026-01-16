@@ -3,8 +3,8 @@
     <Stack>
       <RichText>
         <p>
-          Looks like you are running an out of date version of this web app. To
-          continue working, please refresh your browser.
+          Looks like you are running an out of date version of this web app. To continue working, please refresh your
+          browser.
         </p>
       </RichText>
       <VButton icon="refresh" @click="reloadBrowser">Refresh</VButton>
@@ -41,9 +41,7 @@ cachedAppEmitter.on(SHOW_CACHED_APP_NOTIFICATION_EVENT, () => {
 });
 
 async function check() {
-  const manifestUrl = `${
-    window.location.origin
-  }/manifest.json?timestamp=${Date.now()}`;
+  const manifestUrl = `${window.location.origin}/manifest.json?timestamp=${Date.now()}`;
 
   try {
     const res = await axios(manifestUrl, {
@@ -83,7 +81,7 @@ function stopInterval() {
 }
 onMounted(() => {
   if (import.meta.env.SSR) return;
-  // eslint-disable-next-line @typescript-eslint/no-floating-promises
+
   check();
   intervalId = window.setInterval(check, 30 * 1000);
 });

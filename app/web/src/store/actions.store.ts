@@ -18,12 +18,7 @@ import {
 import { useChangeSetsStore } from "./change_sets.store";
 import { useRealtimeStore } from "./realtime/realtime.store";
 
-export type DeprecatedActionStatus =
-  | "success"
-  | "failure"
-  | "running"
-  | "error"
-  | "unstarted";
+export type DeprecatedActionStatus = "success" | "failure" | "running" | "error" | "unstarted";
 
 export type DeprecatedActionRunnerId = string;
 export type DeprecatedActionRunner = {
@@ -162,270 +157,250 @@ export const useActionsStore = () => {
   return addStoreHooks(
     workspaceId,
     changeSetId,
-    defineStore(
-      `ws${workspaceId || "NONE"}/cs${changeSetId || "NONE"}/actions`,
-      {
-        state: () => ({
-          // used in the right rail when looking at a specific asset
-          rawActionsByComponentId: {} as Record<ComponentId, ActionPrototype[]>,
-          actions: [] as ActionProposedView[],
-          actionHistory: [] as ActionHistoryView[],
-        }),
-        getters: {
-          actionsAreInProgress(): boolean {
-            return (this.countActionsByState?.[ActionState.Running] || 0) > 0;
-          },
-          countActionsByState(): Record<string, number> {
-            const counts = new DefaultMap<string, number>(() => 0);
-            for (const action of this.proposedActions) {
-              counts.set(action.state, counts.get(action.kind) + 1);
-            }
-            return Object.fromEntries(counts);
-          },
-          countActionsByKind(): Record<string, number> {
-            const counts = new DefaultMap<string, number>(() => 0);
-            for (const action of this.proposedActions) {
-              counts.set(action.kind, counts.get(action.kind) + 1);
-            }
-            return Object.fromEntries(counts);
-          },
-          proposedActions(state): ActionProposedView[] {
-            if (changeSetsStore.headSelected)
-              return Object.values(state.actions);
-
-            return Object.values(state.actions).filter(
-              (av) => av.originatingChangeSetId === changeSetId,
-            );
-          },
-          headActions(state): ActionProposedView[] {
-            return Object.values(state.actions).filter(
-              (av) => av.originatingChangeSetId !== changeSetId,
-            );
-          },
-          historyActions(): ActionHistoryView[] {
-            return this.actionHistory;
-          },
-          historyActionsById(): Map<ActionId, ActionHistoryView> {
-            const m = new Map();
-            for (const a of this.historyActions) {
-              m.set(a.id, a);
-            }
-            return m;
-          },
-          historyActionsByFuncRunId(): Map<FuncRunId, ActionHistoryView> {
-            const m = new Map();
-            for (const a of this.historyActions) {
-              m.set(a.funcRunId, a);
-            }
-            return m;
-          },
-          historyActionsGrouped(): Map<
-            ChangeSetDetail,
-            Array<ActionHistoryView>
-          > {
-            // display actions, in order, and if the action is from a different change set than the previous action display the header
-            const r = new DefaultMap<ChangeSetDetail, Array<ActionHistoryView>>(
-              () => [],
-            );
-            let last: ChangeSetDetail | undefined;
-            for (const action of this.actionHistory) {
-              // this creates the desired header behavior above
-              if (action.originatingChangeSetId !== last?.changeSetId) {
-                last = {
-                  changeSetId: action.originatingChangeSetId,
-                  changeSetName: action.originatingChangeSetName,
-                } as ChangeSetDetail;
-              }
-              // always check for the newest timestamp
-              const u = new Date(action.updatedAt);
-              if (!last.timestamp || last.timestamp < u) last.timestamp = u;
-
-              const arr = r.get(last);
-              arr.push(action);
-              r.set(last, arr);
-            }
-            return r;
-          },
-          listActionsByComponentId(
-            state,
-          ): DefaultMap<ComponentId, Array<ActionProposedView>> {
-            const d = new DefaultMap<ComponentId, Array<ActionProposedView>>(
-              () => [],
-            );
-            state.actions.forEach((a) => {
-              const componentId = a.componentId as ComponentId | null;
-              if (componentId) {
-                const arr = d.get(componentId);
-                arr.push(a);
-                d.set(componentId, arr);
-              }
-            });
-            return d;
-          },
-          actionsById(state): Map<ActionId, ActionView> {
-            const m = new Map();
-            for (const a of state.actions) {
-              m.set(a.id, a);
-            }
-            return m;
-          },
+    defineStore(`ws${workspaceId || "NONE"}/cs${changeSetId || "NONE"}/actions`, {
+      state: () => ({
+        // used in the right rail when looking at a specific asset
+        rawActionsByComponentId: {} as Record<ComponentId, ActionPrototype[]>,
+        actions: [] as ActionProposedView[],
+        actionHistory: [] as ActionHistoryView[],
+      }),
+      getters: {
+        actionsAreInProgress(): boolean {
+          return (this.countActionsByState?.[ActionState.Running] || 0) > 0;
         },
-        actions: {
-          async ADD_ACTION(
-            componentId: ComponentId,
-            actionPrototypeId: ActionPrototypeId,
-          ) {
-            return new ApiRequest({
-              method: "post",
-              url: "change_set/add_action",
-              keyRequestStatusBy: [componentId, actionPrototypeId],
-              params: {
-                prototypeId: actionPrototypeId,
-                componentId,
-                visibility_change_set_pk: changeSetId,
-              },
-            });
-          },
-          // This is proposed/queued actions
-          async LOAD_ACTIONS() {
-            return new ApiRequest<Array<ActionProposedView>>({
-              url: "/action/list",
-              headers: { accept: "application/json" },
-              params: {
-                visibility_change_set_pk: changeSetId,
-              },
-              onSuccess: (response) => {
-                this.actions = response;
-              },
-            });
-          },
-          async LOAD_ACTION_HISTORY() {
-            return new ApiRequest<Array<ActionHistoryView>>({
-              url: "/action/history",
-              headers: { accept: "application/json" },
-              params: {
-                visibility_change_set_pk: changeSetId,
-              },
-              onSuccess: (response) => {
-                this.actionHistory = response;
-              },
-            });
-          },
-          async PUT_ACTION_ON_HOLD(ids: ActionId[]) {
-            return new ApiRequest<null>({
-              method: "post",
-              url: "action/put_on_hold",
-              keyRequestStatusBy: ids,
-              params: {
-                ids,
-                visibility_change_set_pk: changeSetId,
-              },
-              optimistic: () => {
-                const held = {} as Record<string, string>;
-                this.actions.forEach((a) => {
-                  if (ids.includes(a.id)) {
-                    held[a.id] = a.state;
-                    a.state = ActionState.OnHold;
-                  }
-                });
-
-                return () => {
-                  for (const id of Object.keys(held)) {
-                    const a = this.actions.filter((a) => a.id === id).pop();
-                    const state = held[id] as ActionState;
-                    if (a && state) a.state = state;
-                  }
-                };
-              },
-            });
-          },
-          async CANCEL(ids: ActionId[]) {
-            return new ApiRequest<null>({
-              method: "post",
-              url: "action/cancel",
-              keyRequestStatusBy: ids,
-              params: {
-                ids,
-                visibility_change_set_pk: changeSetId,
-              },
-              optimistic: () => {
-                const removed = [] as ActionProposedView[];
-                this.actions.forEach((a, idx) => {
-                  if (a && ids.includes(a.id)) {
-                    removed[idx] = a;
-                    delete this.actions[idx];
-                  }
-                });
-
-                return () => {
-                  removed.forEach((a, idx) => {
-                    this.actions.splice(idx, 0, a);
-                  });
-                };
-              },
-            });
-          },
-          async RETRY(ids: ActionId[]) {
-            return new ApiRequest<null>({
-              method: "post",
-              url: "action/retry",
-              keyRequestStatusBy: ids,
-              params: {
-                ids,
-                visibility_change_set_pk: changeSetId,
-              },
-              optimistic: () => {
-                for (const a of this.actions) {
-                  if (ids.includes(a.id)) {
-                    // its either moving from failed or hold to queued
-                    // if its failed it will go queued and start running
-                    a.state = ActionState.Queued;
-                  }
-                }
-              },
-            });
-          },
-
-          registerRequestsBegin(requestUlid: string, actionName: string) {
-            realtimeStore.inflightRequests.set(requestUlid, actionName);
-          },
-          registerRequestsEnd(requestUlid: string) {
-            realtimeStore.inflightRequests.delete(requestUlid);
-          },
+        countActionsByState(): Record<string, number> {
+          const counts = new DefaultMap<string, number>(() => 0);
+          for (const action of this.proposedActions) {
+            counts.set(action.state, counts.get(action.kind) + 1);
+          }
+          return Object.fromEntries(counts);
         },
-        onActivated() {
-          realtimeStore.subscribe(this.$id, `changeset/${changeSetId}`, [
-            {
-              eventType: "ActionsListUpdated",
-              callback: () => {
-                this.LOAD_ACTIONS();
-                this.LOAD_ACTION_HISTORY();
-              },
-            },
-            {
-              eventType: "ChangeSetWritten",
-              callback: () => {
-                this.LOAD_ACTIONS();
-              },
-            },
-            {
-              eventType: "ChangeSetApplied",
-              callback: (_update) => {
-                this.LOAD_ACTIONS();
-                // Short term fix for reactivity issue on apply, since the
-                // first load won't have the actions since the rebaser isnt done
-                // Updated: We may not need this TIMEOUT if new WsEvents fix it!
-                // setTimeout(() => this.LOAD_ACTIONS(), 500);
-                // WsEvents in place ought to resolve this
-              },
-            },
-          ]);
+        countActionsByKind(): Record<string, number> {
+          const counts = new DefaultMap<string, number>(() => 0);
+          for (const action of this.proposedActions) {
+            counts.set(action.kind, counts.get(action.kind) + 1);
+          }
+          return Object.fromEntries(counts);
+        },
+        proposedActions(state): ActionProposedView[] {
+          if (changeSetsStore.headSelected) return Object.values(state.actions);
 
-          return () => {
-            realtimeStore.unsubscribe(this.$id);
-          };
+          return Object.values(state.actions).filter((av) => av.originatingChangeSetId === changeSetId);
+        },
+        headActions(state): ActionProposedView[] {
+          return Object.values(state.actions).filter((av) => av.originatingChangeSetId !== changeSetId);
+        },
+        historyActions(): ActionHistoryView[] {
+          return this.actionHistory;
+        },
+        historyActionsById(): Map<ActionId, ActionHistoryView> {
+          const m = new Map();
+          for (const a of this.historyActions) {
+            m.set(a.id, a);
+          }
+          return m;
+        },
+        historyActionsByFuncRunId(): Map<FuncRunId, ActionHistoryView> {
+          const m = new Map();
+          for (const a of this.historyActions) {
+            m.set(a.funcRunId, a);
+          }
+          return m;
+        },
+        historyActionsGrouped(): Map<ChangeSetDetail, Array<ActionHistoryView>> {
+          // display actions, in order, and if the action is from a different change set than the previous action display the header
+          const r = new DefaultMap<ChangeSetDetail, Array<ActionHistoryView>>(() => []);
+          let last: ChangeSetDetail | undefined;
+          for (const action of this.actionHistory) {
+            // this creates the desired header behavior above
+            if (action.originatingChangeSetId !== last?.changeSetId) {
+              last = {
+                changeSetId: action.originatingChangeSetId,
+                changeSetName: action.originatingChangeSetName,
+              } as ChangeSetDetail;
+            }
+            // always check for the newest timestamp
+            const u = new Date(action.updatedAt);
+            if (!last.timestamp || last.timestamp < u) last.timestamp = u;
+
+            const arr = r.get(last);
+            arr.push(action);
+            r.set(last, arr);
+          }
+          return r;
+        },
+        listActionsByComponentId(state): DefaultMap<ComponentId, Array<ActionProposedView>> {
+          const d = new DefaultMap<ComponentId, Array<ActionProposedView>>(() => []);
+          state.actions.forEach((a) => {
+            const componentId = a.componentId;
+            if (componentId) {
+              const arr = d.get(componentId);
+              arr.push(a);
+              d.set(componentId, arr);
+            }
+          });
+          return d;
+        },
+        actionsById(state): Map<ActionId, ActionView> {
+          const m = new Map();
+          for (const a of state.actions) {
+            m.set(a.id, a);
+          }
+          return m;
         },
       },
-    ),
+      actions: {
+        async ADD_ACTION(componentId: ComponentId, actionPrototypeId: ActionPrototypeId) {
+          return new ApiRequest({
+            method: "post",
+            url: "change_set/add_action",
+            keyRequestStatusBy: [componentId, actionPrototypeId],
+            params: {
+              prototypeId: actionPrototypeId,
+              componentId,
+              visibility_change_set_pk: changeSetId,
+            },
+          });
+        },
+        // This is proposed/queued actions
+        async LOAD_ACTIONS() {
+          return new ApiRequest<Array<ActionProposedView>>({
+            url: "/action/list",
+            headers: { accept: "application/json" },
+            params: {
+              visibility_change_set_pk: changeSetId,
+            },
+            onSuccess: (response) => {
+              this.actions = response;
+            },
+          });
+        },
+        async LOAD_ACTION_HISTORY() {
+          return new ApiRequest<Array<ActionHistoryView>>({
+            url: "/action/history",
+            headers: { accept: "application/json" },
+            params: {
+              visibility_change_set_pk: changeSetId,
+            },
+            onSuccess: (response) => {
+              this.actionHistory = response;
+            },
+          });
+        },
+        async PUT_ACTION_ON_HOLD(ids: ActionId[]) {
+          return new ApiRequest<null>({
+            method: "post",
+            url: "action/put_on_hold",
+            keyRequestStatusBy: ids,
+            params: {
+              ids,
+              visibility_change_set_pk: changeSetId,
+            },
+            optimistic: () => {
+              const held = {} as Record<string, string>;
+              this.actions.forEach((a) => {
+                if (ids.includes(a.id)) {
+                  held[a.id] = a.state;
+                  a.state = ActionState.OnHold;
+                }
+              });
+
+              return () => {
+                for (const id of Object.keys(held)) {
+                  const a = this.actions.filter((a) => a.id === id).pop();
+                  const state = held[id] as ActionState;
+                  if (a && state) a.state = state;
+                }
+              };
+            },
+          });
+        },
+        async CANCEL(ids: ActionId[]) {
+          return new ApiRequest<null>({
+            method: "post",
+            url: "action/cancel",
+            keyRequestStatusBy: ids,
+            params: {
+              ids,
+              visibility_change_set_pk: changeSetId,
+            },
+            optimistic: () => {
+              const removed = [] as ActionProposedView[];
+              this.actions.forEach((a, idx) => {
+                if (a && ids.includes(a.id)) {
+                  removed[idx] = a;
+                  this.actions.splice(idx, 1);
+                }
+              });
+
+              return () => {
+                removed.forEach((a, idx) => {
+                  this.actions.splice(idx, 0, a);
+                });
+              };
+            },
+          });
+        },
+        async RETRY(ids: ActionId[]) {
+          return new ApiRequest<null>({
+            method: "post",
+            url: "action/retry",
+            keyRequestStatusBy: ids,
+            params: {
+              ids,
+              visibility_change_set_pk: changeSetId,
+            },
+            optimistic: () => {
+              for (const a of this.actions) {
+                if (ids.includes(a.id)) {
+                  // its either moving from failed or hold to queued
+                  // if its failed it will go queued and start running
+                  a.state = ActionState.Queued;
+                }
+              }
+            },
+          });
+        },
+
+        registerRequestsBegin(requestUlid: string, actionName: string) {
+          realtimeStore.inflightRequests.set(requestUlid, actionName);
+        },
+        registerRequestsEnd(requestUlid: string) {
+          realtimeStore.inflightRequests.delete(requestUlid);
+        },
+      },
+      onActivated() {
+        realtimeStore.subscribe(this.$id, `changeset/${changeSetId}`, [
+          {
+            eventType: "ActionsListUpdated",
+            callback: () => {
+              this.LOAD_ACTIONS();
+              this.LOAD_ACTION_HISTORY();
+            },
+          },
+          {
+            eventType: "ChangeSetWritten",
+            callback: () => {
+              this.LOAD_ACTIONS();
+            },
+          },
+          {
+            eventType: "ChangeSetApplied",
+            callback: (_update) => {
+              this.LOAD_ACTIONS();
+              // Short term fix for reactivity issue on apply, since the
+              // first load won't have the actions since the rebaser isnt done
+              // Updated: We may not need this TIMEOUT if new WsEvents fix it!
+              // setTimeout(() => this.LOAD_ACTIONS(), 500);
+              // WsEvents in place ought to resolve this
+            },
+          },
+        ]);
+
+        return () => {
+          realtimeStore.unsubscribe(this.$id);
+        };
+      },
+    }),
   )();
 };

@@ -3,14 +3,7 @@ export type FactoryFn = () => Command;
 
 export type Option = { label: string; value: string };
 
-export type CommandArg =
-  | "component"
-  | "outputSocket"
-  | "inputSocket"
-  | "schema"
-  | "view"
-  | "action"
-  | "stringInput";
+export type CommandArg = "component" | "outputSocket" | "inputSocket" | "schema" | "view" | "action" | "stringInput";
 
 export interface Command {
   readonly name: string;

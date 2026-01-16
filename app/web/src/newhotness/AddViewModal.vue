@@ -6,12 +6,7 @@
         <template #default="{ field }">
           <div
             v-if="field.state.meta.errors.length > 0"
-            :class="
-              clsx(
-                'text-sm mb-xs',
-                themeClasses('text-destructive-600', 'text-destructive-200'),
-              )
-            "
+            :class="clsx('text-sm mb-xs', themeClasses('text-destructive-600', 'text-destructive-200'))"
           >
             {{ field.state.meta.errors[0] }}
           </div>
@@ -52,13 +47,7 @@
             />
           </template>
         </nameForm.Field>
-        <Icon
-          v-if="wForm.bifrosting.value"
-          class="absolute right-2xs"
-          name="loader"
-          size="sm"
-          tone="action"
-        />
+        <Icon v-if="wForm.bifrosting.value" class="absolute right-2xs" name="loader" size="sm" tone="action" />
       </label>
     </form>
 
@@ -72,11 +61,7 @@
             label="Create"
             tone="action"
             :loading="wForm.bifrosting.value"
-            :disabled="
-              wForm.bifrosting.value ||
-              field.state.meta.errors.length > 0 ||
-              field.state.value === ''
-            "
+            :disabled="wForm.bifrosting.value || field.state.meta.errors.length > 0 || field.state.value === ''"
             @click="() => nameForm.handleSubmit()"
           />
         </template>
@@ -86,12 +71,7 @@
 </template>
 
 <script setup lang="ts">
-import {
-  Modal,
-  Icon,
-  NewButton,
-  themeClasses,
-} from "@si/vue-lib/design-system";
+import { Modal, Icon, NewButton, themeClasses } from "@si/vue-lib/design-system";
 import { computed, ref } from "vue";
 import { useRoute } from "vue-router";
 import clsx from "clsx";
@@ -114,9 +94,7 @@ const formData = computed<{ name: string }>(() => {
   return { name: "" };
 });
 
-const existingViewNames = computed(
-  () => props.views?.map((view) => view.name) ?? [],
-);
+const existingViewNames = computed(() => props.views?.map((view) => view.name) ?? []);
 const viewNameValidator = ({ value }: { value: string }) => {
   if (value.trim().length === 0) {
     return "Name is required";

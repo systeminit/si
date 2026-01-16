@@ -10,9 +10,7 @@
       type="text"
       @enterPressed="submit"
     />
-    <VButton :loading="loading" class="mt-sm" @click="submit"
-      >{{ props.buttonLabel }}
-    </VButton>
+    <VButton :loading="loading" class="mt-sm" @click="submit">{{ props.buttonLabel }} </VButton>
   </Modal>
 </template>
 

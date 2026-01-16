@@ -29,9 +29,7 @@ const props = defineProps({
 });
 
 const svgUrl = computed(() => {
-  return BIG_ICONS[props.name][
-    props.fixedTheme ?? appTheme.value
-  ] as EMPTY_STATE_ICON_NAMES;
+  return BIG_ICONS[props.name][props.fixedTheme ?? appTheme.value] as EMPTY_STATE_ICON_NAMES;
 });
 </script>
 

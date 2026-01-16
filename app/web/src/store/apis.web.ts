@@ -1,9 +1,5 @@
 import * as _ from "lodash-es";
-import Axios, {
-  AxiosError,
-  AxiosResponse,
-  InternalAxiosRequestConfig,
-} from "axios";
+import Axios, { AxiosError, AxiosResponse, InternalAxiosRequestConfig } from "axios";
 import { useToast } from "vue-toastification";
 import { trackEvent } from "@/utils/tracking";
 import { useAuthStore } from "@/store/auth.store";
@@ -28,7 +24,7 @@ export const sdfApiInstance = Axios.create({
   },
   baseURL: API_HTTP_URL,
 });
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+
 export function injectBearerTokenAuth(config: InternalAxiosRequestConfig) {
   // inject auth token from the store as a custom header
   const authStore = useAuthStore();
@@ -55,10 +51,7 @@ async function handleForcedChangesetRedirection(response: AxiosResponse) {
   if (response.headers.force_change_set_id) {
     const changeSetsStore = useChangeSetsStore();
 
-    await changeSetsStore.setActiveChangeset(
-      response.headers.force_change_set_id,
-      true,
-    );
+    await changeSetsStore.setActiveChangeset(response.headers.force_change_set_id, true);
   }
 
   return response;
@@ -67,10 +60,7 @@ async function handleForcedChangesetRedirection(response: AxiosResponse) {
 async function handleProxyTimeouts(response: AxiosResponse) {
   // some weird timeouts happening and triggering nginx 404 when running via the CLI
   // here we will try to detect them, track it, and give user some help
-  if (
-    response.status === 404 &&
-    response.headers?.["content-type"] !== "application/json"
-  ) {
+  if (response.status === 404 && response.headers?.["content-type"] !== "application/json") {
     // redirect to oops page after short timeout so we give tracker a chance to send event
     setTimeout(() => {
       if (typeof window !== "undefined") window.location.href = "/oops";
@@ -111,10 +101,7 @@ async function handleOutageModes(error: AxiosError) {
         hideProgressBar: false,
       },
     );
-  } else if (
-    error?.response?.status === 502 ||
-    error?.response?.status === 504
-  ) {
+  } else if (error?.response?.status === 502 || error?.response?.status === 504) {
     const toast = useToast();
     toast(
       {
@@ -134,11 +121,7 @@ async function handle401(error: AxiosError) {
   if (error?.response?.status === 401) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const errorKind = (error?.response?.data as any)?.kind;
-    if (
-      errorKind === "AuthTokenRevoked" ||
-      errorKind === "AuthTokenInvalid" ||
-      errorKind === "AuthTokenCorrupt"
-    ) {
+    if (errorKind === "AuthTokenRevoked" || errorKind === "AuthTokenInvalid" || errorKind === "AuthTokenCorrupt") {
       const authStore = useAuthStore();
 
       // Track automatic logout event
@@ -158,10 +141,7 @@ async function handle401(error: AxiosError) {
 }
 
 sdfApiInstance.interceptors.response.use(handleProxyTimeouts, handle500);
-sdfApiInstance.interceptors.response.use(
-  handleForcedChangesetRedirection,
-  handleOutageModes,
-);
+sdfApiInstance.interceptors.response.use(handleForcedChangesetRedirection, handleOutageModes);
 sdfApiInstance.interceptors.response.use((r) => r, handle401);
 
 export const authApiInstance = Axios.create({

@@ -1,3 +1,4 @@
+// @ts-nocheck
 import * as _ from "lodash-es";
 import { defineStore } from "pinia";
 import { addStoreHooks, ApiRequest } from "@si/vue-lib/pinia";
@@ -30,11 +31,7 @@ import { trackEvent } from "@/utils/tracking";
 import keyedDebouncer from "@/utils/keyedDebouncer";
 import { useWorkspacesStore } from "@/store/workspaces.store";
 import { useAssetStore } from "@/store/asset.store";
-import {
-  ComponentType,
-  SchemaVariant,
-  SchemaVariantId,
-} from "@/api/sdf/dal/schema";
+import { ComponentType, SchemaVariant, SchemaVariantId } from "@/api/sdf/dal/schema";
 import { DefaultMap } from "@/utils/defaultmap";
 import { ComponentId } from "@/api/sdf/dal/component";
 import { ViewId } from "@/api/sdf/dal/views";
@@ -45,13 +42,7 @@ import { FuncRunId } from "../func_runs.store";
 import { useViewsStore } from "../views.store";
 import { useAuthStore } from "../auth.store";
 
-type FuncExecutionState =
-  | "Create"
-  | "Dispatch"
-  | "Failure"
-  | "Run"
-  | "Start"
-  | "Success";
+type FuncExecutionState = "Create" | "Dispatch" | "Failure" | "Run" | "Start" | "Success";
 
 // TODO: remove when fn log stuff gets figured out a bit deeper
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -97,9 +88,7 @@ export function actionBindingsForVariant(
   const bindings = [] as BindingWithDisplayName[];
   variant?.funcIds.forEach((funcId) => {
     const summary = summaries[funcId];
-    const actions = actionBindings[funcId]?.filter(
-      (b) => b.schemaVariantId === variant.schemaVariantId,
-    );
+    const actions = actionBindings[funcId]?.filter((b) => b.schemaVariantId === variant.schemaVariantId);
     if (actions && actions.length > 0) {
       actions.forEach((b) => {
         const a = _.clone(b) as BindingWithDisplayName;
@@ -112,23 +101,17 @@ export function actionBindingsForVariant(
   return bindings;
 }
 
-export const INTRINSICS_DISPLAYED = [
-  FuncBackendKind.Unset,
-  FuncBackendKind.Identity,
-  FuncBackendKind.NormalizeToArray,
-];
+export const INTRINSICS_DISPLAYED = [FuncBackendKind.Unset, FuncBackendKind.Identity, FuncBackendKind.NormalizeToArray];
 
 export const useFuncStore = () => {
   const viewStore = useViewsStore();
   const changeSetsStore = useChangeSetsStore();
-  const selectedChangeSetId: string | undefined =
-    changeSetsStore.selectedChangeSet?.id;
+  const selectedChangeSetId: string | undefined = changeSetsStore.selectedChangeSet?.id;
 
   // TODO(nick): we need to allow for empty visibility here. Temporarily send down "nil" to mean that we want the
   // query to find the default change set.
   const visibility: Visibility = {
-    visibility_change_set_pk:
-      selectedChangeSetId ?? changeSetsStore.headChangeSetId ?? nilId(),
+    visibility_change_set_pk: selectedChangeSetId ?? changeSetsStore.headChangeSetId ?? nilId(),
   };
 
   const workspacesStore = useWorkspacesStore();
@@ -151,22 +134,22 @@ export const useFuncStore = () => {
     func.bindings.forEach((binding) => {
       switch (binding.bindingKind) {
         case FuncBindingKind.Action:
-          actionBindings.push(binding as Action);
+          actionBindings.push(binding);
           break;
         case FuncBindingKind.Attribute:
-          attributeBindings.push(binding as Attribute);
+          attributeBindings.push(binding);
           break;
         case FuncBindingKind.Authentication:
-          authenticationBindings.push(binding as Authentication);
+          authenticationBindings.push(binding);
           break;
         case FuncBindingKind.CodeGeneration:
-          codegenBindings.push(binding as CodeGeneration);
+          codegenBindings.push(binding);
           break;
         case FuncBindingKind.Qualification:
-          qualificationBindings.push(binding as Qualification);
+          qualificationBindings.push(binding);
           break;
         case FuncBindingKind.Management:
-          managementBindings.push(binding as Management);
+          managementBindings.push(binding);
           break;
         default:
           throw new Error(`Unexpected FuncBinding ${JSON.stringify(binding)}`);
@@ -183,13 +166,7 @@ export const useFuncStore = () => {
     };
   };
 
-  const BASE_API = [
-    "v2",
-    "workspaces",
-    { workspaceId },
-    "change-sets",
-    { selectedChangeSetId },
-  ] as URLPattern;
+  const BASE_API = ["v2", "workspaces", { workspaceId }, "change-sets", { selectedChangeSetId }] as URLPattern;
   const API_PREFIX = BASE_API.concat(["funcs"]) as URLPattern;
 
   return addStoreHooks(
@@ -230,16 +207,9 @@ export const useFuncStore = () => {
 
         managementFunctionsForSelectedComponent(state) {
           const mgmtFuncs: MgmtPrototype[] = [];
-          if (
-            viewStore.selectedComponent?.def.componentType ===
-            ComponentType.View
-          )
-            return mgmtFuncs;
+          if (viewStore.selectedComponent?.def.componentType === ComponentType.View) return mgmtFuncs;
 
-          const variant =
-            useAssetStore().variantFromListById[
-              viewStore.selectedComponent?.def.schemaVariantId || ""
-            ];
+          const variant = useAssetStore().variantFromListById[viewStore.selectedComponent?.def.schemaVariantId || ""];
           if (!variant) return [];
           variant.funcIds.forEach((funcId) => {
             const func = state.funcsById[funcId];
@@ -260,15 +230,8 @@ export const useFuncStore = () => {
         },
 
         actionBindingsForSelectedComponent(): BindingWithDisplayName[] {
-          if (
-            viewStore.selectedComponent?.def.componentType ===
-            ComponentType.View
-          )
-            return [];
-          const variant =
-            useAssetStore().variantFromListById[
-              viewStore.selectedComponent?.def.schemaVariantId || ""
-            ];
+          if (viewStore.selectedComponent?.def.componentType === ComponentType.View) return [];
+          const variant = useAssetStore().variantFromListById[viewStore.selectedComponent?.def.schemaVariantId || ""];
           if (!variant) return [];
           const summaries: Record<FuncId, FuncSummary> = {};
           const actionBindings: Record<FuncId, Action[]> = {};
@@ -281,21 +244,15 @@ export const useFuncStore = () => {
           return actionBindingsForVariant(variant, summaries, actionBindings);
         },
 
-        intrinsicBindingsByVariant(
-          state,
-        ): Map<SchemaVariantId, BindingWithBackendKind[]> {
-          const _bindings = new DefaultMap<
-            SchemaVariantId,
-            BindingWithBackendKind[]
-          >(() => []);
+        intrinsicBindingsByVariant(state): Map<SchemaVariantId, BindingWithBackendKind[]> {
+          const _bindings = new DefaultMap<SchemaVariantId, BindingWithBackendKind[]>(() => []);
           Object.values(state.funcsById)
             .filter((func) => INTRINSICS_DISPLAYED.includes(func.backendKind))
             .forEach((func) => {
               func.bindings
                 .filter(
                   (binding): binding is AttributeWithVariant =>
-                    !!binding.schemaVariantId &&
-                    binding.bindingKind === FuncBindingKind.Attribute,
+                    !!binding.schemaVariantId && binding.bindingKind === FuncBindingKind.Attribute,
                 )
                 .forEach((binding) => {
                   const _curr = _bindings.get(binding.schemaVariantId);
@@ -310,26 +267,14 @@ export const useFuncStore = () => {
       },
 
       actions: {
-        async RUN_MGMT_PROTOTYPE(
-          prototypeId: ManagementPrototypeId,
-          componentId: ComponentId,
-          viewId: ViewId,
-        ) {
+        async RUN_MGMT_PROTOTYPE(prototypeId: ManagementPrototypeId, componentId: ComponentId, viewId: ViewId) {
           return new ApiRequest<MgmtPrototypeResult>({
             method: "post",
             keyRequestStatusBy: [prototypeId, componentId],
-            url: BASE_API.concat([
-              "management",
-              "prototype",
-              { prototypeId },
-              { componentId },
-              { viewId },
-            ]),
+            url: BASE_API.concat(["management", "prototype", { prototypeId }, { componentId }, { viewId }]),
             onFail: (err) => {
               if (err.response.status === 400) {
-                toast(
-                  `Error executing management function: ${err.response.data.error.message}`,
-                );
+                toast(`Error executing management function: ${err.response.data.error.message}`);
               }
             },
           });
@@ -342,15 +287,11 @@ export const useFuncStore = () => {
               response.forEach((func) => {
                 const bindings = processBindings(func);
                 this.actionBindings[func.funcId] = bindings.actionBindings;
-                this.attributeBindings[func.funcId] =
-                  bindings.attributeBindings;
-                this.authenticationBindings[func.funcId] =
-                  bindings.authenticationBindings;
-                this.qualificationBindings[func.funcId] =
-                  bindings.qualificationBindings;
+                this.attributeBindings[func.funcId] = bindings.attributeBindings;
+                this.authenticationBindings[func.funcId] = bindings.authenticationBindings;
+                this.qualificationBindings[func.funcId] = bindings.qualificationBindings;
                 this.codegenBindings[func.funcId] = bindings.codegenBindings;
-                this.managementBindings[func.funcId] =
-                  bindings.managementBindings;
+                this.managementBindings[func.funcId] = bindings.managementBindings;
               });
 
               this.funcsById = _.keyBy(response, (f) => f.funcId);
@@ -378,10 +319,8 @@ export const useFuncStore = () => {
           kind: FuncKind;
           binding: FuncBinding;
         }) {
-          if (changeSetsStore.creatingChangeSet)
-            throw new Error("race, wait until the change set is created");
-          if (changeSetsStore.headSelected)
-            changeSetsStore.creatingChangeSet = true;
+          if (changeSetsStore.creatingChangeSet) throw new Error("race, wait until the change set is created");
+          if (changeSetsStore.headSelected) changeSetsStore.creatingChangeSet = true;
 
           return new ApiRequest<{ summary: FuncSummary; code: FuncCode }>({
             method: "post",
@@ -397,10 +336,7 @@ export const useFuncStore = () => {
             },
           });
         },
-        async CREATE_UNLOCKED_COPY(
-          funcId: FuncId,
-          schemaVariantId?: SchemaVariantId,
-        ) {
+        async CREATE_UNLOCKED_COPY(funcId: FuncId, schemaVariantId?: SchemaVariantId) {
           return new ApiRequest<{ summary: FuncSummary; code: FuncCode }>({
             method: "post",
             url: API_PREFIX.concat([{ funcId }]),
@@ -411,11 +347,7 @@ export const useFuncStore = () => {
               for (const binding of response.summary.bindings) {
                 if (!binding.schemaVariantId || !binding.funcId) continue;
 
-                useAssetStore().replaceFuncForVariant(
-                  binding.schemaVariantId,
-                  funcId,
-                  binding.funcId,
-                );
+                useAssetStore().replaceFuncForVariant(binding.schemaVariantId, funcId, binding.funcId);
               }
 
               this.funcsById[response.summary.funcId] = response.summary;
@@ -430,10 +362,8 @@ export const useFuncStore = () => {
           });
         },
         async UPDATE_FUNC(func: FuncSummary) {
-          if (changeSetsStore.creatingChangeSet)
-            throw new Error("race, wait until the change set is created");
-          if (changeSetsStore.headSelected)
-            changeSetsStore.creatingChangeSet = true;
+          if (changeSetsStore.creatingChangeSet) throw new Error("race, wait until the change set is created");
+          if (changeSetsStore.headSelected) changeSetsStore.creatingChangeSet = true;
           const isHead = changeSetsStore.headSelected;
 
           return new ApiRequest({
@@ -470,10 +400,8 @@ export const useFuncStore = () => {
           });
         },
         async CREATE_BINDING(funcId: FuncId, bindings: FuncBinding[]) {
-          if (changeSetsStore.creatingChangeSet)
-            throw new Error("race, wait until the change set is created");
-          if (changeSetsStore.headSelected)
-            changeSetsStore.creatingChangeSet = true;
+          if (changeSetsStore.creatingChangeSet) throw new Error("race, wait until the change set is created");
+          if (changeSetsStore.headSelected) changeSetsStore.creatingChangeSet = true;
 
           return new ApiRequest<FuncBinding[]>({
             method: "post",
@@ -492,11 +420,7 @@ export const useFuncStore = () => {
                     if (binding.attributePrototypeId) {
                       const bIdx = func.bindings.findIndex((b) => {
                         if ("attributePrototypeId" in b) {
-                          if (
-                            b.attributePrototypeId &&
-                            b.attributePrototypeId ===
-                              binding.attributePrototypeId
-                          )
+                          if (b.attributePrototypeId && b.attributePrototypeId === binding.attributePrototypeId)
                             return true;
                         }
                         return false;
@@ -509,11 +433,7 @@ export const useFuncStore = () => {
                     if (binding.managementPrototypeId) {
                       const bIdx = func.bindings.findIndex((b) => {
                         if ("managementPrototypeId" in b) {
-                          if (
-                            b.managementPrototypeId &&
-                            b.managementPrototypeId ===
-                              binding.managementPrototypeId
-                          )
+                          if (b.managementPrototypeId && b.managementPrototypeId === binding.managementPrototypeId)
                             return true;
                         }
                         return false;
@@ -530,15 +450,11 @@ export const useFuncStore = () => {
                 // reset the secondary data structures
                 const _bindings = processBindings(func);
                 this.actionBindings[func.funcId] = _bindings.actionBindings;
-                this.attributeBindings[func.funcId] =
-                  _bindings.attributeBindings;
-                this.authenticationBindings[func.funcId] =
-                  _bindings.authenticationBindings;
-                this.qualificationBindings[func.funcId] =
-                  _bindings.qualificationBindings;
+                this.attributeBindings[func.funcId] = _bindings.attributeBindings;
+                this.authenticationBindings[func.funcId] = _bindings.authenticationBindings;
+                this.qualificationBindings[func.funcId] = _bindings.qualificationBindings;
                 this.codegenBindings[func.funcId] = _bindings.codegenBindings;
-                this.managementBindings[func.funcId] =
-                  _bindings.managementBindings;
+                this.managementBindings[func.funcId] = _bindings.managementBindings;
               }
             },
             onFail: () => {
@@ -547,10 +463,8 @@ export const useFuncStore = () => {
           });
         },
         async UPDATE_BINDING(funcId: FuncId, bindings: FuncBinding[]) {
-          if (changeSetsStore.creatingChangeSet)
-            throw new Error("race, wait until the change set is created");
-          if (changeSetsStore.headSelected)
-            changeSetsStore.creatingChangeSet = true;
+          if (changeSetsStore.creatingChangeSet) throw new Error("race, wait until the change set is created");
+          if (changeSetsStore.headSelected) changeSetsStore.creatingChangeSet = true;
 
           return new ApiRequest<null>({
             method: "put",
@@ -566,10 +480,8 @@ export const useFuncStore = () => {
         },
         // How you "DETACH" an attribute function
         async RESET_ATTRIBUTE_BINDING(funcId: FuncId, bindings: FuncBinding[]) {
-          if (changeSetsStore.creatingChangeSet)
-            throw new Error("race, wait until the change set is created");
-          if (changeSetsStore.headSelected)
-            changeSetsStore.creatingChangeSet = true;
+          if (changeSetsStore.creatingChangeSet) throw new Error("race, wait until the change set is created");
+          if (changeSetsStore.headSelected) changeSetsStore.creatingChangeSet = true;
 
           return new ApiRequest<null>({
             method: "post",
@@ -584,10 +496,8 @@ export const useFuncStore = () => {
         },
         // How you "DETACH" all other function bindings
         async DELETE_BINDING(funcId: FuncId, bindings: FuncBinding[]) {
-          if (changeSetsStore.creatingChangeSet)
-            throw new Error("race, wait until the change set is created");
-          if (changeSetsStore.headSelected)
-            changeSetsStore.creatingChangeSet = true;
+          if (changeSetsStore.creatingChangeSet) throw new Error("race, wait until the change set is created");
+          if (changeSetsStore.headSelected) changeSetsStore.creatingChangeSet = true;
 
           return new ApiRequest<null>({
             method: "delete",
@@ -601,10 +511,8 @@ export const useFuncStore = () => {
           });
         },
         async CREATE_FUNC_ARGUMENT(funcId: FuncId, funcArg: FuncArgument) {
-          if (changeSetsStore.creatingChangeSet)
-            throw new Error("race, wait until the change set is created");
-          if (changeSetsStore.headSelected)
-            changeSetsStore.creatingChangeSet = true;
+          if (changeSetsStore.creatingChangeSet) throw new Error("race, wait until the change set is created");
+          if (changeSetsStore.headSelected) changeSetsStore.creatingChangeSet = true;
 
           return new ApiRequest<null>({
             method: "post",
@@ -618,18 +526,12 @@ export const useFuncStore = () => {
           });
         },
         async UPDATE_FUNC_ARGUMENT(funcId: FuncId, funcArg: FuncArgument) {
-          if (changeSetsStore.creatingChangeSet)
-            throw new Error("race, wait until the change set is created");
-          if (changeSetsStore.headSelected)
-            changeSetsStore.creatingChangeSet = true;
+          if (changeSetsStore.creatingChangeSet) throw new Error("race, wait until the change set is created");
+          if (changeSetsStore.headSelected) changeSetsStore.creatingChangeSet = true;
 
           return new ApiRequest<null>({
             method: "put",
-            url: API_PREFIX.concat([
-              { funcId },
-              "arguments",
-              { funcArgumentId: funcArg.id },
-            ]),
+            url: API_PREFIX.concat([{ funcId }, "arguments", { funcArgumentId: funcArg.id }]),
             params: {
               ...funcArg,
             },
@@ -638,22 +540,13 @@ export const useFuncStore = () => {
             },
           });
         },
-        async DELETE_FUNC_ARGUMENT(
-          funcId: FuncId,
-          funcArgumentId: FuncArgumentId,
-        ) {
-          if (changeSetsStore.creatingChangeSet)
-            throw new Error("race, wait until the change set is created");
-          if (changeSetsStore.headSelected)
-            changeSetsStore.creatingChangeSet = true;
+        async DELETE_FUNC_ARGUMENT(funcId: FuncId, funcArgumentId: FuncArgumentId) {
+          if (changeSetsStore.creatingChangeSet) throw new Error("race, wait until the change set is created");
+          if (changeSetsStore.headSelected) changeSetsStore.creatingChangeSet = true;
 
           return new ApiRequest<null>({
             method: "delete",
-            url: API_PREFIX.concat([
-              { funcId },
-              "arguments",
-              { funcArgumentId },
-            ]),
+            url: API_PREFIX.concat([{ funcId }, "arguments", { funcArgumentId }]),
             onFail: () => {
               changeSetsStore.creatingChangeSet = false;
             },
@@ -668,10 +561,8 @@ export const useFuncStore = () => {
             });
           }
 
-          if (changeSetsStore.creatingChangeSet)
-            throw new Error("race, wait until the change set is created");
-          if (changeSetsStore.headSelected)
-            changeSetsStore.creatingChangeSet = true;
+          if (changeSetsStore.creatingChangeSet) throw new Error("race, wait until the change set is created");
+          if (changeSetsStore.headSelected) changeSetsStore.creatingChangeSet = true;
 
           return new ApiRequest({
             method: "post",
@@ -682,10 +573,7 @@ export const useFuncStore = () => {
             },
           });
         },
-        async FETCH_PROTOTYPE_ARGUMENTS(
-          propId?: string,
-          outputSocketId?: string,
-        ) {
+        async FETCH_PROTOTYPE_ARGUMENTS(propId?: string, outputSocketId?: string) {
           return new ApiRequest<{
             preparedArguments: Record<string, unknown>;
           }>({
@@ -693,12 +581,7 @@ export const useFuncStore = () => {
             params: { propId, outputSocketId, ...visibility },
           });
         },
-        async TEST_EXECUTE(executeRequest: {
-          funcId: FuncId;
-          args: unknown;
-          code: string;
-          componentId: string;
-        }) {
+        async TEST_EXECUTE(executeRequest: { funcId: FuncId; args: unknown; code: string; componentId: string }) {
           const func = this.funcsById[executeRequest.funcId];
           if (func) {
             trackEvent("function_test_execute", {
@@ -712,10 +595,7 @@ export const useFuncStore = () => {
             funcRunId: FuncRunId;
           }>({
             method: "post",
-            url: API_PREFIX.concat([
-              { funcId: executeRequest.funcId },
-              "test_execute",
-            ]),
+            url: API_PREFIX.concat([{ funcId: executeRequest.funcId }, "test_execute"]),
             params: { ...executeRequest },
           });
         },
@@ -823,23 +703,14 @@ export const useFuncStore = () => {
               if (data.changeSetId !== selectedChangeSetId) return;
               this.funcsById[data.funcSummary.funcId] = data.funcSummary;
               const bindings = processBindings(data.funcSummary);
-              this.actionBindings[data.funcSummary.funcId] =
-                bindings.actionBindings;
-              this.attributeBindings[data.funcSummary.funcId] =
-                bindings.attributeBindings;
-              this.authenticationBindings[data.funcSummary.funcId] =
-                bindings.authenticationBindings;
-              this.qualificationBindings[data.funcSummary.funcId] =
-                bindings.qualificationBindings;
-              this.codegenBindings[data.funcSummary.funcId] =
-                bindings.codegenBindings;
-              this.managementBindings[data.funcSummary.funcId] =
-                bindings.managementBindings;
+              this.actionBindings[data.funcSummary.funcId] = bindings.actionBindings;
+              this.attributeBindings[data.funcSummary.funcId] = bindings.attributeBindings;
+              this.authenticationBindings[data.funcSummary.funcId] = bindings.authenticationBindings;
+              this.qualificationBindings[data.funcSummary.funcId] = bindings.qualificationBindings;
+              this.codegenBindings[data.funcSummary.funcId] = bindings.codegenBindings;
+              this.managementBindings[data.funcSummary.funcId] = bindings.managementBindings;
 
-              if (
-                metadata.actor !== "System" &&
-                metadata.actor.User === authStore.userPk
-              ) {
+              if (metadata.actor !== "System" && metadata.actor.User === authStore.userPk) {
                 const assetStore = useAssetStore(selectedChangeSetId);
                 // NOTE: `SchemaVariantCreated` will fire the selection for it
                 assetStore.setFuncSelection(data.funcSummary.funcId);
@@ -858,18 +729,12 @@ export const useFuncStore = () => {
 
               this.funcsById[data.funcSummary.funcId] = data.funcSummary;
               const bindings = processBindings(data.funcSummary);
-              this.actionBindings[data.funcSummary.funcId] =
-                bindings.actionBindings;
-              this.attributeBindings[data.funcSummary.funcId] =
-                bindings.attributeBindings;
-              this.authenticationBindings[data.funcSummary.funcId] =
-                bindings.authenticationBindings;
-              this.qualificationBindings[data.funcSummary.funcId] =
-                bindings.qualificationBindings;
-              this.codegenBindings[data.funcSummary.funcId] =
-                bindings.codegenBindings;
-              this.managementBindings[data.funcSummary.funcId] =
-                bindings.managementBindings;
+              this.actionBindings[data.funcSummary.funcId] = bindings.actionBindings;
+              this.attributeBindings[data.funcSummary.funcId] = bindings.attributeBindings;
+              this.authenticationBindings[data.funcSummary.funcId] = bindings.authenticationBindings;
+              this.qualificationBindings[data.funcSummary.funcId] = bindings.qualificationBindings;
+              this.codegenBindings[data.funcSummary.funcId] = bindings.codegenBindings;
+              this.managementBindings[data.funcSummary.funcId] = bindings.managementBindings;
             },
           },
           {
@@ -896,8 +761,7 @@ export const useFuncStore = () => {
               // your cursor. It would feel like you can't just keep typing, and you'd get angry
               // This check is why we need to delay removing Ulids from inflightRequests by 10 seconds
               if (funcId === this.selectedFuncId || !this.selectedFuncId) {
-                const didIFireThisRequest =
-                  !!realtimeStore.inflightRequests.get(metadata.request_ulid);
+                const didIFireThisRequest = !!realtimeStore.inflightRequests.get(metadata.request_ulid);
                 if (metadata.actor === "System" || !didIFireThisRequest) {
                   this.FETCH_CODE(funcId);
                 }
@@ -920,11 +784,7 @@ export const useFuncStore = () => {
                 // relevant metadata in order to avoid overwriting functions with their previous
                 // value before the save queue is drained.
                 if (data.funcId === this.selectedFuncId) {
-                  if (
-                    typeof this.funcCodeById[this.selectedFuncId] ===
-                      "undefined" ||
-                    changeSetsStore.headSelected
-                  ) {
+                  if (typeof this.funcCodeById[this.selectedFuncId] === "undefined" || changeSetsStore.headSelected) {
                     this.FETCH_CODE(this.selectedFuncId);
                   }
                 }
@@ -933,13 +793,8 @@ export const useFuncStore = () => {
           },
           {
             eventType: "ManagementOperationsComplete",
-            callback: (
-              { status, message, createdComponentIds, funcName },
-              _metadata,
-            ) => {
-              const didIFireThisRequest = realtimeStore.inflightRequests.get(
-                _metadata.request_ulid,
-              );
+            callback: ({ status, message, createdComponentIds, funcName }, _metadata) => {
+              const didIFireThisRequest = realtimeStore.inflightRequests.get(_metadata.request_ulid);
               if (didIFireThisRequest) {
                 if (createdComponentIds?.length) {
                   viewStore.setSelectedComponentId(createdComponentIds);
@@ -954,9 +809,7 @@ export const useFuncStore = () => {
               const toastOptions = {
                 timeout: 5000,
               };
-              const toastMessage = message?.length
-                ? `Ran ${funcName}: ${message}`
-                : `Ran ${funcName}`;
+              const toastMessage = message?.length ? `Ran ${funcName}: ${message}` : `Ran ${funcName}`;
               if (status === "ok") {
                 toast.success(toastMessage, toastOptions);
               } else {

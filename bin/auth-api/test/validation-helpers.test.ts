@@ -1,6 +1,6 @@
-import t from 'tap';
-import { expect } from 'chai';
-import { z } from 'zod';
+import t from "tap";
+import { expect } from "chai";
+import { z } from "zod";
 
 import {
   ALLOWED_INPUT_REGEX,
@@ -12,23 +12,23 @@ import {
   URL_DETECTION_REGEX,
   MAX_LENGTH_STANDARD,
   MAX_LENGTH_EXTENDED,
-} from '../src/lib/validation-helpers';
+} from "../src/lib/validation-helpers";
 
-t.test('Validation Helpers - Regex Tests', async () => {
-  t.test('ALLOWED_INPUT_REGEX', async (t) => {
-    t.test('should allow valid inputs', async () => {
+t.test("Validation Helpers - Regex Tests", async () => {
+  t.test("ALLOWED_INPUT_REGEX", async (t) => {
+    t.test("should allow valid inputs", async () => {
       const validInputs = [
-        'Hello World',
-        'Test 123',
+        "Hello World",
+        "Test 123",
         "O'Brien",
-        'Name-With-Dashes',
-        'Name_With_Underscores',
-        'Name (with parentheses)',
-        'Name+Plus',
+        "Name-With-Dashes",
+        "Name_With_Underscores",
+        "Name (with parentheses)",
+        "Name+Plus",
         "L'Hôpital",
-        'Café',
-        'Zürich',
-        '',
+        "Café",
+        "Zürich",
+        "",
       ];
 
       for (const input of validInputs) {
@@ -36,14 +36,14 @@ t.test('Validation Helpers - Regex Tests', async () => {
       }
     });
 
-    t.test('should reject inputs with dots (domain names)', async () => {
+    t.test("should reject inputs with dots (domain names)", async () => {
       const invalidInputs = [
-        'example.com',
-        'my.domain',
-        'user@email.com',
-        'https://example.com',
-        'http://test.com',
-        '/path/to/file',
+        "example.com",
+        "my.domain",
+        "user@email.com",
+        "https://example.com",
+        "http://test.com",
+        "/path/to/file",
       ];
 
       for (const input of invalidInputs) {
@@ -52,27 +52,27 @@ t.test('Validation Helpers - Regex Tests', async () => {
     });
   });
 
-  t.test('DOMAIN_FRIENDLY_INPUT_REGEX', async (t) => {
-    t.test('should allow valid inputs including domain names', async () => {
+  t.test("DOMAIN_FRIENDLY_INPUT_REGEX", async (t) => {
+    t.test("should allow valid inputs including domain names", async () => {
       const validInputs = [
-        'Hello World',
-        'Test 123',
+        "Hello World",
+        "Test 123",
         "O'Brien",
-        'Name-With-Dashes',
-        'Name_With_Underscores',
-        'Name (with parentheses)',
-        'Name+Plus',
+        "Name-With-Dashes",
+        "Name_With_Underscores",
+        "Name (with parentheses)",
+        "Name+Plus",
         "L'Hôpital",
-        'Café',
-        'Zürich',
+        "Café",
+        "Zürich",
         // Domain names (NEW - these should now be allowed)
-        'example.com',
-        'my.domain',
-        'subdomain.example.com',
-        'test-site.io',
-        'My Workspace (example.com)',
-        'Production - api.company.com',
-        '',
+        "example.com",
+        "my.domain",
+        "subdomain.example.com",
+        "test-site.io",
+        "My Workspace (example.com)",
+        "Production - api.company.com",
+        "",
       ];
 
       for (const input of validInputs) {
@@ -80,14 +80,14 @@ t.test('Validation Helpers - Regex Tests', async () => {
       }
     });
 
-    t.test('should reject inputs with URL schemes and @ symbols', async () => {
+    t.test("should reject inputs with URL schemes and @ symbols", async () => {
       const invalidInputs = [
-        'user@email.com',
-        'https://example.com',
-        'http://test.com',
-        '/path/to/file',
-        'ftp://server.com',
-        'mailto:user@example.com',
+        "user@email.com",
+        "https://example.com",
+        "http://test.com",
+        "/path/to/file",
+        "ftp://server.com",
+        "mailto:user@example.com",
       ];
 
       for (const input of invalidInputs) {
@@ -96,16 +96,16 @@ t.test('Validation Helpers - Regex Tests', async () => {
     });
   });
 
-  t.test('NAME_REGEX', async (t) => {
-    t.test('should allow valid names', async () => {
+  t.test("NAME_REGEX", async (t) => {
+    t.test("should allow valid names", async () => {
       const validNames = [
-        'John Doe',
+        "John Doe",
         "O'Brien",
-        'Mary-Jane',
-        'José',
-        'François',
-        'Müller',
-        '',
+        "Mary-Jane",
+        "José",
+        "François",
+        "Müller",
+        "",
       ];
 
       for (const name of validNames) {
@@ -113,57 +113,63 @@ t.test('Validation Helpers - Regex Tests', async () => {
       }
     });
 
-    t.test('should reject names with special characters or domain-like patterns', async () => {
-      const invalidNames = [
-        'john.doe',
-        'user@example',
-        'name_with_underscore',
-        'name+plus',
-        'example.com',
-        '(parentheses)',
-      ];
+    t.test(
+      "should reject names with special characters or domain-like patterns",
+      async () => {
+        const invalidNames = [
+          "john.doe",
+          "user@example",
+          "name_with_underscore",
+          "name+plus",
+          "example.com",
+          "(parentheses)",
+        ];
 
-      for (const name of invalidNames) {
-        expect(NAME_REGEX.test(name)).to.be.false;
-      }
-    });
+        for (const name of invalidNames) {
+          expect(NAME_REGEX.test(name)).to.be.false;
+        }
+      },
+    );
   });
 
-  t.test('NICKNAME_REGEX', async (t) => {
-    t.test('should allow valid nicknames with extended character set', async () => {
-      const validNicknames = [
-        'JohnDoe',
-        'John Doe',
-        "O'Brien",
-        'Mary-Jane',
-        'user_name', // underscore
-        'name+tag', // plus
-        'Smith & Jones', // ampersand
-        'john.doe', // period
-        'Player#1234', // hash
-        'Cool!', // exclamation
-        'Name (Admin)', // parentheses
-        'José', // accents
-        'François',
-        'Müller',
-        'user_name+tag', // combination
-        'Player#1_Pro!', // multiple special chars
-        '',
-      ];
+  t.test("NICKNAME_REGEX", async (t) => {
+    t.test(
+      "should allow valid nicknames with extended character set",
+      async () => {
+        const validNicknames = [
+          "JohnDoe",
+          "John Doe",
+          "O'Brien",
+          "Mary-Jane",
+          "user_name", // underscore
+          "name+tag", // plus
+          "Smith & Jones", // ampersand
+          "john.doe", // period
+          "Player#1234", // hash
+          "Cool!", // exclamation
+          "Name (Admin)", // parentheses
+          "José", // accents
+          "François",
+          "Müller",
+          "user_name+tag", // combination
+          "Player#1_Pro!", // multiple special chars
+          "",
+        ];
 
-      for (const nickname of validNicknames) {
-        expect(NICKNAME_REGEX.test(nickname)).to.be.true;
-      }
-    });
+        for (const nickname of validNicknames) {
+          expect(NICKNAME_REGEX.test(nickname)).to.be.true;
+        }
+      },
+    );
 
-    t.test('should reject nicknames with URL-enabling characters', async () => {
+    t.test("should reject nicknames with URL-enabling characters", async () => {
       const invalidNicknames = [
-        'user@example.com', // @ symbol (email-like)
-        'http://example.com', // URL scheme
-        'https://test.com', // URL scheme
-        '/path/to/file', // forward slash
-        'user:password', // colon
-        'ftp://server.com', // URL scheme
+        "user@example.com", // @ symbol (email-like)
+        "http://example.com", // URL scheme
+        "https://test.com", // URL scheme
+        "/path/to/file", // forward slash
+        "user:password", // colon
+        "ftp://server.com", // URL scheme
       ];
 
       for (const nickname of invalidNicknames) {
@@ -171,16 +177,16 @@ t.test('Validation Helpers - Regex Tests', async () => {
       }
     });
 
-    t.test('should be more permissive than NAME_REGEX', async () => {
+    t.test("should be more permissive than NAME_REGEX", async () => {
       // These should pass NICKNAME_REGEX but fail NAME_REGEX
       const nicknameOnlyValid = [
-        'user_name',
-        'name+tag',
-        'john.doe',
-        'Player#1234',
-        'Cool!',
-        'Name (Admin)',
-        'Smith & Jones',
+        "user_name",
+        "name+tag",
+        "john.doe",
+        "Player#1234",
+        "Cool!",
+        "Name (Admin)",
+        "Smith & Jones",
       ];
 
       for (const input of nicknameOnlyValid) {
@@ -190,16 +196,16 @@ t.test('Validation Helpers - Regex Tests', async () => {
     });
   });
 
-  t.test('GITHUB_USERNAME_REGEX', async (t) => {
-    t.test('should allow valid GitHub usernames', async () => {
+  t.test("GITHUB_USERNAME_REGEX", async (t) => {
+    t.test("should allow valid GitHub usernames", async () => {
       const validUsernames = [
-        '', // Empty string (optional field)
-        'john-doe',
-        'user123',
-        'a',
-        'test-user-123',
-        'User-Name',
-        'x'.repeat(39), // Max length
+        "", // Empty string (optional field)
+        "john-doe",
+        "user123",
+        "a",
+        "test-user-123",
+        "User-Name",
+        "x".repeat(39), // Max length
       ];
 
       for (const username of validUsernames) {
@@ -207,13 +213,13 @@ t.test('Validation Helpers - Regex Tests', async () => {
       }
     });
 
-    t.test('should reject invalid GitHub usernames', async () => {
+    t.test("should reject invalid GitHub usernames", async () => {
       const invalidUsernames = [
-        '-john', // Starts with hyphen
-        'john-', // Ends with hyphen
-        'john--doe', // Consecutive hyphens
-        'x'.repeat(40), // Too long
-        'user@name', // Invalid character
+        "-john", // Starts with hyphen
+        "john-", // Ends with hyphen
+        "john--doe", // Consecutive hyphens
+        "x".repeat(40), // Too long
+        "user@name", // Invalid character
       ];
 
       for (const username of invalidUsernames) {
@@ -222,17 +228,17 @@ t.test('Validation Helpers - Regex Tests', async () => {
     });
   });
 
-  t.test('DISCORD_TAG_REGEX', async (t) => {
-    t.test('should allow valid Discord usernames', async () => {
+  t.test("DISCORD_TAG_REGEX", async (t) => {
+    t.test("should allow valid Discord usernames", async () => {
       const validTags = [
-        '', // Empty string (optional field)
-        'username',
-        'user.name',
-        'user_name',
-        'username#1234',
-        'cool.user',
-        'ab', // Min length
-        'a'.repeat(32), // Max length
+        "", // Empty string (optional field)
+        "username",
+        "user.name",
+        "user_name",
+        "username#1234",
+        "cool.user",
+        "ab", // Min length
+        "a".repeat(32), // Max length
       ];
 
       for (const tag of validTags) {
@@ -240,15 +246,15 @@ t.test('Validation Helpers - Regex Tests', async () => {
       }
     });
 
-    t.test('should reject invalid Discord usernames', async () => {
+    t.test("should reject invalid Discord usernames", async () => {
       const invalidTags = [
-        'discord', // Reserved word
-        'here', // Reserved word
-        'everyone', // Reserved word
-        'user..name', // Consecutive periods
-        'a', // Too short
-        'a'.repeat(33), // Too long
-        'user#123', // Invalid discriminator (not 4 digits)
+        "discord", // Reserved word
+        "here", // Reserved word
+        "everyone", // Reserved word
+        "user..name", // Consecutive periods
+        "a", // Too short
+        "a".repeat(33), // Too long
+        "user#123", // Invalid discriminator (not 4 digits)
       ];
 
       for (const tag of invalidTags) {
@@ -257,15 +263,15 @@ t.test('Validation Helpers - Regex Tests', async () => {
     });
   });
 
-  t.test('URL_DETECTION_REGEX', async (t) => {
-    t.test('should detect URLs', async () => {
+  t.test("URL_DETECTION_REGEX", async (t) => {
+    t.test("should detect URLs", async () => {
       const urls = [
-        'https://example.com',
-        'http://test.com',
-        'www.example.com',
-        'example.com',
-        'test.io',
-        'subdomain.example.co.uk',
+        "https://example.com",
+        "http://test.com",
+        "www.example.com",
+        "example.com",
+        "test.io",
+        "subdomain.example.co.uk",
       ];
 
       for (const url of urls) {
@@ -273,12 +279,12 @@ t.test('Validation Helpers - Regex Tests', async () => {
       }
     });
 
-    t.test('should not detect non-URLs', async () => {
+    t.test("should not detect non-URLs", async () => {
       const nonUrls = [
-        'just some text',
-        'no url here',
-        'localhost',
-        '192.168.1.1',
+        "just some text",
+        "no url here",
+        "localhost",
+        "192.168.1.1",
       ];
 
       for (const text of nonUrls) {
@@ -287,59 +293,72 @@ t.test('Validation Helpers - Regex Tests', async () => {
     });
   });
 
-  t.test('Max Length Validations', async (t) => {
-    t.test('should enforce standard character limit for user profile fields', async () => {
-      // User profile fields: firstName, lastName, nickname, githubUsername, discordUsername
-      const schemaStandard = z.string().max(MAX_LENGTH_STANDARD);
+  t.test("Max Length Validations", async (t) => {
+    t.test(
+      "should enforce standard character limit for user profile fields",
+      async () => {
+        // User profile fields: firstName, lastName, nickname, githubUsername, discordUsername
+        const schemaStandard = z.string().max(MAX_LENGTH_STANDARD);
 
-      // Should pass with exactly MAX_LENGTH_STANDARD characters
-      const validStandard = 'a'.repeat(MAX_LENGTH_STANDARD);
-      expect(schemaStandard.safeParse(validStandard).success).to.be.true;
+        // Should pass with exactly MAX_LENGTH_STANDARD characters
+        const validStandard = "a".repeat(MAX_LENGTH_STANDARD);
+        expect(schemaStandard.safeParse(validStandard).success).to.be.true;
 
-      // Should fail with MAX_LENGTH_STANDARD + 1 characters
-      const invalidStandard = 'a'.repeat(MAX_LENGTH_STANDARD + 1);
-      expect(schemaStandard.safeParse(invalidStandard).success).to.be.false;
-    });
+        // Should fail with MAX_LENGTH_STANDARD + 1 characters
+        const invalidStandard = "a".repeat(MAX_LENGTH_STANDARD + 1);
+        expect(schemaStandard.safeParse(invalidStandard).success).to.be.false;
+      },
+    );
 
-    t.test('should enforce standard character limit for workspace display names', async () => {
-      const schemaStandard = z.string().max(MAX_LENGTH_STANDARD);
+    t.test(
+      "should enforce standard character limit for workspace display names",
+      async () => {
+        const schemaStandard = z.string().max(MAX_LENGTH_STANDARD);
 
-      // Should pass with exactly MAX_LENGTH_STANDARD characters
-      const validStandard = 'a'.repeat(MAX_LENGTH_STANDARD);
-      expect(schemaStandard.safeParse(validStandard).success).to.be.true;
+        // Should pass with exactly MAX_LENGTH_STANDARD characters
+        const validStandard = "a".repeat(MAX_LENGTH_STANDARD);
+        expect(schemaStandard.safeParse(validStandard).success).to.be.true;
 
-      // Should fail with MAX_LENGTH_STANDARD + 1 characters
-      const invalidStandard = 'a'.repeat(MAX_LENGTH_STANDARD + 1);
-      expect(schemaStandard.safeParse(invalidStandard).success).to.be.false;
-    });
+        // Should fail with MAX_LENGTH_STANDARD + 1 characters
+        const invalidStandard = "a".repeat(MAX_LENGTH_STANDARD + 1);
+        expect(schemaStandard.safeParse(invalidStandard).success).to.be.false;
+      },
+    );
 
-    t.test('should enforce extended character limit for workspace descriptions', async () => {
-      const schemaExtended = z.string().max(MAX_LENGTH_EXTENDED);
+    t.test(
+      "should enforce extended character limit for workspace descriptions",
+      async () => {
+        const schemaExtended = z.string().max(MAX_LENGTH_EXTENDED);
 
-      // Should pass with exactly MAX_LENGTH_EXTENDED characters
-      const validExtended = 'a'.repeat(MAX_LENGTH_EXTENDED);
-      expect(schemaExtended.safeParse(validExtended).success).to.be.true;
+        // Should pass with exactly MAX_LENGTH_EXTENDED characters
+        const validExtended = "a".repeat(MAX_LENGTH_EXTENDED);
+        expect(schemaExtended.safeParse(validExtended).success).to.be.true;
 
-      // Should fail with MAX_LENGTH_EXTENDED + 1 characters
-      const invalidExtended = 'a'.repeat(MAX_LENGTH_EXTENDED + 1);
-      expect(schemaExtended.safeParse(invalidExtended).success).to.be.false;
-    });
+        // Should fail with MAX_LENGTH_EXTENDED + 1 characters
+        const invalidExtended = "a".repeat(MAX_LENGTH_EXTENDED + 1);
+        expect(schemaExtended.safeParse(invalidExtended).success).to.be.false;
+      },
+    );
 
-    t.test('should allow domain names within length limits', async () => {
+    t.test("should allow domain names within length limits", async () => {
       // Workspace display name: MAX_LENGTH_STANDARD chars with domain
-      const displayNameSchema = z.string()
+      const displayNameSchema = z
+        .string()
         .max(MAX_LENGTH_STANDARD)
         .regex(DOMAIN_FRIENDLY_INPUT_REGEX);
 
-      const validDisplayName = 'My Production Workspace - example.com';
+      const validDisplayName = "My Production Workspace - example.com";
       expect(displayNameSchema.safeParse(validDisplayName).success).to.be.true;
 
       // Workspace description: MAX_LENGTH_EXTENDED chars with domain
-      const descriptionSchema = z.string()
+      const descriptionSchema = z
+        .string()
         .max(MAX_LENGTH_EXTENDED)
         .regex(DOMAIN_FRIENDLY_INPUT_REGEX);
 
-      const validDescription = `This workspace manages api.example.com and handles all production traffic for our services. ${'a'.repeat(400)}`;
+      const validDescription = `This workspace manages api.example.com and handles all production traffic for our services. ${"a".repeat(
+        400,
+      )}`;
       expect(descriptionSchema.safeParse(validDescription).success).to.be.true;
       expect(validDescription.length).to.be.lessThan(MAX_LENGTH_EXTENDED);
     });

@@ -1,8 +1,5 @@
 <template>
-  <div
-    class="flex flex-row items-center gap-2.5 px-4 py-4 text-xs"
-    :class="classes"
-  >
+  <div class="flex flex-row items-center gap-2.5 px-4 py-4 text-xs" :class="classes">
     <NodeSkeleton :color="props.color" class="flex-shrink-0" />
     <span class=""> {{ props.name }} </span>
   </div>

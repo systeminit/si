@@ -13,28 +13,17 @@
           <div class="flex flex-col flex-grow min-w-0">
             <Timestamp
               :date="changeSet.appliedAt"
-              :timeClasses="
-                themeClasses('text-neutral-500', 'text-neutral-400')
-              "
+              :timeClasses="themeClasses('text-neutral-500', 'text-neutral-400')"
               class="text-sm"
               dateClasses="font-bold"
               showTimeIfToday
               size="long"
             />
-            <div
-              :class="
-                clsx(
-                  'text-xs truncate',
-                  themeClasses('text-neutral-500', 'text-neutral-400'),
-                )
-              "
-            >
+            <div :class="clsx('text-xs truncate', themeClasses('text-neutral-500', 'text-neutral-400'))">
               <span class="font-bold">Change Set:</span> {{ changeSet.name }}
             </div>
           </div>
-          <div class="flex-none font-bold">
-            {{ displayActions.length }} Action(s)
-          </div>
+          <div class="flex-none font-bold">{{ displayActions.length }} Action(s)</div>
           <!-- TODO(Wendy) - maybe a PillCounter makes more sense here? -->
           <!-- <PillCounter
             v-tooltip="{ content: 'Actions', placement: 'left' }"
@@ -45,11 +34,7 @@
         </template>
         <template v-else>
           <div class="grow-0 mx-[.66em]">
-            <Icon
-              class="attributes-panel-item__type-icon"
-              name="bullet-list"
-              size="sm"
-            />
+            <Icon class="attributes-panel-item__type-icon" name="bullet-list" size="sm" />
           </div>
           <div class="grow">{{ displayActions.length }} Action(s)</div>
           <div class="grow-0 flex flex-row mr-xs">
@@ -59,11 +44,7 @@
               class="flex flex-row mx-2xs p-2xs rounded dark:bg-neutral-900 bg-neutral-200"
             >
               <div class="mx-2xs">{{ cnt }}</div>
-              <StatusIndicatorIcon
-                :status="actionKind.toString()"
-                size="sm"
-                type="action"
-              />
+              <StatusIndicatorIcon :status="actionKind.toString()" size="sm" type="action" />
             </div>
           </div>
         </template>
@@ -72,12 +53,7 @@
     <div
       v-for="action in displayActions"
       :key="action.id"
-      :class="
-        clsx(
-          'border-b',
-          themeClasses('border-neutral-100', 'border-neutral-700'),
-        )
-      "
+      :class="clsx('border-b', themeClasses('border-neutral-100', 'border-neutral-700'))"
     >
       <ActionCard
         :action="action"
@@ -94,20 +70,9 @@
 
 <script lang="ts" setup>
 import clsx from "clsx";
-import {
-  Icon,
-  Timestamp,
-  TreeNode,
-  themeClasses,
-} from "@si/vue-lib/design-system";
+import { Icon, Timestamp, TreeNode, themeClasses } from "@si/vue-lib/design-system";
 import { PropType, computed } from "vue";
-import {
-  useActionsStore,
-  ActionView,
-  ActionHistoryView,
-  FuncRunId,
-  ActionProposedView,
-} from "@/store/actions.store";
+import { useActionsStore, ActionView, ActionHistoryView, FuncRunId, ActionProposedView } from "@/store/actions.store";
 import { DefaultMap } from "@/utils/defaultmap";
 import { ChangeSet } from "@/api/sdf/dal/change_set";
 import ActionCard from "./ActionCard.vue";
@@ -117,10 +82,7 @@ export type ActionsListKind = "proposed" | "history";
 
 const actionsStore = useActionsStore();
 
-type clickFn = (
-  action: ActionHistoryView | ActionProposedView,
-  e: MouseEvent,
-) => void;
+type clickFn = (action: ActionHistoryView | ActionProposedView, e: MouseEvent) => void;
 
 const props = defineProps({
   actions: { type: Array<ActionView> },
@@ -156,10 +118,8 @@ const isSelected = (action: ActionView) => {
 
 const displayActions = computed(() => {
   // Use the actions prop if it is present
-  if (props.actions && props.kind === "proposed")
-    return props.actions as ActionProposedView[];
-  if (props.actions && props.kind === "history")
-    return props.actions as ActionHistoryView[];
+  if (props.actions && props.kind === "proposed") return props.actions as ActionProposedView[];
+  if (props.actions && props.kind === "history") return props.actions as ActionHistoryView[];
 
   // Otherwise grab actions based on the kind prop
   if (props.kind === "proposed") {

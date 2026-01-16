@@ -11,16 +11,8 @@
     :actor="action.actor"
   >
     <template #icons>
-      <Icon
-        :class="resultIconClass(props.action.result)"
-        :name="resultIcon(props.action.result)"
-        size="sm"
-      />
-      <Icon
-        :class="actionIconClass(props.action.kind)"
-        :name="actionIcon(props.action.kind)"
-        size="sm"
-      />
+      <Icon :class="resultIconClass(props.action.result)" :name="resultIcon(props.action.result)" size="sm" />
+      <Icon :class="actionIconClass(props.action.kind)" :name="actionIcon(props.action.kind)" size="sm" />
     </template>
     <template #interaction>
       <FuncRunTabDropdown

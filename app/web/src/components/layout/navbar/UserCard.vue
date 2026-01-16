@@ -1,8 +1,6 @@
 <template>
   <!-- Hover styles - hover:bg-action-200 dark:hover:bg-action-500 cursor-pointer -->
-  <div
-    class="flex flex-row items-center gap-xs p-xs pl-sm overflow-hidden flex-none"
-  >
+  <div class="flex flex-row items-center gap-xs p-xs pl-sm overflow-hidden flex-none">
     <UserIcon
       :user="user"
       changeSetStarSide
@@ -15,15 +13,8 @@
       <div class="w-full truncate leading-tight">
         {{ user.name }}
       </div>
-      <div
-        v-if="!hideChangeSetInfo"
-        class="text-xs font-bold line-clamp-3 break-words"
-      >
-        {{
-          user.changeSet
-            ? changeSetsStore.changeSetsById[user.changeSet]?.name || "Head"
-            : "Head"
-        }}
+      <div v-if="!hideChangeSetInfo" class="text-xs font-bold line-clamp-3 break-words">
+        {{ user.changeSet ? changeSetsStore.changeSetsById[user.changeSet]?.name || "Head" : "Head" }}
       </div>
       <div v-if="!hideStatus" class="text-xs italic line-clamp-3 break-words">
         {{ user.status }}

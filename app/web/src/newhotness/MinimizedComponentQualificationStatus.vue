@@ -15,10 +15,7 @@
           Unknown
         </TextPill>
         <TextPill
-          v-else-if="
-            component.qualificationTotals.failed === 0 &&
-            component.qualificationTotals.warned === 0
-          "
+          v-else-if="component.qualificationTotals.failed === 0 && component.qualificationTotals.warned === 0"
           tighter
           variant="success"
           class="text-xs ml-auto"
@@ -42,11 +39,7 @@
           {{ component.qualificationTotals.warned }} Warning
         </TextPill>
       </template>
-      <StatusIndicatorIcon
-        type="qualification"
-        size="sm"
-        :status="qualificationStatus"
-      />
+      <StatusIndicatorIcon type="qualification" size="sm" :status="qualificationStatus" />
     </div>
   </div>
 </template>
@@ -54,11 +47,7 @@
 <script setup lang="ts">
 import { TextPill } from "@si/vue-lib/design-system";
 import { computed } from "vue";
-import {
-  ComponentInList,
-  BifrostComponent,
-  DependentValues,
-} from "@/workers/types/entity_kind_types";
+import { ComponentInList, BifrostComponent, DependentValues } from "@/workers/types/entity_kind_types";
 import StatusIndicatorIcon from "@/components/StatusIndicatorIcon.vue";
 
 const props = defineProps<{
@@ -68,9 +57,7 @@ const props = defineProps<{
 }>();
 
 const inProgress = computed(() =>
-  props.dependentValues?.componentAttributes?.[props.component.id]?.includes(
-    "/qualification",
-  ),
+  props.dependentValues?.componentAttributes?.[props.component.id]?.includes("/qualification"),
 );
 
 const qualificationStatus = computed(() => {

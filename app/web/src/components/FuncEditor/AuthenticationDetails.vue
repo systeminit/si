@@ -26,9 +26,7 @@ const props = defineProps<{
 
 const binding = computed(() => {
   const bindings = funcStore.authenticationBindings[props.funcId];
-  const binding = bindings
-    ?.filter((b) => b.schemaVariantId === props.schemaVariantId)
-    .pop();
+  const binding = bindings?.filter((b) => b.schemaVariantId === props.schemaVariantId).pop();
   return binding;
 });
 
@@ -37,17 +35,12 @@ const validSchemaVariantIds = computed(() => {
   return bindings?.map((b) => b.schemaVariantId).filter(nonNullable);
 });
 
-const selectedVariants = ref<Option[]>(
-  toOptionValues(schemaVariantOptions.value, validSchemaVariantIds.value || []),
-);
+const selectedVariants = ref<Option[]>(toOptionValues(schemaVariantOptions.value, validSchemaVariantIds.value || []));
 
 watch(
   [validSchemaVariantIds, schemaVariantOptions],
   () => {
-    selectedVariants.value = toOptionValues(
-      schemaVariantOptions.value,
-      validSchemaVariantIds.value || [],
-    );
+    selectedVariants.value = toOptionValues(schemaVariantOptions.value, validSchemaVariantIds.value || []);
   },
   { immediate: true },
 );

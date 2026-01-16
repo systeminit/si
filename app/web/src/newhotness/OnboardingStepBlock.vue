@@ -3,19 +3,13 @@
     :class="
       clsx(
         'rounded border w-full flex flex-col grow',
-        themeClasses(
-          'bg-white border-neutral-400',
-          'bg-neutral-800 border-neutral-600',
-        ),
+        themeClasses('bg-white border-neutral-400', 'bg-neutral-800 border-neutral-600'),
       )
     "
   >
     <div
       :class="
-        clsx(
-          'p-sm select-none rounded-t border-b text-sm',
-          themeClasses('border-neutral-400', 'border-neutral-600'),
-        )
+        clsx('p-sm select-none rounded-t border-b text-sm', themeClasses('border-neutral-400', 'border-neutral-600'))
       "
     >
       <slot name="header" />

@@ -6,10 +6,7 @@
     :class="
       selected
         ? themeClasses('bg-action-500', 'bg-action-300')
-        : themeClasses(
-            'hover:bg-neutral-200 active:bg-action-500',
-            'hover:bg-neutral-600 active:bg-action-300',
-          )
+        : themeClasses('hover:bg-neutral-200 active:bg-action-500', 'hover:bg-neutral-600 active:bg-action-300')
     "
   />
 </template>

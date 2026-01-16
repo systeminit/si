@@ -55,9 +55,7 @@ const props = defineProps({
 
 const loadingSummaryText = computed(() => {
   const totalLoadingSteps = props.loadingSteps.length;
-  const completedLoadingSteps = props.loadingSteps.filter(
-    (f) => f === true,
-  ).length;
+  const completedLoadingSteps = props.loadingSteps.filter((f) => f === true).length;
 
   return `${completedLoadingSteps}/${totalLoadingSteps}`;
 });
@@ -72,8 +70,7 @@ const sentences = [
   },
   { sentence: "Loading change sets and parsing intent" },
   {
-    sentence:
-      "Scanning your workspace to see what's real... and what wants to be",
+    sentence: "Scanning your workspace to see what's real... and what wants to be",
   },
   { sentence: "Populating attributes from source of truth" },
   { sentence: "Preparing views with just the right perspective" },
@@ -83,8 +80,7 @@ const sentences = [
   },
   { sentence: "Views loading... perfect clarity takes a second" },
   {
-    sentence:
-      "Describing infrastructure so well, it might describe itself back",
+    sentence: "Describing infrastructure so well, it might describe itself back",
   },
   { sentence: "Locating intent in a sea of configuration" },
   { sentence: "Applying structure without limiting flexibility" },
@@ -94,9 +90,7 @@ const sentences = [
 
 const showPanel = ref(false);
 const visibleSentenceCount = ref<number>(0);
-const visibleSentences = computed(() =>
-  sentences.slice(0, visibleSentenceCount.value),
-);
+const visibleSentences = computed(() => sentences.slice(0, visibleSentenceCount.value));
 
 // Delay before opening, so we don't blink the screen
 const BLINK_DELAY_MS = 2000;
@@ -114,8 +108,7 @@ onMounted(kickOffTerminalLogs);
 
 // Every time we show a sentence, enqueue showing the next sentence after a delay
 const LOG_MIN_DELAY_MS = 4000;
-const logDelayVariable = () =>
-  LOG_MIN_DELAY_MS + Math.floor(Math.random() * 1000);
+const logDelayVariable = () => LOG_MIN_DELAY_MS + Math.floor(Math.random() * 1000);
 watch([visibleSentenceCount], async () => {
   if (!showPanel.value) return;
 
@@ -151,13 +144,7 @@ watch([visibleSentenceCount], async () => {
     use a spinning conic-gradient as the border image. It looks like this: https://www.geeksforgeeks.org/css/css-conic-gradient-function/
     But "masked" through the border
   */
-  border-image: conic-gradient(
-      from var(--angle),
-      #333,
-      #333 0.95turn,
-      #aaa8 1turn
-    )
-    1;
+  border-image: conic-gradient(from var(--angle), #333, #333 0.95turn, #aaa8 1turn) 1;
   /*
     Enable the animation. Although the rotation is linear, since it's showing through a rectangular shape,
     both the moving speed and the trail length vary depending on the position. We could fudge the border speed by

@@ -26,11 +26,7 @@ const modalRef = ref<InstanceType<typeof Modal>>();
 const integration = computed(() => workspacesStore.getIntegrations);
 
 function open() {
-  if (
-    integration.value &&
-    integration.value.slackWebhookUrl &&
-    integration.value.slackWebhookUrl !== ""
-  ) {
+  if (integration.value && integration.value.slackWebhookUrl && integration.value.slackWebhookUrl !== "") {
     webhookUrl.value = integration.value.slackWebhookUrl;
   }
   modalRef.value?.open();

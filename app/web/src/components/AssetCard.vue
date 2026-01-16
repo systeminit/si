@@ -2,20 +2,14 @@
   <div>
     <div
       v-if="asset"
-      :class="
-        clsx('p-xs border-l-4 border relative', !titleCard && 'rounded-md')
-      "
+      :class="clsx('p-xs border-l-4 border relative', !titleCard && 'rounded-md')"
       :style="{
         borderColor: asset.color,
         backgroundColor: `#${bodyBg.toHex()}`,
       }"
     >
       <div class="flex gap-xs items-center">
-        <Icon
-          :name="pickBrandIconByString(asset.category)"
-          class="shrink-0"
-          size="lg"
-        />
+        <Icon :name="pickBrandIconByString(asset.category)" class="shrink-0" size="lg" />
         <Stack class="" spacing="xs">
           <div
             ref="componentNameRef"
@@ -82,18 +76,11 @@
         :requestStatus="deleteUnlockedVariantReqStatus"
         variant="block"
       />
-      <ErrorMessage
-        v-if="asset && asset.isLocked"
-        icon="lock"
-        tone="warning"
-        variant="block"
-      >
+      <ErrorMessage v-if="asset && asset.isLocked" icon="lock" tone="warning" variant="block">
         <template v-if="editingVersionDoesNotExist">
           Click edit to create a new editable version of this asset.
         </template>
-        <template v-else>
-          An editable version of this asset exists. This version is locked.
-        </template>
+        <template v-else> An editable version of this asset exists. This version is locked. </template>
       </ErrorMessage>
     </div>
     <!-- FIXME(nick): this probably needs to be moved and de-duped with logic in AssetListPanel -->
@@ -103,20 +90,10 @@
       :contributeRequest="contributeRequest"
       @contribute-success="onContributeAsset"
     />
-    <Modal
-      ref="contributeAssetSuccessModalRef"
-      size="sm"
-      title="Contribution sent"
-    >
+    <Modal ref="contributeAssetSuccessModalRef" size="sm" title="Contribution sent">
       <p>
-        Thanks for contributing! We will review your contribution, and reach out
-        via email or on our
-        <a
-          class="text-action-500"
-          href="https://discord.com/invite/system-init"
-          target="_blank"
-          >Discord Server</a
-        >
+        Thanks for contributing! We will review your contribution, and reach out via email or on our
+        <a class="text-action-500" href="https://discord.com/invite/system-init" target="_blank">Discord Server</a>
         if you have any questions.
       </p>
     </Modal>
@@ -127,14 +104,7 @@
 import { computed, PropType, ref } from "vue";
 import tinycolor from "tinycolor2";
 import clsx from "clsx";
-import {
-  useTheme,
-  Modal,
-  Stack,
-  Icon,
-  ErrorMessage,
-  IconButton,
-} from "@si/vue-lib/design-system";
+import { useTheme, Modal, Stack, Icon, ErrorMessage, IconButton } from "@si/vue-lib/design-system";
 import { format as dateFormat } from "date-fns";
 import { useAssetStore } from "@/store/asset.store";
 import { SchemaVariantId, SchemaVariant } from "@/api/sdf/dal/schema";
@@ -158,8 +128,7 @@ const upgradeStatus = moduleStore.getRequestStatus(
   moduleStore.upgradeableModules[props.assetId]?.schemaId,
 );
 
-const contributeAssetModalRef =
-  ref<InstanceType<typeof AssetContributeModal>>();
+const contributeAssetModalRef = ref<InstanceType<typeof AssetContributeModal>>();
 const contributeAssetSuccessModalRef = ref<InstanceType<typeof Modal>>();
 
 const contributeAsset = () => contributeAssetModalRef.value?.open();
@@ -180,32 +149,19 @@ const contributeRequest = computed((): ModuleContributeRequest | null => {
 });
 
 const editingVersionDoesNotExist = computed<boolean>(
-  () =>
-    assetStore.unlockedVariantIdForId[asset.value?.schemaVariantId ?? ""] ===
-    undefined,
+  () => assetStore.unlockedVariantIdForId[asset.value?.schemaVariantId ?? ""] === undefined,
 );
 
 const hasEditingVersion = computed<boolean>(
-  () =>
-    assetStore.unlockedVariantIdForId[asset.value?.schemaVariantId ?? ""] !==
-    undefined,
+  () => assetStore.unlockedVariantIdForId[asset.value?.schemaVariantId ?? ""] !== undefined,
 );
 
-const asset = computed(
-  (): SchemaVariant | undefined =>
-    assetStore.variantFromListById[props.assetId],
-);
+const asset = computed((): SchemaVariant | undefined => assetStore.variantFromListById[props.assetId]);
 
-const canUpdate = computed(
-  () => !!moduleStore.upgradeableModules[props.assetId],
-);
+const canUpdate = computed(() => !!moduleStore.upgradeableModules[props.assetId]);
 
 const canContribute = computed(() => {
-  return (
-    moduleStore.contributableModules.includes(
-      asset.value?.schemaVariantId ?? "",
-    ) || asset.value?.canContribute
-  );
+  return moduleStore.contributableModules.includes(asset.value?.schemaVariantId ?? "") || asset.value?.canContribute;
 });
 
 const updateAsset = () => {
@@ -236,10 +192,7 @@ const bodyBg = computed(() => {
 
 const componentNameRef = ref();
 const componentNameTooltip = computed(() => {
-  if (
-    componentNameRef.value &&
-    componentNameRef.value.scrollHeight > componentNameRef.value.offsetHeight
-  ) {
+  if (componentNameRef.value && componentNameRef.value.scrollHeight > componentNameRef.value.offsetHeight) {
     return {
       content: componentNameRef.value.textContent,
       delay: { show: 700, hide: 10 },
@@ -264,9 +217,7 @@ const deleteUnlockedVariantReqStatus = assetStore.getRequestStatus(
 );
 const deleteUnlockedVariant = async () => {
   if (asset.value) {
-    const resp = await assetStore.DELETE_UNLOCKED_VARIANT(
-      asset.value.schemaVariantId,
-    );
+    const resp = await assetStore.DELETE_UNLOCKED_VARIANT(asset.value.schemaVariantId);
     if (resp.result.success) {
       assetStore.setSchemaVariantSelection("");
     }

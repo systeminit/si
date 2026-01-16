@@ -9,19 +9,10 @@
     <!-- We may want to make this "invisible" to keep the space in the future. -->
     <div
       v-if="show"
-      v-tooltip="
-        status === 'syncing' ? 'Syncing changes' : 'Everything is synced'
-      "
+      v-tooltip="status === 'syncing' ? 'Syncing changes' : 'Everything is synced'"
       class="bg-neutral-600 rounded p-2xs"
     >
-      <Icon
-        :name="
-          status === 'syncing'
-            ? 'refresh-carbon-active'
-            : 'check-circle-outline'
-        "
-        size="sm"
-      />
+      <Icon :name="status === 'syncing' ? 'refresh-carbon-active' : 'check-circle-outline'" size="sm" />
     </div>
   </Transition>
 </template>

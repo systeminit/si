@@ -11,10 +11,7 @@
           themeClasses('border-neutral-300', 'border-neutral-600'),
           props.label === 'Incoming' &&
             highlightedPath === conn.self &&
-            themeClasses(
-              'border-neutral-500 bg-neutral-300',
-              'border-neutral-400 bg-neutral-700',
-            ),
+            themeClasses('border-neutral-500 bg-neutral-300', 'border-neutral-400 bg-neutral-700'),
         )
       "
     >
@@ -23,36 +20,22 @@
           <Icon
             name="incoming-connection"
             size="none"
-            :class="
-              clsx(
-                'w-8 h-11',
-                themeClasses('text-neutral-500', 'text-neutral-400'),
-              )
-            "
+            :class="clsx('w-8 h-11', themeClasses('text-neutral-500', 'text-neutral-400'))"
           />
         </div>
 
-        <div
-          class="flex-1 min-w-0 flex flex-col gap-3xs pl-0 font-mono text-xs"
-        >
+        <div class="flex-1 min-w-0 flex flex-col gap-3xs pl-0 font-mono text-xs">
           <div
             :class="
               clsx(
                 'flex flex-row gap-xs -ml-xs p-2xs rounded-sm',
                 props.label === 'Incoming' &&
                   ctx.componentDetails.value[conn.componentId]?.name &&
-                  clsx(
-                    'cursor-pointer',
-                    themeClasses(
-                      'hover:bg-neutral-200',
-                      'hover:bg-neutral-700',
-                    ),
-                  ),
+                  clsx('cursor-pointer', themeClasses('hover:bg-neutral-200', 'hover:bg-neutral-700')),
               )
             "
             @click="
-              props.label === 'Incoming' &&
-              ctx.componentDetails.value[conn.componentId]?.name
+              props.label === 'Incoming' && ctx.componentDetails.value[conn.componentId]?.name
                 ? navigate(conn.componentId)
                 : undefined
             "
@@ -69,10 +52,7 @@
                   )
                 "
               >
-                {{
-                  ctx.componentDetails.value[conn.componentId]
-                    ?.schemaVariantName
-                }}
+                {{ ctx.componentDetails.value[conn.componentId]?.schemaVariantName }}
               </TruncateWithTooltip>
               <TruncateWithTooltip
                 :class="
@@ -124,18 +104,11 @@
                 'flex flex-row gap-xs p-2xs rounded-sm',
                 props.label === 'Outgoing' &&
                   ctx.componentDetails.value[conn.componentId]?.name &&
-                  clsx(
-                    'cursor-pointer',
-                    themeClasses(
-                      'hover:bg-neutral-200',
-                      'hover:bg-neutral-700',
-                    ),
-                  ),
+                  clsx('cursor-pointer', themeClasses('hover:bg-neutral-200', 'hover:bg-neutral-700')),
               )
             "
             @click="
-              props.label === 'Outgoing' &&
-              ctx.componentDetails.value[conn.componentId]?.name
+              props.label === 'Outgoing' && ctx.componentDetails.value[conn.componentId]?.name
                 ? navigate(conn.componentId)
                 : undefined
             "
@@ -167,10 +140,7 @@
                   )
                 "
               >
-                {{
-                  ctx.componentDetails.value[conn.componentId]
-                    ?.schemaVariantName
-                }}
+                {{ ctx.componentDetails.value[conn.componentId]?.schemaVariantName }}
               </TruncateWithTooltip>
               <TruncateWithTooltip
                 :class="
@@ -209,11 +179,7 @@
 <script setup lang="ts">
 import { useRoute, useRouter } from "vue-router";
 import clsx from "clsx";
-import {
-  themeClasses,
-  TruncateWithTooltip,
-  Icon,
-} from "@si/vue-lib/design-system";
+import { themeClasses, TruncateWithTooltip, Icon } from "@si/vue-lib/design-system";
 import { useContext } from "../logic_composables/context";
 
 export interface SimpleConnection {

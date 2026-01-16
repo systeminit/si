@@ -3,29 +3,11 @@
 
 import { IRect } from "konva/lib/types";
 import { FuncBinding, FuncId, FuncSummary } from "@/api/sdf/dal/func";
-import {
-  ChangeSetId,
-  ChangeSetStatus,
-  ChangeSet,
-} from "@/api/sdf/dal/change_set";
-import {
-  ComponentId,
-  RawComponent,
-  RawSocketEdge,
-} from "@/api/sdf/dal/component";
-import {
-  ComponentType,
-  SchemaVariant,
-  SchemaId,
-  SchemaVariantId,
-} from "@/api/sdf/dal/schema";
+import { ChangeSetId, ChangeSetStatus, ChangeSet } from "@/api/sdf/dal/change_set";
+import { ComponentId, RawComponent, RawSocketEdge } from "@/api/sdf/dal/component";
+import { ComponentType, SchemaVariant, SchemaId, SchemaVariantId } from "@/api/sdf/dal/schema";
 import { ActionId } from "@/api/sdf/dal/action";
-import {
-  ApprovalRequirementDefinitionId,
-  EntityId,
-  ViewDescription,
-  ViewId,
-} from "@/api/sdf/dal/views";
+import { ApprovalRequirementDefinitionId, EntityId, ViewDescription, ViewId } from "@/api/sdf/dal/views";
 import { WorkspacePk } from "@/api/sdf/dal/workspace";
 import { StatusUpdate } from "../status.store";
 import { CursorContainerKind } from "../presence.store";
@@ -35,10 +17,7 @@ import { FuncRunLogId } from "../func_runs.store";
 
 export type SecretId = string;
 
-export type WebsocketRequest =
-  | CursorRequest
-  | OnlineRequest
-  | ComponentPositionRequest;
+export type WebsocketRequest = CursorRequest | OnlineRequest | ComponentPositionRequest;
 
 export interface CursorRequest {
   kind: "Cursor";

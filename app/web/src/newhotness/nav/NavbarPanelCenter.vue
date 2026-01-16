@@ -1,15 +1,10 @@
 <template>
-  <div
-    class="flex flex-row flex-none items-center h-full justify-center place-items-center mx-auto overflow-hidden"
-  >
+  <div class="flex flex-row flex-none items-center h-full justify-center place-items-center mx-auto overflow-hidden">
     <template v-if="isConnected">
       <NavbarButton
         tooltipText="Compose"
         icon="grid"
-        :selected="
-          route.name?.toString().startsWith('new-hotness') &&
-          route.name?.toString() !== 'new-hotness-review'
-        "
+        :selected="route.name?.toString().startsWith('new-hotness') && route.name?.toString() !== 'new-hotness-review'"
         :linkTo="compositionLink"
       />
 
@@ -47,10 +42,7 @@
         clsx(
           'p-md text-destructive-500 flex flex-row gap-sm items-center',
           'animate-[pulse_2s_infinite]',
-          themeClasses(
-            'bg-destructive-100 text-destructive-900',
-            'bg-destructive-900 text-destructive-100',
-          ),
+          themeClasses('bg-destructive-100 text-destructive-900', 'bg-destructive-900 text-destructive-100'),
         )
       "
     >
@@ -86,12 +78,7 @@ const props = defineProps<{
 }>();
 
 const compositionLink = computed(() => {
-  // eslint-disable-next-line no-nested-ternary
-  const name = props.componentId
-    ? "new-hotness-component"
-    : props.viewId
-    ? "new-hotness-view"
-    : "new-hotness";
+  const name = props.componentId ? "new-hotness-component" : props.viewId ? "new-hotness-view" : "new-hotness";
   return {
     name,
     params: props,

@@ -3,17 +3,9 @@ import { StandardModel } from "@/api/sdf/dal/standard_model";
 import { CodeView } from "@/api/sdf/dal/code_view";
 import { ActorView } from "@/api/sdf/dal/history_actor";
 import { ChangeStatus } from "@/api/sdf/dal/change_set";
-import {
-  ComponentType,
-  InputSocketId,
-  OutputSocketId,
-} from "@/api/sdf/dal/schema";
+import { ComponentType, InputSocketId, OutputSocketId } from "@/api/sdf/dal/schema";
 import { ViewDescription, ViewId } from "@/api/sdf/dal/views";
-import {
-  DiagramSocketDef,
-  DiagramSocketDirection,
-  Size2D,
-} from "@/components/ModelingDiagram/diagram_types";
+import { DiagramSocketDef, DiagramSocketDirection, Size2D } from "@/components/ModelingDiagram/diagram_types";
 import { TopLevelProp } from "./prop";
 
 export interface Component extends StandardModel {
@@ -101,9 +93,7 @@ export type RawEdge = RawSocketEdge | RawSubscriptionEdge;
 export function isRawSocketEdge(edge: RawEdge): edge is RawSocketEdge {
   return "fromSocketId" in edge;
 }
-export function isRawSubscriptionEdge(
-  edge: RawEdge,
-): edge is RawSubscriptionEdge {
+export function isRawSubscriptionEdge(edge: RawEdge): edge is RawSubscriptionEdge {
   return "fromAttributePath" in edge;
 }
 
@@ -113,16 +103,12 @@ interface ExtraEdgeProperties {
   isManagement?: boolean;
 }
 export interface SocketEdge extends RawSocketEdge, ExtraEdgeProperties {}
-export interface SubscriptionEdge
-  extends RawSubscriptionEdge,
-    ExtraEdgeProperties {}
+export interface SubscriptionEdge extends RawSubscriptionEdge, ExtraEdgeProperties {}
 export type Edge = SocketEdge | SubscriptionEdge;
 export function isSocketEdge(edge: Edge | undefined): edge is SocketEdge {
   return edge ? "fromSocketId" in edge : false;
 }
-export function isSubscriptionEdge(
-  edge: Edge | undefined,
-): edge is SubscriptionEdge {
+export function isSubscriptionEdge(edge: Edge | undefined): edge is SubscriptionEdge {
   return edge ? "fromAttributePath" in edge : false;
 }
 

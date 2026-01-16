@@ -6,10 +6,7 @@
         `absolute top-0 left-0 w-full h-[${virtualItemSize}px]`,
         'possible-connections grid gap-xs cursor-pointer border border-transparent',
         'px-xs py-2xs',
-        isConnectionSelected && [
-          'input-selected-item',
-          themeClasses('bg-action-200', 'bg-action-900'),
-        ],
+        isConnectionSelected && ['input-selected-item', themeClasses('bg-action-200', 'bg-action-900')],
         themeClasses(
           'hover:border-action-500 active:active:bg-action-200',
           'hover:border-action-300 active:active:bg-action-900',
@@ -21,16 +18,11 @@
     }"
     @click.left="emit('selectConnection', virtualItemIndex)"
   >
-    <div
-      class="flex flex-row items-center gap-xs font-mono [&>*]:basis-1/2 [&>*]:flex-grow [&>*]:max-w-fit"
-    >
+    <div class="flex flex-row items-center gap-xs font-mono [&>*]:basis-1/2 [&>*]:flex-grow [&>*]:max-w-fit">
       <TruncateWithTooltip
         :class="
           clsx(
-            themeClasses(
-              'text-newhotness-greenlight',
-              'text-newhotness-greendark',
-            ),
+            themeClasses('text-newhotness-greenlight', 'text-newhotness-greendark'),
             filteredSchemaName === connection.schemaName ? 'underline' : '',
           )
         "
@@ -41,13 +33,8 @@
       <TruncateWithTooltip
         :class="
           clsx(
-            themeClasses(
-              'text-newhotness-purplelight',
-              'text-newhotness-purpledark',
-            ),
-            filteredComponentName === connection.componentName
-              ? 'underline'
-              : '',
+            themeClasses('text-newhotness-purplelight', 'text-newhotness-purpledark'),
+            filteredComponentName === connection.componentName ? 'underline' : '',
           )
         "
         @click.right.stop.prevent="onComponent"
@@ -66,14 +53,7 @@
         <div v-if="itemIndex !== (connection.pathArray.length ?? 0) - 1">/</div>
       </template>
     </div>
-    <TruncateWithTooltip
-      :class="
-        clsx(
-          'font-mono',
-          connection.value === null && 'italic text-neutral-400',
-        )
-      "
-    >
+    <TruncateWithTooltip :class="clsx('font-mono', connection.value === null && 'italic text-neutral-400')">
       <template
         v-if="
           connection.kind === 'array' ||
@@ -109,8 +89,7 @@ const props = defineProps<{
 
 const onSchema = () => {
   if (!props.connection) return;
-  if (props.filteredSchemaName !== props.connection.schemaName)
-    emit("filterSchema", props.connection.schemaName);
+  if (props.filteredSchemaName !== props.connection.schemaName) emit("filterSchema", props.connection.schemaName);
   else emit("clearSchema");
 };
 

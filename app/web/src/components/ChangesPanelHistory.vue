@@ -1,8 +1,5 @@
 <template>
-  <div
-    class="w-full h-full flex flex-col overflow-hidden relative"
-    @click="deselectOnClickEmptySpace"
-  >
+  <div class="w-full h-full flex flex-col overflow-hidden relative" @click="deselectOnClickEmptySpace">
     <TreeNode
       enableDefaultHoverClasses
       enableGroupToggle
@@ -52,12 +49,7 @@
     >
       <div
         ref="managementDivRef"
-        :class="
-          clsx(
-            'w-full h-full',
-            managementHistoryForChangeSet.length === 0 && 'py-2xs',
-          )
-        "
+        :class="clsx('w-full h-full', managementHistoryForChangeSet.length === 0 && 'py-2xs')"
       >
         <ManagementHistoryList
           v-if="managementHistoryForChangeSet.length > 0"
@@ -88,19 +80,11 @@
 import { TreeNode } from "@si/vue-lib/design-system";
 import { computed, ref } from "vue";
 import clsx from "clsx";
-import {
-  ActionHistoryView,
-  ActionProposedView,
-  ChangeSetDetail,
-  useActionsStore,
-} from "@/store/actions.store";
+import { ActionHistoryView, ActionProposedView, ChangeSetDetail, useActionsStore } from "@/store/actions.store";
 import { FuncRun, FuncRunId, useFuncRunsStore } from "@/store/func_runs.store";
 import { ChangeSet, ChangeSetStatus } from "@/api/sdf/dal/change_set";
 import { useChangeSetsStore } from "@/store/change_sets.store";
-import {
-  ManagementHistoryItem,
-  useManagementRunsStore,
-} from "@/store/management_runs.store";
+import { ManagementHistoryItem, useManagementRunsStore } from "@/store/management_runs.store";
 import EmptyStateCard from "./EmptyStateCard.vue";
 import ActionsList from "./Actions/ActionsList.vue";
 import FuncRunTabGroup from "./Actions/FuncRunTabGroup.vue";
@@ -120,9 +104,7 @@ const funcRun = ref<FuncRun | undefined>();
 const selectedTab = ref<string | undefined>();
 
 const managementHistoryForChangeSet = computed(() =>
-  changeSetsStore.selectedChangeSetId
-    ? managementRunsStore.managementRunHistory ?? []
-    : [],
+  changeSetsStore.selectedChangeSetId ? managementRunsStore.managementRunHistory ?? [] : [],
 );
 
 const getChangeSet = (detail: ChangeSetDetail) => {
@@ -161,9 +143,7 @@ const clickMgmtRun = async (run: ManagementHistoryItem): Promise<void> => {
   }
 };
 
-const clickActionRun = async (
-  run: ActionHistoryView | ActionProposedView,
-): Promise<void> => {
+const clickActionRun = async (run: ActionHistoryView | ActionProposedView): Promise<void> => {
   if (selectedFuncRunId.value === run.funcRunId) {
     deselectActionOrMgmtRun();
   } else {

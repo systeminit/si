@@ -1,14 +1,6 @@
 <template>
   <!-- This represents the header & container for component attributes page -->
-  <dl
-    :class="
-      clsx(
-        'border',
-        sticky ? 'my-0' : 'my-2xs',
-        themeClasses('border-neutral-300', 'border-neutral-600'),
-      )
-    "
-  >
+  <dl :class="clsx('border', sticky ? 'my-0' : 'my-2xs', themeClasses('border-neutral-300', 'border-neutral-600'))">
     <!-- this is the left indent & line -->
     <dt
       :class="
@@ -23,9 +15,7 @@
           ),
         )
       "
-      :style="
-        sticky ? { top: `${stickyTopOffset}px`, zIndex: stickyZIndex } : {}
-      "
+      :style="sticky ? { top: `${stickyTopOffset}px`, zIndex: stickyZIndex } : {}"
       @click="() => (open = !open)"
     >
       <CollapseExpandChevron :open="open" />

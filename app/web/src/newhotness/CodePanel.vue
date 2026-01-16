@@ -16,11 +16,7 @@
 
 <script lang="ts" setup>
 import { computed } from "vue";
-import {
-  AttributeTree,
-  BifrostComponent,
-  JsonValue,
-} from "@/workers/types/entity_kind_types";
+import { AttributeTree, BifrostComponent, JsonValue } from "@/workers/types/entity_kind_types";
 import CodeViewer from "@/components/CodeViewer.vue";
 import { findAvsAtPropPath } from "./util";
 import EmptyState from "./EmptyState.vue";
@@ -34,12 +30,7 @@ const codes = computed(() => {
   const codes: { code: JsonValue; name: string | undefined }[] = [];
   if (!props.attributeTree) return codes;
 
-  const data = findAvsAtPropPath(props.attributeTree, [
-    "root",
-    "code",
-    "codeItem",
-    "code",
-  ]);
+  const data = findAvsAtPropPath(props.attributeTree, ["root", "code", "codeItem", "code"]);
   if (!data) return codes;
   const { attributeValues } = data;
 

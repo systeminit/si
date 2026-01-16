@@ -73,9 +73,7 @@ const func = computed(() => {
 
 const binding = computed(() => {
   const bindings = funcStore.actionBindings[props.funcId];
-  const binding = bindings
-    ?.filter((b) => b.schemaVariantId === props.schemaVariantId)
-    .pop();
+  const binding = bindings?.filter((b) => b.schemaVariantId === props.schemaVariantId).pop();
   return binding;
 });
 
@@ -127,17 +125,12 @@ const setUpdate = () => {
   updateKind();
 };
 
-const selectedVariants = ref<Option[]>(
-  toOptionValues(schemaVariantOptions.value, validSchemaVariantIds.value || []),
-);
+const selectedVariants = ref<Option[]>(toOptionValues(schemaVariantOptions.value, validSchemaVariantIds.value || []));
 
 watch(
   [validSchemaVariantIds, schemaVariantOptions],
   () => {
-    selectedVariants.value = toOptionValues(
-      schemaVariantOptions.value,
-      validSchemaVariantIds.value || [],
-    );
+    selectedVariants.value = toOptionValues(schemaVariantOptions.value, validSchemaVariantIds.value || []);
   },
   { immediate: true },
 );

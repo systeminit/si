@@ -1,10 +1,5 @@
 <template>
-  <div
-    id="app-layout"
-    :class="
-      clsx('h-screen flex flex-col', themeClasses('bg-white', 'bg-neutral-900'))
-    "
-  >
+  <div id="app-layout" :class="clsx('h-screen flex flex-col', themeClasses('bg-white', 'bg-neutral-900'))">
     <!-- nav itself is fixed at 60 px-->
     <nav
       v-if="!showOnboarding"
@@ -114,10 +109,7 @@
       />
     </main>
     <template v-else-if="!lobby">
-      <Onboarding
-        v-if="showOnboarding"
-        @completed="onboardingCompleted = true"
-      />
+      <Onboarding v-if="showOnboarding" @completed="onboardingCompleted = true" />
       <main
         v-else-if="indexFailedToLoad"
         :class="
@@ -141,11 +133,7 @@
         <ComponentPage v-if="componentId" :componentId="componentId" />
         <FuncRunDetails v-else-if="funcRunId" :funcRunId="funcRunId" />
         <PolicyDetails v-else-if="policyId" :policyId="policyId" />
-        <LatestFuncRunDetails
-          v-else-if="actionId"
-          :functionKind="FunctionKind.Action"
-          :actionId="actionId"
-        />
+        <LatestFuncRunDetails v-else-if="actionId" :functionKind="FunctionKind.Action" :actionId="actionId" />
         <Review v-else-if="onReviewPage" />
         <Explore v-else @openChangesetModal="openChangesetModal" />
       </main>
@@ -156,17 +144,7 @@
 <script lang="ts" setup>
 import { useRoute, useRouter } from "vue-router";
 import clsx from "clsx";
-import {
-  computed,
-  onMounted,
-  onBeforeUnmount,
-  onBeforeMount,
-  ref,
-  provide,
-  watch,
-  Ref,
-  inject,
-} from "vue";
+import { computed, onMounted, onBeforeUnmount, onBeforeMount, ref, provide, watch, Ref, inject } from "vue";
 import * as _ from "lodash-es";
 import { useQuery, useQueryClient } from "@tanstack/vue-query";
 import { Span, trace } from "@opentelemetry/api";
@@ -175,12 +153,7 @@ import { storeToRefs } from "pinia";
 import * as heimdall from "@/store/realtime/heimdall";
 import { useAuthStore } from "@/store/auth.store";
 import { useRealtimeStore } from "@/store/realtime/realtime.store";
-import {
-  ComponentDetails,
-  EntityKind,
-  OutgoingCounts,
-  SchemaMembers,
-} from "@/workers/types/entity_kind_types";
+import { ComponentDetails, EntityKind, OutgoingCounts, SchemaMembers } from "@/workers/types/entity_kind_types";
 import { SchemaId } from "@/api/sdf/dal/schema";
 import { ChangeSet, ChangeSetStatus } from "@/api/sdf/dal/change_set";
 import { muspelheimStatuses } from "@/store/realtime/heimdall";
@@ -199,10 +172,7 @@ import {
   startWindowResizeEmitter,
   windowResizeEmitter,
 } from "./logic_composables/emitters";
-import {
-  getUserPkFromToken,
-  tokensByWorkspacePk,
-} from "./logic_composables/tokens";
+import { getUserPkFromToken, tokensByWorkspacePk } from "./logic_composables/tokens";
 import ComponentPage from "./ComponentDetails.vue";
 import NavbarPanelLeft from "./nav/NavbarPanelLeft.vue";
 import { useChangeSets } from "./logic_composables/change_set";
@@ -242,9 +212,7 @@ const haveWSConn = computed<boolean>(() => {
 });
 
 // no tan stack queries hitting sqlite until after the cold start has finished
-const queriesEnabled = computed(
-  () => heimdall.initCompleted.value && !coldStartInProgress.value,
-);
+const queriesEnabled = computed(() => heimdall.initCompleted.value && !coldStartInProgress.value);
 
 const { user, userWorkspaceFlags } = storeToRefs(authStore);
 
@@ -259,12 +227,7 @@ const apiCtx = computed<ApiContext>(() => {
   };
 });
 
-const {
-  openChangeSets,
-  changeSet: activeChangeSet,
-  headChangeSetId,
-  defaultApprovers,
-} = useChangeSets(apiCtx);
+const { openChangeSets, changeSet: activeChangeSet, headChangeSetId, defaultApprovers } = useChangeSets(apiCtx);
 
 // filter out change sets that don't belong to this workspace
 // (these come from the elected tab that is listening to all open workspaces)
@@ -298,12 +261,7 @@ const muspelheimInProgress = computed(() => {
 const coldStartInProgress = computed(() => muspelheimInProgress.value);
 
 const countsQueryKey = computed(() => {
-  return [
-    workspacePk.value,
-    changeSetId.value,
-    EntityKind.OutgoingCounts,
-    workspacePk.value,
-  ];
+  return [workspacePk.value, changeSetId.value, EntityKind.OutgoingCounts, workspacePk.value];
 });
 const args = computed(() => {
   return {
@@ -318,12 +276,7 @@ const countsQuery = useQuery<OutgoingCounts>({
 });
 
 const namesQueryKey = computed(() => {
-  return [
-    workspacePk.value,
-    changeSetId.value,
-    EntityKind.ComponentDetails,
-    workspacePk.value,
-  ];
+  return [workspacePk.value, changeSetId.value, EntityKind.ComponentDetails, workspacePk.value];
 });
 const namesQuery = useQuery<ComponentDetails>({
   queryKey: namesQueryKey,
@@ -333,12 +286,7 @@ const namesQuery = useQuery<ComponentDetails>({
   },
 });
 const schemaQueryKey = computed(() => {
-  return [
-    workspacePk.value,
-    changeSetId.value,
-    EntityKind.SchemaMembers,
-    workspacePk.value,
-  ];
+  return [workspacePk.value, changeSetId.value, EntityKind.SchemaMembers, workspacePk.value];
 });
 const schemaQuery = useQuery<Record<SchemaId, SchemaMembers>>({
   queryKey: schemaQueryKey,
@@ -421,9 +369,7 @@ const workspaces = computed(() => {
 provide("WORKSPACES", workspaces.value);
 
 const changeSetsNeedingApproval = computed(() =>
-  openChangeSets.value.filter(
-    (cs) => cs.status === ChangeSetStatus.NeedsApproval,
-  ),
+  openChangeSets.value.filter((cs) => cs.status === ChangeSetStatus.NeedsApproval),
 );
 
 watch(
@@ -489,10 +435,9 @@ const loadedOnboardingStateFromApi = ref(false);
 const checkOnboardingCompleteData = async () => {
   if (!userPk.value) return;
 
-  const call = checkOnboardingCompleteApi.endpoint<{ firstTimeModal: boolean }>(
-    routes.CheckDismissedOnboarding,
-    { userPk: userPk.value },
-  );
+  const call = checkOnboardingCompleteApi.endpoint<{ firstTimeModal: boolean }>(routes.CheckDismissedOnboarding, {
+    userPk: userPk.value,
+  });
   const { data, status } = await call.get();
 
   if (status !== 200) {
@@ -514,9 +459,7 @@ const componentsOnHeadQuery = useQuery<boolean | null>({
   queryKey: ["componentsOnHead", workspacePk.value],
   enabled: cohEnabled,
   queryFn: async () => {
-    const call = componentsOnHeadApi.endpoint<{ componentsFound: boolean }>(
-      routes.ComponentsOnHead,
-    );
+    const call = componentsOnHeadApi.endpoint<{ componentsFound: boolean }>(routes.ComponentsOnHead);
     const response = await call.get();
 
     // Check if the request was successful (200/201)
@@ -551,8 +494,7 @@ const showOnboarding = computed(() => {
   if (componentsOnHead.value === null) return false;
 
   // If components exist on HEAD and onboarding has not been reopened, skip onboarding
-  if (componentsOnHead.value === true && onboardingIsReopened.value === false)
-    return false;
+  if (componentsOnHead.value === true && onboardingIsReopened.value === false) return false;
 
   return !onboardingCompleted.value;
 });
@@ -571,10 +513,7 @@ watch(
     }
 
     if (span.value && !lobby.value) {
-      span.value.setAttribute(
-        "numOpenChangeSets",
-        openChangeSets.value.length || -1,
-      );
+      span.value.setAttribute("numOpenChangeSets", openChangeSets.value.length || -1);
       span.value.end();
       span.value = undefined;
     }
@@ -632,9 +571,7 @@ onBeforeMount(async () => {
     tokenFailStatus.value = 500;
     // we don't have a token for this workspace, this is a dead end
     // push the user to the auth flow for this workspace.
-    const url = `${
-      import.meta.env.VITE_AUTH_API_URL
-    }/workspaces/${thisWorkspacePk}/go?redirect=${encodeURIComponent(
+    const url = `${import.meta.env.VITE_AUTH_API_URL}/workspaces/${thisWorkspacePk}/go?redirect=${encodeURIComponent(
       window.location.pathname,
     )}`;
     window.location.href = url;
@@ -748,34 +685,27 @@ document.addEventListener("visibilitychange", () => {
   }
 });
 
-realtimeStore.subscribe(
-  "TOP_LEVEL_WORKSPACE",
-  `workspace/${props.workspacePk}`,
-  [
-    {
-      eventType: "ChangeSetCreated",
-      callback: async (data) => {
-        queryClient.invalidateQueries({ queryKey: ["changesets"] });
-        if (ctx.value.headChangeSetId.value) {
-          await heimdall.linkNewChangeset(
-            props.workspacePk,
-            data.changeSetId,
-            ctx.value.headChangeSetId.value,
-          );
-        }
-      },
+realtimeStore.subscribe("TOP_LEVEL_WORKSPACE", `workspace/${props.workspacePk}`, [
+  {
+    eventType: "ChangeSetCreated",
+    callback: async (data) => {
+      queryClient.invalidateQueries({ queryKey: ["changesets"] });
+      if (ctx.value.headChangeSetId.value) {
+        await heimdall.linkNewChangeset(props.workspacePk, data.changeSetId, ctx.value.headChangeSetId.value);
+      }
     },
-    {
-      eventType: "ChangeSetStatusChanged",
-      callback: async (data) => {
-        queryClient.invalidateQueries({ queryKey: ["changesets"] });
-        queryClient.invalidateQueries({
-          queryKey: ["approvalstatus", data.changeSet.id],
-        });
-        queryClient.invalidateQueries({
-          queryKey: ["approvalstatusbychangesetid", data.changeSet.id],
-        });
-        /* TURN THIS ON WHEN WE REMOVE CHANGE SET STORE
+  },
+  {
+    eventType: "ChangeSetStatusChanged",
+    callback: async (data) => {
+      queryClient.invalidateQueries({ queryKey: ["changesets"] });
+      queryClient.invalidateQueries({
+        queryKey: ["approvalstatus", data.changeSet.id],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["approvalstatusbychangesetid", data.changeSet.id],
+      });
+      /* TURN THIS ON WHEN WE REMOVE CHANGE SET STORE
         if (
           [
             ChangeSetStatus.Abandoned,
@@ -812,14 +742,14 @@ realtimeStore.subscribe(
           // APPROVALS TODO, all the other change set store listeners
         }
         */
-      },
     },
-    {
-      eventType: "ChangeSetAbandoned",
-      callback: async (_data) => {
-        queryClient.invalidateQueries({ queryKey: ["changesets"] });
+  },
+  {
+    eventType: "ChangeSetAbandoned",
+    callback: async (_data) => {
+      queryClient.invalidateQueries({ queryKey: ["changesets"] });
 
-        /* TURN THIS ON WHEN WE REMOVE CHANGE SET STORE
+      /* TURN THIS ON WHEN WE REMOVE CHANGE SET STORE
         if (
         if (data.changeSetId !== ctx.value.headChangeSetId.value) {
           heimdall.prune(props.workspacePk, data.changeSetId);
@@ -848,20 +778,20 @@ realtimeStore.subscribe(
           }
         }
         */
-      },
     },
-    {
-      eventType: "ChangeSetCancelled",
-      callback: () => {
-        queryClient.invalidateQueries({ queryKey: ["changesets"] });
-      },
+  },
+  {
+    eventType: "ChangeSetCancelled",
+    callback: () => {
+      queryClient.invalidateQueries({ queryKey: ["changesets"] });
     },
-    {
-      eventType: "ChangeSetApplied",
-      callback: (_data) => {
-        queryClient.invalidateQueries({ queryKey: ["changesets"] });
+  },
+  {
+    eventType: "ChangeSetApplied",
+    callback: (_data) => {
+      queryClient.invalidateQueries({ queryKey: ["changesets"] });
 
-        /* TURN THIS ON WHEN WE REMOVE CHANGE SET STORE
+      /* TURN THIS ON WHEN WE REMOVE CHANGE SET STORE
         if (
         const { changeSetId: appliedId, toRebaseChangeSetId } = data;
         if (activeChangeSet) {
@@ -925,40 +855,37 @@ realtimeStore.subscribe(
           }
         }
         */
-      },
     },
-    {
-      eventType: "ChangeSetRename",
-      callback: () => {
-        queryClient.invalidateQueries({ queryKey: ["changesets"] });
-      },
+  },
+  {
+    eventType: "ChangeSetRename",
+    callback: () => {
+      queryClient.invalidateQueries({ queryKey: ["changesets"] });
     },
-    {
-      eventType: "PolicyUploaded",
-      callback: () => {
-        queryClient.invalidateQueries({ queryKey: ["policies"] });
-      },
+  },
+  {
+    eventType: "PolicyUploaded",
+    callback: () => {
+      queryClient.invalidateQueries({ queryKey: ["policies"] });
     },
-    {
-      eventType: "ChangeSetApprovalStatusChanged",
-      callback: (changeSetId) => {
-        queryClient.invalidateQueries({
-          queryKey: ["approvalstatus", changeSetId],
-        });
-        queryClient.invalidateQueries({
-          queryKey: ["approvalstatusbychangesetid", changeSetId],
-        });
-      },
+  },
+  {
+    eventType: "ChangeSetApprovalStatusChanged",
+    callback: (changeSetId) => {
+      queryClient.invalidateQueries({
+        queryKey: ["approvalstatus", changeSetId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["approvalstatusbychangesetid", changeSetId],
+      });
     },
-  ],
-);
+  },
+]);
 
 const connectionShouldBeEnabled = computed(() => {
   try {
     const authStore = useAuthStore();
-    return (
-      authStore.userIsLoggedInAndInitialized && authStore.selectedWorkspaceToken
-    );
+    return authStore.userIsLoggedInAndInitialized && authStore.selectedWorkspaceToken;
   } catch (_err) {
     return false;
   }
@@ -1015,21 +942,17 @@ watch(
     realtimeStore.unsubscribe(funcRunKey);
     // listen to new change set
     // Invalidate the paginatedFuncRuns query when FuncRunLogUpdated events are received.
-    realtimeStore.subscribe(
-      funcRunKey,
-      `changeset/${ctx.value.changeSetId.value}`,
-      [
-        {
-          eventType: "FuncRunLogUpdated",
-          callback: async (payload) => {
-            if (payload.funcRunId) {
-              invalidatePaginatedFuncRuns();
-              invalidateOneFuncRun(payload.funcRunId);
-            }
-          },
+    realtimeStore.subscribe(funcRunKey, `changeset/${ctx.value.changeSetId.value}`, [
+      {
+        eventType: "FuncRunLogUpdated",
+        callback: async (payload) => {
+          if (payload.funcRunId) {
+            invalidatePaginatedFuncRuns();
+            invalidateOneFuncRun(payload.funcRunId);
+          }
         },
-      ],
-    );
+      },
+    ]);
   },
   { immediate: true },
 );
@@ -1201,22 +1124,12 @@ body.light .scrollable-horizontal {
 
 /* Light theme shimmer */
 body.light .skeleton-shimmer::before {
-  background: linear-gradient(
-    90deg,
-    transparent,
-    rgba(255, 255, 255, 0.8),
-    transparent
-  );
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.8), transparent);
 }
 
 /* Dark theme shimmer */
 body.dark .skeleton-shimmer::before {
-  background: linear-gradient(
-    90deg,
-    transparent,
-    rgba(255, 255, 255, 0.1),
-    transparent
-  );
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
 }
 
 @keyframes shimmer {

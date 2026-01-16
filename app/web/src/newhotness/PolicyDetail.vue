@@ -13,18 +13,11 @@
         tooltipPlacement="top"
         icon="x"
         tone="empty"
-        :class="
-          clsx(
-            'active:bg-white active:text-black',
-            themeClasses('hover:bg-neutral-200', 'hover:bg-neutral-600'),
-          )
-        "
+        :class="clsx('active:bg-white active:text-black', themeClasses('hover:bg-neutral-200', 'hover:bg-neutral-600'))"
         @click="navigateBack"
       />
       <template v-if="policy">
-        <div
-          class="shrink ml-auto mr-auto flex flex-row gap-sm items-center justify-center min-w-[32vw]"
-        >
+        <div class="shrink ml-auto mr-auto flex flex-row gap-sm items-center justify-center min-w-[32vw]">
           <Icon
             class="shrink"
             size="xs"
@@ -32,30 +25,17 @@
             :tone="policy.result === 'Fail' ? 'destructive' : 'success'"
           />
           <span class="grow"
-            ><TruncateWithTooltip class="py-2xs">{{
-              policy.name
-            }}</TruncateWithTooltip></span
+            ><TruncateWithTooltip class="py-2xs">{{ policy.name }}</TruncateWithTooltip></span
           >
           <span class="shrink">
-            <Timestamp
-              refresh
-              size="normal"
-              relative="standard"
-              showTimeIfToday
-              :date="policy.createdAt"
-            />
+            <Timestamp refresh size="normal" relative="standard" showTimeIfToday :date="policy.createdAt" />
           </span>
         </div>
       </template>
     </header>
     <div class="w-[70vw] ml-auto mr-auto flex flex-row">
       <div
-        :class="
-          clsx(
-            'w-[25vw] pt-md pr-md border-r-[1px]',
-            themeClasses('border-neutral-200', 'border-neutral-600'),
-          )
-        "
+        :class="clsx('w-[25vw] pt-md pr-md border-r-[1px]', themeClasses('border-neutral-200', 'border-neutral-600'))"
       >
         <h5 class="mb-sm text-sm ml-xs">Policy history</h5>
         <PolicyList
@@ -78,14 +58,7 @@
         <div class="mb-lg">
           <MarkdownRender :source="policy.policy" />
         </div>
-        <div
-          :class="
-            clsx(
-              'border-t-[1px] pt-lg',
-              themeClasses('border-neutral-200', 'border-neutral-600'),
-            )
-          "
-        >
+        <div :class="clsx('border-t-[1px] pt-lg', themeClasses('border-neutral-200', 'border-neutral-600'))">
           <MarkdownRender :source="policy.report" />
         </div>
       </section>
@@ -97,13 +70,7 @@
 import { clsx } from "clsx";
 import { useRoute, useRouter } from "vue-router";
 import { computed, watch } from "vue";
-import {
-  themeClasses,
-  NewButton,
-  Icon,
-  TruncateWithTooltip,
-  Timestamp,
-} from "@si/vue-lib/design-system";
+import { themeClasses, NewButton, Icon, TruncateWithTooltip, Timestamp } from "@si/vue-lib/design-system";
 import { useQuery } from "@tanstack/vue-query";
 import EmptyStateCard from "@/components/EmptyStateCard.vue";
 import { Policy, usePolicy } from "./logic_composables/policy";

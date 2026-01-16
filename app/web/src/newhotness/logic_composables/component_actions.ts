@@ -1,12 +1,7 @@
 import { computed, MaybeRefOrGetter, ref, toValue } from "vue";
 import { useQuery } from "@tanstack/vue-query";
 import { useRoute } from "vue-router";
-import {
-  ActionId,
-  ActionKind,
-  ActionPrototypeId,
-  ActionState,
-} from "@/api/sdf/dal/action";
+import { ActionId, ActionKind, ActionPrototypeId, ActionState } from "@/api/sdf/dal/action";
 import {
   BifrostComponent,
   ActionPrototypeView,
@@ -27,9 +22,7 @@ import { routes, useApi } from "../api_composables";
 import { ActionProposedView } from "../types";
 import { useContext } from "./context";
 
-export const useComponentActions = (
-  componentRef: MaybeRefOrGetter<BifrostComponent | ComponentInList | null>,
-) => {
+export const useComponentActions = (componentRef: MaybeRefOrGetter<BifrostComponent | ComponentInList | null>) => {
   const makeKey = useMakeKey();
   const makeKeyForHead = useMakeKeyForHead();
   const makeArgs = useMakeArgs();
@@ -50,10 +43,7 @@ export const useComponentActions = (
 
     return variantId.id;
   });
-  const queryKeyForActionPrototypeViews = makeKey(
-    EntityKind.ActionPrototypeViewList,
-    schemaVariantId,
-  );
+  const queryKeyForActionPrototypeViews = makeKey(EntityKind.ActionPrototypeViewList, schemaVariantId);
 
   const actionPrototypeViewsRaw = useQuery<ActionPrototypeViewList | null>({
     enabled: computed(() => ctx.queriesEnabled.value && !!component.value),
@@ -65,22 +55,15 @@ export const useComponentActions = (
       );
     },
   });
-  const actionPrototypeViews = computed(
-    () => actionPrototypeViewsRaw.data.value?.actionPrototypes ?? [],
-  );
+  const actionPrototypeViews = computed(() => actionPrototypeViewsRaw.data.value?.actionPrototypes ?? []);
 
-  const queryKeyForComponentOnHead = makeKeyForHead(
-    EntityKind.ComponentInList,
-    component.value?.id,
-  );
+  const queryKeyForComponentOnHead = makeKeyForHead(EntityKind.ComponentInList, component.value?.id);
   const componentOnHeadRaw = useQuery({
     enabled: computed(() => ctx.queriesEnabled.value && !!component.value),
     queryKey: queryKeyForComponentOnHead,
     queryFn: async () => {
       if (!component.value) return null;
-      return await bifrostExists(
-        makeArgsForHead(EntityKind.ComponentInList, component.value.id),
-      );
+      return await bifrostExists(makeArgsForHead(EntityKind.ComponentInList, component.value.id));
     },
   });
   const componentExistsOnHead = computed(() => !!componentOnHeadRaw.data.value);
@@ -90,8 +73,7 @@ export const useComponentActions = (
   const queryKeyForActionViewList = makeKey(EntityKind.ActionViewList);
   const actionViewList = useQuery<BifrostActionViewList | null>({
     queryKey: queryKeyForActionViewList,
-    queryFn: async () =>
-      await bifrost<BifrostActionViewList>(makeArgs(EntityKind.ActionViewList)),
+    queryFn: async () => await bifrost<BifrostActionViewList>(makeArgs(EntityKind.ActionViewList)),
   });
 
   const actionByPrototype = computed(() => {
@@ -103,10 +85,7 @@ export const useComponentActions = (
     for (const action of actionViewList.data.value.actions) {
       if (action.componentId === component.value.id) {
         // When in a change set (not HEAD), only show actions that originated in the current change set
-        if (
-          !ctx.onHead.value &&
-          action.originatingChangeSetId !== ctx.changeSetId.value
-        ) {
+        if (!ctx.onHead.value && action.originatingChangeSetId !== ctx.changeSetId.value) {
           continue;
         }
         // NOTE(nick): this assumes that there can be one action for a given prototype and component.
@@ -122,20 +101,14 @@ export const useComponentActions = (
 
   const actionIsRunning = (actionId?: ActionId | null) => {
     if (!actionId) return false;
-    const state = actionViewList.data.value?.actions.find(
-      (action) => action.id === actionId,
-    )?.state;
+    const state = actionViewList.data.value?.actions.find((action) => action.id === actionId)?.state;
     if (!state) return false;
     return [ActionState.Dispatched, ActionState.Running].includes(state);
   };
 
   // Helpers for Refresh Actions specifically
   const refreshActionPrototype = computed(() => {
-    return (
-      actionPrototypeViews.value.find(
-        (action: ActionPrototypeView) => action.kind === ActionKind.Refresh,
-      ) ?? null
-    );
+    return actionPrototypeViews.value.find((action: ActionPrototypeView) => action.kind === ActionKind.Refresh) ?? null;
   });
 
   const refreshAction = computed(() => {
@@ -144,9 +117,7 @@ export const useComponentActions = (
   });
 
   const refreshActionRunning = computed(() => {
-    return refreshAction.value
-      ? actionIsRunning(refreshAction.value?.id)
-      : false;
+    return refreshAction.value ? actionIsRunning(refreshAction.value?.id) : false;
   });
 
   const refreshEnabled = computed(
@@ -207,8 +178,7 @@ export const useComponentActions = (
         const isRefresh = actionPrototypeView.kind === ActionKind.Refresh;
         if (onHead && isRefresh) {
           // For refresh actions on HEAD, we enqueue using another route until we can get rid of Force Change Set
-          if (!component.value?.id || actionIsRunning(toValue(actionId)))
-            return;
+          if (!component.value?.id || actionIsRunning(toValue(actionId))) return;
           activeApi.value = refreshApi;
           const call = refreshApi.endpoint(routes.RefreshAction, {
             componentId: component.value.id,

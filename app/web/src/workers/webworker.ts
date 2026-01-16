@@ -22,16 +22,9 @@ import { FetchInstrumentation } from "@opentelemetry/instrumentation-fetch";
 import { registerInstrumentations } from "@opentelemetry/instrumentation";
 import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-http";
 import { Resource } from "@opentelemetry/resources";
-import {
-  ATTR_SERVICE_NAME,
-  ATTR_SERVICE_VERSION,
-} from "@opentelemetry/semantic-conventions";
+import { ATTR_SERVICE_NAME, ATTR_SERVICE_VERSION } from "@opentelemetry/semantic-conventions";
 import { describePattern, URLPattern } from "@si/vue-lib";
-import Axios, {
-  AxiosInstance,
-  AxiosResponse,
-  InternalAxiosRequestConfig,
-} from "axios";
+import Axios, { AxiosInstance, AxiosResponse, InternalAxiosRequestConfig } from "axios";
 import * as _ from "lodash-es";
 import { ChangeSetId } from "@/api/sdf/dal/change_set";
 import { nonNullable } from "@/utils/typescriptLinter";
@@ -177,14 +170,10 @@ const start = async (sqlite3: Sqlite3Static, testing: boolean) => {
     }
 
     sqlite = new poolUtil.OpfsSAHPoolDb(`/${dbname}`);
-    debug(
-      `OPFS is available, created persisted database in SAH Pool VFS at ${sqlite.filename}`,
-    );
+    debug(`OPFS is available, created persisted database in SAH Pool VFS at ${sqlite.filename}`);
   } else {
     sqlite = new sqlite3.oo1.DB(`/${dbname}`, "c");
-    debug(
-      `OPFS is not available, created transient database ${sqlite.filename}`,
-    );
+    debug(`OPFS is not available, created transient database ${sqlite.filename}`);
   }
 
   // Adding an integrity check for a corrupted SQLite
@@ -419,16 +408,11 @@ const workspaceAtomExistsOnIndexes = async (
  * @param meta the new and previous indexes for the changeset.
  * @param fromIndexChecksum the checksum the changeset currently has in the frontend
  */
-const newChangesetIndex = async (
-  db: Database,
-  meta: WorkspaceAtomMeta,
-  fromIndexChecksum: string | undefined,
-) => {
+const newChangesetIndex = async (db: Database, meta: WorkspaceAtomMeta, fromIndexChecksum: string | undefined) => {
   //
   // Create a new empty index
   //
-  if (!lock || !lock.isWriteLockAcquired)
-    throw new Error("Write lock must be acquired in the caller");
+  if (!lock || !lock.isWriteLockAcquired) throw new Error("Write lock must be acquired in the caller");
 
   try {
     // NOTE: in the future we will add ON CONFLICT DO NOTHING, but I want to report this error for now to see how often its happening
@@ -458,10 +442,7 @@ const newChangesetIndex = async (
     bind: [meta.changeSetId],
     returnValue: "resultRows",
   });
-  const lastKnownFromChecksum = oneInOne(rows) as
-    | string
-    | undefined
-    | typeof NOROW;
+  const lastKnownFromChecksum = oneInOne(rows) as string | undefined | typeof NOROW;
 
   let sourceChecksum;
   if (fromIndexChecksum && fromIndexChecksum !== meta.toIndexChecksum) {
@@ -499,12 +480,7 @@ const newChangesetIndex = async (
   });
 };
 
-const bulkRemoveAtoms = async (
-  db: Database,
-  atoms: Common[],
-  indexChecksum: Checksum,
-  chunkSize = 2000,
-) => {
+const bulkRemoveAtoms = async (db: Database, atoms: Common[], indexChecksum: Checksum, chunkSize = 2000) => {
   for (let i = 0; i < atoms.length; i += chunkSize) {
     const placeholders = [];
     const bind = [];
@@ -515,9 +491,7 @@ const bulkRemoveAtoms = async (
     }
 
     const sql = `delete from index_mtm_atoms
-      where (index_checksum, kind, args, checksum) in (${placeholders.join(
-        ",",
-      )})`;
+      where (index_checksum, kind, args, checksum) in (${placeholders.join(",")})`;
     await dbWrite(db, { sql, bind });
   }
 };
@@ -591,19 +565,12 @@ const bustDeployment = (kind: GlobalEntity, id: string) => {
   bustCacheFn(GLOBAL_IDENTIFIER, GLOBAL_IDENTIFIER, kind, id);
 };
 
-const bustOrQueue = (
-  workspaceId: string,
-  changeSetId: string,
-  kind: EntityKind,
-  id: string,
-  skipQueue = false,
-) => {
+const bustOrQueue = (workspaceId: string, changeSetId: string, kind: EntityKind, id: string, skipQueue = false) => {
   if (skipQueue) bustCacheFn(workspaceId, changeSetId, kind, id);
   else bustQueueAdd(workspaceId, changeSetId, kind, id, bustCacheFn);
   // if we're busting an entity kind, and the key is not the workspaceId, bust the kind with workspaceId too
   // this make the `getKind` query with `makeArgs` and no `id` passed (which uses the workspace) remain responsive
-  if (id !== workspaceId)
-    bustOrQueue(workspaceId, changeSetId, kind, workspaceId, skipQueue);
+  if (id !== workspaceId) bustOrQueue(workspaceId, changeSetId, kind, workspaceId, skipQueue);
 };
 
 const bustCacheAndReferences = async (
@@ -619,12 +586,7 @@ const bustCacheAndReferences = async (
   // unless its a hammer b/c i am missing a list
   // FIXME(nick,jobelenus): do not bust lists and find a way to support add/remove component(s)
   // from a view without it.
-  if (
-    kind !== EntityKind.ViewComponentList &&
-    LISTABLE.includes(kind) &&
-    !force
-  )
-    return;
+  if (kind !== EntityKind.ViewComponentList && LISTABLE.includes(kind) && !force) return;
 
   // bust me
   bustOrQueue(workspaceId, changeSetId, kind, id, skipQueue);
@@ -638,20 +600,8 @@ const bustCacheAndReferences = async (
   // FIXME(nick): do not bust lists and find a way to support add/remove component(s) from a view
   // without it.
   if (kind === EntityKind.ViewComponentList) {
-    bustOrQueue(
-      workspaceId,
-      changeSetId,
-      EntityKind.ComponentsInViews,
-      workspaceId,
-      skipQueue,
-    );
-    bustOrQueue(
-      workspaceId,
-      changeSetId,
-      EntityKind.ComponentsInOnlyOneView,
-      workspaceId,
-      skipQueue,
-    );
+    bustOrQueue(workspaceId, changeSetId, EntityKind.ComponentsInViews, workspaceId, skipQueue);
+    bustOrQueue(workspaceId, changeSetId, EntityKind.ComponentsInOnlyOneView, workspaceId, skipQueue);
   }
 
   // if we know it doesnt have references, dont even run the sql
@@ -669,26 +619,14 @@ const bustCacheAndReferences = async (
   });
   refs.forEach(([ref_kind, ref_id]) => {
     if (ref_kind && ref_id) {
-      bustOrQueue(
-        workspaceId,
-        changeSetId,
-        ref_kind as EntityKind,
-        ref_id as string,
-        skipQueue,
-      );
+      bustOrQueue(workspaceId, changeSetId, ref_kind as EntityKind, ref_id as string, skipQueue);
     }
   });
 };
 
 const handleHammer = async (db: Database, msg: WorkspaceAtomMessage) => {
   await tracer.startActiveSpan("Mjolnir", async (span) => {
-    debug(
-      "🔨 HAMMER RECEIVED:",
-      msg.atom.kind,
-      msg.atom.id,
-      "toChecksum:",
-      msg.atom.toChecksum,
-    );
+    debug("🔨 HAMMER RECEIVED:", msg.atom.kind, msg.atom.id, "toChecksum:", msg.atom.toChecksum);
 
     const { changeSetId, workspaceId, toIndexChecksum } = { ...msg.atom };
 
@@ -707,17 +645,10 @@ const handleHammer = async (db: Database, msg: WorkspaceAtomMessage) => {
     // Make sure the index exists before we try to insert atoms into it
     const indexChecksum = await initIndexAndChangeSet(db, msg.atom, span);
     if (!indexChecksum) {
-      throw new Error(
-        `Expected index checksum for ${msg.atom.toIndexChecksum}`,
-      );
+      throw new Error(`Expected index checksum for ${msg.atom.toIndexChecksum}`);
     }
     // in between throwing a hammer and receiving it, i might already have written the atom
-    const indexes = await workspaceAtomExistsOnIndexes(
-      db,
-      msg.atom.kind,
-      msg.atom.id,
-      msg.atom.toChecksum,
-    );
+    const indexes = await workspaceAtomExistsOnIndexes(db, msg.atom.kind, msg.atom.id, msg.atom.toChecksum);
     let noop = false;
     if (indexes.length > 0) {
       if (indexes.includes(msg.atom.toIndexChecksum)) {
@@ -741,11 +672,7 @@ const handleHammer = async (db: Database, msg: WorkspaceAtomMessage) => {
           upToDateAtomIndexes: indexes,
           needToInsertMTM: true,
         });
-        const inserted = await insertAtomMTM(
-          db,
-          msg.atom,
-          msg.atom.toIndexChecksum,
-        );
+        const inserted = await insertAtomMTM(db, msg.atom, msg.atom.toIndexChecksum);
         span.setAttribute("insertedMTM", inserted);
         noop = true;
       }
@@ -753,30 +680,12 @@ const handleHammer = async (db: Database, msg: WorkspaceAtomMessage) => {
 
     // if the atom exists, i just need the MTM
     if (indexes.length === 0) {
-      debug(
-        "🔨 HAMMER: Creating new atom:",
-        msg.atom.kind,
-        msg.atom.id,
-        "checksum:",
-        msg.atom.toChecksum,
-      );
+      debug("🔨 HAMMER: Creating new atom:", msg.atom.kind, msg.atom.id, "checksum:", msg.atom.toChecksum);
       span.setAttribute("createAtom", true);
       await createAtom(db, msg.atom, msg.data, span);
-      debug(
-        "🔨 HAMMER: Atom created successfully:",
-        msg.atom.kind,
-        msg.atom.id,
-        "checksum:",
-        msg.atom.toChecksum,
-      );
+      debug("🔨 HAMMER: Atom created successfully:", msg.atom.kind, msg.atom.id, "checksum:", msg.atom.toChecksum);
     } else {
-      debug(
-        "🔨 HAMMER: Atom exists, just need MTM:",
-        msg.atom.kind,
-        msg.atom.id,
-        "existing indexes:",
-        indexes,
-      );
+      debug("🔨 HAMMER: Atom exists, just need MTM:", msg.atom.kind, msg.atom.id, "existing indexes:", indexes);
       span.setAttributes({
         upToDateAtomIndexes: indexes,
         needToInsertMTM: true,
@@ -804,10 +713,7 @@ const handleHammer = async (db: Database, msg: WorkspaceAtomMessage) => {
     span.setAttribute("updatedWithNewIndex", true);
     await removeOldIndex(db, span);
 
-    if (
-      COMPUTED_KINDS.includes(msg.atom.kind) ||
-      LISTABLE_ITEMS.includes(msg.atom.kind)
-    ) {
+    if (COMPUTED_KINDS.includes(msg.atom.kind) || LISTABLE_ITEMS.includes(msg.atom.kind)) {
       debug("🔨 HAMMER: Updating computed for:", msg.atom.kind, msg.atom.id);
       await postProcess(
         db,
@@ -820,17 +726,8 @@ const handleHammer = async (db: Database, msg: WorkspaceAtomMessage) => {
       );
     }
 
-    debug(
-      "🔨 HAMMER: Busting cache for:",
-      msg.atom.kind,
-      msg.atom.id,
-      "checksum:",
-      msg.atom.toChecksum,
-    );
-    span.setAttribute(
-      "bustCache",
-      JSON.stringify([msg.atom.kind, msg.atom.id]),
-    );
+    debug("🔨 HAMMER: Busting cache for:", msg.atom.kind, msg.atom.id, "checksum:", msg.atom.toChecksum);
+    span.setAttribute("bustCache", JSON.stringify([msg.atom.kind, msg.atom.id]));
     await bustCacheAndReferences(
       db,
       msg.atom.workspaceId,
@@ -844,11 +741,7 @@ const handleHammer = async (db: Database, msg: WorkspaceAtomMessage) => {
 };
 
 // Insert atoms in chunks of 2000 per query
-const bulkCreateAtoms = async (
-  db: Database,
-  indexObjects: (BulkSuccess | AtomWithDocument)[],
-  chunkSize = 2000,
-) => {
+const bulkCreateAtoms = async (db: Database, indexObjects: (BulkSuccess | AtomWithDocument)[], chunkSize = 2000) => {
   for (let i = 0; i < indexObjects.length; i += chunkSize) {
     const chunk = indexObjects.slice(i, i + chunkSize);
     const placeholders = [];
@@ -897,12 +790,7 @@ const bulkInsertAtomMTMs = async (
       placeholders.push("(?, ?, ?, ?)");
       if ((<IndexObjectMeta>atom).frontEndObject !== undefined) {
         const obj = atom as IndexObjectMeta;
-        bind.push(
-          indexChecksum,
-          obj.frontEndObject.kind,
-          obj.frontEndObject.id,
-          obj.frontEndObject.checksum,
-        );
+        bind.push(indexChecksum, obj.frontEndObject.kind, obj.frontEndObject.id, obj.frontEndObject.checksum);
       } else {
         const obj = atom as Common;
         bind.push(indexChecksum, obj.kind, obj.id, obj.checksum);
@@ -957,11 +845,7 @@ const insertAtomMTM = async (
  * @param meta new (and previous) index for the changeset
  * @param span tracing span to work with
  */
-const initIndexAndChangeSet = async (
-  db: Database,
-  meta: WorkspaceAtomMeta,
-  span: Span,
-) => {
+const initIndexAndChangeSet = async (db: Database, meta: WorkspaceAtomMeta, span: Span) => {
   const { toIndexChecksum } = {
     ...meta,
   };
@@ -970,7 +854,7 @@ const initIndexAndChangeSet = async (
   // Figure out what index the change set has right now
   //
   await lock?.writeLock(async () => {
-    const changeSetQuery = await db.exec({
+    const changeSetQuery = db.exec({
       sql: `select change_set_id, index_checksum from changesets where change_set_id = ?`,
       returnValue: "resultRows",
       bind: [meta.changeSetId],
@@ -986,7 +870,7 @@ const initIndexAndChangeSet = async (
       });
     }
 
-    const indexQuery = await db.exec({
+    const indexQuery = db.exec({
       sql: `select checksum from indexes where checksum = ?`,
       returnValue: "resultRows",
       bind: [toIndexChecksum],
@@ -1013,7 +897,7 @@ const initIndexAndChangeSet = async (
     // in general, we don't associate a changeset with a specific index until that index is complete!
     if (!changeSetExists) {
       span.setAttribute("changeSetCreated", true);
-      await db.exec({
+      db.exec({
         sql: "insert into changesets (change_set_id, workspace_id, index_checksum) VALUES (?, ?, ?);",
         bind: [meta.changeSetId, meta.workspaceId, toIndexChecksum],
       });
@@ -1164,11 +1048,7 @@ const existingDeploymentAtoms = async (db: Database, atoms: AtomPieces[]) => {
   return await _existingAtoms(db, "global_atoms", atoms);
 };
 
-const _existingAtoms = async (
-  db: Database,
-  table: string,
-  atoms: AtomPieces[],
-) => {
+const _existingAtoms = async (db: Database, table: string, atoms: AtomPieces[]) => {
   const placeholders = [];
   const bind: string[] = [];
 
@@ -1207,10 +1087,7 @@ const _existingAtoms = async (
 type GlobalAtom = Common & {
   kind: GlobalEntity;
 };
-const handleDeploymentPatchMessage = async (
-  db: Database,
-  data: DeploymentPatchBatch,
-) => {
+const handleDeploymentPatchMessage = async (db: Database, data: DeploymentPatchBatch) => {
   await tracer.startActiveSpan("DeploymentPatchBatch", async (span) => {
     span.setAttributes({
       userPk,
@@ -1219,10 +1096,7 @@ const handleDeploymentPatchMessage = async (
       rawPatches: JSON.stringify(data.patches),
     });
 
-    const patches = data.patches.filter(
-      (patch): patch is Required<AtomOperation> =>
-        patch.fromChecksum !== undefined,
-    );
+    const patches = data.patches.filter((patch): patch is Required<AtomOperation> => patch.fromChecksum !== undefined);
 
     const existing = await existingDeploymentAtoms(db, patches);
 
@@ -1271,9 +1145,7 @@ const handleDeploymentPatchMessage = async (
         bind.push(r.kind, r.id);
       });
       await dbWrite(db, {
-        sql: `DELETE FROM global_atoms WHERE (kind, args) IN (${placeholders.join(
-          ",",
-        )})`,
+        sql: `DELETE FROM global_atoms WHERE (kind, args) IN (${placeholders.join(",")})`,
         bind,
       });
     }
@@ -1282,9 +1154,7 @@ const handleDeploymentPatchMessage = async (
 
     const kinds: Set<GlobalEntity> = new Set();
     [...modifications, ...inserts, ...removals]
-      .filter((atom): atom is GlobalAtom =>
-        GLOBAL_ENTITIES.includes(atom.kind as GlobalEntity),
-      )
+      .filter((atom): atom is GlobalAtom => GLOBAL_ENTITIES.includes(atom.kind as GlobalEntity))
       .forEach((atom) => {
         kinds.add(atom.kind);
         bustDeployment(atom.kind, atom.id);
@@ -1308,18 +1178,14 @@ const handleDeploymentPatchMessage = async (
   });
 };
 
-const handleWorkspacePatchMessage = async (
-  db: Database,
-  data: WorkspacePatchBatch,
-) => {
+const handleWorkspacePatchMessage = async (db: Database, data: WorkspacePatchBatch) => {
   await tracer.startActiveSpan("PatchBatch", async (span) => {
     const batchId = `${data.meta.toIndexChecksum}-${data.patches.length}`;
     const perfStart = performance.now();
     try {
       debug("📦 BATCH START:", batchId);
 
-      const { changeSetId, toIndexChecksum, workspaceId, fromIndexChecksum } =
-        data.meta;
+      const { changeSetId, toIndexChecksum, workspaceId, fromIndexChecksum } = data.meta;
 
       span.setAttributes({
         userPk,
@@ -1350,16 +1216,10 @@ const handleWorkspacePatchMessage = async (
       if (!data.meta.toIndexChecksum) throw new Error("Expected indexChecksum");
 
       // Log index checksum for tracing - this provides validation at the index level
-      debug(
-        "📦 Processing patches with index checksum",
-        data.meta.toIndexChecksum,
-      );
+      debug("📦 Processing patches with index checksum", data.meta.toIndexChecksum);
       debug(
         "📦 Patch details:",
-        data.patches.map(
-          (p, i) =>
-            `[${i}] ${p.kind}.${p.id}: ${p.fromChecksum} -> ${p.toChecksum}`,
-        ),
+        data.patches.map((p, i) => `[${i}] ${p.kind}.${p.id}: ${p.fromChecksum} -> ${p.toChecksum}`),
       );
 
       let indexChecksum: string;
@@ -1396,48 +1256,26 @@ const handleWorkspacePatchMessage = async (
           };
           return atom;
         })
-        .filter(
-          (rawAtom): rawAtom is Required<WorkspaceAtom> =>
-            !!rawAtom.fromChecksum && !!rawAtom.operations,
-        );
+        .filter((rawAtom): rawAtom is Required<WorkspaceAtom> => !!rawAtom.fromChecksum && !!rawAtom.operations);
 
       span.setAttribute("numAtoms", atoms.length);
       if (!indexChecksum) {
-        throw new Error(
-          `Expected index checksum for ${data.meta.toIndexChecksum}`,
-        );
+        throw new Error(`Expected index checksum for ${data.meta.toIndexChecksum}`);
       }
 
       const existingAtoms = await existingWorkspaceAtoms(db, atoms);
-      const handlePatchBatch = async (
-        workspaceAtoms: Required<WorkspaceAtom>[],
-      ) => {
-        const ops = workspaceAtoms.map((atom) =>
-          preprocessPatch(atom, existingAtoms),
-        );
-        return await handlePatchOperations(
-          db,
-          workspaceId,
-          changeSetId,
-          indexChecksum,
-          ops,
-          span,
-        );
+      const handlePatchBatch = async (workspaceAtoms: Required<WorkspaceAtom>[]) => {
+        const ops = workspaceAtoms.map((atom) => preprocessPatch(atom, existingAtoms));
+        return await handlePatchOperations(db, workspaceId, changeSetId, indexChecksum, ops, span);
       };
 
       const atomsToBust = await handlePatchBatch(atoms);
 
-      const listAtomsToBust = atomsToBust.filter((a) =>
-        LISTABLE.includes(a.kind),
-      );
+      const listAtomsToBust = atomsToBust.filter((a) => LISTABLE.includes(a.kind));
       const nonListAtomsToBust = atomsToBust.filter(
-        (a) =>
-          !LISTABLE.includes(a.kind) &&
-          a.kind !== EntityKind.IncomingConnections,
+        (a) => !LISTABLE.includes(a.kind) && a.kind !== EntityKind.IncomingConnections,
       );
-      const connAtomsToBust = atomsToBust.filter(
-        (a) => a.kind === EntityKind.IncomingConnections,
-      );
+      const connAtomsToBust = atomsToBust.filter((a) => a.kind === EntityKind.IncomingConnections);
 
       await updateChangeSetWithNewIndex(db, data.meta);
       span.setAttribute("updatedWithNewIndex", true);
@@ -1445,40 +1283,20 @@ const handleWorkspacePatchMessage = async (
 
       await Promise.all(
         nonListAtomsToBust.map(async (atom) =>
-          bustCacheAndReferences(
-            db,
-            workspaceId,
-            changeSetId,
-            atom.kind,
-            atom.id,
-          ),
+          bustCacheAndReferences(db, workspaceId, changeSetId, atom.kind, atom.id),
         ),
       );
 
       await Promise.all(
         listAtomsToBust.map(async (atom) => {
           if (atom && atom.kind === EntityKind.ViewComponentList) {
-            return bustCacheAndReferences(
-              db,
-              workspaceId,
-              changeSetId,
-              atom.kind,
-              atom.id,
-            );
+            return bustCacheAndReferences(db, workspaceId, changeSetId, atom.kind, atom.id);
           }
         }),
       );
 
       await Promise.all(
-        connAtomsToBust.map((atom) =>
-          bustCacheAndReferences(
-            db,
-            workspaceId,
-            changeSetId,
-            atom.kind,
-            atom.id,
-          ),
-        ),
+        connAtomsToBust.map((atom) => bustCacheAndReferences(db, workspaceId, changeSetId, atom.kind, atom.id)),
       );
     } finally {
       // this always runs regardless of return, throw, etc
@@ -1514,21 +1332,14 @@ const handlePatchOperations = async (
     }));
   const bulkMtmStart = performance.now();
   await bulkInsertAtomMTMs(db, noops, indexChecksum);
-  span.setAttribute(
-    "performance.NoopBulkMtm",
-    performance.now() - bulkMtmStart,
-  );
+  span.setAttribute("performance.NoopBulkMtm", performance.now() - bulkMtmStart);
 
   const atomsToInsert: AtomWithDocument[] = [];
-  const creates = patchOperations
-    .filter((op) => op.kind === "Create")
-    .map((op) => op.atom);
+  const creates = patchOperations.filter((op) => op.kind === "Create").map((op) => op.atom);
   for (const atom of creates) {
     try {
       // A create means the operation set will be equal to the entire document for the atom
-      const doc = atom.operations
-        ? applyOperations({}, atom.operations).newDocument
-        : {};
+      const doc = atom.operations ? applyOperations({}, atom.operations).newDocument : {};
 
       atomsToInsert.push({
         kind: atom.kind,
@@ -1545,9 +1356,7 @@ const handlePatchOperations = async (
     operations?: Operation[];
   }
 
-  const patches = patchOperations
-    .filter((op) => op.kind === "Patch")
-    .map((op) => op.atom);
+  const patches = patchOperations.filter((op) => op.kind === "Patch").map((op) => op.atom);
   const atomsToUpdate: CommonWithOps[] = [];
   const atomsByKindAndId: { [key: string]: WorkspaceAtom } = {};
   for (const atom of patches) {
@@ -1564,14 +1373,8 @@ const handlePatchOperations = async (
   }
 
   const startDocs = performance.now();
-  const { existingDocuments, hammers } = await atomDocumentsForChecksums(
-    db,
-    atomsToUpdate,
-  );
-  span.setAttribute(
-    "performance.atomDocumentsForChecksums",
-    performance.now() - startDocs,
-  );
+  const { existingDocuments, hammers } = await atomDocumentsForChecksums(db, atomsToUpdate);
+  span.setAttribute("performance.atomDocumentsForChecksums", performance.now() - startDocs);
 
   // Apply patches for every atom we could find
   for (const atomToPatch of existingDocuments) {
@@ -1605,17 +1408,11 @@ const handlePatchOperations = async (
   if (atomsToInsert.length > 0) {
     const startCreate = performance.now();
     await bulkCreateAtoms(db, atomsToInsert);
-    span.setAttribute(
-      "performance.bulkCreateAtoms",
-      performance.now() - startCreate,
-    );
+    span.setAttribute("performance.bulkCreateAtoms", performance.now() - startCreate);
 
     const startMtm = performance.now();
     await bulkInsertAtomMTMs(db, atomsToInsert, indexChecksum);
-    span.setAttribute(
-      "performance.bulkCreateMtms",
-      performance.now() - startMtm,
-    );
+    span.setAttribute("performance.bulkCreateMtms", performance.now() - startMtm);
   }
 
   // Now process removals
@@ -1624,34 +1421,19 @@ const handlePatchOperations = async (
     .map((op) => ({
       kind: op.atom.kind,
       id: op.atom.id,
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+
       checksum: op.atom.fromChecksum!,
     }));
   for (const atom of removals) {
     try {
-      const doc = await atomDocumentForChecksum(
-        db,
-        atom.kind,
-        atom.id,
-        atom.checksum,
-      );
+      const doc = await atomDocumentForChecksum(db, atom.kind, atom.id, atom.checksum);
       if (!doc) {
         error("Missing document", atom);
         continue;
       }
 
       await removeAtom(db, indexChecksum, atom.kind, atom.id, atom.checksum);
-      await postProcess(
-        db,
-        workspaceId,
-        changeSetId,
-        atom.kind,
-        doc,
-        atom.id,
-        indexChecksum,
-        true,
-        true,
-      );
+      await postProcess(db, workspaceId, changeSetId, atom.kind, doc, atom.id, indexChecksum, true, true);
     } catch (err) {
       error("Failed to remove atom", err);
     }
@@ -1661,25 +1443,9 @@ const handlePatchOperations = async (
   const startPost = performance.now();
   for (const atom of noops) {
     try {
-      const doc = await atomDocumentForChecksum(
-        db,
-        atom.kind,
-        atom.id,
-        atom.checksum,
-      );
+      const doc = await atomDocumentForChecksum(db, atom.kind, atom.id, atom.checksum);
 
-      if (doc)
-        await postProcess(
-          db,
-          workspaceId,
-          changeSetId,
-          atom.kind,
-          doc,
-          atom.id,
-          indexChecksum,
-          false,
-          true,
-        );
+      if (doc) await postProcess(db, workspaceId, changeSetId, atom.kind, doc, atom.id, indexChecksum, false, true);
       else error("Failed to postProcess", atom);
     } catch (err) {
       error("Failed to apply NoOp patch", err, atom);
@@ -1688,17 +1454,7 @@ const handlePatchOperations = async (
 
   for (const atom of atomsToInsert) {
     try {
-      await postProcess(
-        db,
-        workspaceId,
-        changeSetId,
-        atom.kind,
-        atom.doc,
-        atom.id,
-        indexChecksum,
-        false,
-        true,
-      );
+      await postProcess(db, workspaceId, changeSetId, atom.kind, atom.doc, atom.id, indexChecksum, false, true);
     } catch (err) {
       error("Failed to post process atom", atom, error);
     }
@@ -1719,13 +1475,7 @@ const handlePatchOperations = async (
     }
 
     if (realHammers.length > 0) {
-      await mjolnirBulk(
-        db,
-        workspaceId,
-        changeSetId,
-        realHammers,
-        indexChecksum,
-      );
+      await mjolnirBulk(db, workspaceId, changeSetId, realHammers, indexChecksum);
     }
   } catch (err) {
     error("Failed to throw hammers during patch", err);
@@ -1734,10 +1484,7 @@ const handlePatchOperations = async (
   return [...atomsToInsert, ...removals, ...noops, ...realHammers];
 };
 
-const preprocessPatch = (
-  atom: Required<WorkspaceAtom>,
-  existingAtoms: { [key: string]: Common },
-): PatchOperation => {
+const preprocessPatch = (atom: Required<WorkspaceAtom>, existingAtoms: { [key: string]: Common }): PatchOperation => {
   const finishedAtomAsCommon: Common = {
     kind: atom.kind,
     id: atom.id,
@@ -1746,11 +1493,7 @@ const preprocessPatch = (
   const finishedKey = atomCacheKey(finishedAtomAsCommon);
 
   // Does the atom already exist? Then it's a no-op, but process and insert the mtm
-  if (
-    atom.toChecksum &&
-    atom.toChecksum !== "0" &&
-    typeof existingAtoms[finishedKey] !== "undefined"
-  ) {
+  if (atom.toChecksum && atom.toChecksum !== "0" && typeof existingAtoms[finishedKey] !== "undefined") {
     return {
       kind: "NoOp",
       atom,
@@ -1781,11 +1524,7 @@ const preprocessPatch = (
   }
 };
 
-const patchAtom = async (
-  db: Database,
-  atom: Required<WorkspaceAtom>,
-  span?: Span,
-) => {
+const patchAtom = async (db: Database, atom: Required<WorkspaceAtom>, span?: Span) => {
   const start = performance.now();
   const atomRows = await dbRead(db, {
     sql: `SELECT kind, args, checksum, data
@@ -1801,7 +1540,7 @@ const patchAtom = async (
   const end = performance.now();
   span?.setAttribute("perf.patchAtom", end - start);
   if (atomRows.length === 0) throw new Error("Cannot find atom");
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+
   const atomRow = atomRows[0]!;
 
   const _doc = atomRow[3] as ArrayBuffer;
@@ -1844,7 +1583,7 @@ const mjolnirBulk = async (
       if (doc) {
         cachedAtoms.push({
           id: obj.id,
-          kind: obj.kind as EntityKind,
+          kind: obj.kind,
           checksum: obj.checksum,
           doc,
         });
@@ -1902,11 +1641,7 @@ const mjolnirBulk = async (
       debug("🔨 MJOLNIR HTTP:", req.status, indexChecksum);
       error("MJOLNIR", req.status, url, hammerObjs);
     } else {
-      debug(
-        "🔨 MJOLNIR BULK HTTP SUCCESS:",
-        indexChecksum,
-        `${performance.now() - startBulkMjolnirReq}ms`,
-      );
+      debug("🔨 MJOLNIR BULK HTTP SUCCESS:", indexChecksum, `${performance.now() - startBulkMjolnirReq}ms`);
       span.setAttributes({
         successful: req.data.successful.length,
         failed: req.data.failed.length,
@@ -1944,20 +1679,14 @@ const mjolnirBulk = async (
   };
   // doing this first, by itself, await'd, because its going to make the new index, etc
   // and we dont want that to race across multiple patches
-  returnedFn(
-    changeSetId,
-    `${first.frontEndObject.kind}.${first.frontEndObject.id}`,
-  );
+  returnedFn(changeSetId, `${first.frontEndObject.kind}.${first.frontEndObject.id}`);
   await handleHammer(db, msg);
 
   await bulkCreateAtoms(db, req.data.successful);
   await bulkInsertAtomMTMs(db, req.data.successful, indexChecksum);
 
   for (const obj of req.data.successful) {
-    returnedFn(
-      changeSetId,
-      `${obj.frontEndObject.kind}.${obj.frontEndObject.id}`,
-    );
+    returnedFn(changeSetId, `${obj.frontEndObject.kind}.${obj.frontEndObject.id}`);
 
     await postProcess(
       db,
@@ -1985,18 +1714,8 @@ const mjolnirBulk = async (
   bulkDone({ workspaceId, changeSetId });
 };
 
-const deploymentMjolnir = async (
-  db: Database,
-  workspaceId: string,
-  kind: GlobalEntity,
-  id: Id,
-) => {
-  const pattern = [
-    "v2",
-    "workspaces",
-    { workspaceId },
-    "mjolnir",
-  ] as URLPattern;
+const deploymentMjolnir = async (db: Database, workspaceId: string, kind: GlobalEntity, id: Id) => {
+  const pattern = ["v2", "workspaces", { workspaceId }, "mjolnir"] as URLPattern;
   const [url, desc] = describePattern(pattern);
   const params = { kind, id };
 
@@ -2062,26 +1781,11 @@ const mjolnir = async (
     if (exists.length === 0) {
       return await mjolnirJob(workspaceId, changeSetId, kind, id, checksum);
     } // if i have it, bust!
-    else
-      await bustCacheAndReferences(
-        db,
-        workspaceId,
-        changeSetId,
-        kind,
-        id,
-        false,
-        true,
-      );
+    else await bustCacheAndReferences(db, workspaceId, changeSetId, kind, id, false, true);
   });
 };
 
-const mjolnirJob = async (
-  workspaceId: string,
-  changeSetId: ChangeSetId,
-  kind: string,
-  id: Id,
-  checksum?: Checksum,
-) => {
+const mjolnirJob = async (workspaceId: string, changeSetId: ChangeSetId, kind: string, id: Id, checksum?: Checksum) => {
   debug("🔨 MJOLNIR JOB START:", kind, id, "requested checksum:", checksum);
   // TODO this is probably a WsEvent, so SDF knows who to reply to
   const pattern = [
@@ -2147,27 +1851,11 @@ const mjolnirJob = async (
   // Include index checksum in the atom meta for better validation
   const indexChecksum = req.data.indexChecksum;
   const responseChecksum = req.data.frontEndObject.checksum;
-  debug(
-    "🔨 MJOLNIR RESPONSE:",
-    kind,
-    id,
-    "response checksum:",
-    responseChecksum,
-    "index checksum:",
-    indexChecksum,
-  );
+  debug("🔨 MJOLNIR RESPONSE:", kind, id, "response checksum:", responseChecksum, "index checksum:", indexChecksum);
 
   // Check if this conflicts with what we requested
   if (checksum && checksum !== responseChecksum) {
-    debug(
-      "🔨 MJOLNIR CHECKSUM MISMATCH:",
-      kind,
-      id,
-      "requested:",
-      checksum,
-      "received:",
-      responseChecksum,
-    );
+    debug("🔨 MJOLNIR CHECKSUM MISMATCH:", kind, id, "requested:", checksum, "received:", responseChecksum);
   }
 
   const msg: WorkspaceAtomMessage = {
@@ -2185,11 +1873,7 @@ const mjolnirJob = async (
   };
 
   debug("🔨 MJOLNIR JOB COMPLETE:", kind, id, "sending to handleHammer");
-  processMjolnirQueue.add(
-    async () =>
-      sqlite &&
-      (await sqlite.transaction(async (db) => await handleHammer(db, msg))),
-  );
+  processMjolnirQueue.add(async () => sqlite && (await sqlite.transaction(async (db) => await handleHammer(db, msg))));
 };
 
 const updateChangeSetWithNewIndex = async (
@@ -2246,11 +1930,7 @@ const removeOldIndex = async (_db: Database, _span: Span) => {
   // }
 };
 
-const pruneAtomsForClosedChangeSet = async (
-  db: Database,
-  workspaceId: string,
-  changeSetId: ChangeSetId,
-) => {
+const pruneAtomsForClosedChangeSet = async (db: Database, workspaceId: string, changeSetId: ChangeSetId) => {
   await tracer.startActiveSpan("pruneClosedChangeSet", async (span) => {
     span.setAttributes({ workspaceId, changeSetId, userPk });
     await dbWrite(db, {
@@ -2277,8 +1957,7 @@ const splitCacheKey = (key: string): [string, string, string] => {
   return [one, two, three];
 };
 
-const atomCacheKey = (atom: Common) =>
-  `${atom.id}-${atom.kind}-${atom.checksum}`;
+const atomCacheKey = (atom: Common) => `${atom.id}-${atom.kind}-${atom.checksum}`;
 
 const getCachedDocument = (atom: Common) => {
   const cacheKey = atomCacheKey(atom);
@@ -2343,9 +2022,7 @@ const atomDocumentsForChecksums = async (
   const sql = `
     select atoms.kind, atoms.args, atoms.checksum, atoms.data
     from atoms
-    where (atoms.kind, atoms.args, atoms.checksum) in (${placeholders.join(
-      ",",
-    )})
+    where (atoms.kind, atoms.args, atoms.checksum) in (${placeholders.join(",")})
   `;
 
   const rows = await dbRead(db, {
@@ -2386,10 +2063,7 @@ const atomDocumentsForChecksums = async (
 interface AtomWithArrayBuffer extends Common {
   data: ArrayBuffer;
 }
-const atomsForChangeSet = async (
-  db: Database,
-  indexChecksum: string,
-): Promise<AtomWithArrayBuffer[]> => {
+const atomsForChangeSet = async (db: Database, indexChecksum: string): Promise<AtomWithArrayBuffer[]> => {
   const rows = await dbRead(db, {
     sql: `
     select atoms.kind, atoms.args, atoms.checksum, atoms.data
@@ -2415,18 +2089,8 @@ const atomsForChangeSet = async (
  * LIFECYCLE EVENTS
  */
 
-export const CHANGE_SET_INDEX_URL = (
-  workspaceId: string,
-  changeSetId: string,
-) =>
-  [
-    "v2",
-    "workspaces",
-    { workspaceId },
-    "change-sets",
-    { changeSetId },
-    "index",
-  ] as URLPattern;
+export const CHANGE_SET_INDEX_URL = (workspaceId: string, changeSetId: string) =>
+  ["v2", "workspaces", { workspaceId }, "change-sets", { changeSetId }, "index"] as URLPattern;
 
 export const DEPLOYMENT_INDEX_URL = (workspaceId: string) =>
   ["v2", "workspaces", { workspaceId }, "deployment_index"] as URLPattern;
@@ -2456,10 +2120,7 @@ const sleep = async (ms: number) => {
 type AxiosFn<T> = () => Promise<AxiosResponse<T>>;
 const ONE_MIN = 1000 * 60;
 const MAX_RETRY = 4;
-const retry = async <T>(
-  fn: AxiosFn<T>,
-  retryNum?: number,
-): Promise<AxiosResponse<T> | undefined> => {
+const retry = async <T>(fn: AxiosFn<T>, retryNum?: number): Promise<AxiosResponse<T> | undefined> => {
   let r;
   try {
     r = await fn();
@@ -2486,18 +2147,8 @@ type DeploymentBulkResponse = {
   successful: AtomWithData[];
   failed: MjolnirBulk[];
 };
-const deploymentBulk = async (
-  db: Database,
-  workspaceId: string,
-  hammerObjs: Common[],
-  span: Span,
-) => {
-  const bulkPattern = [
-    "v2",
-    "workspaces",
-    { workspaceId },
-    "multi_mjolnir",
-  ] as URLPattern;
+const deploymentBulk = async (db: Database, workspaceId: string, hammerObjs: Common[], span: Span) => {
+  const bulkPattern = ["v2", "workspaces", { workspaceId }, "multi_mjolnir"] as URLPattern;
   const [bulkUrl, bulkDesc] = describePattern(bulkPattern);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let bulkReq: undefined | AxiosResponse<DeploymentBulkResponse, any>;
@@ -2524,10 +2175,7 @@ const deploymentBulk = async (
       debug("🔨 DEPLOYMENT MJOLNIR HTTP:", bulkReq.status);
       error("MJOLNIR", bulkReq.status, bulkUrl, hammerObjs);
     } else {
-      debug(
-        "🔨 DEPLOYMENT MJOLNIR BULK HTTP SUCCESS:",
-        `${performance.now() - startBulkMjolnirReq}ms`,
-      );
+      debug("🔨 DEPLOYMENT MJOLNIR BULK HTTP SUCCESS:", `${performance.now() - startBulkMjolnirReq}ms`);
       span.setAttributes({
         successful: bulkReq.data.successful.length,
         failed: bulkReq.data.failed.length,
@@ -2555,10 +2203,7 @@ const deploymentBulk = async (
  * This is a coldstart for the "global" / deployment MVs
  * that are not workspace / changeset specific.
  */
-const vanaheim = async (
-  db: Database,
-  workspaceId: string,
-): Promise<boolean> => {
+const vanaheim = async (db: Database, workspaceId: string): Promise<boolean> => {
   return await tracer.startActiveSpan("vanaheim", async (span: Span) => {
     span.setAttributes({ workspaceId, userPk });
     const sdf = getSdfClientForWorkspace(workspaceId, span);
@@ -2640,9 +2285,7 @@ const vanaheim = async (
       const sql = `
         delete
         from global_atoms
-        where (global_atoms.kind, global_atoms.args) in (${placeholders.join(
-          ",",
-        )});
+        where (global_atoms.kind, global_atoms.args) in (${placeholders.join(",")});
       `;
       await dbWrite(db, {
         sql,
@@ -2668,12 +2311,7 @@ const writeDeploymentAtoms = async (db: Database, atoms: AtomWithData[]) => {
     const bind: Array<string | Uint8Array> = [];
     const placeholders: string[] = [];
     batch.forEach((atom) => {
-      bind.push(
-        atom.kind,
-        atom.checksum,
-        atom.id,
-        encodeDocumentForDB(atom.data),
-      );
+      bind.push(atom.kind, atom.checksum, atom.id, encodeDocumentForDB(atom.data));
       placeholders.push("(?, ?, ?, ?)");
     });
 
@@ -2758,9 +2396,7 @@ const _niflheim = async (
 
     // Use index checksum for validation - this is more reliable than snapshot addresses
     const indexChecksum = req.data.indexChecksum;
-    const atoms = req.data.frontEndObject.data.mvList.filter(
-      (atom) => !IGNORE_LIST.has(atom.kind),
-    );
+    const atoms = req.data.frontEndObject.data.mvList.filter((atom) => !IGNORE_LIST.has(atom.kind));
     const meta = {
       changeSetId,
       workspaceId,
@@ -2788,10 +2424,7 @@ const _niflheim = async (
     const chunkSize = 2000;
     for (let i = 0; i < atoms.length; i += chunkSize) {
       const chunk = atoms.slice(i, i + chunkSize);
-      const { existingDocuments, hammers } = await atomDocumentsForChecksums(
-        db,
-        chunk,
-      );
+      const { existingDocuments, hammers } = await atomDocumentsForChecksums(db, chunk);
       await bulkInsertAtomMTMs(db, existingDocuments, indexChecksum, chunkSize);
       hammerObjs.push(...hammers);
     }
@@ -2807,18 +2440,7 @@ const _niflheim = async (
         setCachedDocument(atom, doc);
       }
 
-      await postProcess(
-        db,
-        workspaceId,
-        changeSetId,
-        atom.kind,
-        doc,
-        atom.id,
-        indexChecksum,
-        false,
-        false,
-        false,
-      );
+      await postProcess(db, workspaceId, changeSetId, atom.kind, doc, atom.id, indexChecksum, false, false, false);
     };
 
     for (const atom of finalAtoms) {
@@ -2858,13 +2480,7 @@ const _niflheim = async (
 
     // Now to deal with all the atoms we don't have present. Throw the big hammer.
     if (hammerObjs.length > 0) {
-      await mjolnirBulk(
-        db,
-        workspaceId,
-        changeSetId,
-        hammerObjs,
-        indexChecksum,
-      );
+      await mjolnirBulk(db, workspaceId, changeSetId, hammerObjs, indexChecksum);
     } else {
       debug("NIFLHEIM NOOP DONE", changeSetId);
       bulkDone({ workspaceId, changeSetId }, true);
@@ -2876,11 +2492,8 @@ const _niflheim = async (
   });
 };
 
-const niflheim = async (
-  db: Database,
-  workspaceId: string,
-  changeSetId: ChangeSetId,
-): Promise<-1 | 0 | 1> => _niflheim(db, workspaceId, changeSetId, true);
+const niflheim = async (db: Database, workspaceId: string, changeSetId: ChangeSetId): Promise<-1 | 0 | 1> =>
+  _niflheim(db, workspaceId, changeSetId, true);
 
 type ColdStartArgs = Parameters<typeof niflheim>;
 const THIRY_SECONDS = 30 * 1000;
@@ -2895,12 +2508,7 @@ const syncAtoms = (...args: ColdStartArgs) =>
     (...args: ColdStartArgs) => `${args[1]}-${args[2]}`,
   );
 
-const ragnarok = async (
-  db: Database,
-  workspaceId: string,
-  changeSetId: string,
-  noColdStart = false,
-) => {
+const ragnarok = async (db: Database, workspaceId: string, changeSetId: string, noColdStart = false) => {
   // get rid of the indexes we have for this changeset
   await dbWrite(db, {
     sql: `delete from indexes
@@ -2935,11 +2543,7 @@ const clearAllWeakReferences = async (db: Database, changeSetId: string) => {
   });
 };
 
-const _clearWeakReferences = async (
-  db: Database,
-  changeSetId: string,
-  referrer: { kind: string; args: string },
-) => {
+const _clearWeakReferences = async (db: Database, changeSetId: string, referrer: { kind: string; args: string }) => {
   const sql = `
     delete from weak_references
     where change_set_id = ? and referrer_kind = ? and referrer_args = ?
@@ -2957,13 +2561,7 @@ const weakReference = async (
   target: { kind: string; args: string },
   referrer: { kind: string; args: string },
 ) => {
-  const bind = [
-    changeSetId,
-    target.kind,
-    target.args,
-    referrer.kind,
-    referrer.args,
-  ];
+  const bind = [changeSetId, target.kind, target.args, referrer.kind, referrer.args];
   try {
     const sql = `
       insert into weak_references
@@ -2992,31 +2590,26 @@ const COMPUTED_KINDS: EntityKind[] = [
   EntityKind.Component,
 ];
 
-const defaultSubscriptions = new DefaultMap<ChangeSetId, DefaultSubscriptions>(
-  () => ({
-    defaultSubscriptions: new Map(),
-    componentsForSubs: new DefaultMap(() => new Set()),
-    subsForComponents: new DefaultMap(() => new Set()),
-  }),
-);
+const defaultSubscriptions = new DefaultMap<ChangeSetId, DefaultSubscriptions>(() => ({
+  defaultSubscriptions: new Map(),
+  componentsForSubs: new DefaultMap(() => new Set()),
+  subsForComponents: new DefaultMap(() => new Set()),
+}));
 
 // A mapping of possible connections per component, per change set
-const possibleConns = new DefaultMap<
-  ChangeSetId,
-  DefaultMap<ComponentId, Record<string, PossibleConnection>>
->(() => new DefaultMap(() => ({})));
+const possibleConns = new DefaultMap<ChangeSetId, DefaultMap<ComponentId, Record<string, PossibleConnection>>>(
+  () => new DefaultMap(() => ({})),
+);
 
 // the `string` is `${toAttributeValueId}-${fromAttributeValueId}`
-const allOutgoingConns = new DefaultMap<
-  ChangeSetId,
-  DefaultMap<ComponentId, Record<string, Connection>>
->(() => new DefaultMap(() => ({})));
+const allOutgoingConns = new DefaultMap<ChangeSetId, DefaultMap<ComponentId, Record<string, Connection>>>(
+  () => new DefaultMap(() => ({})),
+);
 
 // the `string` is `${toComponentId}-${fromComponentId}`
-const allIncomingMgmt = new DefaultMap<
-  ChangeSetId,
-  DefaultMap<ComponentId, Record<string, Connection>>
->(() => new DefaultMap(() => ({})));
+const allIncomingMgmt = new DefaultMap<ChangeSetId, DefaultMap<ComponentId, Record<string, Connection>>>(
+  () => new DefaultMap(() => ({})),
+);
 
 // Given a single Av, process all the data related to default subscriptions (is
 // it a default sub, does it have external sources?)
@@ -3033,17 +2626,11 @@ const processAvForDefaultSubscriptions = (
 
   const defaultSubKeyString = JSON.stringify(defaultSubKey);
 
-  const defaultSubscriptionsForChangeSet =
-    defaultSubscriptions.get(changeSetId);
+  const defaultSubscriptionsForChangeSet = defaultSubscriptions.get(changeSetId);
   if (av.isDefaultSource) {
-    defaultSubscriptionsForChangeSet.defaultSubscriptions.set(
-      defaultSubKeyString,
-      defaultSubKey,
-    );
+    defaultSubscriptionsForChangeSet.defaultSubscriptions.set(defaultSubKeyString, defaultSubKey);
   } else {
-    defaultSubscriptionsForChangeSet.defaultSubscriptions.delete(
-      defaultSubKeyString,
-    );
+    defaultSubscriptionsForChangeSet.defaultSubscriptions.delete(defaultSubKeyString);
   }
 
   for (const externalSource of av.externalSources ?? []) {
@@ -3057,19 +2644,11 @@ const processAvForDefaultSubscriptions = (
 
 // A component was deleted, so we have to remove all references to it
 // from the default subscriptions data
-const removeDefaultSubscriptionsForComponent = (
-  changeSetId: ChangeSetId,
-  componentId: ComponentId,
-) => {
+const removeDefaultSubscriptionsForComponent = (changeSetId: ChangeSetId, componentId: ComponentId) => {
   const defaultSubsForChangeSet = defaultSubscriptions.get(changeSetId);
-  for (const [
-    keyString,
-    defaultSub,
-  ] of defaultSubsForChangeSet.defaultSubscriptions.entries()) {
+  for (const [keyString, defaultSub] of defaultSubsForChangeSet.defaultSubscriptions.entries()) {
     if (defaultSub.componentId === componentId) {
-      defaultSubscriptions
-        .get(changeSetId)
-        .defaultSubscriptions.delete(keyString);
+      defaultSubscriptions.get(changeSetId).defaultSubscriptions.delete(keyString);
     }
   }
 
@@ -3091,10 +2670,7 @@ const finalizeDefaultSubscriptionsForComponent = (
 ) => {
   const defaultSubsForChangeSet = defaultSubscriptions.get(changeSetId);
 
-  defaultSubsForChangeSet.subsForComponents.set(
-    componentId,
-    defaultSubsForComponent,
-  );
+  defaultSubsForChangeSet.subsForComponents.set(componentId, defaultSubsForComponent);
 
   const componentsForSubs = defaultSubsForChangeSet.componentsForSubs;
 
@@ -3141,28 +2717,16 @@ const postProcess = async (
           inner join index_mtm_atoms mtm
             ON atoms.kind = mtm.kind AND atoms.args = mtm.args AND atoms.checksum = mtm.checksum
           inner join indexes ON mtm.index_checksum = indexes.checksum
-        ${
-          indexChecksum
-            ? ""
-            : "inner join changesets ON changesets.index_checksum = indexes.checksum"
-        }
+        ${indexChecksum ? "" : "inner join changesets ON changesets.index_checksum = indexes.checksum"}
         where
-          ${
-            indexChecksum
-              ? "indexes.checksum = ?"
-              : "changesets.change_set_id = ?"
-          }
+          ${indexChecksum ? "indexes.checksum = ?" : "changesets.change_set_id = ?"}
           AND
           atoms.kind = ?
         )
       WHERE
         ref ->> '$.id' = ?
       `;
-      const bind = [
-        indexChecksum ?? changeSetId,
-        EntityKind.ViewComponentList,
-        id,
-      ];
+      const bind = [indexChecksum ?? changeSetId, EntityKind.ViewComponentList, id];
       const rows = await dbRead(db, {
         sql,
         bind,
@@ -3179,16 +2743,7 @@ const postProcess = async (
   if (!COMPUTED_KINDS.includes(kind)) return;
 
   if (followReferences && !removed) {
-    const result = await getReferences(
-      db,
-      doc,
-      workspaceId,
-      changeSetId,
-      kind,
-      id,
-      indexChecksum,
-      false,
-    );
+    const result = await getReferences(db, doc, workspaceId, changeSetId, kind, id, indexChecksum, false);
     const _doc = result[0];
     if (_doc && typeof _doc === "object") doc = _doc;
     else {
@@ -3199,12 +2754,7 @@ const postProcess = async (
 
   if (kind === EntityKind.Component) {
     if (bust) {
-      bustCacheFn(
-        workspaceId,
-        changeSetId,
-        EntityKind.ComponentDetails,
-        workspaceId,
-      );
+      bustCacheFn(workspaceId, changeSetId, EntityKind.ComponentDetails, workspaceId);
     }
   } else if (kind === EntityKind.ManagementConnections) {
     // these are OUTGOING connections
@@ -3226,21 +2776,14 @@ const postProcess = async (
         if (outgoing.kind !== "prop") {
           const id = `${outgoing.toComponentId}-${outgoing.fromComponentId}`;
           const incoming = flip(outgoing);
-          const conns = allIncomingMgmt
-            .get(changeSetId)
-            .get(outgoing.toComponentId);
+          const conns = allIncomingMgmt.get(changeSetId).get(outgoing.toComponentId);
           conns[id] = incoming;
         }
       });
     }
 
     if (bust) {
-      bustCacheFn(
-        workspaceId,
-        changeSetId,
-        EntityKind.IncomingManagementConnections,
-        workspaceId,
-      );
+      bustCacheFn(workspaceId, changeSetId, EntityKind.IncomingManagementConnections, workspaceId);
     }
   } else if (kind === EntityKind.IncomingConnections) {
     const data = doc as IncomingConnections;
@@ -3263,27 +2806,15 @@ const postProcess = async (
         if (incoming.kind !== "management") {
           const id = `${incoming.toAttributeValueId}-${incoming.fromAttributeValueId}`;
           const outgoing = flip(incoming);
-          const conns = allOutgoingConns
-            .get(changeSetId)
-            .get(incoming.fromComponentId);
+          const conns = allOutgoingConns.get(changeSetId).get(incoming.fromComponentId);
           conns[id] = outgoing;
         }
       });
     }
     if (bust) {
-      bustCacheFn(
-        workspaceId,
-        changeSetId,
-        EntityKind.OutgoingCounts,
-        workspaceId,
-      );
+      bustCacheFn(workspaceId, changeSetId, EntityKind.OutgoingCounts, workspaceId);
 
-      bustCacheFn(
-        workspaceId,
-        changeSetId,
-        EntityKind.OutgoingConnections,
-        workspaceId,
-      );
+      bustCacheFn(workspaceId, changeSetId, EntityKind.OutgoingConnections, workspaceId);
     }
   } else if (kind === EntityKind.AttributeTree) {
     if (!removed && !doc) {
@@ -3296,12 +2827,7 @@ const postProcess = async (
       const defaultSubsForComponent: Set<string> = new Set();
       const possibleConnsForComponent: Record<string, PossibleConnection> = {};
       Object.values(attributeTree.attributeValues).forEach((av) => {
-        processAvForDefaultSubscriptions(
-          changeSetId,
-          attributeTree.id,
-          av,
-          defaultSubsForComponent,
-        );
+        processAvForDefaultSubscriptions(changeSetId, attributeTree.id, av, defaultSubsForComponent);
 
         const prop = attributeTree.props[av.propId ?? ""];
         if (av.path && prop && prop.eligibleForConnection && !prop.hidden) {
@@ -3320,15 +2846,9 @@ const postProcess = async (
         }
       });
 
-      possibleConns
-        .get(changeSetId)
-        .set(attributeTree.id, possibleConnsForComponent);
+      possibleConns.get(changeSetId).set(attributeTree.id, possibleConnsForComponent);
 
-      finalizeDefaultSubscriptionsForComponent(
-        changeSetId,
-        attributeTree.id,
-        defaultSubsForComponent,
-      );
+      finalizeDefaultSubscriptionsForComponent(changeSetId, attributeTree.id, defaultSubsForComponent);
     }
 
     if (removed) {
@@ -3338,30 +2858,10 @@ const postProcess = async (
 
     // dont bust individually on cold start
     if (bust) {
-      bustCacheFn(
-        workspaceId,
-        changeSetId,
-        EntityKind.AttributeTree,
-        attributeTree?.id ?? id,
-      );
-      bustCacheFn(
-        workspaceId,
-        changeSetId,
-        EntityKind.PossibleConnections,
-        workspaceId,
-      );
-      bustCacheFn(
-        workspaceId,
-        changeSetId,
-        EntityKind.DefaultSubscriptions,
-        workspaceId,
-      );
-      bustCacheFn(
-        workspaceId,
-        changeSetId,
-        EntityKind.QueryAttributes,
-        workspaceId,
-      );
+      bustCacheFn(workspaceId, changeSetId, EntityKind.AttributeTree, attributeTree?.id ?? id);
+      bustCacheFn(workspaceId, changeSetId, EntityKind.PossibleConnections, workspaceId);
+      bustCacheFn(workspaceId, changeSetId, EntityKind.DefaultSubscriptions, workspaceId);
+      bustCacheFn(workspaceId, changeSetId, EntityKind.QueryAttributes, workspaceId);
     }
   }
 };
@@ -3376,17 +2876,11 @@ const getPossibleConnections = (_workspaceId: string, changeSetId: string) => {
   return result;
 };
 
-const getOutgoingConnectionsByComponentId = (
-  _workspaceId: string,
-  changeSetId: string,
-) => {
+const getOutgoingConnectionsByComponentId = (_workspaceId: string, changeSetId: string) => {
   return allOutgoingConns.get(changeSetId);
 };
 
-const getOutgoingConnectionsCounts = (
-  _workspaceId: string,
-  changeSetId: string,
-) => {
+const getOutgoingConnectionsCounts = (_workspaceId: string, changeSetId: string) => {
   const data = allOutgoingConns.get(changeSetId);
   const counts: Record<ComponentId, number> = {};
   [...data.entries()].forEach(([componentId, conns]) => {
@@ -3395,26 +2889,15 @@ const getOutgoingConnectionsCounts = (
   return counts;
 };
 
-const getIncomingManagementByComponentId = (
-  _workspaceId: string,
-  changeSetId: string,
-) => {
+const getIncomingManagementByComponentId = (_workspaceId: string, changeSetId: string) => {
   return allIncomingMgmt.get(changeSetId);
 };
 
-const getDefaultSubscriptions = (
-  _workspaceId: string,
-  changeSetId: string,
-): DefaultSubscriptions => {
+const getDefaultSubscriptions = (_workspaceId: string, changeSetId: string): DefaultSubscriptions => {
   return defaultSubscriptions.get(changeSetId);
 };
 
-const getComponentDetails = async (
-  db: Database,
-  _workspaceId: string,
-  changeSetId: string,
-  indexChecksum?: string,
-) => {
+const getComponentDetails = async (db: Database, _workspaceId: string, changeSetId: string, indexChecksum?: string) => {
   const sql = `
     select
       atoms.args,
@@ -3425,11 +2908,7 @@ const getComponentDetails = async (
       inner join index_mtm_atoms mtm
         ON atoms.kind = mtm.kind AND atoms.args = mtm.args AND atoms.checksum = mtm.checksum
       inner join indexes ON mtm.index_checksum = indexes.checksum
-    ${
-      indexChecksum
-        ? ""
-        : "inner join changesets ON changesets.index_checksum = indexes.checksum"
-    }
+    ${indexChecksum ? "" : "inner join changesets ON changesets.index_checksum = indexes.checksum"}
     where
       ${indexChecksum ? "indexes.checksum = ?" : "changesets.change_set_id = ?"}
       AND
@@ -3464,19 +2943,11 @@ const getComponentsInViews = async (
     SELECT DISTINCT
       atoms.args AS viewId,
       components.value ->> '$.id' AS componentId
-    FROM ${
-      indexChecksum
-        ? "indexes"
-        : "changesets JOIN indexes on indexes.checksum = changesets.index_checksum"
-    }
+    FROM ${indexChecksum ? "indexes" : "changesets JOIN indexes on indexes.checksum = changesets.index_checksum"}
       JOIN index_mtm_atoms ON indexes.checksum = index_mtm_atoms.index_checksum
       JOIN atoms ON atoms.kind = index_mtm_atoms.kind AND atoms.args = index_mtm_atoms.args AND atoms.checksum = index_mtm_atoms.checksum
       JOIN json_each(jsonb_extract(CAST(atoms.data as text), '$.components')) AS components
-    WHERE ${
-      indexChecksum
-        ? "indexes.index_checksum = ?"
-        : "changesets.change_set_id = ?"
-    }
+    WHERE ${indexChecksum ? "indexes.index_checksum = ?" : "changesets.change_set_id = ?"}
       AND atoms.kind = 'ViewComponentList'
   `;
 
@@ -3506,14 +2977,8 @@ const getComponentsInOnlyOneView = async (
       SELECT
         atoms.args AS viewId,
         components.value ->> '$.id' AS componentId,
-        ${
-          indexChecksum ? "indexes.index_checksum" : "changesets.change_set_id"
-        } AS filter_value
-      FROM ${
-        indexChecksum
-          ? "indexes"
-          : "changesets JOIN indexes ON indexes.checksum = changesets.index_checksum"
-      }
+        ${indexChecksum ? "indexes.index_checksum" : "changesets.change_set_id"} AS filter_value
+      FROM ${indexChecksum ? "indexes" : "changesets JOIN indexes ON indexes.checksum = changesets.index_checksum"}
         JOIN index_mtm_atoms ON indexes.checksum = index_mtm_atoms.index_checksum
         JOIN atoms ON atoms.kind = index_mtm_atoms.kind AND atoms.args = index_mtm_atoms.args AND atoms.checksum = index_mtm_atoms.checksum
         JOIN json_each(jsonb_extract(CAST(atoms.data AS text), '$.components')) AS components
@@ -3639,13 +3104,7 @@ const getReferences = async (
        * from a wholly different patch message.
        * */
 
-      mjolnir(
-        db,
-        workspaceId,
-        changeSetId,
-        data.schemaVariantId.kind,
-        data.schemaVariantId.id,
-      );
+      mjolnir(db, workspaceId, changeSetId, data.schemaVariantId.kind, data.schemaVariantId.id);
       // add a weak reference in the case of a miss
       // because if we throw a hammer for what we missed
       // this referencing data doesn't change and needs to bust
@@ -3679,13 +3138,7 @@ const getReferences = async (
         sourceKind: kind,
       });
       // no await on purpose
-      mjolnir(
-        db,
-        workspaceId,
-        changeSetId,
-        data.schemaMembers.kind,
-        data.schemaMembers.id,
-      );
+      mjolnir(db, workspaceId, changeSetId, data.schemaMembers.kind, data.schemaMembers.id);
       // add a weak reference in the case of a miss
       // because if we throw a hammer for what we missed
       // this referencing data doesn't change and needs to bust
@@ -3700,15 +3153,9 @@ const getReferences = async (
     const schemaMembers = sm !== -1 ? sm : ({} as SchemaMembers);
     let canBeUpgraded = false;
     if (schemaMembers) {
-      if (
-        schemaMembers.editingVariantId &&
-        data.schemaVariantId.id !== schemaMembers.editingVariantId
-      ) {
+      if (schemaMembers.editingVariantId && data.schemaVariantId.id !== schemaMembers.editingVariantId) {
         canBeUpgraded = true;
-      } else if (
-        !schemaMembers.editingVariantId &&
-        data.schemaVariantId.id !== schemaMembers.defaultVariantId
-      ) {
+      } else if (!schemaMembers.editingVariantId && data.schemaVariantId.id !== schemaMembers.defaultVariantId) {
         canBeUpgraded = true;
       }
     }
@@ -3725,16 +3172,9 @@ const getReferences = async (
   }
 };
 
-const IGNORE_LIST = new Set<EntityKind>([
-  EntityKind.LuminorkDefaultVariant,
-  EntityKind.LuminorkSchemaVariant,
-]);
+const IGNORE_LIST = new Set<EntityKind>([EntityKind.LuminorkDefaultVariant, EntityKind.LuminorkSchemaVariant]);
 
-const LISTABLE_ITEMS = [
-  EntityKind.ComponentInList,
-  EntityKind.IncomingConnections,
-  EntityKind.View,
-];
+const LISTABLE_ITEMS = [EntityKind.ComponentInList, EntityKind.IncomingConnections, EntityKind.View];
 const LISTABLE = [
   EntityKind.ComponentList,
   EntityKind.ViewComponentList,
@@ -3789,17 +3229,9 @@ from
             inner join index_mtm_atoms mtm
               ON atoms.kind = mtm.kind AND atoms.args = mtm.args AND atoms.checksum = mtm.checksum
             inner join indexes ON mtm.index_checksum = indexes.checksum
-          ${
-            indexChecksum
-              ? ""
-              : "inner join changesets ON changesets.index_checksum = indexes.checksum"
-          }
+          ${indexChecksum ? "" : "inner join changesets ON changesets.index_checksum = indexes.checksum"}
           where
-            ${
-              indexChecksum
-                ? "indexes.checksum = ?"
-                : "changesets.change_set_id = ?"
-            }
+            ${indexChecksum ? "indexes.checksum = ?" : "changesets.change_set_id = ?"}
             AND atoms.kind = ?
             AND atoms.args = ?
         ) as items
@@ -3810,21 +3242,12 @@ from
     inner join index_mtm_atoms mtm
       ON atoms.kind = mtm.kind AND atoms.args = mtm.args AND atoms.checksum = mtm.checksum
     inner join indexes ON mtm.index_checksum = indexes.checksum
-    ${
-      indexChecksum
-        ? ""
-        : "inner join changesets ON changesets.index_checksum = indexes.checksum"
-    }
+    ${indexChecksum ? "" : "inner join changesets ON changesets.index_checksum = indexes.checksum"}
     where
       ${indexChecksum ? "indexes.checksum = ?" : "changesets.change_set_id = ?"}
   ) as resolved
 ;      `;
-  const bind = [
-    indexChecksum ?? changeSetId,
-    kind,
-    id,
-    indexChecksum ?? changeSetId,
-  ];
+  const bind = [indexChecksum ?? changeSetId, kind, id, indexChecksum ?? changeSetId];
   const start = performance.now();
   const atomData = await dbRead(db, {
     sql,
@@ -3832,17 +3255,9 @@ from
     returnValue: "resultRows",
   });
   const end = performance.now();
-  debug(
-    "❓ sql getList",
-    `[${end - start}ms]`,
-    bind,
-    " returns ?",
-    !(atomData.length === 0),
-    atomData,
-  );
+  debug("❓ sql getList", `[${end - start}ms]`, bind, " returns ?", !(atomData.length === 0), atomData);
   if (atomData.length === 0) return "";
 
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
   return atomData[0]![0] as string;
 };
 
@@ -3892,15 +3307,13 @@ const queryAttributes = async (
     let value = term.value;
     // If the value is all digits, we always run an exact match, so no need to add % to the end
     if (!term.value.match(/^\d+$/)) {
-      value =
-        term.value.replaceAll("*", "%") + (term.op === "startsWith" ? "%" : "");
+      value = term.value.replaceAll("*", "%") + (term.op === "startsWith" ? "%" : "");
     }
 
     // This is the default search statements, we include special cases further down
     const sqlTerms = [
       {
-        statement:
-          "(attr.value ->> 'path' LIKE ? AND attr.value ->> 'value' LIKE ?)",
+        statement: "(attr.value ->> 'path' LIKE ? AND attr.value ->> 'value' LIKE ?)",
         binds: [key, value] as (string | boolean | number)[],
       },
     ];
@@ -3913,8 +3326,7 @@ const queryAttributes = async (
     const valueAsBoolean = booleanValues[term.value.toLowerCase()];
     if (valueAsBoolean !== undefined) {
       sqlTerms.push({
-        statement:
-          "(attr.value ->> 'path' LIKE ? AND attr.value ->> 'value' = ?)",
+        statement: "(attr.value ->> 'path' LIKE ? AND attr.value ->> 'value' = ?)",
         binds: [key, valueAsBoolean],
       });
     }
@@ -3954,23 +3366,11 @@ const queryAttributes = async (
   });
 
   const end = Date.now();
-  debug(
-    "❓ sql queryAttributes",
-    `[${end - start}ms]`,
-    bind,
-    " returns ?",
-    !(components.length === 0),
-    components,
-  );
+  debug("❓ sql queryAttributes", `[${end - start}ms]`, bind, " returns ?", !(components.length === 0), components);
   return components.map((c) => c[0] as ComponentId);
 };
 
-const getGlobal = async (
-  db: Database,
-  workspaceId: string,
-  kind: GlobalEntity,
-  id: Id,
-): Promise<-1 | AtomDocument> => {
+const getGlobal = async (db: Database, workspaceId: string, kind: GlobalEntity, id: Id): Promise<-1 | AtomDocument> => {
   const sql = `
     select
       data
@@ -3989,13 +3389,7 @@ const getGlobal = async (
   });
   const end = performance.now();
   const data = oneInOne(atomData);
-  debug(
-    "❓ sql get",
-    `[${end - start}ms]`,
-    bind,
-    " returns ?",
-    !(data === NOROW),
-  );
+  debug("❓ sql get", `[${end - start}ms]`, bind, " returns ?", !(data === NOROW));
   if (data === NOROW) {
     deploymentMjolnir(db, workspaceId, kind, id);
     return -1;
@@ -4025,11 +3419,7 @@ const get = async (
       inner join index_mtm_atoms mtm
         ON atoms.kind = mtm.kind AND atoms.args = mtm.args AND atoms.checksum = mtm.checksum
       inner join indexes ON mtm.index_checksum = indexes.checksum
-    ${
-      indexChecksum
-        ? ""
-        : "inner join changesets ON changesets.index_checksum = indexes.checksum"
-    }
+    ${indexChecksum ? "" : "inner join changesets ON changesets.index_checksum = indexes.checksum"}
     where
       ${indexChecksum ? "indexes.checksum = ?" : "changesets.change_set_id = ?"}
       AND
@@ -4045,13 +3435,7 @@ const get = async (
   });
   const end = performance.now();
   const data = oneInOne(atomData);
-  debug(
-    "❓ sql get",
-    `[${end - start}ms]`,
-    bind,
-    " returns ?",
-    !(data === NOROW),
-  );
+  debug("❓ sql get", `[${end - start}ms]`, bind, " returns ?", !(data === NOROW));
   if (data === NOROW) {
     mjolnir(db, workspaceId, changeSetId, kind, id, checksum);
     return -1;
@@ -4133,14 +3517,7 @@ const getExists = async (
       and atoms.kind = ?
       and atoms.args = ?
 ;`;
-  const bind = [
-    changeSetId,
-    EntityKind.MvIndex,
-    workspaceId,
-    changeSetId,
-    kind,
-    id,
-  ];
+  const bind = [changeSetId, EntityKind.MvIndex, workspaceId, changeSetId, kind, id];
   const exists = await dbRead(db, {
     sql,
     bind,
@@ -4164,11 +3541,7 @@ const getSchemaMembers = async (
       inner join index_mtm_atoms mtm
         ON atoms.kind = mtm.kind AND atoms.args = mtm.args AND atoms.checksum = mtm.checksum
       inner join indexes ON mtm.index_checksum = indexes.checksum
-    ${
-      indexChecksum
-        ? ""
-        : "inner join changesets ON changesets.index_checksum = indexes.checksum"
-    }
+    ${indexChecksum ? "" : "inner join changesets ON changesets.index_checksum = indexes.checksum"}
     where
       ${indexChecksum ? "indexes.checksum = ?" : "changesets.change_set_id = ?"}
       AND
@@ -4215,11 +3588,7 @@ const _getMany = async (
       inner join index_mtm_atoms mtm
         ON atoms.kind = mtm.kind AND atoms.args = mtm.args AND atoms.checksum = mtm.checksum
       inner join indexes ON mtm.index_checksum = indexes.checksum
-    ${
-      indexChecksum
-        ? ""
-        : "inner join changesets ON changesets.index_checksum = indexes.checksum"
-    }
+    ${indexChecksum ? "" : "inner join changesets ON changesets.index_checksum = indexes.checksum"}
     where
       ${indexChecksum ? "indexes.checksum = ?" : "changesets.change_set_id = ?"}
       AND
@@ -4296,9 +3665,7 @@ let updateConnectionStatus: ConnStatusFn;
 
 let abortController: AbortController | undefined;
 
-const forceLeaderElectionBroadcastChannel = new BroadcastChannel(
-  FORCE_LEADER_ELECTION,
-);
+const forceLeaderElectionBroadcastChannel = new BroadcastChannel(FORCE_LEADER_ELECTION);
 
 /**
  * This enforces that `receiveBroadcast` handles
@@ -4314,11 +3681,7 @@ const dbInterface: TabDBInterface = {
   async receiveBroadcast(message: BroadcastMessage) {
     switch (message.messageKind) {
       case "updateConnectionStatus":
-        updateConnectionStatus(
-          message.arguments.workspaceId,
-          message.arguments.connected,
-          true,
-        );
+        updateConnectionStatus(message.arguments.workspaceId, message.arguments.connected, true);
         break;
       case "cacheBust":
         bustCacheFn(
@@ -4330,18 +3693,10 @@ const dbInterface: TabDBInterface = {
         );
         break;
       case "listenerInFlight":
-        inFlightFn(
-          message.arguments.changeSetId,
-          message.arguments.label,
-          true,
-        );
+        inFlightFn(message.arguments.changeSetId, message.arguments.label, true);
         break;
       case "listenerReturned":
-        returnedFn(
-          message.arguments.changeSetId,
-          message.arguments.label,
-          true,
-        );
+        returnedFn(message.arguments.changeSetId, message.arguments.label, true);
         break;
       case "atomUpdated":
         atomUpdatedFn(
@@ -4359,11 +3714,7 @@ const dbInterface: TabDBInterface = {
         receiveInterest(message.arguments);
         break;
       case "lobbyExit":
-        lobbyExitFn(
-          message.arguments.workspaceId,
-          message.arguments.changeSetId,
-          true,
-        );
+        lobbyExitFn(message.arguments.workspaceId, message.arguments.changeSetId, true);
         break;
       default:
         assertNever(message);
@@ -4373,10 +3724,7 @@ const dbInterface: TabDBInterface = {
     bearerTokens[workspaceId] = token;
     let apiUrl: string;
     if (import.meta.env.VITE_API_PROXY_PATH) {
-      // eslint-disable-next-line no-restricted-globals
-      apiUrl = `${location.protocol}//${location.host}${
-        import.meta.env.VITE_API_PROXY_PATH
-      }`;
+      apiUrl = `${location.protocol}//${location.host}${import.meta.env.VITE_API_PROXY_PATH}`;
     } else throw new Error("Invalid API env var config");
     const API_HTTP_URL = apiUrl;
 
@@ -4413,23 +3761,14 @@ const dbInterface: TabDBInterface = {
       return;
     }
 
-    debug(
-      "Initializing websocket for workspaceId",
-      workspaceId,
-      "and user",
-      userPk,
-    );
+    debug("Initializing websocket for workspaceId", workspaceId, "and user", userPk);
 
     try {
       const token = bearerTokens[workspaceId];
-      sockets[workspaceId] = new ReconnectingWebSocket(
-        () => `/api/ws/bifrost?token=Bearer+${token}`,
-        [],
-        {
-          // see options https://www.npmjs.com/package/reconnecting-websocket#available-options
-          startClosed: true, // don't start connected - we'll watch auth to trigger
-        },
-      );
+      sockets[workspaceId] = new ReconnectingWebSocket(() => `/api/ws/bifrost?token=Bearer+${token}`, [], {
+        // see options https://www.npmjs.com/package/reconnecting-websocket#available-options
+        startClosed: true, // don't start connected - we'll watch auth to trigger
+      });
     } catch (err) {
       error(err);
     }
@@ -4493,38 +3832,17 @@ const dbInterface: TabDBInterface = {
             }
 
             if (data.kind === MessageKind.WORKSPACE_PATCH) {
-              debug(
-                "📨 WORKSPACE PATCH MESSAGE START:",
-                data.meta.toIndexChecksum,
-                "patches:",
-                data.patches.length,
-              );
+              debug("📨 WORKSPACE PATCH MESSAGE START:", data.meta.toIndexChecksum, "patches:", data.patches.length);
               processPatchQueue.add(
-                async () =>
-                  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-                  await sqlite!.transaction(
-                    async (db) => await handleWorkspacePatchMessage(db, data),
-                  ),
+                async () => await sqlite!.transaction(async (db) => await handleWorkspacePatchMessage(db, data)),
                 assignPriority(data.meta.workspaceId, data.meta.changeSetId),
               );
-              debug(
-                "📨 WORKSPACE PATCH MESSAGE ADDED:",
-                data.meta.toIndexChecksum,
-              );
+              debug("📨 WORKSPACE PATCH MESSAGE ADDED:", data.meta.toIndexChecksum);
             } else if (data.kind === MessageKind.DEPLOYMENT_PATCH) {
-              debug(
-                "📨 DEPLOYMENT PATCH MESSAGE START:",
-                data.meta.toIndexChecksum,
-                "patches:",
-                data.patches.length,
-              );
+              debug("📨 DEPLOYMENT PATCH MESSAGE START:", data.meta.toIndexChecksum, "patches:", data.patches.length);
 
               processPatchQueue.add(
-                async () =>
-                  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-                  await sqlite!.transaction(
-                    async (db) => await handleDeploymentPatchMessage(db, data),
-                  ),
+                async () => await sqlite!.transaction(async (db) => await handleDeploymentPatchMessage(db, data)),
               );
             } else if (data.kind === MessageKind.WORKSPACE_INDEXUPDATE) {
               // Index has been updated - signal lobby exit
@@ -4536,28 +3854,14 @@ const dbInterface: TabDBInterface = {
                 lobbyExitFn(data.meta.workspaceId, data.meta.changeSetId);
               }
               processPatchQueue.add(async () => {
-                // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-                await sqlite!.transaction(async (db) =>
-                  handleIndexMvPatch(db, data),
-                );
+                await sqlite!.transaction(async (db) => handleIndexMvPatch(db, data));
               }, assignPriority(data.meta.workspaceId, data.meta.changeSetId));
             } else if (data.kind === MessageKind.DEPLOYMENT_INDEXUPDATE) {
               // NOOP for now, DEPLOYMENT_PATCH does the work
-              debug(
-                "📨 DEPLOYMENT INDEX UPDATE RECEIVED - IT IS NOT BEING HANDLED RIGHT NOW",
-              );
+              debug("📨 DEPLOYMENT INDEX UPDATE RECEIVED - IT IS NOT BEING HANDLED RIGHT NOW");
             } else if (data.kind === MessageKind.MJOLNIR) {
-              debug(
-                "📨 MJOLNIR MESSAGE START:",
-                data.atom.kind,
-                data.atom.id,
-                "toChecksum:",
-                data.atom.toChecksum,
-              );
-              returnedFn(
-                data.atom.changeSetId,
-                `${data.atom.kind}.${data.atom.id}`,
-              );
+              debug("📨 MJOLNIR MESSAGE START:", data.atom.kind, data.atom.id, "toChecksum:", data.atom.toChecksum);
+              returnedFn(data.atom.changeSetId, `${data.atom.kind}.${data.atom.id}`);
               hasReturned({
                 workspaceId: data.atom.workspaceId,
                 changeSetId: data.atom.changeSetId,
@@ -4566,16 +3870,11 @@ const dbInterface: TabDBInterface = {
               });
               processMjolnirQueue.add(
                 async () =>
-                  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
                   await sqlite!.transaction(async (db) => {
                     return await handleHammer(db, data);
                   }),
               );
-              debug(
-                "📨 MJOLNIR MESSAGE COMPLETE:",
-                data.atom.kind,
-                data.atom.id,
-              );
+              debug("📨 MJOLNIR MESSAGE COMPLETE:", data.atom.kind, data.atom.id);
             } else {
               /* eslint-disable-next-line no-console */
               console.error(`Unknown data kind on bifrost message: `, data);
@@ -4697,9 +3996,7 @@ const dbInterface: TabDBInterface = {
     if (!sqlite) {
       throw new Error(DB_NOT_INIT_ERR);
     }
-    return sqlite.transaction(async (db) =>
-      getGlobal(db, workspaceId, kind, id),
-    );
+    return sqlite.transaction(async (db) => getGlobal(db, workspaceId, kind, id));
   },
   async get(workspaceId, changeSetId, kind, id) {
     if (IGNORE_LIST.has(kind)) return -1;
@@ -4707,9 +4004,7 @@ const dbInterface: TabDBInterface = {
     if (!sqlite) {
       throw new Error(DB_NOT_INIT_ERR);
     }
-    return sqlite.transaction((db) =>
-      get(db, workspaceId, changeSetId, kind, id),
-    );
+    return sqlite.transaction((db) => get(db, workspaceId, changeSetId, kind, id));
   },
   async getExists(workspaceId, changeSetId, kind, id) {
     if (IGNORE_LIST.has(kind)) return false;
@@ -4717,9 +4012,7 @@ const dbInterface: TabDBInterface = {
     if (!sqlite) {
       throw new Error(DB_NOT_INIT_ERR);
     }
-    return sqlite.transaction((db) =>
-      getExists(db, workspaceId, changeSetId, kind, id),
-    );
+    return sqlite.transaction((db) => getExists(db, workspaceId, changeSetId, kind, id));
   },
   async getList(workspaceId, changeSetId, kind, id) {
     if (IGNORE_LIST.has(kind)) return "";
@@ -4727,17 +4020,13 @@ const dbInterface: TabDBInterface = {
     if (!sqlite) {
       throw new Error(DB_NOT_INIT_ERR);
     }
-    return sqlite.transaction((db) =>
-      getList(db, workspaceId, changeSetId, kind, id),
-    );
+    return sqlite.transaction((db) => getList(db, workspaceId, changeSetId, kind, id));
   },
   async getKind(workspaceId, changeSetId, kind) {
     if (!sqlite) {
       throw new Error(DB_NOT_INIT_ERR);
     }
-    return sqlite.transaction((db) =>
-      getKind(db, workspaceId, changeSetId, kind),
-    );
+    return sqlite.transaction((db) => getKind(db, workspaceId, changeSetId, kind));
   },
   getOutgoingConnectionsByComponentId,
   getOutgoingConnectionsCounts,
@@ -4746,33 +4035,25 @@ const dbInterface: TabDBInterface = {
     if (!sqlite) {
       throw new Error(DB_NOT_INIT_ERR);
     }
-    return sqlite.transaction((db) =>
-      getComponentDetails(db, workspaceId, changeSetId),
-    );
+    return sqlite.transaction((db) => getComponentDetails(db, workspaceId, changeSetId));
   },
   async getComponentsInViews(workspaceId, changeSetId) {
     if (!sqlite) {
       throw new Error(DB_NOT_INIT_ERR);
     }
-    return sqlite.transaction((db) =>
-      getComponentsInViews(db, workspaceId, changeSetId),
-    );
+    return sqlite.transaction((db) => getComponentsInViews(db, workspaceId, changeSetId));
   },
   async getComponentsInOnlyOneView(workspaceId, changeSetId) {
     if (!sqlite) {
       throw new Error(DB_NOT_INIT_ERR);
     }
-    return sqlite.transaction((db) =>
-      getComponentsInOnlyOneView(db, workspaceId, changeSetId),
-    );
+    return sqlite.transaction((db) => getComponentsInOnlyOneView(db, workspaceId, changeSetId));
   },
   async getSchemaMembers(workspaceId, changeSetId) {
     if (!sqlite) {
       throw new Error(DB_NOT_INIT_ERR);
     }
-    return await sqlite.transaction(
-      async (db) => await getSchemaMembers(db, workspaceId, changeSetId),
-    );
+    return await sqlite.transaction(async (db) => await getSchemaMembers(db, workspaceId, changeSetId));
   },
   getDefaultSubscriptions,
   getPossibleConnections,
@@ -4780,9 +4061,7 @@ const dbInterface: TabDBInterface = {
     if (!sqlite) {
       throw new Error(DB_NOT_INIT_ERR);
     }
-    return sqlite.transaction((db) =>
-      queryAttributes(db, workspaceId, changeSetId, terms),
-    );
+    return sqlite.transaction((db) => queryAttributes(db, workspaceId, changeSetId, terms));
   },
   partialKeyFromKindAndId: partialKeyFromKindAndArgs,
   kindAndIdFromKey: kindAndArgsFromKey,
@@ -4790,9 +4069,7 @@ const dbInterface: TabDBInterface = {
     if (!sqlite) {
       throw new Error(DB_NOT_INIT_ERR);
     }
-    return sqlite.transaction((db) =>
-      mjolnirBulk(db, workspaceId, changeSetId, objs, indexChecksum),
-    );
+    return sqlite.transaction((db) => mjolnirBulk(db, workspaceId, changeSetId, objs, indexChecksum));
   },
   mjolnir(workspaceId, changeSetId, kind, id, checksum) {
     if (IGNORE_LIST.has(kind)) return;
@@ -4800,33 +4077,25 @@ const dbInterface: TabDBInterface = {
     if (!sqlite) {
       throw new Error(DB_NOT_INIT_ERR);
     }
-    return sqlite.transaction((db) =>
-      mjolnir(db, workspaceId, changeSetId, kind, id, checksum),
-    );
+    return sqlite.transaction((db) => mjolnir(db, workspaceId, changeSetId, kind, id, checksum));
   },
   pruneAtomsForClosedChangeSet(workspaceId, changeSetId) {
     if (!sqlite) {
       throw new Error(DB_NOT_INIT_ERR);
     }
-    return sqlite.transaction((db) =>
-      pruneAtomsForClosedChangeSet(db, workspaceId, changeSetId),
-    );
+    return sqlite.transaction((db) => pruneAtomsForClosedChangeSet(db, workspaceId, changeSetId));
   },
   async vanaheim(workspaceId) {
     if (!sqlite) {
       throw new Error(DB_NOT_INIT_ERR);
     }
-    return await sqlite.transaction(
-      async (db) => await vanaheim(db, workspaceId),
-    );
+    return await sqlite.transaction(async (db) => await vanaheim(db, workspaceId));
   },
   async niflheim(workspaceId, changeSetId) {
     if (!sqlite) {
       throw new Error(DB_NOT_INIT_ERR);
     }
-    return await sqlite.transaction(
-      async (db) => await niflheim(db, workspaceId, changeSetId),
-    );
+    return await sqlite.transaction(async (db) => await niflheim(db, workspaceId, changeSetId));
   },
   async syncAtoms(workspaceId, changeSetId) {
     if (!sqlite) {
@@ -4870,14 +4139,9 @@ const dbInterface: TabDBInterface = {
     if (!sqlite) {
       throw new Error(DB_NOT_INIT_ERR);
     }
-    return sqlite.transaction((db) =>
-      ragnarok(db, workspaceId, changeSetId, noColdStart),
-    );
+    return sqlite.transaction((db) => ragnarok(db, workspaceId, changeSetId, noColdStart));
   },
-  changeSetExists: async (
-    workspaceId: string,
-    changeSetId: ChangeSetId,
-  ): Promise<boolean> => {
+  changeSetExists: async (workspaceId: string, changeSetId: ChangeSetId): Promise<boolean> => {
     if (!sqlite) {
       throw new Error(DB_NOT_INIT_ERR);
     }
@@ -4889,10 +4153,7 @@ const dbInterface: TabDBInterface = {
     const cId = oneInOne(row);
     return cId === changeSetId;
   },
-  bulkCreateAtoms: (
-    indexObjects: (BulkSuccess | AtomWithDocument)[],
-    chunkSize = 2000,
-  ) => {
+  bulkCreateAtoms: (indexObjects: (BulkSuccess | AtomWithDocument)[], chunkSize = 2000) => {
     if (!sqlite) {
       throw new Error(DB_NOT_INIT_ERR);
     }
@@ -4900,11 +4161,7 @@ const dbInterface: TabDBInterface = {
       bulkCreateAtoms(db, indexObjects, chunkSize);
     });
   },
-  bulkInsertAtomMTMs: (
-    indexObjects: (BulkSuccess | AtomWithDocument)[],
-    indexChecksum: Checksum,
-    chunkSize = 2000,
-  ) => {
+  bulkInsertAtomMTMs: (indexObjects: (BulkSuccess | AtomWithDocument)[], indexChecksum: Checksum, chunkSize = 2000) => {
     if (!sqlite) {
       throw new Error(DB_NOT_INIT_ERR);
     }

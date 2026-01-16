@@ -5,11 +5,7 @@ import { mount } from "@vue/test-utils";
 import { plugins } from "@/newhotness/testing/index";
 
 // FIXTURES for this test
-import {
-  ATTRIBUTEINPUT,
-  ATTRIBUTE_ERRORS,
-  CONTEXT,
-} from "@/newhotness/testing/context1";
+import { ATTRIBUTEINPUT, ATTRIBUTE_ERRORS, CONTEXT } from "@/newhotness/testing/context1";
 import { component, attributeTree } from "@/newhotness/testing/fixture1";
 import { PossibleConnection } from "@/workers/types/entity_kind_types";
 import { makeAvTree } from "../logic_composables/attribute_tree";
@@ -18,9 +14,7 @@ import ComponentSecretAttribute from "./ComponentSecretAttribute.vue";
 // EVERY TEST needs to copypasta this, and add any specific items you need ala getPossibleConnections
 type HeimdallInner = typeof import("@/store/realtime/heimdall_inner");
 vi.mock("@/store/realtime/heimdall", async () => {
-  const inner = await vi.importActual<HeimdallInner>(
-    "@/store/realtime/heimdall_inner",
-  );
+  const inner = await vi.importActual<HeimdallInner>("@/store/realtime/heimdall_inner");
   return {
     useMakeKey: () => inner.innerUseMakeKey(CONTEXT.value),
     useMakeArgs: () => inner.innerUseMakeArgs(CONTEXT.value),
@@ -34,7 +28,6 @@ vi.mock("@/store/realtime/heimdall", async () => {
 
 test("testing component secret attributes", () => {
   const rootId = Object.keys(attributeTree.treeInfo).find((avId) => {
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const av = attributeTree.treeInfo[avId]!;
     if (!av.parent) return true;
     return false;

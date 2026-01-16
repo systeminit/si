@@ -31,11 +31,7 @@ import NavbarPanelLeft from "./NavbarPanelLeft.vue";
 const workspacesStore = useWorkspacesStore();
 
 const invalidWorkspace = computed(
-  () =>
-    !!(
-      workspacesStore.urlSelectedWorkspaceId &&
-      !workspacesStore.selectedWorkspace
-    ),
+  () => !!(workspacesStore.urlSelectedWorkspaceId && !workspacesStore.selectedWorkspace),
 );
 
 // top bar is always dark, so this keeps the workspace and change set dropdowns looking correct

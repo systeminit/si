@@ -2,16 +2,8 @@
   <RightPanelDrawer :open="props.open">
     <TabGroup ref="tabGroupRef" @closeButtonTabClicked="props.close">
       <TabGroupCloseButton />
-      <ChangesPanelHistorySubpanelTab
-        label="Arguments"
-        slug="arguments"
-        :data="args"
-      />
-      <ChangesPanelHistorySubpanelTab
-        label="Code Executed"
-        slug="codeExecuted"
-        :data="code"
-      />
+      <ChangesPanelHistorySubpanelTab label="Arguments" slug="arguments" :data="args" />
+      <ChangesPanelHistorySubpanelTab label="Code Executed" slug="codeExecuted" :data="code" />
       <ChangesPanelHistorySubpanelTab
         label="Result"
         slug="resourceResult"

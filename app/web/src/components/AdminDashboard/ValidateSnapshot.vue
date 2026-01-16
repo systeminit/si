@@ -6,15 +6,11 @@
         <div class="text-neutral-500">Validating snapshot ...</div>
       </template>
       <template #error>
-        <div class="text-red-500">
-          Error validating snapshot: {{ requestStatus.errorMessage }}
-        </div>
+        <div class="text-red-500">Error validating snapshot: {{ requestStatus.errorMessage }}</div>
       </template>
       <template #success>
         <div class="flex flex-row gap-xs p-xs w-full text-xs font-bold">
-          <div class="text-lg">
-            Validation: {{ allIssues.length }} Issues Found
-          </div>
+          <div class="text-lg">Validation: {{ allIssues.length }} Issues Found</div>
           <div v-for="[issueType, issues] in issuesByType" :key="issueType">
             <div class="text-lg">{{ issueType }}: {{ issues.length }}</div>
             <div v-for="issue in issues" :key="issue.message">
@@ -35,17 +31,10 @@ import { useAdminStore } from "@/store/admin.store";
 
 const adminStore = useAdminStore();
 const requestStatus = adminStore.getRequestStatus("VALIDATE_SNAPSHOT");
-const allIssues = computed(
-  () => adminStore.validateSnapshotResponse?.issues ?? [],
-);
+const allIssues = computed(() => adminStore.validateSnapshotResponse?.issues ?? []);
 const issuesByType = computed(() =>
   _.sortBy(
-    Object.entries(
-      _.groupBy(
-        adminStore.validateSnapshotResponse?.issues ?? [],
-        (issue) => issue.type,
-      ),
-    ),
+    Object.entries(_.groupBy(adminStore.validateSnapshotResponse?.issues ?? [], (issue) => issue.type)),
     (migrations) => migrations.length,
   ).reverse(),
 );

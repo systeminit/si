@@ -23,9 +23,7 @@ export const useValidations = (
     onSetDirty();
   };
 
-  const reallyDirty = computed(() =>
-    alwaysValidate.value ? true : dirty.value,
-  );
+  const reallyDirty = computed(() => (alwaysValidate.value ? true : dirty.value));
 
   const setInError = (errors: ErrorsArray) => {
     let nextInError = false;

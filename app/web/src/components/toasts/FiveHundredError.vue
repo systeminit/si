@@ -1,16 +1,10 @@
 <template>
   <div>
-    <div
-      class="flex flex-row gap-sm items-center dark:bg-black bg-white max-h-[75vh] overflow-y-auto max-w-lg"
-    >
-      <Icon
-        name="alert-circle"
-        class="text-warning-600 content-center ml-md"
-        size="lg"
-      />
+    <div class="flex flex-row gap-sm items-center dark:bg-black bg-white max-h-[75vh] overflow-y-auto max-w-lg">
+      <Icon name="alert-circle" class="text-warning-600 content-center ml-md" size="lg" />
       <p class="grow py-md max-w-lg">
-        The server encountered an error and could not complete your request.
-        Please reach out on Discord if you need some help! <br />
+        The server encountered an error and could not complete your request. Please reach out on Discord if you need
+        some help! <br />
         <br />
         Request to
         <span class="font-bold">{{ requestUrl }}</span> returned:

@@ -20,9 +20,4 @@ export interface ManagementFuncJobState {
   message?: string;
 }
 
-export type ManagementState =
-  | "executing"
-  | "failure"
-  | "operating"
-  | "pending"
-  | "success";
+export type ManagementState = "executing" | "failure" | "operating" | "pending" | "success";

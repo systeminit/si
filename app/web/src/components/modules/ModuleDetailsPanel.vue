@@ -1,12 +1,7 @@
 <template>
-  <RequestStatusMessage
-    v-if="localDetailsReq.isPending"
-    :requestStatus="localDetailsReq"
-  />
+  <RequestStatusMessage v-if="localDetailsReq.isPending" :requestStatus="localDetailsReq" />
   <div v-else-if="localDetails" class="flex flex-col">
-    <div
-      class="p-sm border-b dark:border-neutral-600 flex flex-row items-center justify-between"
-    >
+    <div class="p-sm border-b dark:border-neutral-600 flex flex-row items-center justify-between">
       <div class="font-bold truncate leading-relaxed">
         {{ localDetails.name }}
       </div>
@@ -46,9 +41,7 @@ import { useModuleStore } from "@/store/module.store";
 import EmptyStateCard from "../EmptyStateCard.vue";
 
 const moduleStore = useModuleStore();
-const localDetailsReq = moduleStore.getRequestStatus(
-  "GET_LOCAL_MODULE_DETAILS",
-);
+const localDetailsReq = moduleStore.getRequestStatus("GET_LOCAL_MODULE_DETAILS");
 // const remoteDetailsReq = moduleStore.getRequestStatus(
 //   "GET_REMOTE_MODULE_DETAILS",
 // );

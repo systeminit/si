@@ -1,12 +1,6 @@
 <!-- eslint-disable vue/no-multiple-template-root -->
 <template>
-  <component
-    :is="ResizablePanel"
-    ref="leftResizablePanelRef"
-    rememberSizeKey="func-picker"
-    side="left"
-    :minSize="320"
-  >
+  <component :is="ResizablePanel" ref="leftResizablePanelRef" rememberSizeKey="func-picker" side="left" :minSize="320">
     <div class="flex flex-col h-full">
       <div class="relative flex-grow">
         <CustomizeTabs tabContentSlug="packages">
@@ -52,16 +46,8 @@ const leftResizablePanelRef = ref();
 const rightResizablePanelRef = ref();
 
 const onKeyDown = async (e: KeyboardEvent) => {
-  if (
-    e.altKey &&
-    e.shiftKey &&
-    leftResizablePanelRef.value &&
-    rightResizablePanelRef.value
-  ) {
-    if (
-      leftResizablePanelRef.value.collapsed &&
-      rightResizablePanelRef.value.collapsed
-    ) {
+  if (e.altKey && e.shiftKey && leftResizablePanelRef.value && rightResizablePanelRef.value) {
+    if (leftResizablePanelRef.value.collapsed && rightResizablePanelRef.value.collapsed) {
       // Open all panels
       leftResizablePanelRef.value.collapseSet(false);
       rightResizablePanelRef.value.collapseSet(false);

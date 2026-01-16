@@ -92,13 +92,10 @@ export const snippets = [
   ),
 
   // add prop widget definition
-  snippetCompletion(
-    `new PropWidgetDefinitionBuilder().setKind("\${text}").build()`,
-    {
-      label: "New PropertyWidget Snippet",
-      type: "function",
-    },
-  ),
+  snippetCompletion(`new PropWidgetDefinitionBuilder().setKind("\${text}").build()`, {
+    label: "New PropertyWidget Snippet",
+    type: "function",
+  }),
 
   // aws region prop
   snippetCompletion(

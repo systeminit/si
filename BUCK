@@ -106,7 +106,6 @@ pnpm_workspace(
         "//app/auth-portal:package.json",
         "//app/web:package.json",
         "//bin/auth-api:package.json",
-        "//lib/eslint-config:package.json",
         "//lib/ts-lib:package.json",
         "//lib/tsconfig:package.json",
         "//lib/vue-lib:package.json",

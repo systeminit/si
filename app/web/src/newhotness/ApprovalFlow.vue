@@ -15,9 +15,7 @@
         <TruncateWithTooltip class="font-bold italic pb-2xs">
           {{ changeSetName }}
         </TruncateWithTooltip>
-        <TruncateWithTooltip class="font-bold pb-2xs">{{
-          metadata.title
-        }}</TruncateWithTooltip>
+        <TruncateWithTooltip class="font-bold pb-2xs">{{ metadata.title }}</TruncateWithTooltip>
         <div v-if="metadata.date" class="text-sm italic">
           <Timestamp :date="metadata.date" showTimeIfToday size="extended" />
         </div>
@@ -31,15 +29,12 @@
         class="rounded grow"
       >
         <template v-if="flowStatus === 'requested'">
-          There are approvals that must be met before the change set can be
-          applied.
+          There are approvals that must be met before the change set can be applied.
         </template>
         <template v-else>
           <p>
-            {{ requesterIsYou ? "Your" : "The" }} request to
-            <span class="font-bold">Apply</span> change set
-            <span class="font-bold">{{ changeSetName }}</span> has been
-            approved.
+            {{ requesterIsYou ? "Your" : "The" }} request to <span class="font-bold">Apply</span> change set
+            <span class="font-bold">{{ changeSetName }}</span> has been approved.
           </p>
         </template>
       </ErrorMessage>
@@ -55,11 +50,7 @@
           target="_blank"
           class="text-action-500 hover:underline pl-4 pb-2xs text-sm font-bold"
           >See the breakdown of changes
-          <Icon
-            size="sm"
-            name="logs-pop-square"
-            class="ml-2xs inline-block mb-[-.3em]"
-          />
+          <Icon size="sm" name="logs-pop-square" class="ml-2xs inline-block mb-[-.3em]" />
         </RouterLink>
       </div>
     </div>
@@ -74,19 +65,10 @@
         >
           <div class="bg-neutral-200 dark:bg-neutral-700 p-xs">
             {{ group.requiredCount }} of the following users for{{
-              group.labels.length > 1
-                ? ` ${group.labels.length} requirements:`
-                : ""
+              group.labels.length > 1 ? ` ${group.labels.length} requirements:` : ""
             }}
-            <span v-if="group.labels.length === 1" class="italic">{{
-              group.labels[0]
-            }}</span>
-            <TruncateWithTooltip
-              v-else
-              expandOnClick
-              :expandableStringArray="group.labels"
-              class="italic break-all"
-            />
+            <span v-if="group.labels.length === 1" class="italic">{{ group.labels[0] }}</span>
+            <TruncateWithTooltip v-else expandOnClick :expandableStringArray="group.labels" class="italic break-all" />
           </div>
           <ul>
             <li
@@ -99,11 +81,7 @@
                 )
               "
             >
-              <TruncateWithTooltip class="flex-grow"
-                >{{ vote.user.name }} ({{
-                  vote.user.email
-                }})</TruncateWithTooltip
-              >
+              <TruncateWithTooltip class="flex-grow">{{ vote.user.name }} ({{ vote.user.email }})</TruncateWithTooltip>
               <div
                 :class="
                   clsx(
@@ -200,10 +178,7 @@ import { User } from "@/api/sdf/dal/user";
 import { ApprovalData, WorkspaceUser } from "./types";
 import { useContext } from "./logic_composables/context";
 import { routes, useApi } from "./api_composables";
-import {
-  useApplyChangeSet,
-  approverForChangeSet,
-} from "./logic_composables/change_set";
+import { useApplyChangeSet, approverForChangeSet } from "./logic_composables/change_set";
 import { useStatus } from "./logic_composables/status";
 
 interface RequirementGroup {
@@ -233,38 +208,30 @@ const emit = defineEmits<{
 // FIXME(nick): remove all pre-ReBAC stuff from this component and only use "satisfied" below to
 // determine if something has been approved. This component should only be used if the change set
 // is in "NeedsApproval" state, but that will require a small refactor.
-const satisfied = computed(
-  () => !props.approvalData?.requirements.some((r) => r.isSatisfied === false),
-);
+const satisfied = computed(() => !props.approvalData?.requirements.some((r) => r.isSatisfied === false));
 const status = useStatus();
-const disallowApplyForApprovalFlow = computed(
-  () => !satisfied.value || status[props.changeSet.id] === "syncing",
-);
+const disallowApplyForApprovalFlow = computed(() => !satisfied.value || status[props.changeSet.id] === "syncing");
 
-const flowStatus = computed(
-  (): "approved" | "requested" | "rejected" | "unexpected" => {
-    if (satisfied.value) return "approved";
-    switch (props.changeSet.status) {
-      case ChangeSetStatus.NeedsApproval:
-        return "requested";
-      case ChangeSetStatus.Approved:
-        return "approved";
-      case ChangeSetStatus.Rejected:
-        return "rejected";
-      default:
-        return "unexpected";
-    }
-  },
-);
+const flowStatus = computed((): "approved" | "requested" | "rejected" | "unexpected" => {
+  if (satisfied.value) return "approved";
+  switch (props.changeSet.status) {
+    case ChangeSetStatus.NeedsApproval:
+      return "requested";
+    case ChangeSetStatus.Approved:
+      return "approved";
+    case ChangeSetStatus.Rejected:
+      return "rejected";
+    default:
+      return "unexpected";
+  }
+});
 
 const changeSetName = computed(() => props.changeSet.name);
 
 const requirementGroups = computed(() => {
   const groups: Map<Set<string>, RequirementGroup> = new Map();
   props.approvalData?.requirements.forEach((r) => {
-    const userIds = Object.values(r.approverGroups)
-      .flat()
-      .concat(r.approverIndividuals);
+    const userIds = Object.values(r.approverGroups).flat().concat(r.approverIndividuals);
     const votes: Vote[] = [];
     userIds.forEach((id) => {
       const user = props.workspaceUsers[id];
@@ -272,10 +239,7 @@ const requirementGroups = computed(() => {
         return;
       }
       const submitted = props.approvalData?.latestApprovals.find(
-        (a) =>
-          a.isValid &&
-          a.userId === id &&
-          r.applicableApprovalIds.includes(a.id),
+        (a) => a.isValid && a.userId === id && r.applicableApprovalIds.includes(a.id),
       );
       const vote: Vote = { user };
       if (submitted) vote.status = submitted.status;
@@ -318,9 +282,7 @@ const requirementGroups = computed(() => {
 
     // Check if this RequirementGroup has the same votes and/or label as an existing one and group/filter accordingly
     const key = new Set(group.votes.map((vote) => vote.user.id));
-    const check = [...groups.entries()].find(
-      ([k, _]) => k.size === key.size && [...k].every((i) => key.has(i)),
-    );
+    const check = [...groups.entries()].find(([k, _]) => k.size === key.size && [...k].every((i) => key.has(i)));
     if (check) {
       const [_, set] = check;
       const label = group.labels[0];
@@ -336,22 +298,15 @@ const requirementGroups = computed(() => {
   return [...groups.values()];
 });
 
-const myVote = computed(() =>
-  props.approvalData?.latestApprovals.find(
-    (a) => a.isValid && a.userId === props.user.pk,
-  ),
-);
+const myVote = computed(() => props.approvalData?.latestApprovals.find((a) => a.isValid && a.userId === props.user.pk));
 
 const iApproved = computed(() => myVote.value?.status === "Approved");
 
 const iRejected = computed(() => myVote.value?.status === "Rejected");
 
-const requesterIsYou = computed(
-  () => props.changeSet.mergeRequestedByUserId === props.user.pk,
-);
+const requesterIsYou = computed(() => props.changeSet.mergeRequestedByUserId === props.user.pk);
 const userIsApprover = computed(() => {
-  if (props.approvalData)
-    return approverForChangeSet(props.user.pk, props.approvalData);
+  if (props.approvalData) return approverForChangeSet(props.user.pk, props.approvalData);
   return false;
 });
 
@@ -359,16 +314,12 @@ const approverEmail = computed(() => props.changeSet.reviewedByUser);
 const requesterEmail = computed(() => props.changeSet.mergeRequestedByUser);
 
 const approveDate = computed(() => props.changeSet.reviewedAt as IsoDateString);
-const requestDate = computed(
-  () => props.changeSet.mergeRequestedAt as IsoDateString,
-);
+const requestDate = computed(() => props.changeSet.mergeRequestedAt as IsoDateString);
 
 const metadata = computed(() => {
   if (flowStatus.value === "requested") {
     return {
-      title: `Approval Requested by ${
-        requesterIsYou.value ? "You" : requesterEmail.value
-      }`,
+      title: `Approval Requested by ${requesterIsYou.value ? "You" : requesterEmail.value}`,
       date: requestDate.value,
       messageTone: "warning" as Tones,
       messageIcon: "exclamation-circle" as IconNames,
@@ -376,9 +327,7 @@ const metadata = computed(() => {
     // approved & rejected are deprecating with the new approach
   } else if (flowStatus.value === "approved") {
     return {
-      title: approverEmail.value
-        ? `Approval Granted by ${approverEmail.value}`
-        : "Approval Granted",
+      title: approverEmail.value ? `Approval Granted by ${approverEmail.value}` : "Approval Granted",
       date: approveDate.value,
       messageTone: "success" as Tones,
       messageIcon: "check-circle" as IconNames,
@@ -426,9 +375,7 @@ const withdraw = async () => {
       emit("closeModal");
     }
   } else {
-    const cancelCall = cancelApi.endpoint(
-      routes.ChangeSetCancelApprovalRequest,
-    );
+    const cancelCall = cancelApi.endpoint(routes.ChangeSetCancelApprovalRequest);
     const { req } = await cancelCall.post({});
     if (cancelApi.ok(req)) {
       // Successfully cancelled approval request - close modal

@@ -13,20 +13,10 @@
   >
     <h2 class="font-bold text-xl">WORKSPACES</h2>
     <div class="flex flex-row gap-xs p-xs w-full">
-      <LoadStatus
-        :requestStatus="searchWorkspacesReqStatus"
-        loadingMessage="Searching workspaces ..."
-      >
+      <LoadStatus :requestStatus="searchWorkspacesReqStatus" loadingMessage="Searching workspaces ...">
         <template #success>
-          <select
-            v-if="filteredWorkspaces?.length > 0"
-            v-model="selectedWorkspaceId"
-          >
-            <option
-              v-for="workspace in filteredWorkspaces"
-              :key="workspace.id"
-              :value="workspace.id"
-            >
+          <select v-if="filteredWorkspaces?.length > 0" v-model="selectedWorkspaceId">
+            <option v-for="workspace in filteredWorkspaces" :key="workspace.id" :value="workspace.id">
               {{ workspace.name }} ({{ workspace.id }})
             </option>
           </select>
@@ -41,28 +31,14 @@
       />
     </div>
     <template v-if="selectedWorkspaceId && selectedWorkspace">
-      <LoadStatus
-        :requestStatus="listChangeSetsReqStatus.value"
-        loadingMessage="Loading change sets ..."
-      >
+      <LoadStatus :requestStatus="listChangeSetsReqStatus.value" loadingMessage="Loading change sets ...">
         <template #success>
           <div class="flex flex-row gap-xs p-xs w-full">
-            <select
-              v-if="filteredChangeSets?.length > 0"
-              v-model="selectedChangeSetId"
-            >
-              <option
-                v-for="changeSet in filteredChangeSets"
-                :key="changeSet.id"
-                :value="changeSet.id"
-              >
+            <select v-if="filteredChangeSets?.length > 0" v-model="selectedChangeSetId">
+              <option v-for="changeSet in filteredChangeSets" :key="changeSet.id" :value="changeSet.id">
                 {{ changeSet.name }} ({{ changeSet.id }}) --
                 {{ changeSet.status }}
-                <p
-                  v-if="changeSet.id === selectedWorkspace?.defaultChangeSetId"
-                >
-                  *
-                </p>
+                <p v-if="changeSet.id === selectedWorkspace?.defaultChangeSetId">*</p>
               </option>
             </select>
             <p v-else>No change sets found for workspace ...</p>
@@ -76,31 +52,20 @@
       </LoadStatus>
 
       <div class="flex flex-row flex-wrap gap-xs p-xs w-full">
-        <Stack
-          v-if="selectedChangeSetId && selectedChangeSet"
-          class="flex-none"
-        >
-          <VButton
-            :loading="isGettingSnapshot"
-            @click="getSnapshot(selectedWorkspaceId, selectedChangeSetId)"
+        <Stack v-if="selectedChangeSetId && selectedChangeSet" class="flex-none">
+          <VButton :loading="isGettingSnapshot" @click="getSnapshot(selectedWorkspaceId, selectedChangeSetId)"
             >Save snapshot to disk</VButton
           >
 
-          <VButton
-            :loading="isSettingSnapshot"
-            @click="setSnapshot(selectedWorkspaceId, selectedChangeSetId)"
+          <VButton :loading="isSettingSnapshot" @click="setSnapshot(selectedWorkspaceId, selectedChangeSetId)"
             >Replace snapshot for this change set</VButton
           >
 
-          <VButton
-            :loading="isGettingCasData"
-            @click="getCasData(selectedWorkspaceId, selectedChangeSetId)"
+          <VButton :loading="isGettingCasData" @click="getCasData(selectedWorkspaceId, selectedChangeSetId)"
             >Save cas data to disk</VButton
           >
 
-          <VButton
-            :loading="isUploadingCasData"
-            @click="uploadCasData(selectedWorkspaceId, selectedChangeSetId)"
+          <VButton :loading="isUploadingCasData" @click="uploadCasData(selectedWorkspaceId, selectedChangeSetId)"
             >Upload cas data to service</VButton
           >
 
@@ -145,19 +110,12 @@
 
         <Stack v-if="workspaceUsers.length">
           <h3 class="font-bold text-sm">USERS</h3>
-          <div
-            v-for="user in workspaceUsers"
-            :key="user.id"
-            class="m-1 text-sm"
-          >
+          <div v-for="user in workspaceUsers" :key="user.id" class="m-1 text-sm">
             {{ user.name }} &lt;{{ user.email }}&gt;
           </div>
         </Stack>
 
-        <dl
-          v-if="selectedChangeSetId && selectedChangeSet"
-          class="p-3 max-w-xs overflow-hidden"
-        >
+        <dl v-if="selectedChangeSetId && selectedChangeSet" class="p-3 max-w-xs overflow-hidden">
           <dt>Change Set Id</dt>
           <dd>
             {{ selectedChangeSet.id }}
@@ -185,11 +143,7 @@
             label="Enter a component concurrency limit for this workspace, blank for default"
             @keydown.enter="setConcurrencyLimit()"
           />
-          <VButton
-            :requestStatus="setConcurrencyLimitReqStatus"
-            @click="setConcurrencyLimit()"
-            >Set</VButton
-          >
+          <VButton :requestStatus="setConcurrencyLimitReqStatus" @click="setConcurrencyLimit()">Set</VButton>
         </Stack>
       </Modal>
 
@@ -200,22 +154,10 @@
 
 <script lang="ts" setup>
 import { computed, ref, watch } from "vue";
-import {
-  Modal,
-  Stack,
-  VormInput,
-  VButton,
-  LoadStatus,
-  useModal,
-  themeClasses,
-} from "@si/vue-lib/design-system";
+import { Modal, Stack, VormInput, VButton, LoadStatus, useModal, themeClasses } from "@si/vue-lib/design-system";
 import clsx from "clsx";
 import { WorkspaceUser } from "@/store/auth.store";
-import {
-  AdminWorkspace,
-  AdminChangeSet,
-  useAdminStore,
-} from "@/store/admin.store";
+import { AdminWorkspace, AdminChangeSet, useAdminStore } from "@/store/admin.store";
 import { useWorkspacesStore } from "@/store/workspaces.store";
 import { ChangeSetId, ChangeSetStatus } from "@/api/sdf/dal/change_set";
 import ValidateSnapshot from "@/components/AdminDashboard/ValidateSnapshot.vue";
@@ -224,11 +166,8 @@ import { WorkspacePk } from "@/api/sdf/dal/workspace";
 const adminStore = useAdminStore();
 const workspacesStore = useWorkspacesStore();
 
-const searchWorkspacesReqStatus =
-  adminStore.getRequestStatus("SEARCH_WORKSPACES");
-const setConcurrencyLimitReqStatus = adminStore.getRequestStatus(
-  "SET_CONCURRENCY_LIMIT",
-);
+const searchWorkspacesReqStatus = adminStore.getRequestStatus("SEARCH_WORKSPACES");
+const setConcurrencyLimitReqStatus = adminStore.getRequestStatus("SET_CONCURRENCY_LIMIT");
 
 const workspaceUsers = ref<WorkspaceUser[]>([]);
 const workspaceChangeSets = ref<{ [key: string]: AdminChangeSet }>({});
@@ -251,17 +190,10 @@ const concurrencyModalTitle = computed(() =>
 
 const { open: openModal, close: closeModal } = useModal(concurrencyModalRef);
 
-const applyFilter = <T extends object>(
-  things: { [key: string]: T },
-  filter?: string | null,
-): T[] => {
+const applyFilter = <T extends object>(things: { [key: string]: T }, filter?: string | null): T[] => {
   const lowerCaseFilter = filter?.toLocaleLowerCase();
   return Object.values(things).filter((thing) =>
-    lowerCaseFilter
-      ? JSON.stringify(Object.values(thing))
-          .toLocaleLowerCase()
-          .includes(lowerCaseFilter)
-      : true,
+    lowerCaseFilter ? JSON.stringify(Object.values(thing)).toLocaleLowerCase().includes(lowerCaseFilter) : true,
   );
 };
 
@@ -280,27 +212,19 @@ const filteredWorkspaces = ref<AdminWorkspace[]>([]);
 const selectedWorkspaceId = ref<string | null>(null);
 // When filteredWorkspaces changes, make sure selectedWorkspaceId is one of them
 watch(filteredWorkspaces, (filteredWorkspaces) => {
-  if (
-    !(
-      selectedWorkspaceId.value &&
-      selectedWorkspaceId.value in filteredWorkspaces
-    )
-  ) {
+  if (!(selectedWorkspaceId.value && selectedWorkspaceId.value in filteredWorkspaces)) {
     // Select the first workspace, unless the selected workspace is one of the results already
     selectedWorkspaceId.value = filteredWorkspaces[0]?.id ?? null;
   }
 });
 const selectedWorkspace = computed(() =>
   selectedWorkspaceId.value
-    ? filteredWorkspaces.value.find(
-        (workspace) => workspace.id === selectedWorkspaceId.value,
-      )
+    ? filteredWorkspaces.value.find((workspace) => workspace.id === selectedWorkspaceId.value)
     : undefined,
 );
 watch(selectedWorkspaceId, async (currentWorkspaceId) => {
   if (currentWorkspaceId) {
-    editingConcurrencyLimit.value = selectedWorkspace.value
-      ?.componentConcurrencyLimit
+    editingConcurrencyLimit.value = selectedWorkspace.value?.componentConcurrencyLimit
       ? String(selectedWorkspace.value.componentConcurrencyLimit)
       : null;
     await fetchChangeSets(currentWorkspaceId);
@@ -345,19 +269,12 @@ const listChangeSetsReqStatus = computed(() =>
   adminStore.getRequestStatus("LIST_CHANGE_SETS", selectedWorkspaceId.value),
 );
 const filteredChangeSets = computed(() =>
-  selectedWorkspaceId.value
-    ? applyFilter(workspaceChangeSets.value ?? {}, changeSetsFilter.value)
-    : [],
+  selectedWorkspaceId.value ? applyFilter(workspaceChangeSets.value ?? {}, changeSetsFilter.value) : [],
 );
 const selectedChangeSetId = ref<string | null>(null);
 // When filteredChangeSets changes, make sure selectedChangeSetId is one of them
 watch(filteredChangeSets, (filteredChangeSets) => {
-  if (
-    !(
-      selectedChangeSetId.value &&
-      selectedChangeSetId.value in filteredChangeSets
-    )
-  ) {
+  if (!(selectedChangeSetId.value && selectedChangeSetId.value in filteredChangeSets)) {
     // Select the first workspace, unless the selected workspace is one of the results already
     selectedChangeSetId.value = filteredChangeSets[0]?.id ?? null;
   }
@@ -367,12 +284,7 @@ const selectedChangeSet = computed(() =>
     ? workspaceChangeSets.value?.[selectedChangeSetId.value]
     : undefined,
 );
-if (
-  !(
-    selectedWorkspaceId.value &&
-    selectedWorkspaceId.value in filteredWorkspaces.value
-  )
-) {
+if (!(selectedWorkspaceId.value && selectedWorkspaceId.value in filteredWorkspaces.value)) {
   // Select the first workspace, unless the selected workspace is one of the results already
   selectedWorkspaceId.value = filteredWorkspaces.value[0]?.id ?? null;
 }
@@ -430,14 +342,9 @@ const setSnapshot = async (workspaceId: string, changeSetId: string) => {
     });
 
     const fileData = await fileHandle.getFile();
-    const result = await adminStore.SET_SNAPSHOT(
-      workspaceId,
-      changeSetId,
-      fileData,
-    );
+    const result = await adminStore.SET_SNAPSHOT(workspaceId, changeSetId, fileData);
     if (result.result.success) {
-      lastUploadedSnapshotAddress.value =
-        result.result.data.workspaceSnapshotAddress;
+      lastUploadedSnapshotAddress.value = result.result.data.workspaceSnapshotAddress;
     }
     if (selectedWorkspaceId.value) {
       await fetchChangeSets(selectedWorkspaceId.value);
@@ -498,14 +405,9 @@ const getCasData = async (workspaceId: string, changeSetId: string) => {
 };
 
 const setConcurrencyLimit = async () => {
-  const componentConcurrencyLimit = editingConcurrencyLimit.value
-    ? parseInt(editingConcurrencyLimit.value)
-    : undefined;
+  const componentConcurrencyLimit = editingConcurrencyLimit.value ? parseInt(editingConcurrencyLimit.value) : undefined;
   if (selectedWorkspaceId.value) {
-    const result = await adminStore.SET_CONCURRENCY_LIMIT(
-      selectedWorkspaceId.value,
-      componentConcurrencyLimit,
-    );
+    const result = await adminStore.SET_CONCURRENCY_LIMIT(selectedWorkspaceId.value, componentConcurrencyLimit);
     if (result.result.success) {
       const newLimit = result.result.data.concurrencyLimit;
       filteredWorkspaces.value = filteredWorkspaces.value.map((workspace) => {
@@ -524,14 +426,9 @@ const setConcurrencyLimit = async () => {
 
 const showPanel = ref<"validate-snapshot" | "migrate-connections" | null>(null);
 
-const validateSnapshotRequestStatus =
-  adminStore.getRequestStatus("VALIDATE_SNAPSHOT");
+const validateSnapshotRequestStatus = adminStore.getRequestStatus("VALIDATE_SNAPSHOT");
 
-function validateSnapshot(
-  workspaceId: WorkspacePk,
-  changeSetId: ChangeSetId,
-  options?: { fixIssues?: boolean },
-) {
+function validateSnapshot(workspaceId: WorkspacePk, changeSetId: ChangeSetId, options?: { fixIssues?: boolean }) {
   adminStore.VALIDATE_SNAPSHOT(workspaceId, changeSetId, options);
   showPanel.value = "validate-snapshot";
 }

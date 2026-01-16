@@ -78,11 +78,7 @@ export const useWorkspacesStore = () => {
           return route?.params?.workspacePk as WorkspacePk | undefined;
         },
         selectedWorkspace(): AuthApiWorkspace | null {
-          return _.get(
-            this.workspacesByPk,
-            this.urlSelectedWorkspaceId || "",
-            null,
-          );
+          return _.get(this.workspacesByPk, this.urlSelectedWorkspaceId || "", null);
         },
         workspaceApprovalsEnabled(): boolean {
           const thisWorkspace = this.selectedWorkspace || null;
@@ -163,11 +159,7 @@ export const useWorkspacesStore = () => {
           });
         },
         async GET_INTEGRATIONS() {
-          if (
-            this.selectedWorkspacePk === null ||
-            this.selectedWorkspacePk === ""
-          )
-            return;
+          if (this.selectedWorkspacePk === null || this.selectedWorkspacePk === "") return;
           return new ApiRequest({
             method: "get",
             url: `v2/workspaces/${this.selectedWorkspacePk}/integrations`,
@@ -181,11 +173,7 @@ export const useWorkspacesStore = () => {
           });
         },
         async UPDATE_INTEGRATION(webhookUrl: string) {
-          if (
-            this.selectedWorkspacePk === null ||
-            this.selectedWorkspacePk === ""
-          )
-            return;
+          if (this.selectedWorkspacePk === null || this.selectedWorkspacePk === "") return;
           return new ApiRequest({
             method: "post",
             url: `v2/workspaces/${this.selectedWorkspacePk}/integrations`,
@@ -229,82 +217,78 @@ export const useWorkspacesStore = () => {
           () => this.selectedWorkspacePk,
           () => {
             this.GET_INTEGRATIONS();
-            realtimeStore.subscribe(
-              this.$id,
-              `workspace/${this.selectedWorkspacePk}`,
-              [
-                {
-                  eventType: "WorkspaceImportBeginApprovalProcess",
-                  callback: (data) => {
-                    this.importCancelledAt = null;
-                    this.importCompletedAt = null;
-                    this.workspaceImportSummary = {
-                      importRequestedByUserPk: data.userPk,
-                      workspaceExportCreatedAt: data.createdAt,
-                      workspaceExportCreatedBy: data.createdBy,
-                      importedWorkspaceName: data.name,
-                    };
-                  },
+            realtimeStore.subscribe(this.$id, `workspace/${this.selectedWorkspacePk}`, [
+              {
+                eventType: "WorkspaceImportBeginApprovalProcess",
+                callback: (data) => {
+                  this.importCancelledAt = null;
+                  this.importCompletedAt = null;
+                  this.workspaceImportSummary = {
+                    importRequestedByUserPk: data.userPk,
+                    workspaceExportCreatedAt: data.createdAt,
+                    workspaceExportCreatedBy: data.createdBy,
+                    importedWorkspaceName: data.name,
+                  };
                 },
-                {
-                  eventType: "WorkspaceImportCancelApprovalProcess",
-                  callback: () => {
-                    this.workspaceApprovals = {};
-                    this.workspaceImportSummary = null;
-                    this.importCancelledAt = new Date().toISOString();
-                    this.importCompletedAt = null;
-                  },
+              },
+              {
+                eventType: "WorkspaceImportCancelApprovalProcess",
+                callback: () => {
+                  this.workspaceApprovals = {};
+                  this.workspaceImportSummary = null;
+                  this.importCancelledAt = new Date().toISOString();
+                  this.importCompletedAt = null;
                 },
-                {
-                  eventType: "ImportWorkspaceVote",
-                  callback: (data) => {
-                    if (this.selectedWorkspacePk === data.workspacePk) {
-                      this.workspaceApprovals[data.userPk] = data.vote;
-                    }
-                  },
+              },
+              {
+                eventType: "ImportWorkspaceVote",
+                callback: (data) => {
+                  if (this.selectedWorkspacePk === data.workspacePk) {
+                    this.workspaceApprovals[data.userPk] = data.vote;
+                  }
                 },
-                {
-                  eventType: "WorkspaceImported",
-                  callback: () => {
-                    this.workspaceApprovals = {};
-                    this.workspaceImportSummary = null;
+              },
+              {
+                eventType: "WorkspaceImported",
+                callback: () => {
+                  this.workspaceApprovals = {};
+                  this.workspaceImportSummary = null;
+                  this.importCompletedAt = new Date().toISOString();
+                  this.importCancelledAt = null;
+                },
+              },
+              {
+                eventType: "AsyncFinish",
+                callback: ({ id }: { id: string }) => {
+                  if (id === this.importId) {
+                    this.importLoading = false;
                     this.importCompletedAt = new Date().toISOString();
-                    this.importCancelledAt = null;
-                  },
-                },
-                {
-                  eventType: "AsyncFinish",
-                  callback: ({ id }: { id: string }) => {
-                    if (id === this.importId) {
-                      this.importLoading = false;
-                      this.importCompletedAt = new Date().toISOString();
-                      this.importError = undefined;
-                      this.importId = null;
+                    this.importError = undefined;
+                    this.importId = null;
 
-                      const route = router.currentRoute.value;
+                    const route = router.currentRoute.value;
 
-                      router.push({
-                        name: "workspace-compose",
-                        params: {
-                          workspacePk: route.params.workspacePk,
-                          changeSetId: "head",
-                        },
-                      });
-                    }
-                  },
+                    router.push({
+                      name: "workspace-compose",
+                      params: {
+                        workspacePk: route.params.workspacePk,
+                        changeSetId: "head",
+                      },
+                    });
+                  }
                 },
-                {
-                  eventType: "AsyncError",
-                  callback: ({ id, error }: { id: string; error: string }) => {
-                    if (id === this.importId) {
-                      this.importLoading = false;
-                      this.importError = error;
-                      this.importId = null;
-                    }
-                  },
+              },
+              {
+                eventType: "AsyncError",
+                callback: ({ id, error }: { id: string; error: string }) => {
+                  if (id === this.importId) {
+                    this.importLoading = false;
+                    this.importError = error;
+                    this.importId = null;
+                  }
                 },
-              ],
-            );
+              },
+            ]);
           },
           { immediate: true },
         );

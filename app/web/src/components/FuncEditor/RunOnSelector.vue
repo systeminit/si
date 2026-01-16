@@ -20,15 +20,9 @@
     </div>
     <div>
       <h2 class="py-xs text-sm">Selected {{ thingLabel }}:</h2>
-      <p v-if="modelValue.length === 0" class="pl-sm text-xs italic">
-        None selected. Select {{ thingLabel }} above...
-      </p>
+      <p v-if="modelValue.length === 0" class="pl-sm text-xs italic">None selected. Select {{ thingLabel }} above...</p>
       <ul v-else class="list-disc list-inside flex flex-col">
-        <li
-          v-for="option in modelValue"
-          :key="`${option.value}`"
-          class="flex items-center text-sm pb-2 pl-4"
-        >
+        <li v-for="option in modelValue" :key="`${option.value}`" class="flex items-center text-sm pb-2 pl-4">
           <div class="pr-2" role="decoration">•</div>
           {{ option.label }}
           <div class="ml-auto">
@@ -71,9 +65,7 @@ const optionsState = ref<Option>(noneVariant);
 const addIsDisabled = computed(() => optionsState.value.value === nilId());
 
 const addOptions = () => {
-  const newOptions = Array.from(
-    new Set(props.modelValue.concat(optionsState.value)),
-  );
+  const newOptions = Array.from(new Set(props.modelValue.concat(optionsState.value)));
 
   emit("update:modelValue", newOptions);
   optionsState.value = noneVariant;

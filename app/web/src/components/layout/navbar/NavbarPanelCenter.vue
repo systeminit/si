@@ -1,7 +1,5 @@
 <template>
-  <div
-    class="flex flex-row flex-none items-center h-full justify-center place-items-center mx-auto overflow-hidden"
-  >
+  <div class="flex flex-row flex-none items-center h-full justify-center place-items-center mx-auto overflow-hidden">
     <NavbarButton
       tooltipText="Model"
       icon="grid"

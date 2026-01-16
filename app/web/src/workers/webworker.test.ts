@@ -1,4 +1,3 @@
-/* eslint-disable no-useless-escape */
 import * as Comlink from "comlink";
 import { SqlValue } from "@sqlite.org/sqlite-wasm";
 import {
@@ -24,17 +23,9 @@ import {
 } from "./types/entity_kind_types";
 
 // setup a few things
-const workerUrl =
-  import.meta.env.VITE_SI_ENV === "local"
-    ? "/src/workers/webworker.ts"
-    : "webworker.js";
+const workerUrl = import.meta.env.VITE_SI_ENV === "local" ? "/src/workers/webworker.ts" : "webworker.js";
 
-const bustTanStackCache: BustCacheFn = (
-  _workspaceId: string,
-  _changeSetId: string,
-  _kind: string,
-  _id: string,
-) => {};
+const bustTanStackCache: BustCacheFn = (_workspaceId: string, _changeSetId: string, _kind: string, _id: string) => {};
 
 /**
  * TEST OUTPUT
@@ -131,17 +122,9 @@ const fullDiagnosticTest = async (db: Comlink.Remote<TabDBInterface>) => {
 
   log("si-1835 exists");
 
-  const componentListStr = await db.getList(
-    workspaceId,
-    changeSetId,
-    EntityKind.ComponentList,
-    workspaceId,
-  );
+  const componentListStr = await db.getList(workspaceId, changeSetId, EntityKind.ComponentList, workspaceId);
   const componentList = JSON.parse(componentListStr) as ComponentInList[];
-  assert(
-    componentList.length === 11,
-    `${componentList.length} != 11 components`,
-  );
+  assert(componentList.length === 11, `${componentList.length} != 11 components`);
   log("11 components");
 
   db.exec({
@@ -175,12 +158,7 @@ const fullDiagnosticTest = async (db: Comlink.Remote<TabDBInterface>) => {
     ],
   });
 
-  const component2 = await db.get(
-    workspaceId,
-    changeSetId,
-    EntityKind.Component,
-    "01K3GTCTNVYW3NGHP33G5F31XD",
-  );
+  const component2 = await db.get(workspaceId, changeSetId, EntityKind.Component, "01K3GTCTNVYW3NGHP33G5F31XD");
   assert(component2 === -1, "gimmie an action wasn't deleted");
 
   await db.niflheim(workspaceId, changeSetId);
@@ -191,10 +169,7 @@ const fullDiagnosticTest = async (db: Comlink.Remote<TabDBInterface>) => {
     EntityKind.Component,
     "01K3GTCTNVYW3NGHP33G5F31XD",
   )) as BifrostComponent;
-  assert(
-    component2Back.id === "01K3GTCTNVYW3NGHP33G5F31XD",
-    "gimmie an action wasn't deleted",
-  );
+  assert(component2Back.id === "01K3GTCTNVYW3NGHP33G5F31XD", "gimmie an action wasn't deleted");
 
   const componentBack = (await db.get(
     workspaceId,
@@ -209,21 +184,13 @@ const fullDiagnosticTest = async (db: Comlink.Remote<TabDBInterface>) => {
   // SOME QUICK HELPERS ON HEAD
 
   const oneView = await db.getComponentsInOnlyOneView(workspaceId, changeSetId);
-  assert(
-    Object.keys(oneView).length === 11,
-    `should be 11 components in one view ${Object.keys(oneView).length}`,
-  );
+  assert(Object.keys(oneView).length === 11, `should be 11 components in one view ${Object.keys(oneView).length}`);
 
   const cDetails = await db.getComponentDetails(workspaceId, changeSetId);
-  assert(
-    cDetails["01JZK1VKDN40NZCCTYR350RDFD"]?.name === "si-1835",
-    "details name isn't si-1835",
-  );
+  assert(cDetails["01JZK1VKDN40NZCCTYR350RDFD"]?.name === "si-1835", "details name isn't si-1835");
 
   const search = new Set(
-    (await db.queryAttributes(workspaceId, changeSetId, [
-      { key: "schema", value: "AWS::EC2::VPC", op: "exact" },
-    ])) as string[],
+    await db.queryAttributes(workspaceId, changeSetId, [{ key: "schema", value: "AWS::EC2::VPC", op: "exact" }]),
   );
   assert(search.size === 1, `didn't find 1 VPC: ${search}`);
   assert(search.has("01JZK1VKDN40NZCCTYR350RDFD"), "bad VPC id");
@@ -405,10 +372,7 @@ const fullDiagnosticTest = async (db: Comlink.Remote<TabDBInterface>) => {
     EntityKind.Component,
     "01JZND7T6F6VEWK5Q0FBNFYQBZ",
   )) as EddaComponent;
-  assert(
-    renamedComponent.name === "i changed your name",
-    `Name change failed ${renamedComponent.name}`,
-  );
+  assert(renamedComponent.name === "i changed your name", `Name change failed ${renamedComponent.name}`);
 
   const renamedComponentInList = (await db.get(
     workspaceId,
@@ -416,10 +380,7 @@ const fullDiagnosticTest = async (db: Comlink.Remote<TabDBInterface>) => {
     EntityKind.ComponentInList,
     "01JZND7T6F6VEWK5Q0FBNFYQBZ",
   )) as ComponentInList;
-  assert(
-    renamedComponentInList.name === "i changed your name",
-    `Name change failed in list ${renamedComponent.name}`,
-  );
+  assert(renamedComponentInList.name === "i changed your name", `Name change failed in list ${renamedComponent.name}`);
 
   assert(atomGotUpdated, "atom not update received");
 
@@ -591,18 +552,10 @@ const fullDiagnosticTest = async (db: Comlink.Remote<TabDBInterface>) => {
   )) as IncomingConnections;
   assert(incomingPre.connections.length === 0, "shouldn't have connections");
 
-  const outgoingPre = (await db.getOutgoingConnectionsByComponentId(
-    workspaceId,
-    changeSetId,
-  )) as OutgoingConnections;
-  const regionOutPreLength = Object.keys(
-    outgoingPre.get(regionComponent),
-  ).length;
+  const outgoingPre = await db.getOutgoingConnectionsByComponentId(workspaceId, changeSetId);
+  const regionOutPreLength = Object.keys(outgoingPre.get(regionComponent)).length;
   // there are connections already
-  assert(
-    regionOutPreLength > 0,
-    "no region outgoing connections before patch?",
-  );
+  assert(regionOutPreLength > 0, "no region outgoing connections before patch?");
 
   await db.linkNewChangeset(workspaceId, changeSetId, avChangeSetId);
   // ensure 106 MTM on new change set!
@@ -621,10 +574,7 @@ const fullDiagnosticTest = async (db: Comlink.Remote<TabDBInterface>) => {
     returnValue: "resultRows",
   });
   const atomCnt3 = oneInOne(atoms3);
-  assert(
-    atomCnt3 === 106,
-    `${atomCnt3?.toString()} linked atoms (should be 106)`,
-  );
+  assert(atomCnt3 === 106, `${atomCnt3?.toString()} linked atoms (should be 106)`);
 
   // cold start "no-op" from new change set calls post process on everything
   await db.niflheim(workspaceId, avChangeSetId);
@@ -657,13 +607,8 @@ const fullDiagnosticTest = async (db: Comlink.Remote<TabDBInterface>) => {
     );
   }
 
-  const outgoingPost = (await db.getOutgoingConnectionsByComponentId(
-    workspaceId,
-    avChangeSetId,
-  )) as OutgoingConnections;
-  const regionOutPostLength = Object.keys(
-    outgoingPost.get(regionComponent),
-  ).length;
+  const outgoingPost = await db.getOutgoingConnectionsByComponentId(workspaceId, avChangeSetId);
+  const regionOutPostLength = Object.keys(outgoingPost.get(regionComponent)).length;
   assert(
     regionOutPreLength + 1 === regionOutPostLength,
     `outgoing connections not added ${regionOutPreLength} v ${regionOutPostLength}`,
@@ -677,18 +622,9 @@ const fullDiagnosticTest = async (db: Comlink.Remote<TabDBInterface>) => {
   )) as AttributeTree;
   const regionAv = avBeforeDVU.attributeValues["01K2ZNABVFXB681FR4B7RZQYRN"];
   const source = regionAv?.externalSources?.[0];
-  assert(
-    source?.path === "/domain/region",
-    `source path is not region: ${source?.path}`,
-  );
-  assert(
-    source?.componentId === regionComponent,
-    `component is not region: ${source?.componentId}`,
-  );
-  assert(
-    regionAv?.value === null,
-    `region value is not blank: ${regionAv?.value}`,
-  );
+  assert(source?.path === "/domain/region", `source path is not region: ${source?.path}`);
+  assert(source?.componentId === regionComponent, `component is not region: ${source?.componentId}`);
+  assert(regionAv?.value === null, `region value is not blank: ${regionAv?.value}`);
 
   // NOW THE DVU PATCH
   const patch3 = JSON.parse(`
@@ -782,10 +718,7 @@ const fullDiagnosticTest = async (db: Comlink.Remote<TabDBInterface>) => {
       bind: ["55dee56fd5dedebec8bcd4f2eeb92964"],
     }),
   );
-  assert(
-    afterDVUIndexExists === "55dee56fd5dedebec8bcd4f2eeb92964",
-    "DVU patch didn't create index",
-  );
+  assert(afterDVUIndexExists === "55dee56fd5dedebec8bcd4f2eeb92964", "DVU patch didn't create index");
 
   const avAfterDVU = (await db.get(
     workspaceId,
@@ -793,12 +726,8 @@ const fullDiagnosticTest = async (db: Comlink.Remote<TabDBInterface>) => {
     EntityKind.AttributeTree,
     thingComponent,
   )) as AttributeTree;
-  const regionAvAgain =
-    avAfterDVU.attributeValues["01K2ZNABVFXB681FR4B7RZQYRN"];
-  assert(
-    regionAvAgain?.value === "us-east-1",
-    `region value is not us-east-1: ${regionAvAgain?.value}`,
-  );
+  const regionAvAgain = avAfterDVU.attributeValues["01K2ZNABVFXB681FR4B7RZQYRN"];
+  assert(regionAvAgain?.value === "us-east-1", `region value is not us-east-1: ${regionAvAgain?.value}`);
 
   const changeSetAgain = await db.exec({
     sql: "select count(*) from changesets",
@@ -838,10 +767,7 @@ const fullDiagnosticTest = async (db: Comlink.Remote<TabDBInterface>) => {
       bind: ["8601f40a5bc4b73e90dba9d1a4126bfd-different"],
     }),
   );
-  assert(
-    noOpIndexExists === "8601f40a5bc4b73e90dba9d1a4126bfd-different",
-    "noOp patch didn't create index",
-  );
+  assert(noOpIndexExists === "8601f40a5bc4b73e90dba9d1a4126bfd-different", "noOp patch didn't create index");
 
   // NOTE: i am changing this data's `toIndexChecksum` to a new value
   // representing other behavior we've seen in the wild, even though
@@ -3788,22 +3714,14 @@ const fullDiagnosticTest = async (db: Comlink.Remote<TabDBInterface>) => {
   `) as WorkspacePatchBatch;
   await db.handleWorkspacePatchMessage(addPatch);
   const componentId = "01K4ZGNVS7EQKKBA67BMG0A62S";
-  const addedC = (await db.get(
-    workspaceId,
-    addChangeSetId,
-    EntityKind.Component,
-    componentId,
-  )) as BifrostComponent | -1;
+  const addedC = (await db.get(workspaceId, addChangeSetId, EntityKind.Component, componentId)) as
+    | BifrostComponent
+    | -1;
   assert(addedC !== -1, "added component doesn't exit");
   if (addedC === -1) return;
   assert(addedC.name === "si-6666", "name mismatch");
   const newList = JSON.parse(
-    await db.getList(
-      workspaceId,
-      addChangeSetId,
-      EntityKind.ComponentList,
-      workspaceId,
-    ),
+    await db.getList(workspaceId, addChangeSetId, EntityKind.ComponentList, workspaceId),
   ) as ComponentInList[];
   assert(newList.length === 12, "new component missing in list");
 
@@ -5402,10 +5320,7 @@ const fullDiagnosticTest = async (db: Comlink.Remote<TabDBInterface>) => {
     returnValue: "resultRows",
   });
   const dbChecksum = oneInOne(indexLookup);
-  assert(
-    dbChecksum === indexChecksum,
-    `index checksum not written: ${dbChecksum?.toString()} != ${indexChecksum}`,
-  );
+  assert(dbChecksum === indexChecksum, `index checksum not written: ${dbChecksum?.toString()} != ${indexChecksum}`);
 
   const atomLookup = await db.exec({
     sql: "select checksum from atoms where kind = ? and args = ? and checksum = ?",
@@ -5413,18 +5328,10 @@ const fullDiagnosticTest = async (db: Comlink.Remote<TabDBInterface>) => {
     returnValue: "resultRows",
   });
   const atomChecksum = oneInOne(atomLookup);
-  assert(
-    atomChecksum === indexChecksum,
-    `atom checksum not updated: ${atomChecksum?.toString()} != ${indexChecksum}`,
-  );
+  assert(atomChecksum === indexChecksum, `atom checksum not updated: ${atomChecksum?.toString()} != ${indexChecksum}`);
 
   // get the index mv, assures that the atom and MTM are in place!
-  const indexListAtom = (await db.get(
-    workspaceId,
-    changeSetId,
-    EntityKind.MvIndex,
-    workspaceId,
-  )) as object | -1;
+  const indexListAtom = (await db.get(workspaceId, changeSetId, EntityKind.MvIndex, workspaceId)) as object | -1;
   assert(indexListAtom !== -1, `MvIndex Atom doesn't exist when it should`);
 
   log("index update patched");
@@ -5439,11 +5346,7 @@ const fullDiagnosticTest = async (db: Comlink.Remote<TabDBInterface>) => {
   assert(num > 0, "no global MVs after vanaheim");
 
   const variantId = "01J1QXEJC12EEBZ00H4T15YHNQ";
-  const variant = (await db.getGlobal(
-    workspaceId,
-    EntityKind.CachedDefaultVariant,
-    variantId,
-  )) as CachedDefaultVariant;
+  const variant = (await db.getGlobal(workspaceId, EntityKind.CachedDefaultVariant, variantId)) as CachedDefaultVariant;
   assert(variant.id === variantId, "global variant id does not match");
 
   const updatedName = "Updated Docker Image";
@@ -5469,15 +5372,9 @@ const fullDiagnosticTest = async (db: Comlink.Remote<TabDBInterface>) => {
     EntityKind.CachedDefaultVariant,
     variantId,
   )) as CachedDefaultVariant;
-  assert(
-    variantAfter.id === variantId,
-    "after global variant id does not match",
-  );
+  assert(variantAfter.id === variantId, "after global variant id does not match");
 
-  assert(
-    variantAfter.displayName === updatedName,
-    "variant name did not update",
-  );
+  assert(variantAfter.displayName === updatedName, "variant name did not update");
 
   // remove an MV to express more of the functionality
   const removePatch = JSON.parse(`
@@ -5506,10 +5403,7 @@ const fullDiagnosticTest = async (db: Comlink.Remote<TabDBInterface>) => {
     EntityKind.ComponentDiff,
     "01K4ZGNVS7EQKKBA67BMG0A62S",
   )) as object | -1;
-  assert(
-    compoenentInListAtom === -1,
-    `ComponentDiff Atom shouldn't exist when it does`,
-  );
+  assert(compoenentInListAtom === -1, `ComponentDiff Atom shouldn't exist when it does`);
   log("removed component");
 
   log("deployment MV done");

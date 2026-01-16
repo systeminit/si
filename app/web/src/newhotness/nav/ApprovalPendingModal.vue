@@ -3,8 +3,7 @@
     <Modal ref="modalRef" title="Pending Approvals" size="lg">
       <div class="max-h-[70vh] overflow-hidden flex flex-col gap-xs">
         <div class="text-md pb-xs">
-          These change sets have been submitted for approval to be merged to
-          HEAD. Select one to approve or reject it.
+          These change sets have been submitted for approval to be merged to HEAD. Select one to approve or reject it.
         </div>
         <ApprovalPendingModalCard
           v-for="changeSet in changeSetsNeedingApproval"

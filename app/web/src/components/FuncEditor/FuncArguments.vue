@@ -20,20 +20,10 @@
         :disabled="disabled"
         :options="kindOptions"
       />
-      <VButton
-        icon="plus"
-        size="sm"
-        tone="success"
-        :disabled="disabled"
-        @click="createArgument"
-      />
+      <VButton icon="plus" size="sm" tone="success" :disabled="disabled" @click="createArgument" />
     </div>
     <ul>
-      <div
-        v-for="arg in funcArguments"
-        :key="arg.id"
-        class="flex flex-row items-center gap-2xs"
-      >
+      <div v-for="arg in funcArguments" :key="arg.id" class="flex flex-row items-center gap-2xs">
         <VormInput
           v-model="arg.name"
           type="text"
@@ -51,12 +41,7 @@
           disabled
           @change="updateArgument(arg)"
         />
-        <VButton
-          icon="trash"
-          size="sm"
-          tone="destructive"
-          @click="deleteArgument(arg.id)"
-        />
+        <VButton icon="trash" size="sm" tone="destructive" @click="deleteArgument(arg.id)" />
       </div>
     </ul>
   </div>
@@ -110,9 +95,7 @@ const updateArgument = async (arg: FuncArgument) => {
   await funcsStore.UPDATE_FUNC_ARGUMENT(props.funcId, arg);
 };
 
-const funcArguments = computed(
-  () => funcsStore.funcsById[props.funcId]?.arguments,
-);
+const funcArguments = computed(() => funcsStore.funcsById[props.funcId]?.arguments);
 
 const deleteArgument = async (funcArgumentId: string) => {
   await funcsStore.DELETE_FUNC_ARGUMENT(props.funcId, funcArgumentId);

@@ -10,10 +10,7 @@
         <template #label>
           <div class="flex flex-row gap-xs">
             <div>Assets Installed</div>
-            <PillCounter
-              v-if="!featureFlagsStore.MODULES_TAB"
-              :count="assetList.length"
-            />
+            <PillCounter v-if="!featureFlagsStore.MODULES_TAB" :count="assetList.length" />
           </div>
         </template>
         <div class="flex flex-row gap-xs items-center">
@@ -58,12 +55,7 @@
           @submit="(name) => newAsset(name)"
         />
       </SidebarSubpanelTitle>
-      <SiSearch
-        ref="searchRef"
-        :filters="searchFiltersWithCounts"
-        placeholder="search assets"
-        @search="onSearch"
-      />
+      <SiSearch ref="searchRef" :filters="searchFiltersWithCounts" placeholder="search assets" @search="onSearch" />
       <!-- <div
         class="w-full text-neutral-400 dark:text-neutral-300 text-sm text-center p-xs border-b dark:border-neutral-600"
       >
@@ -72,9 +64,7 @@
     </template>
     <template v-if="assetStore.variantList.length > 0">
       <TreeNode
-        v-for="category in Object.keys(categorizedAssets).sort((a, b) =>
-          a.localeCompare(b),
-        )"
+        v-for="category in Object.keys(categorizedAssets).sort((a, b) => a.localeCompare(b))"
         :key="category"
         :color="categoryColor(category)"
         :label="category"
@@ -86,16 +76,11 @@
         indentationSize="none"
       >
         <template #icons>
-          <PillCounter
-            :count="categorizedAssets[category]?.length || 0"
-            showHoverInsideTreeNode
-          />
+          <PillCounter :count="categorizedAssets[category]?.length || 0" showHoverInsideTreeNode />
         </template>
         <AssetListItem
           v-for="asset in categorizedAssets[category]?.sort((a, b) =>
-            (a.displayName || a.schemaName)?.localeCompare(
-              b.displayName || b.schemaName,
-            ),
+            (a.displayName || a.schemaName)?.localeCompare(b.displayName || b.schemaName),
           )"
           :key="asset.schemaVariantId"
           :a="asset"
@@ -103,17 +88,10 @@
         />
       </TreeNode>
     </template>
-    <Modal
-      ref="contributeAssetSuccessModalRef"
-      size="sm"
-      title="Contribution sent"
-    >
+    <Modal ref="contributeAssetSuccessModalRef" size="sm" title="Contribution sent">
       <p>
-        Thanks for contributing! We will review your contribution, and reach out
-        via email or on our
-        <a class="text-action-500" href="https://discord.com/invite/system-init"
-          >Discord Server</a
-        >
+        Thanks for contributing! We will review your contribution, and reach out via email or on our
+        <a class="text-action-500" href="https://discord.com/invite/system-init">Discord Server</a>
         if you have any questions.
       </p>
     </Modal>
@@ -150,9 +128,7 @@ const featureFlagsStore = useFeatureFlagsStore();
 const { variantList: assetList } = storeToRefs(assetStore);
 
 const createAssetReqStatus = assetStore.getRequestStatus("CREATE_VARIANT");
-const loadAssetsReqStatus = assetStore.getRequestStatus(
-  "LOAD_SCHEMA_VARIANT_LIST",
-);
+const loadAssetsReqStatus = assetStore.getRequestStatus("LOAD_SCHEMA_VARIANT_LIST");
 const syncModulesReqStatus = moduleStore.getRequestStatus("SYNC");
 
 const contributeAssetSuccessModalRef = ref<InstanceType<typeof Modal>>();
@@ -165,22 +141,15 @@ const onSearch = (search: string) => {
   searchString.value = search.trim().toLocaleLowerCase();
 };
 
-const canUpdate = computed(
-  () => Object.keys(moduleStore.upgradeableModules).length !== 0,
-);
+const canUpdate = computed(() => Object.keys(moduleStore.upgradeableModules).length !== 0);
 
 const categorizedAssets = computed(() =>
   assetList.value
     .filter((asset) => {
       let include = true;
 
-      if (
-        searchRef.value?.filteringActive &&
-        searchRef.value?.activeFilters.filter(Boolean).length > 0
-      ) {
-        const idxs = searchRef.value?.activeFilters.flatMap((bool, idx) =>
-          bool ? idx : [],
-        );
+      if (searchRef.value?.filteringActive && searchRef.value?.activeFilters.filter(Boolean).length > 0) {
+        const idxs = searchRef.value?.activeFilters.flatMap((bool, idx) => (bool ? idx : []));
         include = false;
         idxs.forEach((idx) => {
           if (filters.value[idx]?.includes(asset)) {
@@ -233,18 +202,14 @@ const newAsset = async (newAssetName: string) => {
 };
 
 const updateAllAssets = () => {
-  const schemaIds = Object.values(moduleStore.upgradeableModules).map(
-    (m) => m.schemaId,
-  );
+  const schemaIds = Object.values(moduleStore.upgradeableModules).map((m) => m.schemaId);
   moduleStore.UPGRADE_MODULES(schemaIds);
   assetStore.clearSchemaVariantSelection();
 };
 
 const filters = computed(() => [
   assetList.value.filter((a) => a.canContribute),
-  assetList.value.filter(
-    (a) => !!moduleStore.upgradeableModules[a.schemaVariantId],
-  ),
+  assetList.value.filter((a) => !!moduleStore.upgradeableModules[a.schemaVariantId]),
   assetList.value.filter((a) => !a.isLocked),
 ]);
 

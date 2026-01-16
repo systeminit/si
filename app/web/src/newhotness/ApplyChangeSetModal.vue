@@ -4,16 +4,12 @@
       ref="modalRef"
       hideExitButton
       title="Changes To Be Applied"
-      :size="
-        changeSet && changeSet.status === ChangeSetStatus.NeedsApproval
-          ? '4xl'
-          : 'md'
-      "
+      :size="changeSet && changeSet.status === ChangeSetStatus.NeedsApproval ? '4xl' : 'md'"
     >
       <div class="max-h-[70vh] overflow-hidden flex flex-col">
         <div class="text-sm mb-xs pb-sm">
-          Applying this change set may create, modify, or destroy real resources
-          in the cloud. These actions will be applied to the real world:
+          Applying this change set may create, modify, or destroy real resources in the cloud. These actions will be
+          applied to the real world:
         </div>
         <div
           :class="
@@ -54,11 +50,7 @@
           </ul>
         </div>
         <ApprovalFlow
-          v-if="
-            changeSet &&
-            changeSet.status === ChangeSetStatus.NeedsApproval &&
-            ctx.user
-          "
+          v-if="changeSet && changeSet.status === ChangeSetStatus.NeedsApproval && ctx.user"
           class="flex-1 min-h-0"
           :changeSet="changeSet"
           :approvalData="approvalData"
@@ -66,10 +58,7 @@
           :user="ctx.user"
           @closeModal="closeModalHandler"
         />
-        <div
-          v-else
-          class="flex flex-row w-full items-center justify-center gap-sm mt-xs"
-        >
+        <div v-else class="flex flex-row w-full items-center justify-center gap-sm mt-xs">
           <NewButton label="Cancel" pill="Esc" @click="closeModalHandler" />
           <NewButton
             v-if="approvalsEnabled"
@@ -108,12 +97,7 @@ import { useToast, POSITION } from "vue-toastification";
 import { useQuery } from "@tanstack/vue-query";
 import { ActionKind } from "@/api/sdf/dal/action";
 import { ChangeSetStatus } from "@/api/sdf/dal/change_set";
-import {
-  ActionProposedView,
-  ApprovalData,
-  WorkspaceUser,
-  Workspaces,
-} from "./types";
+import { ActionProposedView, ApprovalData, WorkspaceUser, Workspaces } from "./types";
 import { keyEmitter } from "./logic_composables/emitters";
 import ActionCard from "./ActionCard.vue";
 import ApprovalFlow from "./ApprovalFlow.vue";
@@ -155,9 +139,7 @@ const workspaceUsersQuery = useQuery<Record<string, WorkspaceUser>>({
   queryKey: ["workspacelistusers"],
   staleTime: 5000,
   queryFn: async () => {
-    const call = usersApi.endpoint<{ users: WorkspaceUser[] }>(
-      routes.WorkspaceListUsers,
-    );
+    const call = usersApi.endpoint<{ users: WorkspaceUser[] }>(routes.WorkspaceListUsers);
     const response = await call.get();
     if (usersApi.ok(response)) {
       return _.keyBy(response.data.users, "id");
@@ -166,15 +148,10 @@ const workspaceUsersQuery = useQuery<Record<string, WorkspaceUser>>({
   },
 });
 const workspaceUsers = computed(() => workspaceUsersQuery.data.value ?? {});
-const isSoloUserWorkspace = computed(
-  () => Object.keys(workspaceUsers.value).length === 1,
-);
+const isSoloUserWorkspace = computed(() => Object.keys(workspaceUsers.value).length === 1);
 
 // Third, combine the two checks to determine if we should allow users to request approval.
-const approvalsEnabled = computed(
-  () =>
-    approvalsEnabledWithoutSoloUserCheck.value && !isSoloUserWorkspace.value,
-);
+const approvalsEnabled = computed(() => approvalsEnabledWithoutSoloUserCheck.value && !isSoloUserWorkspace.value);
 
 const status = useStatus();
 const allowedToApplyWithApprovalsDisabled = computed(() => {
@@ -195,13 +172,11 @@ const router = useRouter();
 const route = useRoute();
 
 const actionsTitle = computed(() =>
-  props.actions.length === 1
-    ? `${props.actions.length} Action`
-    : `${props.actions.length} Actions`,
+  props.actions.length === 1 ? `${props.actions.length} Action` : `${props.actions.length} Actions`,
 );
 
 const counts = computed(() => {
-  const results: Record<string, number> = {
+  const results: Record<"create" | "destroy" | "refresh" | "other", number> = {
     create: 0,
     destroy: 0,
     refresh: 0,
@@ -209,17 +184,13 @@ const counts = computed(() => {
   };
   for (const action of props.actions) {
     if (action.kind === ActionKind.Create) {
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-      results.create! += 1;
+      results.create += 1;
     } else if (action.kind === ActionKind.Destroy) {
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-      results.destroy! += 1;
+      results.destroy += 1;
     } else if (action.kind === ActionKind.Refresh) {
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-      results.refresh! += 1;
+      results.refresh += 1;
     } else {
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-      results.other! += 1;
+      results.other += 1;
     }
   }
   return results;
@@ -333,9 +304,7 @@ async function applyNotDebounced() {
 const requestApprovalApi = useApi(ctx);
 
 async function requestApprovalNotDebounced() {
-  const requestApprovalCall = requestApprovalApi.endpoint(
-    routes.ChangeSetRequestApproval,
-  );
+  const requestApprovalCall = requestApprovalApi.endpoint(routes.ChangeSetRequestApproval);
   requestApprovalCall.post({});
 }
 
@@ -351,9 +320,7 @@ const approvalDataQuery = useQuery<ApprovalData | undefined>({
   enabled: () => approvalsEnabled.value,
   queryKey: ["approvalstatus", ctx.changeSetId.value],
   queryFn: async () => {
-    const call = approvalDataApi.endpoint<ApprovalData>(
-      routes.ChangeSetApprovalStatus,
-    );
+    const call = approvalDataApi.endpoint<ApprovalData>(routes.ChangeSetApprovalStatus);
     const response = await call.get();
     if (approvalDataApi.ok(response)) {
       return response.data;

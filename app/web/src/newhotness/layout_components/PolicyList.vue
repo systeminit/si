@@ -12,9 +12,7 @@
         tooltipPlacement="top"
         icon="chevron--right"
         tone="empty"
-        :class="
-          clsx(themeClasses('hover:bg-neutral-200', 'hover:bg-neutral-600'))
-        "
+        :class="clsx(themeClasses('hover:bg-neutral-200', 'hover:bg-neutral-600'))"
         @click="() => emits('pageForward')"
       />
       <span class="text-xs">{{ page }}</span>
@@ -23,9 +21,7 @@
         tooltipPlacement="top"
         icon="chevron--left"
         tone="empty"
-        :class="
-          clsx(themeClasses('hover:bg-neutral-200', 'hover:bg-neutral-600'))
-        "
+        :class="clsx(themeClasses('hover:bg-neutral-200', 'hover:bg-neutral-600'))"
         @click="() => emits('pageBack')"
       />
     </li>
@@ -35,10 +31,7 @@
       :class="
         clsx(
           'p-xs cursor-pointer border mb-xs',
-          themeClasses(
-            'hover:border-action-500 border-neutral-200',
-            'hover:border-action-300 border-neutral-600',
-          ),
+          themeClasses('hover:border-action-500 border-neutral-200', 'hover:border-action-300 border-neutral-600'),
           'flex flex-row items-center text-xs gap-sm justify-between',
         )
       "
@@ -54,13 +47,7 @@
         ><TruncateWithTooltip>{{ p.name }}</TruncateWithTooltip></span
       >
       <span class="shrink">
-        <Timestamp
-          refresh
-          size="normal"
-          relative="standard"
-          showTimeIfToday
-          :date="p.createdAt"
-        />
+        <Timestamp refresh size="normal" relative="standard" showTimeIfToday :date="p.createdAt" />
       </span>
     </li>
   </ol>
@@ -68,13 +55,7 @@
 
 <script setup lang="ts">
 import { clsx } from "clsx";
-import {
-  themeClasses,
-  NewButton,
-  Icon,
-  Timestamp,
-  TruncateWithTooltip,
-} from "@si/vue-lib/design-system";
+import { themeClasses, NewButton, Icon, Timestamp, TruncateWithTooltip } from "@si/vue-lib/design-system";
 import { Policy } from "../logic_composables/policy";
 import EmptyStateCard from "../../components/EmptyStateCard.vue";
 

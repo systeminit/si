@@ -1,10 +1,7 @@
 import { computed } from "vue";
 import { useQuery } from "@tanstack/vue-query";
 import { getDefaultSubscriptions, useMakeKey } from "@/store/realtime/heimdall";
-import {
-  emptyDefaultSubs,
-  EntityKind,
-} from "@/workers/types/entity_kind_types";
+import { emptyDefaultSubs, EntityKind } from "@/workers/types/entity_kind_types";
 import { useContext } from "./context";
 
 export const useDefaultSubscription = () => {

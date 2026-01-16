@@ -82,10 +82,7 @@ export interface VisibilityDiffChangeSet {
   value: unknown;
 }
 
-export type VisibilityDiff =
-  | VisibilityDiffNone
-  | VisibilityDiffChangeSet
-  | VisibilityDiffHead;
+export type VisibilityDiff = VisibilityDiffNone | VisibilityDiffChangeSet | VisibilityDiffHead;
 
 export type EditFieldValues = null | boolean | number | string;
 

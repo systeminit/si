@@ -25,10 +25,7 @@
         :class="
           clsx(
             action.holdStatusInfluencedBy?.length > 0
-              ? [
-                  'opacity-30',
-                  themeClasses('text-warning-500', 'text-warning-300'),
-                ]
+              ? ['opacity-30', themeClasses('text-warning-500', 'text-warning-300')]
               : themeClasses('text-warning-400', 'text-warning-300'),
           )
         "
@@ -43,39 +40,20 @@
           @click.stop="retry"
         />
         <Icon
-          :class="
-            clsx(themeClasses('text-destructive-500', 'text-destructive-600'))
-          "
+          :class="clsx(themeClasses('text-destructive-500', 'text-destructive-600'))"
           name="x-hex-outline"
           size="sm"
         />
       </template>
-      <Icon
-        :class="actionIconClass(action.kind)"
-        :name="actionIcon(action.kind)"
-        size="sm"
-      />
+      <Icon :class="actionIconClass(action.kind)" :name="actionIcon(action.kind)" size="sm" />
     </template>
     <template #interaction>
-      <ConfirmHoldModal
-        v-if="!noInteraction"
-        ref="confirmRef"
-        :ok="finishHold"
-      />
-      <DropdownMenu
-        v-if="!noInteraction"
-        ref="contextMenuRef"
-        :forceAbove="false"
-        forceAlignRight
-      >
+      <ConfirmHoldModal v-if="!noInteraction" ref="confirmRef" :ok="finishHold" />
+      <DropdownMenu v-if="!noInteraction" ref="contextMenuRef" :forceAbove="false" forceAlignRight>
         <h5 class="text-neutral-400 pl-2xs">ACTIONS:</h5>
 
         <!-- View action details -->
-        <DropdownMenuItem
-          icon="eye"
-          label="View details"
-          @select="navigateToActionDetails"
-        />
+        <DropdownMenuItem icon="eye" label="View details" @select="navigateToActionDetails" />
 
         <!-- Go to component -->
         <DropdownMenuItem
@@ -120,21 +98,12 @@
 import { computed, ref } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import clsx from "clsx";
-import {
-  Icon,
-  themeClasses,
-  DropdownMenu,
-  DropdownMenuItem,
-} from "@si/vue-lib/design-system";
+import { Icon, themeClasses, DropdownMenu, DropdownMenuItem } from "@si/vue-lib/design-system";
 import { ActionKind, ActionState } from "@/api/sdf/dal/action";
 import ConfirmHoldModal from "./ConfirmHoldModal.vue";
 import DetailsPanelMenuIcon from "./layout_components/DetailsPanelMenuIcon.vue";
 import ActionCardLayout from "./ActionCardLayout.vue";
-import {
-  actionKindToAbbreviation,
-  actionIconClass,
-  actionIcon,
-} from "./logic_composables/action";
+import { actionKindToAbbreviation, actionIconClass, actionIcon } from "./logic_composables/action";
 import { ActionProposedView } from "./types";
 import { routes, useApi } from "./api_composables";
 
@@ -193,10 +162,7 @@ const handleClick = () => {
 };
 
 const actionOnHold = computed(() => {
-  return (
-    props.action.state === ActionState.OnHold ||
-    (props.action.holdStatusInfluencedBy?.length ?? 0) > 0
-  );
+  return props.action.state === ActionState.OnHold || (props.action.holdStatusInfluencedBy?.length ?? 0) > 0;
 });
 
 const actionFailed = computed(() => {

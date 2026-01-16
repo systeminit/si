@@ -1,8 +1,5 @@
 <template>
-  <div
-    v-tooltip.bottom="props.tooltipText ?? ''"
-    :aria-label="props.tooltipText ?? ''"
-  >
+  <div v-tooltip.bottom="props.tooltipText ?? ''" :aria-label="props.tooltipText ?? ''">
     <Listbox
       :id="id"
       v-slot="{ open }"
@@ -24,14 +21,9 @@
             {{ selectedLabel }}
           </span>
 
-          <div
-            class="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none"
-          >
+          <div class="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
             <div v-if="props.navbarMode">
-              <SiArrow
-                :nudge="open || listboxHovered === true"
-                class="h-5 w-5 text-white"
-              />
+              <SiArrow :nudge="open || listboxHovered === true" class="h-5 w-5 text-white" />
             </div>
             <div v-else class="text-neutral-400">
               <Icon name="selector" />
@@ -58,15 +50,11 @@
               <li
                 v-if="props.navbarMode"
                 :class="[
-                  active
-                    ? 'dark:text-white bg-action-500'
-                    : 'dark:text-neutral-100',
+                  active ? 'dark:text-white bg-action-500' : 'dark:text-neutral-100',
                   'cursor-default select-none relative py-2 pl-3 pr-9',
                 ]"
               >
-                <span
-                  :class="[selected ? 'font-semibold' : 'font-normal', 'block']"
-                >
+                <span :class="[selected ? 'font-semibold' : 'font-normal', 'block']">
                   <template v-if="option.label">
                     {{ option.label }}
                   </template>
@@ -91,9 +79,7 @@
                   'cursor-default select-none relative py-2 pl-3 pr-9',
                 ]"
               >
-                <span
-                  :class="[selected ? 'font-semibold' : 'font-normal', 'block']"
-                >
+                <span :class="[selected ? 'font-semibold' : 'font-normal', 'block']">
                   <template v-if="option.label">
                     {{ option.label }}
                   </template>
@@ -120,12 +106,7 @@
 
 <script setup lang="ts">
 import { computed, ref, toRefs } from "vue";
-import {
-  Listbox,
-  ListboxButton,
-  ListboxOption,
-  ListboxOptions,
-} from "@headlessui/vue";
+import { Listbox, ListboxButton, ListboxOption, ListboxOptions } from "@headlessui/vue";
 import * as _ from "lodash-es";
 import { Icon } from "@si/vue-lib/design-system";
 import { LabelList } from "@/api/sdf/dal/label_list";

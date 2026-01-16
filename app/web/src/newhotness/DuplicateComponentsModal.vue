@@ -10,8 +10,7 @@
   >
     <ErrorMessage v-if="requestError">{{ requestError }}</ErrorMessage>
     <div>
-      Duplicated components keep the same name as the original. Add a prefix so
-      you can easily distinguish them.
+      Duplicated components keep the same name as the original. Add a prefix so you can easily distinguish them.
     </div>
     <div class="flex flex-row justify-between text-sm">
       <span class="mt-xs">Prefix</span>
@@ -32,8 +31,7 @@
           @keydown.enter="confirm"
         />
         <span class="text-xs text-neutral-400">
-          The name each duplicated component will begin with (E.g. Copy My
-          Subnet)
+          The name each duplicated component will begin with (E.g. Copy My Subnet)
         </span>
       </div>
     </div>

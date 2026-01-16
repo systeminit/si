@@ -8,10 +8,7 @@
       <div v-if="selectedComponentCode[0]?.code" class="absolute inset-xs">
         <template v-for="(item, index) in selectedComponentCode" :key="index">
           <div v-if="item.code || item.message" class="pb-md">
-            <div
-              v-if="selectedComponentCode.length > 1"
-              class="text-lg font-bold pb-xs px-xs"
-            >
+            <div v-if="selectedComponentCode.length > 1" class="text-lg font-bold pb-xs px-xs">
               Code Output {{ item.func ?? index + 1 }}:
             </div>
             <ErrorMessage v-if="item.message" class="mx-1 mb-2">
@@ -45,19 +42,12 @@ const changeSetsStore = useChangeSetsStore();
 const viewStore = useViewsStore();
 const componentsStore = useComponentsStore();
 
-const selectedComponentId = computed(
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-  () => viewStore.selectedComponentId!,
-);
+const selectedComponentId = computed(() => viewStore.selectedComponentId!);
 
-const codeReqStatus = componentsStore.getRequestStatus(
-  "FETCH_COMPONENT_CODE",
-  selectedComponentId,
-);
+const codeReqStatus = componentsStore.getRequestStatus("FETCH_COMPONENT_CODE", selectedComponentId);
 
 const selectedComponentCode = computed(
-  () =>
-    componentsStore.componentCodeViewsById[viewStore.selectedComponentId || ""],
+  () => componentsStore.componentCodeViewsById[viewStore.selectedComponentId || ""],
 );
 
 watch(

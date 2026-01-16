@@ -7,11 +7,7 @@
       :class="clsx('mr-xs self-start', !isActive && 'opacity-0')"
     />
     <div class="leading-[1.5rem] tracking-tight">
-      <span
-        :class="
-          clsx(!isLoader && isActive ? 'text-neutral-100' : 'text-neutral-400')
-        "
-      >
+      <span :class="clsx(!isLoader && isActive ? 'text-neutral-100' : 'text-neutral-400')">
         {{ cropSentence ? croppedSentence : message }}
       </span>
       <div
@@ -50,14 +46,10 @@ const props = defineProps({
 });
 
 const visibleCharCount = ref(-1);
-const croppedSentence = computed(() =>
-  props.message.slice(0, Math.max(visibleCharCount.value, 0)),
-);
+const croppedSentence = computed(() => props.message.slice(0, Math.max(visibleCharCount.value, 0)));
 // Fuse so we don't animate when message contents change after we're done rendering.
 const finishedRendering = ref(false);
-const cropSentence = computed(
-  () => props.isLastElement && !finishedRendering.value,
-);
+const cropSentence = computed(() => props.isLastElement && !finishedRendering.value);
 
 // Kick-off line animation
 const startWritingSentence = async () => {
@@ -69,8 +61,7 @@ onMounted(startWritingSentence);
 const INITIAL_DELAY_MS = 800;
 const CHAR_DELAY_MS = props.fast ? 15 : 35;
 const BASE_ELLIPSIS_DELAY_MS = 300;
-const ellipsisDelay = () =>
-  BASE_ELLIPSIS_DELAY_MS + Math.floor(Math.random() * 100);
+const ellipsisDelay = () => BASE_ELLIPSIS_DELAY_MS + Math.floor(Math.random() * 100);
 watch([visibleCharCount], async () => {
   const message = props.message ?? "";
   if (visibleCharCount.value >= message.length) {

@@ -165,7 +165,7 @@ export const loadAuthMiddleware: Koa.Middleware<CustomAppState, CustomAppContext
   }
 
   ctx.state.token = await tryCatch(() => {
-    return decodeAuthToken(authToken!);
+    return decodeAuthToken(authToken);
   }, (_err) => {
     // TODO: check the type of error before handling this way
 

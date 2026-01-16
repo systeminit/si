@@ -1,11 +1,6 @@
 <template>
   <div class="p-xs flex flex-col gap-xs">
-    <LeafInputs
-      v-model="inputs"
-      :kind="FuncBindingKind.CodeGeneration"
-      :disabled="func?.isLocked"
-      @change="update"
-    />
+    <LeafInputs v-model="inputs" :kind="FuncBindingKind.CodeGeneration" :disabled="func?.isLocked" @change="update" />
   </div>
 </template>
 
@@ -29,9 +24,7 @@ const func = computed(() => {
 
 const binding = computed(() => {
   const bindings = funcStore.codegenBindings[props.funcId];
-  const binding = bindings
-    ?.filter((b) => b.schemaVariantId === props.schemaVariantId)
-    .pop();
+  const binding = bindings?.filter((b) => b.schemaVariantId === props.schemaVariantId).pop();
   return binding;
 });
 

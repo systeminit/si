@@ -15,9 +15,7 @@
             :class="
               clsx(
                 'truncate cursor-pointer',
-                componentsStore.allComponentsById[
-                  props.action.componentId ?? -1
-                ]
+                componentsStore.allComponentsById[props.action.componentId ?? -1]
                   ? 'dark:text-action-300 text-action-500 hover:underline font-bold'
                   : 'text-neutral-500 dark:text-neutral-400 line-through',
                 isHover && 'underline',
@@ -27,10 +25,7 @@
             @mouseenter="onHoverStart"
             @mouseleave="onHoverEnd"
           >
-            {{
-              componentsStore.allComponentsById[props.action.componentId ?? -1]
-                ?.def.displayName ?? "unknown"
-            }}
+            {{ componentsStore.allComponentsById[props.action.componentId ?? -1]?.def.displayName ?? "unknown" }}
           </div>
         </div>
       </div>
@@ -65,16 +60,12 @@ const componentNameTooltip = computed(() => {
   if (componentNameRef.value) {
     if (!componentsStore.allComponentsById[props.action.componentId ?? -1]) {
       return {
-        content: `Component "${
-          componentNameRef.value.textContent
-        }" does not exist ${
+        content: `Component "${componentNameRef.value.textContent}" does not exist ${
           changeSetsStore.headSelected ? "on head" : "in this change set"
         }.`,
         delay: { show: 700, hide: 10 },
       };
-    } else if (
-      componentNameRef.value.scrollWidth > componentNameRef.value.offsetWidth
-    ) {
+    } else if (componentNameRef.value.scrollWidth > componentNameRef.value.offsetWidth) {
       return {
         content: componentNameRef.value.textContent,
         delay: { show: 700, hide: 10 },
@@ -87,8 +78,7 @@ const componentNameTooltip = computed(() => {
 const viewStore = useViewsStore();
 
 function onClick() {
-  const component =
-    componentsStore.allComponentsById[props.action.componentId || ""];
+  const component = componentsStore.allComponentsById[props.action.componentId || ""];
   if (component) {
     viewStore.setSelectedComponentId(props.action.componentId);
     componentsStore.eventBus.emit("panToComponent", {
@@ -99,24 +89,16 @@ function onClick() {
   }
 }
 
-const isHover = computed(
-  () => viewStore.hoveredComponentId === props.action.componentId,
-);
+const isHover = computed(() => viewStore.hoveredComponentId === props.action.componentId);
 
 function onHoverStart() {
-  if (
-    props.action.componentId &&
-    componentsStore.allComponentsById[props.action.componentId]
-  ) {
+  if (props.action.componentId && componentsStore.allComponentsById[props.action.componentId]) {
     viewStore.setHoveredComponentId(props.action.componentId);
   }
 }
 
 function onHoverEnd() {
-  if (
-    props.action.componentId &&
-    componentsStore.allComponentsById[props.action.componentId]
-  ) {
+  if (props.action.componentId && componentsStore.allComponentsById[props.action.componentId]) {
     viewStore.setHoveredComponentId(null);
   }
 }

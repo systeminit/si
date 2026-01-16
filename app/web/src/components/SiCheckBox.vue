@@ -4,10 +4,7 @@
       <label
         :for="props.id"
         :class="
-          clsx(
-            'block flex-grow text-sm font-medium text-neutral-800 dark:text-neutral-50',
-            truncate && 'truncate',
-          )
+          clsx('block flex-grow text-sm font-medium text-neutral-800 dark:text-neutral-50', truncate && 'truncate')
         "
       >
         {{ props.title }}<span v-if="required"> (required)</span>
@@ -17,11 +14,7 @@
         :id="props.id"
         v-model="inputValue"
         :disabled="props.disabled"
-        :class="
-          inputValue
-            ? 'bg-success-600'
-            : themeClasses('bg-neutral-400', 'bg-neutral-500')
-        "
+        :class="inputValue ? 'bg-success-600' : themeClasses('bg-neutral-400', 'bg-neutral-500')"
         class="relative flex-none inline-flex h-5 w-8 items-center rounded-full ml-2"
         :aria-invalid="inError"
         @blur="setDirty"
@@ -32,30 +25,20 @@
         />
       </Switch>
 
-      <div
-        v-if="inError"
-        class="flex-none pl-2xs pointer-events-none text-destructive-500 dark:text-destructive-600"
-      >
+      <div v-if="inError" class="flex-none pl-2xs pointer-events-none text-destructive-500 dark:text-destructive-600">
         <Icon name="exclamation-circle" size="sm" />
       </div>
     </div>
 
     <p v-if="props.docLink" class="mt-2 text-xs text-action-500">
-      <a :href="props.docLink" target="_blank" class="hover:underline">
-        Documentation
-      </a>
+      <a :href="props.docLink" target="_blank" class="hover:underline"> Documentation </a>
     </p>
 
     <p v-if="props.description" class="mt-2 text-xs text-neutral-300">
       {{ props.description }}
     </p>
 
-    <SiValidation
-      :value="String(inputValue)"
-      :validations="validations"
-      class="mt-2"
-      @errors="setInError($event)"
-    />
+    <SiValidation :value="String(inputValue)" :validations="validations" class="mt-2" @errors="setInError($event)" />
   </div>
 </template>
 
@@ -90,7 +73,7 @@ const alwaysValidate = toRef(props, "alwaysValidate", false);
 
 const { inError, setDirty, setInError } = useValidations(
   alwaysValidate,
-  () => emit("blur", inputValue),
+  () => emit("blur", inputValue.value),
   (inError: boolean) => emit("error", inError),
 );
 

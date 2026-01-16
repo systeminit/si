@@ -1,9 +1,5 @@
 <template>
-  <NavbarButton
-    ref="navbarButtonRef"
-    class="flex-none py-xs"
-    tooltipText="Profile"
-  >
+  <NavbarButton ref="navbarButtonRef" class="flex-none py-xs" tooltipText="Profile">
     <template #default="{ open, hovered }">
       <div class="flex-row flex text-white items-center">
         <UserIcon
@@ -23,22 +19,9 @@
     </template>
 
     <template #dropdownContent>
-      <DropdownMenuItem
-        icon="user-circle"
-        label="Profile"
-        @click="openWorkspaceDetailsHandler"
-      />
-      <DropdownMenuItem
-        :icon="themeIcon"
-        label="Change Theme"
-        @click="changeTheme"
-      />
-      <DropdownMenuItem
-        v-if="isDevMode"
-        icon="cat"
-        label="Dev Dashboard"
-        linkToNamedRoute="workspace-dev-dashboard"
-      />
+      <DropdownMenuItem icon="user-circle" label="Profile" @click="openWorkspaceDetailsHandler" />
+      <DropdownMenuItem :icon="themeIcon" label="Change Theme" @click="changeTheme" />
+      <DropdownMenuItem v-if="isDevMode" icon="cat" label="Dev Dashboard" linkToNamedRoute="workspace-dev-dashboard" />
       <DropdownMenuItem
         v-if="featureFlagsStore.ADMIN_PANEL_ACCESS"
         icon="alert-triangle"
@@ -46,28 +29,11 @@
         linkToNamedRoute="workspace-admin-dashboard"
       />
       <template v-if="showTopLevelMenuItems">
-        <DropdownMenuItem
-          icon="question-circle"
-          label="Documentation"
-          href="https://docs.systeminit.com/"
-        />
-        <DropdownMenuItem
-          icon="logo-discord"
-          label="Discord Community"
-          href="https://discord.gg/system-init"
-        />
-        <DropdownMenuItem
-          icon="settings"
-          label="Workspace Settings"
-          @click="openSettings"
-        />
+        <DropdownMenuItem icon="question-circle" label="Documentation" href="https://docs.systeminit.com/" />
+        <DropdownMenuItem icon="logo-discord" label="Discord Community" href="https://discord.gg/system-init" />
+        <DropdownMenuItem icon="settings" label="Workspace Settings" @click="openSettings" />
       </template>
-      <DropdownMenuItem
-        class="profile-dropdown-menu-logout"
-        icon="logout"
-        label="Logout"
-        linkToNamedRoute="logout"
-      />
+      <DropdownMenuItem class="profile-dropdown-menu-logout" icon="logout" label="Logout" linkToNamedRoute="logout" />
     </template>
     <template #dropdownContentSecondary>
       <WorkspaceSettingsMenuItems
@@ -77,12 +43,7 @@
         @openIntegrationsModal="integrationsModalRef?.open()"
       />
       <template v-else>
-        <DropdownMenuItem
-          checkable
-          :checked="!userOverrideTheme"
-          icon="bolt"
-          @select="userOverrideTheme = null"
-        >
+        <DropdownMenuItem checkable :checked="!userOverrideTheme" icon="bolt" @select="userOverrideTheme = null">
           System theme
         </DropdownMenuItem>
         <DropdownMenuItem
@@ -122,8 +83,7 @@ import WorkspaceSettingsMenuItems from "./WorkspaceSettingsMenuItems.vue";
 
 const importModalRef = ref<InstanceType<typeof WorkspaceImportModal>>();
 const exportModalRef = ref<InstanceType<typeof WorkspaceExportModal>>();
-const integrationsModalRef =
-  ref<InstanceType<typeof WorkspaceIntegrationsModal>>();
+const integrationsModalRef = ref<InstanceType<typeof WorkspaceIntegrationsModal>>();
 
 defineProps({
   showTopLevelMenuItems: { type: Boolean },

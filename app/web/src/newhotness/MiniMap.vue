@@ -2,12 +2,7 @@
   <div
     id="minimap"
     class="w-48 h-32 border-2 rounded mb-xs"
-    :class="
-      themeClasses(
-        'bg-white/90 border-neutral-300',
-        'bg-black/90 border-neutral-600',
-      )
-    "
+    :class="themeClasses('bg-white/90 border-neutral-300', 'bg-black/90 border-neutral-600')"
   >
     <svg
       ref="minimapSvgRef"
@@ -45,7 +40,7 @@
 
 <script lang="ts" setup>
 import { computed, onUnmounted, ref, watch } from "vue";
-import * as d3 from "d3";
+import { select } from "d3";
 import { themeClasses } from "@si/vue-lib/design-system";
 import type { layoutNode, GraphData } from "./Map.vue";
 
@@ -97,10 +92,8 @@ const minimapTransform = computed(() => {
   const scale = Math.min(scaleX, scaleY) * 0.95; // Leave some padding
 
   // The key insight: viewport center should map to minimap center
-  const viewportCenterX =
-    props.viewportCoordinates.x + props.viewportCoordinates.width / 2;
-  const viewportCenterY =
-    props.viewportCoordinates.y + props.viewportCoordinates.height / 2;
+  const viewportCenterX = props.viewportCoordinates.x + props.viewportCoordinates.width / 2;
+  const viewportCenterY = props.viewportCoordinates.y + props.viewportCoordinates.height / 2;
 
   const minimapCenterX = MINIMAP_WIDTH / 2;
   const minimapCenterY = MINIMAP_HEIGHT / 2;
@@ -132,14 +125,10 @@ const viewportBounds = computed(() => {
   // Check if viewport coordinates match world bounds (viewing entire world)
   const tolerance = 1; // Small tolerance for floating point comparison
   const viewportMatchesWorld =
-    Math.abs(props.viewportCoordinates.x - props.worldBounds.minX) <
-      tolerance &&
-    Math.abs(props.viewportCoordinates.y - props.worldBounds.minY) <
-      tolerance &&
-    Math.abs(props.viewportCoordinates.width - props.worldBounds.width) <
-      tolerance &&
-    Math.abs(props.viewportCoordinates.height - props.worldBounds.height) <
-      tolerance;
+    Math.abs(props.viewportCoordinates.x - props.worldBounds.minX) < tolerance &&
+    Math.abs(props.viewportCoordinates.y - props.worldBounds.minY) < tolerance &&
+    Math.abs(props.viewportCoordinates.width - props.worldBounds.width) < tolerance &&
+    Math.abs(props.viewportCoordinates.height - props.worldBounds.height) < tolerance;
 
   if (viewportMatchesWorld) {
     // When viewing the entire world, viewport indicator should cover entire minimap
@@ -152,10 +141,8 @@ const viewportBounds = computed(() => {
   }
 
   // Convert viewport coordinates to minimap coordinate space using transform
-  const minimapX =
-    props.viewportCoordinates.x * transform.scale + transform.translateX;
-  const minimapY =
-    props.viewportCoordinates.y * transform.scale + transform.translateY;
+  const minimapX = props.viewportCoordinates.x * transform.scale + transform.translateX;
+  const minimapY = props.viewportCoordinates.y * transform.scale + transform.translateY;
   const minimapWidth = props.viewportCoordinates.width * transform.scale;
   const minimapHeight = props.viewportCoordinates.height * transform.scale;
 
@@ -171,7 +158,7 @@ const viewportBounds = computed(() => {
 const renderMinimap = () => {
   if (!minimapContentRef.value || !props.layoutData) return;
 
-  const minimapSvg = d3.select(minimapContentRef.value);
+  const minimapSvg = select(minimapContentRef.value);
   minimapSvg.selectAll("*").remove();
 
   const children = props.layoutData.children;
@@ -198,10 +185,8 @@ const renderSimplifiedMinimap = (
   const clusters = new Map<string, ClusterType>();
 
   children.forEach((node) => {
-    const clusterX =
-      Math.floor(node.x / adaptiveClusterSize) * adaptiveClusterSize;
-    const clusterY =
-      Math.floor(node.y / adaptiveClusterSize) * adaptiveClusterSize;
+    const clusterX = Math.floor(node.x / adaptiveClusterSize) * adaptiveClusterSize;
+    const clusterY = Math.floor(node.y / adaptiveClusterSize) * adaptiveClusterSize;
     const key = `${clusterX}-${clusterY}`;
 
     if (!clusters.has(key)) {
@@ -255,10 +240,7 @@ const renderIndividualNodes = (
     .style("opacity", "0.8");
 };
 
-const renderClusters = (
-  minimapSvg: d3.Selection<SVGGElement, unknown, null, undefined>,
-  clusters: ClusterType[],
-) => {
+const renderClusters = (minimapSvg: d3.Selection<SVGGElement, unknown, null, undefined>, clusters: ClusterType[]) => {
   const maxCount = Math.max(...clusters.map((c) => c.count));
 
   minimapSvg
@@ -274,9 +256,7 @@ const renderClusters = (
     .style("fill", (d) => {
       const isDark = document.body.classList.contains("dark");
       const opacity = Math.min(0.9, 0.4 + (d.count / maxCount) * 0.5);
-      return isDark
-        ? `rgba(75, 85, 99, ${opacity})`
-        : `rgba(107, 114, 128, ${opacity})`;
+      return isDark ? `rgba(75, 85, 99, ${opacity})` : `rgba(107, 114, 128, ${opacity})`;
     })
     .style("stroke", "none");
 };
@@ -295,10 +275,7 @@ const onMinimapMouseDown = (event: MouseEvent) => {
 
   // If clicking on viewport indicator, don't handle as general minimap click
   const target = event.target as SVGElement;
-  if (
-    target?.classList.contains("viewport-indicator") ||
-    target === viewportIndicatorRef.value
-  ) {
+  if (target?.classList.contains("viewport-indicator") || target === viewportIndicatorRef.value) {
     return;
   }
 };
@@ -381,10 +358,7 @@ const onMinimapClick = (event: MouseEvent) => {
   if (!clickWithNoDrag.value) return;
 
   const target = event.target as SVGElement;
-  if (
-    target?.classList.contains("viewport-indicator") ||
-    target === viewportIndicatorRef.value
-  ) {
+  if (target?.classList.contains("viewport-indicator") || target === viewportIndicatorRef.value) {
     return;
   }
 
@@ -407,10 +381,8 @@ const onMinimapClick = (event: MouseEvent) => {
   const targetViewportCenterY = worldY;
 
   // Calculate the delta from current viewport center to target center
-  const currentViewportCenterX =
-    props.viewportCoordinates.x + props.viewportCoordinates.width / 2;
-  const currentViewportCenterY =
-    props.viewportCoordinates.y + props.viewportCoordinates.height / 2;
+  const currentViewportCenterX = props.viewportCoordinates.x + props.viewportCoordinates.width / 2;
+  const currentViewportCenterY = props.viewportCoordinates.y + props.viewportCoordinates.height / 2;
 
   const layoutDx = targetViewportCenterX - currentViewportCenterX;
   const layoutDy = targetViewportCenterY - currentViewportCenterY;

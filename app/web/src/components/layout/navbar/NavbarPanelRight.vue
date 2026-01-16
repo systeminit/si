@@ -1,18 +1,12 @@
 <template>
-  <div
-    class="flex flex-row flex-1 basis-1/2 items-center min-w-0 h-full justify-end"
-  >
+  <div class="flex flex-row flex-1 basis-1/2 items-center min-w-0 h-full justify-end">
     <template v-if="!invalidWorkspace">
       <Collaborators />
       <Notifications />
     </template>
 
     <template v-if="!collapse">
-      <NavbarButton
-        tooltipText="Documentation"
-        icon="question-circle"
-        externalLinkTo="https://docs.systeminit.com/"
-      />
+      <NavbarButton tooltipText="Documentation" icon="question-circle" externalLinkTo="https://docs.systeminit.com/" />
 
       <NavbarButton
         tooltipText="Discord Community"

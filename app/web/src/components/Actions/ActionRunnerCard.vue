@@ -40,10 +40,7 @@
           :message="
             [
               `${formatTitle(runner.actionKind)} ${runner.schemaName}`,
-              runner.resource.message ??
-                (runner.resource.status === 'ok'
-                  ? 'Completed successfully'
-                  : 'Error'),
+              runner.resource.message ?? (runner.resource.status === 'ok' ? 'Completed successfully' : 'Error'),
             ].filter((f) => f.length > 0)
           "
         />
@@ -59,10 +56,7 @@
       </div>
     </template>
     <template #staticContent>
-      <div
-        v-if="codeViewerShowing && runner.resource?.payload"
-        class="relative w-full"
-      >
+      <div v-if="codeViewerShowing && runner.resource?.payload" class="relative w-full">
         <CodeViewer
           :code="JSON.stringify(runner.resource.payload, null, 2)"
           class="dark:text-neutral-50 text-neutral-900"
@@ -73,10 +67,9 @@
               <ActionRunnerDetails
                 :health="runner.resource.status"
                 :message="
-                  [
-                    `${formatTitle(runner.actionKind)} ${runner.schemaName}`,
-                    runner.resource.message ?? '',
-                  ].filter((f) => f.length > 0)
+                  [`${formatTitle(runner.actionKind)} ${runner.schemaName}`, runner.resource.message ?? ''].filter(
+                    (f) => f.length > 0,
+                  )
                 "
               />
             </div>
@@ -122,16 +115,12 @@ const componentNameTooltip = computed(() => {
   if (componentNameRef.value) {
     if (!componentsStore.allComponentsById[props.runner.componentId]) {
       return {
-        content: `Component "${
-          componentNameRef.value.textContent
-        }" does not exist ${
+        content: `Component "${componentNameRef.value.textContent}" does not exist ${
           changeSetsStore.headSelected ? "on head" : "in this change set"
         }.`,
         delay: { show: 700, hide: 10 },
       };
-    } else if (
-      componentNameRef.value.scrollWidth > componentNameRef.value.offsetWidth
-    ) {
+    } else if (componentNameRef.value.scrollWidth > componentNameRef.value.offsetWidth) {
       return {
         content: componentNameRef.value.textContent,
         delay: { show: 700, hide: 10 },
@@ -155,9 +144,7 @@ function onClick() {
   }
 }
 
-const isHover = computed(
-  () => viewStore.hoveredComponentId === props.runner.componentId,
-);
+const isHover = computed(() => viewStore.hoveredComponentId === props.runner.componentId);
 
 function onHoverStart() {
   if (componentsStore.allComponentsById[props.runner.componentId]) {

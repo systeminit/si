@@ -6,18 +6,9 @@ import { ref, Ref, watchEffect, WatchEffectOptions } from "vue";
  * Debounced: async function will not be run more than once at a time; if dependencies change
  * while the async function is running, it will run again after completion.
  */
-export function computedAsyncDebounce<T>(
-  getter: () => Promise<T>,
-  initialValue: T,
-): Ref<T>;
-export function computedAsyncDebounce<T>(
-  getter: () => Promise<T>,
-  initialValue?: T,
-): Ref<T | undefined>;
-export function computedAsyncDebounce<T>(
-  getter: () => Promise<T>,
-  initialValue?: T,
-) {
+export function computedAsyncDebounce<T>(getter: () => Promise<T>, initialValue: T): Ref<T>;
+export function computedAsyncDebounce<T>(getter: () => Promise<T>, initialValue?: T): Ref<T | undefined>;
+export function computedAsyncDebounce<T>(getter: () => Promise<T>, initialValue?: T) {
   const result = ref<T>();
   result.value = initialValue;
   watchEffectAsyncDebounce(async () => {
@@ -32,10 +23,7 @@ export function computedAsyncDebounce<T>(
  * Debounced: async function will not be run more than once at a time; if dependencies change
  * while the async function is running, it will run again after completion.
  */
-export function watchEffectAsyncDebounce(
-  f: () => Promise<void>,
-  options?: WatchEffectOptions,
-) {
+export function watchEffectAsyncDebounce(f: () => Promise<void>, options?: WatchEffectOptions) {
   const hasPause = ref(false);
   const watchHandle = watchEffect(async () => {
     // Wait until we've got pause and resume set before we start actually running (i.e. don't

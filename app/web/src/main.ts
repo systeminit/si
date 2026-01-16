@@ -80,30 +80,17 @@ const observeError = (message: string, stack: string, components?: string) => {
 // This handles local errors
 window.onerror = (message, source, lineno, colno, error) => {
   // ignoring these
-  if (
-    message
-      .toString()
-      .includes("TypeError: NetworkError when attempting to fetch resource.")
-  )
-    return;
+  if (message.toString().includes("TypeError: NetworkError when attempting to fetch resource.")) return;
 
   if (!error) observeError(message.toString(), "");
   else if (error.stack) observeError(message.toString(), error.stack);
 };
 
 // This handles prod-build errors
-app.config.errorHandler = (
-  err: unknown,
-  instance: ComponentPublicInstance | null,
-) => {
+app.config.errorHandler = (err: unknown, instance: ComponentPublicInstance | null) => {
   // ignoring these
   if (!(err instanceof Error)) return;
-  if (
-    err.message
-      .toString()
-      .includes("TypeError: NetworkError when attempting to fetch resource.")
-  )
-    return;
+  if (err.message.toString().includes("TypeError: NetworkError when attempting to fetch resource.")) return;
 
   if (err.stack) {
     const componentDesc = [];
@@ -114,9 +101,7 @@ app.config.errorHandler = (
         if (!inst) break;
         if (inst.$.type.__name === "AppLayout") break; // dont need anything higher than this
 
-        componentDesc.push(
-          `${inst.$.type.__name}: ${JSON.stringify(inst.$props)}`,
-        );
+        componentDesc.push(`${inst.$.type.__name}: ${JSON.stringify(inst.$props)}`);
         if (inst.$parent) components.push(inst.$parent);
       }
     }
@@ -183,11 +168,7 @@ const filterToasts = (toasts: any[]) => {
 };
 
 const filterBeforeCreate = (toast: any, toasts: any[]): any | false => {
-  if (
-    ["MaintenanceMode", "RebaseOnBase"].includes(
-      toast.content.component?.__name,
-    )
-  ) {
+  if (["MaintenanceMode", "RebaseOnBase"].includes(toast.content.component?.__name)) {
     // Basically only have one maintenanace toast in the toast queue
     // at once as they time out serially, which is a bit of a pain with
     // longer timeouts

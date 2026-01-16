@@ -1,8 +1,5 @@
 export class DefaultMap<K, V> extends Map<K, V> {
-  constructor(
-    private getDefaultValue: (key: K) => V,
-    entries?: readonly (readonly [K, V])[] | null,
-  ) {
+  constructor(private getDefaultValue: (key: K) => V, entries?: readonly (readonly [K, V])[] | null) {
     super(entries);
   }
 
@@ -11,7 +8,6 @@ export class DefaultMap<K, V> extends Map<K, V> {
       this.set(key, this.getDefaultValue(key));
     }
 
-    /* eslint-disable @typescript-eslint/no-non-null-assertion */
     return super.get(key)!;
   };
 }

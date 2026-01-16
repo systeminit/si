@@ -1,9 +1,7 @@
 <template>
   <Modal
     ref="modalRef"
-    :size="
-      attachExisting && selectedExistingFunc.value !== nilId() ? '4xl' : 'md'
-    "
+    :size="attachExisting && selectedExistingFunc.value !== nilId() ? '4xl' : 'md'"
     :title="title"
     @close="onClose"
   >
@@ -12,25 +10,12 @@
         :class="
           clsx(
             'flex flex-col gap-y-4 min-w-[250px]',
-            attachExisting && selectedExistingFunc.value !== nilId()
-              ? 'mr-sm'
-              : 'flex-grow',
+            attachExisting && selectedExistingFunc.value !== nilId() ? 'mr-sm' : 'flex-grow',
           )
         "
       >
-        <SelectMenu
-          v-model="funcKind"
-          :options="funcKindOptions"
-          label="Kind"
-          type="dropdown"
-        />
-        <VormInput
-          v-if="!attachExisting"
-          v-model="name"
-          label="Name"
-          placeholder="The name of the function"
-          required
-        />
+        <SelectMenu v-model="funcKind" :options="funcKindOptions" label="Kind" type="dropdown" />
+        <VormInput v-if="!attachExisting" v-model="name" label="Name" placeholder="The name of the function" required />
         <SelectMenu
           v-if="attachExisting"
           v-model="selectedExistingFunc"
@@ -83,34 +68,16 @@
           type="dropdown"
           canFilter
         />
-        <ErrorMessage
-          v-if="createFuncReqStatus.isError && createFuncStarted"
-          :requestStatus="createFuncReqStatus"
-        />
-        <template
-          v-if="attachExisting && funcKind.value === FuncKind.Attribute"
-        >
-          <h1 class="pt-2 text-neutral-700 type-bold-sm dark:text-neutral-50">
-            Expected Function Arguments:
-          </h1>
-          <h2 class="text-sm">
-            Below is the source of the data for each function argument listed.
-          </h2>
+        <ErrorMessage v-if="createFuncReqStatus.isError && createFuncStarted" :requestStatus="createFuncReqStatus" />
+        <template v-if="attachExisting && funcKind.value === FuncKind.Attribute">
+          <h1 class="pt-2 text-neutral-700 type-bold-sm dark:text-neutral-50">Expected Function Arguments:</h1>
+          <h2 class="text-sm">Below is the source of the data for each function argument listed.</h2>
           <ul>
-            <li
-              v-for="binding in editableBindings"
-              :key="binding.funcArgumentId"
-            >
-              <h1
-                class="pt-2 text-neutral-700 type-bold-sm dark:text-neutral-50"
-              >
+            <li v-for="binding in editableBindings" :key="binding.funcArgumentId">
+              <h1 class="pt-2 text-neutral-700 type-bold-sm dark:text-neutral-50">
                 {{ funcArgumentName(binding.funcArgumentId) ?? "none" }}
               </h1>
-              <SelectMenu
-                v-model="binding.binding"
-                :options="inputSourceOptions"
-                canFilter
-              />
+              <SelectMenu v-model="binding.binding" :options="inputSourceOptions" canFilter />
             </li>
           </ul>
         </template>
@@ -126,19 +93,12 @@
           @click="onAttach"
         />
       </div>
-      <div
-        v-if="attachExisting && selectedExistingFunc.value !== nilId()"
-        class="overflow-y-scroll"
-      >
+      <div v-if="attachExisting && selectedExistingFunc.value !== nilId()" class="overflow-y-scroll">
         <div v-if="loadFuncDetailsReq?.value.isPending">
           <RequestStatusMessage :requestStatus="loadFuncDetailsReq.value" />
         </div>
         <CodeEditor
-          v-if="
-            loadFuncDetailsReq &&
-            loadFuncDetailsReq?.value.isSuccess &&
-            selectedFuncCode
-          "
+          v-if="loadFuncDetailsReq && loadFuncDetailsReq?.value.isSuccess && selectedFuncCode"
           :id="codeEditorId"
           v-model="selectedFuncCode"
           :recordId="selectedExistingFunc.value as string"
@@ -154,14 +114,7 @@
 
 <script lang="ts" setup>
 import { computed, ref, watch } from "vue";
-import {
-  ErrorMessage,
-  Modal,
-  RequestStatusMessage,
-  useModal,
-  VButton,
-  VormInput,
-} from "@si/vue-lib/design-system";
+import { ErrorMessage, Modal, RequestStatusMessage, useModal, VButton, VormInput } from "@si/vue-lib/design-system";
 import clsx from "clsx";
 import * as _ from "lodash-es";
 import { ActionKind } from "@/api/sdf/dal/action";
@@ -182,15 +135,8 @@ import {
   AttributeArgumentBinding,
   Management,
 } from "@/api/sdf/dal/func";
-import {
-  outputSocketsAndPropsFor,
-  inputSocketsAndPropsFor,
-  SchemaVariantId,
-} from "@/api/sdf/dal/schema";
-import SelectMenu, {
-  Option,
-  GroupedOptions,
-} from "@/components/SelectMenu.vue";
+import { outputSocketsAndPropsFor, inputSocketsAndPropsFor, SchemaVariantId } from "@/api/sdf/dal/schema";
+import SelectMenu, { Option, GroupedOptions } from "@/components/SelectMenu.vue";
 import { useFuncStore } from "@/store/func/funcs.store";
 import { useAssetStore } from "@/store/asset.store";
 import { nilId } from "@/utils/nilId";
@@ -208,9 +154,7 @@ const createFuncStarted = ref(false);
 const createFuncReqStatus = funcStore.getRequestStatus("CREATE_FUNC");
 
 const schemaVariantId = computed(() =>
-  props.schemaVariantId
-    ? assetStore.variantFromListById[props.schemaVariantId]?.schemaVariantId
-    : undefined,
+  props.schemaVariantId ? assetStore.variantFromListById[props.schemaVariantId]?.schemaVariantId : undefined,
 );
 
 const showLoading = computed(() => createFuncReqStatus.value.isPending);
@@ -231,9 +175,7 @@ const noneFunction = {
 };
 const selectedExistingFunc = ref<Option>(noneFunction);
 const codeEditorId = computed(() => `func-${selectedExistingFunc.value.value}`);
-const selectedExistingFuncSummary = computed(
-  () => funcStore.funcsById[selectedExistingFunc.value.value as string],
-);
+const selectedExistingFuncSummary = computed(() => funcStore.funcsById[selectedExistingFunc.value.value as string]);
 const selectedFuncCode = ref<string>("");
 const loadFuncDetailsReq = computed(() => {
   const id = selectedExistingFunc.value.value as string;
@@ -281,15 +223,10 @@ const attributeOutputLocationOptions = ref<GroupedOptions>({});
 const attrToValidate = ref<string | undefined>();
 
 const assetName = computed(
-  () =>
-    assetStore.selectedSchemaVariant?.displayName ??
-    assetStore.selectedSchemaVariant?.schemaName ??
-    " none",
+  () => assetStore.selectedSchemaVariant?.displayName ?? assetStore.selectedSchemaVariant?.schemaName ?? " none",
 );
 
-const existingOrNew = computed(() =>
-  attachExisting.value ? "existing" : "new",
-);
+const existingOrNew = computed(() => (attachExisting.value ? "existing" : "new"));
 
 const title = computed(() =>
   assetName.value
@@ -301,13 +238,9 @@ const modalRef = ref<InstanceType<typeof Modal>>();
 const { open: openModal, close } = useModal(modalRef);
 
 const attachEnabled = computed(() => {
-  const nameIsSet =
-    attachExisting.value || !!(name.value && name.value.length > 0);
-  const hasOutput =
-    funcKind.value.value !== FuncKind.Attribute ||
-    !!attributeOutputLocation.value;
-  const existingSelected =
-    !attachExisting.value || selectedExistingFunc.value.value !== nilId();
+  const nameIsSet = attachExisting.value || !!(name.value && name.value.length > 0);
+  const hasOutput = funcKind.value.value !== FuncKind.Attribute || !!attributeOutputLocation.value;
+  const existingSelected = !attachExisting.value || selectedExistingFunc.value.value !== nilId();
   const argsConfigured =
     !attachExisting.value ||
     funcKind.value.value !== FuncKind.Attribute ||
@@ -316,11 +249,7 @@ const attachEnabled = computed(() => {
   return nameIsSet && hasOutput && existingSelected && argsConfigured;
 });
 
-const open = async (
-  existing?: boolean,
-  variant?: FuncKind,
-  funcId?: FuncId,
-) => {
+const open = async (existing?: boolean, variant?: FuncKind, funcId?: FuncId) => {
   attachExisting.value = existing ?? false;
 
   attributeOutputLocation.value = noneOutput;
@@ -335,16 +264,14 @@ const open = async (
   isRefresh.value = false;
   isUpdate.value = false;
   selectedFuncCode.value = "";
-  selectedExistingFunc.value =
-    existingFuncOptions.value.find((o) => o.value === funcId) || noneFunction;
+  selectedExistingFunc.value = existingFuncOptions.value.find((o) => o.value === funcId) || noneFunction;
   attrToValidate.value = undefined;
 
   attributeOutputLocationOptions.value = {};
   if (props.schemaVariantId) {
     const schemaVariant = assetStore.variantFromListById[props.schemaVariantId];
     if (schemaVariant) {
-      attributeOutputLocationOptions.value =
-        outputSocketsAndPropsFor(schemaVariant);
+      attributeOutputLocationOptions.value = outputSocketsAndPropsFor(schemaVariant);
     }
   }
 
@@ -367,12 +294,8 @@ const inputSourceOptions = computed<GroupedOptions>(() => {
 
   return {};
 });
-const funcArgumentName = (
-  funcArgumentId: FuncArgumentId,
-): string | undefined => {
-  return selectedExistingFuncSummary.value?.arguments
-    .filter((a) => a.id === funcArgumentId)
-    .pop()?.name;
+const funcArgumentName = (funcArgumentId: FuncArgumentId): string | undefined => {
+  return selectedExistingFuncSummary.value?.arguments.filter((a) => a.id === funcArgumentId).pop()?.name;
 };
 const noneSource = { label: "select source", value: nilId() };
 
@@ -383,40 +306,29 @@ const commonBindingConstruction = () => {
   } as unknown;
   switch (funcKind.value.value) {
     case FuncKind.Authentication:
-      // eslint-disable-next-line no-case-declarations
       const auth = binding as Authentication;
       auth.bindingKind = FuncBindingKind.Authentication;
       return auth;
     case FuncKind.Action:
-      // eslint-disable-next-line no-case-declarations
       const action = binding as Action;
       action.bindingKind = FuncBindingKind.Action;
       if (isCreate.value) action.kind = ActionKind.Create;
       if (isUpdate.value) action.kind = ActionKind.Update;
       if (isDelete.value) action.kind = ActionKind.Destroy;
       if (isRefresh.value) action.kind = ActionKind.Refresh;
-      if (
-        !isRefresh.value &&
-        !isDelete.value &&
-        !isCreate.value &&
-        !isUpdate.value
-      )
-        action.kind = ActionKind.Manual;
+      if (!isRefresh.value && !isDelete.value && !isCreate.value && !isUpdate.value) action.kind = ActionKind.Manual;
       return action;
     case FuncKind.CodeGeneration:
-      // eslint-disable-next-line no-case-declarations
       const bind = binding as CodeGeneration;
       bind.inputs = [];
       bind.bindingKind = FuncBindingKind.CodeGeneration;
       return bind;
     case FuncKind.Qualification:
-      // eslint-disable-next-line no-case-declarations
       const qual = binding as Qualification;
       qual.inputs = [];
       qual.bindingKind = FuncBindingKind.Qualification;
       return qual;
     case FuncKind.Management:
-      // eslint-disable-next-line no-case-declarations
       const mgmt = binding as Management;
       mgmt.bindingKind = FuncBindingKind.Management;
       return mgmt;
@@ -443,8 +355,7 @@ const attachExistingFunc = async () => {
         funcArgumentId: b.funcArgumentId,
       } as AttributeArgumentBinding;
       const bString = b.binding.value as string;
-      if (bString.startsWith("s_"))
-        arg.inputSocketId = bString.replace("s_", "");
+      if (bString.startsWith("s_")) arg.inputSocketId = bString.replace("s_", "");
       else if (bString.startsWith("p_")) arg.propId = bString.replace("p_", "");
 
       argBindings.push(arg);
@@ -457,10 +368,7 @@ const attachExistingFunc = async () => {
     bindings.push(attr);
   }
   if (bindings.length > 0 && selectedExistingFunc.value.value !== nilId()) {
-    const resp = await funcStore.CREATE_BINDING(
-      selectedExistingFunc.value.value as string,
-      bindings,
-    );
+    const resp = await funcStore.CREATE_BINDING(selectedExistingFunc.value.value as string, bindings);
     if (resp.result.success) close();
   }
 };

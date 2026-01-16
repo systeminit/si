@@ -14,13 +14,7 @@ import { DefaultMap } from "@/utils/defaultmap";
 import { ComponentId } from "@/api/sdf/dal/component";
 import { WorkspacePk } from "@/api/sdf/dal/workspace";
 import { ViewId } from "@/api/sdf/dal/views";
-import {
-  Connection,
-  DefaultSubscriptions,
-  EntityKind,
-  GlobalEntity,
-  PossibleConnection,
-} from "./entity_kind_types";
+import { Connection, DefaultSubscriptions, EntityKind, GlobalEntity, PossibleConnection } from "./entity_kind_types";
 
 export type Column = string;
 export type Columns = Column[];
@@ -32,21 +26,11 @@ export type BustCacheFn = (
   noBroadcast?: boolean,
 ) => void;
 
-export type OutgoingConnections = DefaultMap<
-  ComponentId,
-  Record<string, Connection>
->;
+export type OutgoingConnections = DefaultMap<ComponentId, Record<string, Connection>>;
 
-export type IncomingManagementConnections = DefaultMap<
-  string,
-  Record<string, Connection>
->;
+export type IncomingManagementConnections = DefaultMap<string, Record<string, Connection>>;
 
-export type ConnStatusFn = (
-  workspaceId: string,
-  connected: boolean,
-  noBroadcast?: boolean,
-) => void;
+export type ConnStatusFn = (workspaceId: string, connected: boolean, noBroadcast?: boolean) => void;
 
 export type UpdateFn = (
   workspaceId: string,
@@ -58,16 +42,8 @@ export type UpdateFn = (
   removed: boolean,
   noBroadcast?: boolean,
 ) => void;
-export type RainbowFn = (
-  changeSetId: ChangeSetId,
-  label: string,
-  noBroadcast?: boolean,
-) => void;
-export type LobbyExitFn = (
-  workspacePk: string,
-  changeSetId: string,
-  noBroadcast?: boolean,
-) => void;
+export type RainbowFn = (changeSetId: ChangeSetId, label: string, noBroadcast?: boolean) => void;
+export type LobbyExitFn = (workspacePk: string, changeSetId: string, noBroadcast?: boolean) => void;
 
 export type MjolnirBulk = Array<{
   kind: EntityKind;
@@ -153,10 +129,7 @@ export interface SharedDBInterface {
   addBearers(bearers: { [key: string]: string }): Promise<void>;
   initSocket(workspaceId: string): Promise<void>;
   unregisterRemote(id: string): void;
-  registerRemote(
-    id: string,
-    remote: Comlink.Remote<TabDBInterface>,
-  ): Promise<void>;
+  registerRemote(id: string, remote: Comlink.Remote<TabDBInterface>): Promise<void>;
   broadcastMessage(message: BroadcastMessage): Promise<void>;
   setLeader(remoteId: string): Promise<void>;
   hasLeader(): Promise<boolean>;
@@ -164,15 +137,8 @@ export interface SharedDBInterface {
   initBifrost(gotLockPort: MessagePort): Promise<void>;
   bifrostClose(): Promise<void>;
   bifrostReconnect(): Promise<void>;
-  linkNewChangeset(
-    workspaceId: string,
-    headChangeSetId: string,
-    changeSetId: string,
-  ): Promise<void>;
-  getPossibleConnections(
-    workspaceId: string,
-    changeSetId: string,
-  ): Promise<PossibleConnection[]>;
+  linkNewChangeset(workspaceId: string, headChangeSetId: string, changeSetId: string): Promise<void>;
+  getPossibleConnections(workspaceId: string, changeSetId: string): Promise<PossibleConnection[]>;
   getOutgoingConnectionsByComponentId(
     workspaceId: string,
     changeSetId: ChangeSetId,
@@ -181,58 +147,17 @@ export interface SharedDBInterface {
     workspaceId: string,
     changeSetId: ChangeSetId,
   ): Promise<IncomingManagementConnections | undefined>;
-  getOutgoingConnectionsCounts(
-    workspaceId: string,
-    changeSetId: ChangeSetId,
-  ): Promise<Record<ComponentId, number>>;
-  getComponentDetails(
-    workspaceId: string,
-    changeSetId: ChangeSetId,
-  ): Promise<Record<ComponentId, ComponentInfo>>;
-  getComponentsInViews(
-    workspaceId: string,
-    changeSetId: ChangeSetId,
-  ): Promise<Record<ViewId, Set<ComponentId>>>;
-  getComponentsInOnlyOneView(
-    workspaceId: string,
-    changeSetId: ChangeSetId,
-  ): Promise<Record<ComponentId, ViewId>>;
-  getSchemaMembers(
-    workspaceId: string,
-    changeSetId: ChangeSetId,
-  ): Promise<string>;
-  getDefaultSubscriptions(
-    workspaceId: string,
-    changeSetId: ChangeSetId,
-  ): Promise<DefaultSubscriptions>;
-  getGlobal(
-    workspaceId: string,
-    kind: GlobalEntity,
-    id: Id,
-  ): Promise<-1 | AtomDocument>;
-  get(
-    workspaceId: string,
-    changeSetId: ChangeSetId,
-    kind: Gettable,
-    id: Id,
-  ): Promise<-1 | AtomDocument>;
-  getExists(
-    workspaceId: string,
-    changeSetId: ChangeSetId,
-    kind: Gettable,
-    id: Id,
-  ): Promise<boolean>;
-  getList(
-    workspaceId: string,
-    changeSetId: ChangeSetId,
-    kind: Listable,
-    id: Id,
-  ): Promise<string>;
-  getKind(
-    workspaceId: string,
-    changeSetId: ChangeSetId,
-    kind: EntityKind,
-  ): Promise<string[]>;
+  getOutgoingConnectionsCounts(workspaceId: string, changeSetId: ChangeSetId): Promise<Record<ComponentId, number>>;
+  getComponentDetails(workspaceId: string, changeSetId: ChangeSetId): Promise<Record<ComponentId, ComponentInfo>>;
+  getComponentsInViews(workspaceId: string, changeSetId: ChangeSetId): Promise<Record<ViewId, Set<ComponentId>>>;
+  getComponentsInOnlyOneView(workspaceId: string, changeSetId: ChangeSetId): Promise<Record<ComponentId, ViewId>>;
+  getSchemaMembers(workspaceId: string, changeSetId: ChangeSetId): Promise<string>;
+  getDefaultSubscriptions(workspaceId: string, changeSetId: ChangeSetId): Promise<DefaultSubscriptions>;
+  getGlobal(workspaceId: string, kind: GlobalEntity, id: Id): Promise<-1 | AtomDocument>;
+  get(workspaceId: string, changeSetId: ChangeSetId, kind: Gettable, id: Id): Promise<-1 | AtomDocument>;
+  getExists(workspaceId: string, changeSetId: ChangeSetId, kind: Gettable, id: Id): Promise<boolean>;
+  getList(workspaceId: string, changeSetId: ChangeSetId, kind: Listable, id: Id): Promise<string>;
+  getKind(workspaceId: string, changeSetId: ChangeSetId, kind: EntityKind): Promise<string[]>;
   /**
    * Query AttributeTree MVs in a changeset, looking for components that match the given terms.
    *
@@ -246,21 +171,12 @@ export interface SharedDBInterface {
     changeSetId: ChangeSetId,
     terms: QueryAttributesTerm[],
   ): Promise<ComponentId[]>;
-  mjolnir(
-    workspaceId: string,
-    changeSetId: ChangeSetId,
-    kind: EntityKind,
-    id: Id,
-    checksum?: Checksum,
-  ): Promise<void>;
+  mjolnir(workspaceId: string, changeSetId: ChangeSetId, kind: EntityKind, id: Id, checksum?: Checksum): Promise<void>;
   showInterest(workspaceId: string, changeSetId: ChangeSetId): Promise<void>;
   setConnections(connections: Record<string, boolean>): Promise<void>;
   getConnections(): Promise<Record<string, boolean>>;
 
-  changeSetExists(
-    workspaceId: string,
-    changeSetId: ChangeSetId,
-  ): Promise<boolean>;
+  changeSetExists(workspaceId: string, changeSetId: ChangeSetId): Promise<boolean>;
   niflheim(workspaceId: string, changeSetId: ChangeSetId): Promise<-1 | 0 | 1>;
   syncAtoms(workspaceId: string, changeSetId: ChangeSetId): Promise<void>;
   vanaheim(workspaceId: string): Promise<boolean>;
@@ -271,16 +187,9 @@ export interface SharedDBInterface {
         sql: FlexibleString;
       },
   ): Promise<SqlValue[][]>;
-  pruneAtomsForClosedChangeSet(
-    workspaceId: WorkspacePk,
-    changeSetId: ChangeSetId,
-  ): Promise<void>;
+  pruneAtomsForClosedChangeSet(workspaceId: WorkspacePk, changeSetId: ChangeSetId): Promise<void>;
   bobby(): Promise<void>;
-  ragnarok(
-    workspaceId: string,
-    changeSetId: string,
-    noColdStart?: boolean,
-  ): Promise<void>;
+  ragnarok(workspaceId: string, changeSetId: string, noColdStart?: boolean): Promise<void>;
   // show me everything
   odin(changeSetId: ChangeSetId): Promise<object>;
 }
@@ -297,75 +206,21 @@ export interface TabDBInterface {
   initBifrost(gotLockPort: MessagePort, userPk: string): Promise<string>;
   bifrostClose(): void;
   bifrostReconnect(): void;
-  linkNewChangeset(
-    workspaceId: string,
-    headChangeSetId: string,
-    changeSetId: string,
-  ): Promise<void>;
-  getPossibleConnections(
-    workspaceId: string,
-    changeSetId: string,
-  ): PossibleConnection[];
-  getOutgoingConnectionsByComponentId(
-    workspaceId: string,
-    changeSetId: ChangeSetId,
-  ): OutgoingConnections;
-  getIncomingManagementByComponentId(
-    workspaceId: string,
-    changeSetId: ChangeSetId,
-  ): IncomingManagementConnections;
-  getOutgoingConnectionsCounts(
-    workspaceId: string,
-    changeSetId: ChangeSetId,
-  ): Record<ComponentId, number>;
-  getComponentDetails(
-    workspaceId: string,
-    changeSetId: ChangeSetId,
-  ): Promise<Record<ComponentId, ComponentInfo>>;
-  getComponentsInViews(
-    workspaceId: string,
-    changeSetId: ChangeSetId,
-  ): Promise<Record<ViewId, Set<ComponentId>>>;
-  getComponentsInOnlyOneView(
-    workspaceId: string,
-    changeSetId: ChangeSetId,
-  ): Promise<Record<ComponentId, ViewId>>;
-  getSchemaMembers(
-    workspaceId: string,
-    changeSetId: ChangeSetId,
-  ): Promise<string>;
-  getDefaultSubscriptions(
-    workspaceId: string,
-    changeSetId: ChangeSetId,
-  ): DefaultSubscriptions;
-  getGlobal(
-    workspaceId: string,
-    kind: GlobalEntity,
-    id: Id,
-  ): Promise<-1 | AtomDocument>;
-  get(
-    workspaceId: string,
-    changeSetId: ChangeSetId,
-    kind: Gettable,
-    id: Id,
-  ): Promise<-1 | AtomDocument>;
-  getExists(
-    workspaceId: string,
-    changeSetId: ChangeSetId,
-    kind: Gettable,
-    id: Id,
-  ): Promise<boolean>;
-  getKind(
-    workspaceId: string,
-    changeSetId: ChangeSetId,
-    kind: EntityKind,
-  ): Promise<string[]>;
-  getList(
-    workspaceId: string,
-    changeSetId: ChangeSetId,
-    kind: Listable,
-    id: Id,
-  ): Promise<string>;
+  linkNewChangeset(workspaceId: string, headChangeSetId: string, changeSetId: string): Promise<void>;
+  getPossibleConnections(workspaceId: string, changeSetId: string): PossibleConnection[];
+  getOutgoingConnectionsByComponentId(workspaceId: string, changeSetId: ChangeSetId): OutgoingConnections;
+  getIncomingManagementByComponentId(workspaceId: string, changeSetId: ChangeSetId): IncomingManagementConnections;
+  getOutgoingConnectionsCounts(workspaceId: string, changeSetId: ChangeSetId): Record<ComponentId, number>;
+  getComponentDetails(workspaceId: string, changeSetId: ChangeSetId): Promise<Record<ComponentId, ComponentInfo>>;
+  getComponentsInViews(workspaceId: string, changeSetId: ChangeSetId): Promise<Record<ViewId, Set<ComponentId>>>;
+  getComponentsInOnlyOneView(workspaceId: string, changeSetId: ChangeSetId): Promise<Record<ComponentId, ViewId>>;
+  getSchemaMembers(workspaceId: string, changeSetId: ChangeSetId): Promise<string>;
+  getDefaultSubscriptions(workspaceId: string, changeSetId: ChangeSetId): DefaultSubscriptions;
+  getGlobal(workspaceId: string, kind: GlobalEntity, id: Id): Promise<-1 | AtomDocument>;
+  get(workspaceId: string, changeSetId: ChangeSetId, kind: Gettable, id: Id): Promise<-1 | AtomDocument>;
+  getExists(workspaceId: string, changeSetId: ChangeSetId, kind: Gettable, id: Id): Promise<boolean>;
+  getKind(workspaceId: string, changeSetId: ChangeSetId, kind: EntityKind): Promise<string[]>;
+  getList(workspaceId: string, changeSetId: ChangeSetId, kind: Listable, id: Id): Promise<string>;
   /**
    * Query AttributeTree MVs in a changeset, looking for components that match the given terms.
    *
@@ -379,19 +234,8 @@ export interface TabDBInterface {
     changeSetId: ChangeSetId,
     terms: QueryAttributesTerm[],
   ): Promise<ComponentId[]>;
-  mjolnirBulk(
-    workspaceId: string,
-    changeSetId: ChangeSetId,
-    objs: MjolnirBulk,
-    indexChecksum: string,
-  ): Promise<void>;
-  mjolnir(
-    workspaceId: string,
-    changeSetId: ChangeSetId,
-    kind: EntityKind,
-    id: Id,
-    checksum?: Checksum,
-  ): void;
+  mjolnirBulk(workspaceId: string, changeSetId: ChangeSetId, objs: MjolnirBulk, indexChecksum: string): Promise<void>;
+  mjolnir(workspaceId: string, changeSetId: ChangeSetId, kind: EntityKind, id: Id, checksum?: Checksum): void;
   partialKeyFromKindAndId(kind: EntityKind, id: Id): QueryKey;
   kindAndIdFromKey(key: QueryKey): { kind: EntityKind; id: Id };
   addListenerBustCache(fn: BustCacheFn): void;
@@ -400,23 +244,14 @@ export interface TabDBInterface {
   addListenerLobbyExit(fn: LobbyExitFn): void;
   addAtomUpdated(fn: UpdateFn): void;
   addConnStatusFn(fn: ConnStatusFn): void;
-  changeSetExists(
-    workspaceId: string,
-    changeSetId: ChangeSetId,
-  ): Promise<boolean>;
+  changeSetExists(workspaceId: string, changeSetId: ChangeSetId): Promise<boolean>;
   niflheim(workspaceId: string, changeSetId: ChangeSetId): Promise<-1 | 0 | 1>;
   syncAtoms(workspaceId: string, changeSetId: ChangeSetId): Promise<void>;
   vanaheim(workspaceId: string): Promise<boolean>;
-  pruneAtomsForClosedChangeSet(
-    workspaceId: WorkspacePk,
-    changeSetId: ChangeSetId,
-  ): void;
+  pruneAtomsForClosedChangeSet(workspaceId: WorkspacePk, changeSetId: ChangeSetId): void;
   /* these are used for testing purposes, and should not be used outside the web worker in production code */
   oneInOne(rows: SqlValue[][]): SqlValue | typeof NOROW;
-  bulkCreateAtoms(
-    indexObjects: (BulkSuccess | AtomWithDocument)[],
-    chunkSize?: number,
-  ): void;
+  bulkCreateAtoms(indexObjects: (BulkSuccess | AtomWithDocument)[], chunkSize?: number): void;
   bulkInsertAtomMTMs(
     indexObjects: (BulkSuccess | AtomWithDocument)[],
     indexChecksum: Checksum,
@@ -436,11 +271,7 @@ export interface TabDBInterface {
       },
   ): SqlValue[][];
   bobby(): void;
-  ragnarok(
-    workspaceId: string,
-    changeSetId: string,
-    noColdStart?: boolean,
-  ): void;
+  ragnarok(workspaceId: string, changeSetId: string, noColdStart?: boolean): void;
   // show me everything
   odin(changeSetId: ChangeSetId): object;
 }
@@ -488,7 +319,7 @@ export const interpolate = (columns: Columns, rows: SqlValue[][]): Records => {
       if (val) row[column] = val;
     });
     if ("id" in row) results.push(row as RowWithColumnsAndId);
-    else results.push(row as RowWithColumns);
+    else results.push(row);
   });
   return results;
 };

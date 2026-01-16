@@ -14,13 +14,11 @@
       </div>
     </template>
 
-    <template
-      v-else-if="workspacesStore.urlSelectedWorkspaceId && !selectedWorkspace"
-    >
+    <template v-else-if="workspacesStore.urlSelectedWorkspaceId && !selectedWorkspace">
       <div class="flex-grow p-lg flex flex-col items-center">
         <ErrorMessage
-          >Invalid Workspace ID or unable to load Workspace - Please select a
-          workspace from the dropdown to try again</ErrorMessage
+          >Invalid Workspace ID or unable to load Workspace - Please select a workspace from the dropdown to try
+          again</ErrorMessage
         >
       </div>
     </template>
@@ -28,10 +26,7 @@
     <!-- by this point we know we have a valid workspace selected and loaded -->
     <template v-else>
       <template
-        v-if="
-          !changeSetsReqStatus.lastSuccessAt &&
-          (!changeSetsReqStatus.isRequested || changeSetsReqStatus.isPending)
-        "
+        v-if="!changeSetsReqStatus.lastSuccessAt && (!changeSetsReqStatus.isRequested || changeSetsReqStatus.isPending)"
       >
         <div class="flex-grow p-lg flex flex-col items-center gap-4">
           <Icon name="loader" size="2xl" />
@@ -43,14 +38,9 @@
           <ErrorMessage>Error loading change sets</ErrorMessage>
         </div>
       </template>
-      <template
-        v-else-if="changeSetsStore.urlSelectedChangeSetId && !selectedChangeSet"
-      >
+      <template v-else-if="changeSetsStore.urlSelectedChangeSetId && !selectedChangeSet">
         <div class="flex-grow p-lg flex flex-col items-center">
-          <ErrorMessage
-            >Change set not found -
-            {{ changeSetsStore.urlSelectedChangeSetId }}</ErrorMessage
-          >
+          <ErrorMessage>Change set not found - {{ changeSetsStore.urlSelectedChangeSetId }}</ErrorMessage>
         </div>
       </template>
 
@@ -67,10 +57,7 @@
         <div class="w-full h-full flex flex-row relative overflow-hidden">
           <router-view :key="changeSetsStore.selectedChangeSet?.id" />
         </div>
-        <StatusBar
-          :key="changeSetsStore.urlSelectedChangeSetId"
-          class="flex-none"
-        />
+        <StatusBar :key="changeSetsStore.urlSelectedChangeSetId" class="flex-none" />
       </template>
     </template>
   </AppLayout>
@@ -96,14 +83,11 @@ const routerStore = useRouterStore();
 const workspacesStore = useWorkspacesStore();
 const changeSetsStore = useChangeSetsStore();
 
-const workspacesReqStatus = workspacesStore.getRequestStatus(
-  "FETCH_USER_WORKSPACES",
-);
+const workspacesReqStatus = workspacesStore.getRequestStatus("FETCH_USER_WORKSPACES");
 const selectedWorkspace = computed(() => workspacesStore.selectedWorkspace);
 const selectedChangeSet = computed(() => changeSetsStore.selectedChangeSet);
 
-const changeSetsReqStatus =
-  changeSetsStore.getRequestStatus("FETCH_CHANGE_SETS");
+const changeSetsReqStatus = changeSetsStore.getRequestStatus("FETCH_CHANGE_SETS");
 
 // this page is the parent of many child routes so we watch the route rather than use mounted hooks
 watch([route, changeSetsReqStatus], handleUrlChange, { immediate: true });
@@ -116,21 +100,15 @@ function handleUrlChange() {
   const changeSetId = route.params.changeSetId as string | undefined;
   if ([undefined, "null", "undefined", "auto"].includes(changeSetId ?? "")) {
     const id = changeSetsStore.getAutoSelectedChangeSetId();
-    const newChangeSetId =
-      id === false || id === changeSetsStore.headChangeSetId ? "head" : id;
+    const newChangeSetId = id === false || id === changeSetsStore.headChangeSetId ? "head" : id;
 
-    const viewId = routerStore.currentRoute?.params?.viewId as
-      | string
-      | undefined;
+    const viewId = routerStore.currentRoute?.params?.viewId as string | undefined;
     if (viewId) {
       const viewStore = useViewsStore(newChangeSetId);
       if (!viewStore.viewsById[viewId]) {
         delete routerStore.currentRoute?.params?.viewId;
-        const defaultView =
-          viewStore.viewList.find((v) => v.id === viewId) ||
-          viewStore.viewList[0];
-        if (viewStore.outlinerViewId === viewId)
-          viewStore.outlinerViewId = defaultView?.id ?? null;
+        const defaultView = viewStore.viewList.find((v) => v.id === viewId) || viewStore.viewList[0];
+        if (viewStore.outlinerViewId === viewId) viewStore.outlinerViewId = defaultView?.id ?? null;
         if (viewStore.selectedViewId === viewId)
           if (defaultView?.id) viewStore.selectView(defaultView.id);
           else viewStore.clearSelectedView();

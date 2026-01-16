@@ -4,12 +4,7 @@
     <span
       v-if="showAsterisk"
       v-tooltip="`${text} is a required value`"
-      :class="
-        clsx(
-          'shrink-0 text-lg font-bold',
-          themeClasses('text-destructive-600', 'text-destructive-300'),
-        )
-      "
+      :class="clsx('shrink-0 text-lg font-bold', themeClasses('text-destructive-600', 'text-destructive-300'))"
     >
       *
     </span>

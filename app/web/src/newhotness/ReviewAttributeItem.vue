@@ -7,10 +7,7 @@
     :class="
       clsx(
         'flex flex-col gap-2xs px-sm py-xs border',
-        themeClasses(
-          'border-neutral-400 bg-white',
-          'border-neutral-600 bg-neutral-800',
-        ),
+        themeClasses('border-neutral-400 bg-white', 'border-neutral-600 bg-neutral-800'),
       )
     "
   >
@@ -19,25 +16,13 @@
       <h1 class="h-10 py-xs mr-auto text-sm">
         {{ name }}
       </h1>
-      <NewButton
-        v-if="!disableRevert && !!revertToSource"
-        size="xs"
-        label="Revert"
-        @click="revert"
-      />
+      <NewButton v-if="!disableRevert && !!revertToSource" size="xs" label="Revert" @click="revert" />
     </div>
 
     <template v-if="showDiffs">
       <!-- TODO use revertibleSource to determine revertibility (but right now revertibleSource seems not right!) -->
-      <ReviewAttributeItemSourceAndValue
-        v-if="diff?.old"
-        :sourceAndValue="diff.old"
-        old
-      />
-      <ReviewAttributeItemSourceAndValue
-        v-if="diff?.new"
-        :sourceAndValue="diff.new"
-      />
+      <ReviewAttributeItemSourceAndValue v-if="diff?.old" :sourceAndValue="diff.old" old />
+      <ReviewAttributeItemSourceAndValue v-if="diff?.new" :sourceAndValue="diff.new" />
     </template>
 
     <div v-if="isParent" class="flex flex-col gap-xs">
@@ -107,8 +92,7 @@ const revertToSource = computed(() => {
   }
 
   // The old source was explicitly set! But if the new one wasn't, this is a noop.
-  if (!(newSource && !newSource.fromSchema && !newSource.fromAncestor))
-    return undefined;
+  if (!(newSource && !newSource.fromSchema && !newSource.fromAncestor)) return undefined;
 
   // Unset: The old source was *not* explicitly set by the user.
   return { $source: null };
@@ -117,10 +101,9 @@ const revertToSource = computed(() => {
 const revert = async () => {
   if (!revertToSource.value) return;
 
-  const call = saveApi.endpoint<{ success: boolean }>(
-    routes.UpdateComponentAttributes,
-    { id: props.selectedComponentId },
-  );
+  const call = saveApi.endpoint<{ success: boolean }>(routes.UpdateComponentAttributes, {
+    id: props.selectedComponentId,
+  });
 
   const payload = {
     [path.value]: revertToSource.value,
@@ -129,9 +112,7 @@ const revert = async () => {
   await call.put<componentTypes.UpdateComponentAttributesArgs>(payload);
 };
 
-const isParent = computed(
-  () => props.item.children && Object.keys(props.item.children).length > 0,
-);
+const isParent = computed(() => props.item.children && Object.keys(props.item.children).length > 0);
 
 const showDiffs = computed(() => {
   if (!isParent.value) {
@@ -150,11 +131,7 @@ const showDiffs = computed(() => {
     const oldSource = props.item.diff.old.$source;
     const newSource = props.item.diff.new.$source;
 
-    if (
-      oldSource.component !== newSource.component ||
-      oldSource.path !== newSource.path
-    )
-      return true;
+    if (oldSource.component !== newSource.component || oldSource.path !== newSource.path) return true;
   }
 
   return false;

@@ -141,30 +141,6 @@
   </div>
 </template>
 
-<script lang="ts">
-type TabGroupContext = {
-  selectedTabSlug: Ref<string | undefined>;
-  registerTab(id: string, component: TabGroupItemDefinition): void;
-  unregisterTab(id: string): void;
-  selectTab(id?: string): void;
-  tabExists(id?: string): boolean;
-  teleportId: string;
-};
-
-export const TabGroupContextInjectionKey: InjectionKey<TabGroupContext> =
-  Symbol("TabGroupContext");
-
-export function useTabGroupContext() {
-  const ctx = inject(TabGroupContextInjectionKey, null);
-  if (!ctx)
-    throw new Error("<TabGroupItem> should only be used within a <TabGroup>");
-  return ctx;
-}
-
-let tabGroupCounter = 1;
-</script>
-
-<!-- eslint-disable vue/component-tags-order,import/first -->
 <script lang="ts" setup>
 import clsx from "clsx";
 import * as _ from "lodash-es";
@@ -277,7 +253,7 @@ const orderedTabs = computed(
   () =>
     _.map(orderedTabSlugs.value, (slug) => tabs[slug]).filter(
       (tab) => !!tab,
-    ) as TabGroupItemDefinition[],
+    ),
 );
 const selectedTabSlug = ref<string>();
 
@@ -544,4 +520,28 @@ const context = {
 provide(TabGroupContextInjectionKey, context);
 
 defineExpose({ selectTab, tabExists, closeTabBySlug, selectedTabSlug });
+</script>
+
+<!-- eslint-disable vue/component-tags-order,import/first -->
+<script lang="ts">
+type TabGroupContext = {
+  selectedTabSlug: Ref<string | undefined>;
+  registerTab(id: string, component: TabGroupItemDefinition): void;
+  unregisterTab(id: string): void;
+  selectTab(id?: string): void;
+  tabExists(id?: string): boolean;
+  teleportId: string;
+};
+
+export const TabGroupContextInjectionKey: InjectionKey<TabGroupContext> =
+  Symbol("TabGroupContext");
+
+export function useTabGroupContext() {
+  const ctx = inject(TabGroupContextInjectionKey, null);
+  if (!ctx)
+    throw new Error("<TabGroupItem> should only be used within a <TabGroup>");
+  return ctx;
+}
+
+let tabGroupCounter = 1;
 </script>

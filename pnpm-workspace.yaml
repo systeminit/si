@@ -4,7 +4,6 @@ packages:
   - app/web
   - app/docs
   - bin/auth-api
-  - lib/eslint-config
   - lib/ts-lib
   - lib/tsconfig
   - lib/vue-lib

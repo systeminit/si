@@ -12,11 +12,7 @@
     "
   >
     <td :colspan="colspan" class="p-0">
-      <CodeViewer
-        showTitle
-        title="Raw Event Data"
-        :code="JSON.stringify(row.original, null, 2)"
-      />
+      <CodeViewer showTitle title="Raw Event Data" :code="JSON.stringify(row.original, null, 2)" />
     </td>
   </tr>
 </template>

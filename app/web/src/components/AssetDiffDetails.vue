@@ -1,9 +1,7 @@
 <template>
   <div
     v-if="
-      selectedComponent &&
-      'changeStatus' in selectedComponent.def &&
-      selectedComponent.def.changeStatus !== 'deleted'
+      selectedComponent && 'changeStatus' in selectedComponent.def && selectedComponent.def.changeStatus !== 'deleted'
     "
     class="h-full relative"
   >
@@ -33,9 +31,7 @@
               <span class="text-lg">Current</span>
             </template>
           </CodeViewer>
-          <div v-else class="w-full text-center text-xl text-neutral-400 p-sm">
-            No Code
-          </div>
+          <div v-else class="w-full text-center text-xl text-neutral-400 p-sm">No Code</div>
         </template>
       </div>
     </template>
@@ -58,14 +54,9 @@ const changeSetsStore = useChangeSetsStore();
 const selectedComponentId = computed(() => viewStore.selectedComponentId);
 const selectedComponent = computed(() => viewStore.selectedComponent);
 
-const selectedComponentDiff = computed(
-  () => componentsStore.componentDiffsById[viewStore.selectedComponentId || ""],
-);
+const selectedComponentDiff = computed(() => componentsStore.componentDiffsById[viewStore.selectedComponentId || ""]);
 
-const diffReqStatus = componentsStore.getRequestStatus(
-  "FETCH_COMPONENT_DIFF",
-  selectedComponentId,
-);
+const diffReqStatus = componentsStore.getRequestStatus("FETCH_COMPONENT_DIFF", selectedComponentId);
 
 watch(
   [selectedComponentId, () => changeSetsStore.selectedChangeSetLastWrittenAt],

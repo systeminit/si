@@ -112,11 +112,7 @@ import * as _ from "lodash-es";
 import { ref, reactive, computed, watch, WatchStopHandle } from "vue";
 import { VButton, TreeNode } from "@si/vue-lib/design-system";
 import { ActionId, ActionState } from "@/api/sdf/dal/action";
-import {
-  useActionsStore,
-  ActionProposedView,
-  ActionView,
-} from "@/store/actions.store";
+import { useActionsStore, ActionProposedView, ActionView } from "@/store/actions.store";
 import FuncRunTabGroup from "@/components/Actions/FuncRunTabGroup.vue";
 import { FuncRun, useFuncRunsStore } from "@/store/func_runs.store";
 import { useChangeSetsStore } from "@/store/change_sets.store";
@@ -133,33 +129,26 @@ const confirmRef = ref<InstanceType<typeof ConfirmHoldModal> | null>(null);
 const selectedActions: Map<ActionId, ActionProposedView> = reactive(new Map());
 
 const singleSelectedAction = computed(() =>
-  selectedActions.size === 1
-    ? selectedActions.values().next().value
-    : undefined,
+  selectedActions.size === 1 ? selectedActions.values().next().value : undefined,
 );
 
-const selectedActionIds = computed(() =>
-  Object.keys(Object.fromEntries(selectedActions)),
-);
+const selectedActionIds = computed(() => Object.keys(Object.fromEntries(selectedActions)));
 
 const disabledMultiple = computed(() => selectedActions.size === 0);
 
 const holdAll = () => {
   const actions = Object.values(Object.fromEntries(selectedActions));
-  if (_.some(actions, (a) => a.myDependencies.length > 0))
-    confirmRef.value?.open();
+  if (_.some(actions, (a) => a.myDependencies.length > 0)) confirmRef.value?.open();
   else finishHold();
 };
 
 const finishHold = (): void => {
-  if (selectedActionIds.value.length > 0)
-    actionsStore.PUT_ACTION_ON_HOLD(selectedActionIds.value);
+  if (selectedActionIds.value.length > 0) actionsStore.PUT_ACTION_ON_HOLD(selectedActionIds.value);
   confirmRef.value?.close();
 };
 
 const removeAll = () => {
-  if (selectedActionIds.value.length > 0)
-    actionsStore.CANCEL(selectedActionIds.value);
+  if (selectedActionIds.value.length > 0) actionsStore.CANCEL(selectedActionIds.value);
 };
 
 const funcRun = ref<FuncRun | undefined>();
@@ -172,7 +161,7 @@ const clickAction = async (action_view: ActionView, e: MouseEvent) => {
 
   if (e.shiftKey) {
     if (!selectedActions.has(action.id)) {
-      selectedActions.set(action.id, action as ActionProposedView);
+      selectedActions.set(action.id, action);
     } else selectedActions.delete(action.id);
   } else {
     const singleSelectionActionId = singleSelectedAction.value?.id;
@@ -183,7 +172,7 @@ const clickAction = async (action_view: ActionView, e: MouseEvent) => {
       return;
     }
 
-    selectedActions.set(action.id, action as ActionProposedView);
+    selectedActions.set(action.id, action);
 
     const { funcRunId } = action;
 

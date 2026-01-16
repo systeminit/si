@@ -10,12 +10,7 @@
     @click="clickHandler"
   >
     <Toggle :selected="!!props.actionId" class="flex-none" />
-    <StatusIndicatorIcon
-      type="action"
-      :status="actionPrototypeView.kind"
-      tone="inherit"
-      class="flex-none"
-    />
+    <StatusIndicatorIcon type="action" :status="actionPrototypeView.kind" tone="inherit" class="flex-none" />
     <div class="font-bold leading-normal text-sm">
       {{ actionPrototypeView.displayName || actionPrototypeView.name }}
     </div>
@@ -30,11 +25,7 @@ import clsx from "clsx";
 import { Icon, themeClasses, Toggle } from "@si/vue-lib/design-system";
 import StatusIndicatorIcon from "@/components/StatusIndicatorIcon.vue";
 import { ActionId } from "@/api/sdf/dal/action";
-import {
-  ActionPrototypeView,
-  BifrostComponent,
-  ComponentInList,
-} from "@/workers/types/entity_kind_types";
+import { ActionPrototypeView, BifrostComponent, ComponentInList } from "@/workers/types/entity_kind_types";
 import { useComponentActions } from "./logic_composables/component_actions";
 
 const props = defineProps<{

@@ -7,8 +7,7 @@
         'flex flex-col w-full dark:bg-black dark:text-white',
         pageMode === 'fullscreen' && 'overflow-hidden h-screen',
         pageMode === 'scroll' && 'items-center justify-center min-h-screen',
-        pageMode === 'modal' &&
-          'items-center justify-center min-h-screen p-4 sm:p-12 flex flex-col',
+        pageMode === 'modal' && 'items-center justify-center min-h-screen p-4 sm:p-12 flex flex-col',
       )
     "
   >

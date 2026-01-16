@@ -17,10 +17,7 @@
   >
     <div
       :class="
-        clsx(
-          header.id !== 'json' && 'w-full p-xs truncate',
-          windowWidth <= 1100 && 'flex flex-row items-center h-8',
-        )
+        clsx(header.id !== 'json' && 'w-full p-xs truncate', windowWidth <= 1100 && 'flex flex-row items-center h-8')
       "
     >
       <IconButton
@@ -32,11 +29,7 @@
       />
       <template v-else>
         <template v-if="windowWidth > 1100">
-          <FlexRender
-            v-if="!header.isPlaceholder"
-            :render="label"
-            :props="header.getContext()"
-          />
+          <FlexRender v-if="!header.isPlaceholder" :render="label" :props="header.getContext()" />
           <IconButton
             v-if="icon !== 'none'"
             ref="iconButtonRef"
@@ -66,11 +59,7 @@
           alignCenter
           @search="onSearch"
         >
-          <DropdownMenuItem
-            v-if="filteredDropdownMenuItems.length < 1"
-            header
-            label="No matching filters found"
-          />
+          <DropdownMenuItem v-if="filteredDropdownMenuItems.length < 1" header label="No matching filters found" />
         </DropdownMenu>
       </template>
     </div>
@@ -129,12 +118,9 @@ const filterOptions = computed(() => {
 });
 
 const selectedFilters = computed(() => {
-  if (props.header.id === "changeSetName")
-    return logsStore.filters.changeSetFilter;
-  else if (props.header.id === "entityName")
-    return logsStore.filters.entityNameFilter;
-  else if (props.header.id === "entityType")
-    return logsStore.filters.entityTypeFilter;
+  if (props.header.id === "changeSetName") return logsStore.filters.changeSetFilter;
+  else if (props.header.id === "entityName") return logsStore.filters.entityNameFilter;
+  else if (props.header.id === "entityType") return logsStore.filters.entityTypeFilter;
   else if (props.header.id === "title") return logsStore.filters.titleFilter;
   else if (props.header.id === "userName") return logsStore.filters.userFilter;
   else return [];
@@ -142,14 +128,10 @@ const selectedFilters = computed(() => {
 
 const headerText = computed(() => {
   if (label.value === "Time") {
-    return `Sorting By Timestamp ${
-      logsStore.sortAscending ? "(Oldest)" : "(Newest)"
-    }`;
+    return `Sorting By Timestamp ${logsStore.sortAscending ? "(Oldest)" : "(Newest)"}`;
   }
   if (selectedFilters.value.length > 0) {
-    return `Filtering by ${selectedFilters.value.length} selection${
-      selectedFilters.value.length > 1 ? "s" : ""
-    }`;
+    return `Filtering by ${selectedFilters.value.length} selection${selectedFilters.value.length > 1 ? "s" : ""}`;
   }
   return `Filter by ${label.value}`;
 });
@@ -210,11 +192,8 @@ const onSearch = (search: string) => {
 };
 
 const filteredDropdownMenuItems = computed(() => {
-  if (!dropdownMenuRef.value || searchString.value === "")
-    return dropdownMenuItems.value;
-  return dropdownMenuItems.value.filter((item) =>
-    item.label?.toLocaleLowerCase().includes(searchString.value),
-  );
+  if (!dropdownMenuRef.value || searchString.value === "") return dropdownMenuItems.value;
+  return dropdownMenuItems.value.filter((item) => item.label?.toLocaleLowerCase().includes(searchString.value));
 });
 
 const onClick = () => {

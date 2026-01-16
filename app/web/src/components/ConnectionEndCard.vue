@@ -1,13 +1,5 @@
 <template>
-  <div
-    :class="
-      clsx(
-        'p-xs border-l-4 border relative',
-        themeClasses('bg-shade-0', 'bg-shade-100'),
-        statusColors,
-      )
-    "
-  >
+  <div :class="clsx('p-xs border-l-4 border relative', themeClasses('bg-shade-0', 'bg-shade-100'), statusColors)">
     <div class="flex gap-xs items-center">
       <Stack class="min-w-0" spacing="2xs">
         <div class="flex flex-row gap-2xs items-center">
@@ -33,12 +25,7 @@
 
 <script lang="ts" setup>
 import clsx from "clsx";
-import {
-  Icon,
-  Stack,
-  themeClasses,
-  TruncateWithTooltip,
-} from "@si/vue-lib/design-system";
+import { Icon, Stack, themeClasses, TruncateWithTooltip } from "@si/vue-lib/design-system";
 import { computed, PropType } from "vue";
 import { tw } from "@si/vue-lib";
 import { ChangeStatus } from "@/api/sdf/dal/change_set";

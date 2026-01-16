@@ -1,24 +1,11 @@
 <template>
   <!-- Do not include special case management funcs, like "import" and "run template" -->
-  <li
-    v-if="
-      func.kind !== MgmtFuncKind.Import &&
-      func.kind !== MgmtFuncKind.RunTemplate
-    "
-  >
-    <StatusBox
-      :kind="statusBoxKind"
-      :text="func.name"
-      :description="func.description ?? 'No description provided'"
-    >
+  <li v-if="func.kind !== MgmtFuncKind.Import && func.kind !== MgmtFuncKind.RunTemplate">
+    <StatusBox :kind="statusBoxKind" :text="func.name" :description="func.description ?? 'No description provided'">
       <template #right>
         <div class="flex gap-xs">
           <NewButton
-            :label="
-              managementExecutionStatus === 'Failure'
-                ? 'Re-run function'
-                : 'Run function'
-            "
+            :label="managementExecutionStatus === 'Failure' ? 'Re-run function' : 'Run function'"
             tone="action"
             :loading="managementExecutionStatus === 'Running'"
             loadingText="Running function"
@@ -26,12 +13,7 @@
             loadingIcon="loader"
             @click.stop="runMgmtFunc(func.id)"
           />
-          <NewButton
-            v-if="funcRun"
-            label="See Func Run"
-            tone="neutral"
-            @click="navigateToFuncRunDetails(funcRun.id)"
-          />
+          <NewButton v-if="funcRun" label="See Func Run" tone="neutral" @click="navigateToFuncRunDetails(funcRun.id)" />
         </div>
       </template>
     </StatusBox>
@@ -96,9 +78,7 @@ const dispatchedFunc = ref(false);
 
 const funcRun = computed(() => props.funcRun);
 const managementFuncJobStateComposable = useManagementFuncJobState(funcRun);
-const managementFuncJobState = computed(
-  () => managementFuncJobStateComposable.value.value,
-);
+const managementFuncJobState = computed(() => managementFuncJobStateComposable.value.value);
 const managementExecutionStatus = computed(() => {
   if (!props.funcRun) return undefined;
   if (dispatchedFunc.value) return "Running";

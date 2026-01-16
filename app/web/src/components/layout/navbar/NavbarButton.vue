@@ -24,10 +24,7 @@
     <DropdownMenu v-if="slots.dropdownContent" ref="dropdownRef">
       <slot name="dropdownContent" />
     </DropdownMenu>
-    <DropdownMenu
-      v-if="slots.dropdownContentSecondary"
-      ref="dropdownSecondaryRef"
-    >
+    <DropdownMenu v-if="slots.dropdownContentSecondary" ref="dropdownSecondaryRef">
       <slot name="dropdownContentSecondary" />
     </DropdownMenu>
   </component>

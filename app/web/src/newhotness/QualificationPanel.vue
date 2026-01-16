@@ -8,21 +8,13 @@
         :component="component.id"
       />
     </template>
-    <EmptyState
-      v-else
-      icon="question-circle"
-      text="No qualifications to display"
-    />
+    <EmptyState v-else icon="question-circle" text="No qualifications to display" />
   </ul>
 </template>
 
 <script lang="ts" setup>
 import { computed } from "vue";
-import {
-  AttributeTree,
-  BifrostComponent,
-  DependentValues,
-} from "@/workers/types/entity_kind_types";
+import { AttributeTree, BifrostComponent, DependentValues } from "@/workers/types/entity_kind_types";
 import QualificationView from "@/newhotness/QualificationView.vue";
 import { AttributePath } from "@/api/sdf/dal/component";
 import { AttributeValueId } from "./types";
@@ -52,9 +44,7 @@ const props = defineProps<{
 function attributeIsDirty(path: AttributePath) {
   const root = props.attributeTree;
   if (!root) return false;
-  return (
-    props.dependentValues?.componentAttributes[root.id]?.includes(path) ?? false
-  );
+  return props.dependentValues?.componentAttributes[root.id]?.includes(path) ?? false;
 }
 
 /// Actual qualification results (excludes validations)
@@ -63,11 +53,7 @@ const componentQualifications = computed<Qualification[]>(() => {
   if (!root) return [];
 
   // Get the actual qualification results from the tree
-  const qualificationItems = findAvsAtPropPath(props.attributeTree, [
-    "root",
-    "qualification",
-    "qualificationItem",
-  ]);
+  const qualificationItems = findAvsAtPropPath(props.attributeTree, ["root", "qualification", "qualificationItem"]);
   if (!qualificationItems) return [];
 
   return qualificationItems.attributeValues.map((av) => {
@@ -81,12 +67,9 @@ const componentQualifications = computed<Qualification[]>(() => {
     for (const avId of root.treeInfo[av.id]?.children ?? []) {
       const child = root.attributeValues[avId];
       // TODO should we set both if they both exist?
-      if (child?.path?.endsWith("result"))
-        qualification.status = child.value as QualificationStatus;
-      else if (child?.path?.endsWith("message"))
-        qualification.message = child.value as string;
+      if (child?.path?.endsWith("result")) qualification.status = child.value as QualificationStatus;
+      else if (child?.path?.endsWith("message")) qualification.message = child.value as string;
     }
-
     return qualification;
   });
 });
@@ -113,19 +96,14 @@ const validationsQualification = computed<Qualification | undefined>(() => {
     // We believe that if we are connected to a subscription and that subscription
     // has yet to propagate a value, then it's a computed value and we should mark
     // the validation as passing for the user
-    const pendingValue =
-      av.externalSources &&
-      av.externalSources?.length > 0 &&
-      (av.value === "" || !av.value);
+    const pendingValue = av.externalSources && av.externalSources?.length > 0 && (av.value === "" || !av.value);
     if (pendingValue) return;
 
     const name = prop.name;
 
     if (av.validation.status === "Success") return;
 
-    validationOutput.push(
-      `${name}: ${av.validation.message ?? "unknown validation error"}`,
-    );
+    validationOutput.push(`${name}: ${av.validation.message ?? "unknown validation error"}`);
   });
 
   if (!hasValidations) return undefined;

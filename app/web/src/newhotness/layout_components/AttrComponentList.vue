@@ -11,33 +11,14 @@
         )
       "
     >
-      <TextPill
-        mono
-        :class="
-          clsx(
-            'min-w-0',
-            themeClasses(
-              'text-newhotness-greenlight',
-              'text-newhotness-greendark',
-            ),
-          )
-        "
-      >
+      <TextPill mono :class="clsx('min-w-0', themeClasses('text-newhotness-greenlight', 'text-newhotness-greendark'))">
         <TruncateWithTooltip>
           {{ component.schemaName }}
         </TruncateWithTooltip>
       </TextPill>
       <TextPill
         mono
-        :class="
-          clsx(
-            'min-w-0',
-            themeClasses(
-              'text-newhotness-purplelight',
-              'text-newhotness-purpledark',
-            ),
-          )
-        "
+        :class="clsx('min-w-0', themeClasses('text-newhotness-purplelight', 'text-newhotness-purpledark'))"
       >
         <TruncateWithTooltip>
           {{ component.componentName }}
@@ -48,11 +29,7 @@
 </template>
 
 <script setup lang="ts">
-import {
-  themeClasses,
-  TextPill,
-  TruncateWithTooltip,
-} from "@si/vue-lib/design-system";
+import { themeClasses, TextPill, TruncateWithTooltip } from "@si/vue-lib/design-system";
 import clsx from "clsx";
 
 defineProps<{

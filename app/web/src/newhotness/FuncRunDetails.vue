@@ -1,9 +1,7 @@
 <template>
   <FuncRunDetailsLayout
     v-if="funcRun?.id"
-    :displayName="
-      funcRun.functionDisplayName || funcRun.functionName || 'Function Run'
-    "
+    :displayName="funcRun.functionDisplayName || funcRun.functionName || 'Function Run'"
     :funcRun="funcRun"
     :status="funcRunStatus(funcRun, managementFuncJobState?.state) || ''"
     :logText="logText"
@@ -41,22 +39,14 @@
       />
       <NewButton
         v-if="
-          funcRun &&
-          funcRun.actionId &&
-          ['Failure', 'ActionFailure', 'Running'].includes(
-            funcRunStatus(funcRun) || '',
-          )
+          funcRun && funcRun.actionId && ['Failure', 'ActionFailure', 'Running'].includes(funcRunStatus(funcRun) || '')
         "
         tone="destructive"
         label="Remove"
         @click="removeAction"
       />
       <NewButton
-        v-if="
-          funcRun &&
-          funcRun.actionId &&
-          ['Failure', 'ActionFailure'].includes(funcRunStatus(funcRun) || '')
-        "
+        v-if="funcRun && funcRun.actionId && ['Failure', 'ActionFailure'].includes(funcRunStatus(funcRun) || '')"
         tone="action"
         label="Retry"
         @click="retryAction"
@@ -64,39 +54,18 @@
     </template>
     <template #grid>
       <GridItemWithLiveHeader ref="codeRef" title="Code" :live="false">
-        <CodeViewer
-          v-if="functionCode"
-          :code="functionCode"
-          language="javascript"
-          allowCopy
-        />
-        <div v-else class="text-neutral-400 italic text-xs p-xs">
-          No code available
-        </div>
+        <CodeViewer v-if="functionCode" :code="functionCode" language="javascript" allowCopy />
+        <div v-else class="text-neutral-400 italic text-xs p-xs">No code available</div>
       </GridItemWithLiveHeader>
 
       <GridItemWithLiveHeader ref="argsRef" title="Arguments" :live="false">
-        <CodeViewer
-          v-if="argsJson"
-          :code="argsJson"
-          language="json"
-          allowCopy
-        />
-        <div v-else class="text-neutral-400 italic text-xs p-xs">
-          No arguments available
-        </div>
+        <CodeViewer v-if="argsJson" :code="argsJson" language="json" allowCopy />
+        <div v-else class="text-neutral-400 italic text-xs p-xs">No arguments available</div>
       </GridItemWithLiveHeader>
 
       <GridItemWithLiveHeader ref="resultRef" title="Result" :live="false">
-        <CodeViewer
-          v-if="resultJson"
-          :code="resultJson"
-          language="json"
-          allowCopy
-        />
-        <div v-else class="text-neutral-400 italic text-xs p-xs">
-          No result available
-        </div>
+        <CodeViewer v-if="resultJson" :code="resultJson" language="json" allowCopy />
+        <div v-else class="text-neutral-400 italic text-xs p-xs">No result available</div>
       </GridItemWithLiveHeader>
     </template>
   </FuncRunDetailsLayout>
@@ -111,10 +80,7 @@ import { NewButton, Icon } from "@si/vue-lib/design-system";
 import * as _ from "lodash-es";
 import { useRouter } from "vue-router";
 import { bifrost, useMakeKey, useMakeArgs } from "@/store/realtime/heimdall";
-import {
-  BifrostComponent,
-  EntityKind,
-} from "@/workers/types/entity_kind_types";
+import { BifrostComponent, EntityKind } from "@/workers/types/entity_kind_types";
 import CodeViewer from "@/components/CodeViewer.vue";
 import DelayedLoader from "@/newhotness/layout_components/DelayedLoader.vue";
 import FuncRunDetailsLayout from "./layout_components/FuncRunDetailsLayout.vue";
@@ -203,12 +169,7 @@ const funcRunQuery = useQuery<Omit<FuncRun, "logs"> | undefined>({
     });
     const req = await call.get();
     if (api.ok(req)) {
-      pollInterval.value = [
-        "Running",
-        "Dispatched",
-        "Created",
-        "Failed",
-      ].includes(req.data.funcRun.state)
+      pollInterval.value = ["Running", "Dispatched", "Created", "Failed"].includes(req.data.funcRun.state)
         ? 5000
         : false;
       return req.data.funcRun;
@@ -220,13 +181,9 @@ const funcRunQuery = useQuery<Omit<FuncRun, "logs"> | undefined>({
 const funcRun = computed(() => funcRunQuery.data.value);
 
 const managementFuncJobStateComposable = useManagementFuncJobState(funcRun);
-const managementFuncJobState = computed(
-  () => managementFuncJobStateComposable.value.value,
-);
+const managementFuncJobState = computed(() => managementFuncJobStateComposable.value.value);
 const successWithFailedOperations = computed(
-  () =>
-    funcRun.value?.state === "Success" &&
-    managementFuncJobState.value?.state === "failure",
+  () => funcRun.value?.state === "Success" && managementFuncJobState.value?.state === "failure",
 );
 
 // Check if the component still exists
@@ -240,12 +197,8 @@ const { data: componentQuery } = useQuery<BifrostComponent | undefined>({
   queryFn: async (queryContext) => {
     if (!componentId.value) return undefined;
     return (
-      (await bifrost<BifrostComponent>(
-        args(EntityKind.Component, componentId.value),
-      )) ??
-      queryContext.client.getQueryData(
-        key(EntityKind.Component, componentId.value).value,
-      )
+      (await bifrost<BifrostComponent>(args(EntityKind.Component, componentId.value))) ??
+      queryContext.client.getQueryData(key(EntityKind.Component, componentId.value).value)
     );
   },
   enabled: computed(() => !!componentId.value),
@@ -257,12 +210,9 @@ const { data: funcRunLogsQuery } = useQuery<FuncRunLog | undefined>({
   queryKey: [ctx.changeSetId.value, "funcRunLogs", props.funcRunId],
   queryFn: async () => {
     isLive.value = true;
-    const call = api.endpoint<funcRunTypes.FuncRunLogsResponse>(
-      routes.FuncRunLogs,
-      {
-        id: props.funcRunId,
-      },
-    );
+    const call = api.endpoint<funcRunTypes.FuncRunLogsResponse>(routes.FuncRunLogs, {
+      id: props.funcRunId,
+    });
     const req = await call.get();
     if (api.ok(req)) {
       if (req.data.logs.finalized) {
@@ -279,9 +229,7 @@ const { data: funcRunLogsQuery } = useQuery<FuncRunLog | undefined>({
 
 const funcRunLogs = computed(() => funcRunLogsQuery.value);
 
-const logsTooLarge = computed(
-  () => (funcRunLogs.value?.logs.length ?? 0) > 175,
-);
+const logsTooLarge = computed(() => (funcRunLogs.value?.logs.length ?? 0) > 175);
 
 // Format logs as text for CodeViewer
 const logText = computed<string>(() => {

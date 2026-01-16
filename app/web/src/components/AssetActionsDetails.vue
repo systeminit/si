@@ -7,19 +7,14 @@
       @update:selectedTab="onTabSelected"
     >
       <TabGroupItem label="Actions" slug="resource-actions">
-        <div
-          v-if="bindings.length === 0"
-          class="flex flex-col items-center pt-lg h-full w-full text-neutral-400"
-        >
+        <div v-if="bindings.length === 0" class="flex flex-col items-center pt-lg h-full w-full text-neutral-400">
           <div class="w-64">
             <EmptyStateIcon name="no-changes" />
           </div>
           <span class="text-xl">No Actions available</span>
         </div>
         <div v-else class="flex flex-col">
-          <div
-            class="text-sm text-neutral-700 dark:text-neutral-300 p-xs italic border-b dark:border-neutral-600"
-          >
+          <div class="text-sm text-neutral-700 dark:text-neutral-300 p-xs italic border-b dark:border-neutral-600">
             The changes below will run when you click "Apply Changes".
           </div>
           <ActionWidget
@@ -46,10 +41,7 @@ import EmptyStateIcon from "@/components/EmptyStateIcon.vue";
 import ActionWidget from "@/components/Actions/ActionWidget.vue";
 import { useViewsStore } from "@/store/views.store";
 import ComponentDetailsResource from "./ComponentDetailsResource.vue";
-import {
-  DiagramGroupData,
-  DiagramNodeData,
-} from "./ModelingDiagram/diagram_types";
+import { DiagramGroupData, DiagramNodeData } from "./ModelingDiagram/diagram_types";
 
 const props = defineProps<{
   component: DiagramNodeData | DiagramGroupData;

@@ -1,7 +1,5 @@
 <template>
-  <div>
-    The approval process for {{ action }} this change set has been cancelled.
-  </div>
+  <div>The approval process for {{ action }} this change set has been cancelled.</div>
 </template>
 
 <script lang="ts" setup>

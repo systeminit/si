@@ -4,8 +4,7 @@
     <div class="flex flex-col text-sm text-center">
       <div>
         The change set
-        <span class="font-bold italic">{{ changeSetName }}</span> has been
-        {{ action }}.
+        <span class="font-bold italic">{{ changeSetName }}</span> has been {{ action }}.
       </div>
       <div>You are now on HEAD.</div>
     </div>
@@ -13,11 +12,7 @@
 </template>
 
 <script lang="ts" setup>
-import {
-  Icon,
-  IconNames,
-  getToneTextColorClass,
-} from "@si/vue-lib/design-system";
+import { Icon, IconNames, getToneTextColorClass } from "@si/vue-lib/design-system";
 import { PropType, computed } from "vue";
 
 const props = defineProps({

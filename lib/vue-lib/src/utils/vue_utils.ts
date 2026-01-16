@@ -17,7 +17,7 @@ function unwrapChildren(rawChildren: VNode[]) {
       children.push(child);
     }
   });
-  return children as VNode[];
+  return children;
 }
 
 // functional component TS helper

@@ -1,5 +1,5 @@
-import { Stage } from "konva/types/Stage";
-import { Layer } from "konva/types/Layer";
+import type { Stage } from "konva/types/Stage";
+import type { Layer } from "konva/types/Layer";
 
 interface KonvaLayer extends Vue {
   getNode(): Layer;

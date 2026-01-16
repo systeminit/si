@@ -1,12 +1,6 @@
 <template>
-  <div
-    ref="divRef"
-    :class="clsx('prose dark:prose-invert', disableMaxWidth && 'max-w-full')"
-  >
-    <VueMarkdown
-      :source="props.source"
-      :options="{ breaks: true, linkify: true, typographer: true }"
-    />
+  <div ref="divRef" :class="clsx('prose dark:prose-invert', disableMaxWidth && 'max-w-full')">
+    <VueMarkdown :source="props.source" :options="{ breaks: true, linkify: true, typographer: true }" />
   </div>
 </template>
 

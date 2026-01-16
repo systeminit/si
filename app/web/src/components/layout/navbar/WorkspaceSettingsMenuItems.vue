@@ -1,35 +1,11 @@
 <!-- eslint-disable vue/no-multiple-template-root -->
 <template>
-  <DropdownMenuItem
-    icon="settings"
-    label="Manage Workspaces"
-    @select="openManageWorkspacesHandler"
-  />
-  <DropdownMenuItem
-    icon="cloud-download"
-    label="Import Workspace"
-    @select="emit('openImportModal')"
-  />
-  <DropdownMenuItem
-    icon="edit"
-    label="Manage Users"
-    @select="openWorkspaceDetailsHandler"
-  />
-  <DropdownMenuItem
-    icon="settings"
-    label="Manage Workspace Tokens"
-    @select="openWorkspaceApiTokensHandler"
-  />
-  <DropdownMenuItem
-    icon="clipboard-copy"
-    label="Copy Workspace Token"
-    @select="copyWorkspaceToken"
-  />
-  <DropdownMenuItem
-    icon="settings"
-    label="Workspace Integrations"
-    @select="emit('openIntegrationsModal')"
-  />
+  <DropdownMenuItem icon="settings" label="Manage Workspaces" @select="openManageWorkspacesHandler" />
+  <DropdownMenuItem icon="cloud-download" label="Import Workspace" @select="emit('openImportModal')" />
+  <DropdownMenuItem icon="edit" label="Manage Users" @select="openWorkspaceDetailsHandler" />
+  <DropdownMenuItem icon="settings" label="Manage Workspace Tokens" @select="openWorkspaceApiTokensHandler" />
+  <DropdownMenuItem icon="clipboard-copy" label="Copy Workspace Token" @select="copyWorkspaceToken" />
+  <DropdownMenuItem icon="settings" label="Workspace Integrations" @select="emit('openIntegrationsModal')" />
 </template>
 
 <script setup lang="ts">
@@ -48,10 +24,7 @@ const openWorkspaceDetailsHandler = () => {
 const openWorkspaceApiTokensHandler = () => {
   const currentWorkspace = workspacesStore.urlSelectedWorkspaceId;
   if (!currentWorkspace) return;
-  window.open(
-    `${AUTH_PORTAL_URL}/workspace/${currentWorkspace}/tokens`,
-    "_blank",
-  );
+  window.open(`${AUTH_PORTAL_URL}/workspace/${currentWorkspace}/tokens`, "_blank");
 };
 
 const openManageWorkspacesHandler = () => {
@@ -62,13 +35,9 @@ const openManageWorkspacesHandler = () => {
 
 const copyWorkspaceToken = () => {
   const currentWorkspace = workspacesStore.selectedWorkspace;
-  // eslint-disable-next-line @typescript-eslint/no-floating-promises
+
   navigator.clipboard.writeText(currentWorkspace?.token || "");
 };
 
-const emit = defineEmits([
-  "openExportModal",
-  "openImportModal",
-  "openIntegrationsModal",
-]);
+const emit = defineEmits(["openExportModal", "openImportModal", "openIntegrationsModal"]);
 </script>

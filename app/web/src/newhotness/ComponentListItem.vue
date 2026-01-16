@@ -17,54 +17,26 @@
     <TextPill
       tighter
       variant="component"
-      :class="
-        clsx(
-          themeClasses(
-            'text-newhotness-greenlight',
-            'text-newhotness-greendark',
-          ),
-          'max-w-fit flex-1',
-        )
-      "
+      :class="clsx(themeClasses('text-newhotness-greenlight', 'text-newhotness-greendark'), 'max-w-fit flex-1')"
     >
       <TruncateWithTooltip>{{ component.schemaName }}</TruncateWithTooltip>
     </TextPill>
     <TextPill
       tighter
       variant="component"
-      :class="
-        clsx(
-          'max-w-fit flex-1',
-          themeClasses(
-            'text-newhotness-purplelight',
-            'text-newhotness-purpledark',
-          ),
-        )
-      "
+      :class="clsx('max-w-fit flex-1', themeClasses('text-newhotness-purplelight', 'text-newhotness-purpledark'))"
     >
       <TruncateWithTooltip>{{ component.name }}</TruncateWithTooltip>
     </TextPill>
-    <StatusIndicatorIcon
-      class="ml-auto flex-none"
-      type="qualification"
-      :status="qualificationStatus"
-    />
+    <StatusIndicatorIcon class="ml-auto flex-none" type="qualification" :status="qualificationStatus" />
   </div>
 </template>
 
 <script setup lang="ts">
-import {
-  TextPill,
-  themeClasses,
-  TruncateWithTooltip,
-} from "@si/vue-lib/design-system";
+import { TextPill, themeClasses, TruncateWithTooltip } from "@si/vue-lib/design-system";
 import clsx from "clsx";
 import { computed } from "vue";
-import {
-  BifrostComponent,
-  ComponentDiffStatus,
-  ComponentInList,
-} from "@/workers/types/entity_kind_types";
+import { BifrostComponent, ComponentDiffStatus, ComponentInList } from "@/workers/types/entity_kind_types";
 import StatusIndicatorIcon from "@/components/StatusIndicatorIcon.vue";
 import { getQualificationStatus } from "./ComponentTileQualificationStatus.vue";
 
@@ -74,7 +46,5 @@ const props = defineProps<{
   selected?: boolean;
 }>();
 
-const qualificationStatus = computed(() =>
-  getQualificationStatus(props.component),
-);
+const qualificationStatus = computed(() => getQualificationStatus(props.component));
 </script>

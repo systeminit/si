@@ -6,12 +6,7 @@
         <template #default="{ field }">
           <div
             v-if="field.state.meta.errors.length > 0"
-            :class="
-              clsx(
-                'text-sm mb-xs',
-                themeClasses('text-destructive-600', 'text-destructive-200'),
-              )
-            "
+            :class="clsx('text-sm mb-xs', themeClasses('text-destructive-600', 'text-destructive-200'))"
           >
             {{ field.state.meta.errors[0] }}
           </div>
@@ -52,13 +47,7 @@
             />
           </template>
         </nameForm.Field>
-        <Icon
-          v-if="wForm.bifrosting.value"
-          class="absolute right-2xs"
-          name="loader"
-          size="sm"
-          tone="action"
-        />
+        <Icon v-if="wForm.bifrosting.value" class="absolute right-2xs" name="loader" size="sm" tone="action" />
       </label>
     </div>
 
@@ -78,11 +67,7 @@
               label="Done"
               tone="action"
               :loading="wForm.bifrosting.value"
-              :disabled="
-                wForm.bifrosting.value ||
-                field.state.meta.errors.length > 0 ||
-                field.state.value === ''
-              "
+              :disabled="wForm.bifrosting.value || field.state.meta.errors.length > 0 || field.state.value === ''"
               @click="() => nameForm.handleSubmit()"
             />
           </template>
@@ -93,28 +78,15 @@
 </template>
 
 <script setup lang="ts">
-import {
-  Modal,
-  Icon,
-  themeClasses,
-  NewButton,
-} from "@si/vue-lib/design-system";
+import { Modal, Icon, themeClasses, NewButton } from "@si/vue-lib/design-system";
 import { computed, ref } from "vue";
 import clsx from "clsx";
 import { useRoute } from "vue-router";
 import { useQuery } from "@tanstack/vue-query";
 import { ViewId } from "@/api/sdf/dal/views";
-import {
-  ComponentInList,
-  EntityKind,
-  View,
-} from "@/workers/types/entity_kind_types";
+import { ComponentInList, EntityKind, View } from "@/workers/types/entity_kind_types";
 import { Listable } from "@/workers/types/dbinterface";
-import {
-  bifrostList,
-  useMakeArgs,
-  useMakeKey,
-} from "@/store/realtime/heimdall";
+import { bifrostList, useMakeArgs, useMakeKey } from "@/store/realtime/heimdall";
 import { useWatchedForm } from "./logic_composables/watched_form";
 import { useApi, routes } from "./api_composables";
 
@@ -128,8 +100,7 @@ const isDefaultView = ref<boolean>(false);
 const tooltipText = computed(() => {
   if (isDefaultView.value) return "Cannot delete the default view.";
   if (canDeleteView.value === "yes") return undefined;
-  if (canDeleteView.value === "loading")
-    return "Determining if the view can be deleted...";
+  if (canDeleteView.value === "loading") return "Determining if the view can be deleted...";
   return "Views containing one or more components cannot be deleted. To delete a view, first remove all components from it.";
 });
 
@@ -193,10 +164,7 @@ const formData = computed<{ name: string }>(() => {
 });
 
 const existingViewNames = computed(
-  () =>
-    props.views
-      ?.map((view) => view.name)
-      .filter((name) => name !== nameOnOpen.value) ?? [],
+  () => props.views?.map((view) => view.name).filter((name) => name !== nameOnOpen.value) ?? [],
 );
 const viewNameValidator = ({ value }: { value: string }) => {
   if (value.trim().length === 0) {
@@ -248,11 +216,7 @@ const emit = defineEmits<{
 }>();
 
 const nameOnOpen = ref("");
-const open = (
-  openViewId: string,
-  openViewName: string,
-  openIsDefaultView: boolean,
-) => {
+const open = (openViewId: string, openViewName: string, openIsDefaultView: boolean) => {
   viewId.value = openViewId;
   isDefaultView.value = openIsDefaultView;
   modalRef.value?.open();

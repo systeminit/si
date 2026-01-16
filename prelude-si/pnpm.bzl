@@ -99,8 +99,7 @@ def eslint_impl(ctx: AnalysisContext) -> list[[
     args.add(ctx.attrs.directories)
     args.add("--ext")
     args.add(",".join(ctx.attrs.extensions))
-    if ctx.attrs.warnings == False:
-        args.add("--max-warnings=0")
+    args.add("--quiet")
     args.add(ctx.attrs.args)
 
     return _npm_test_impl(

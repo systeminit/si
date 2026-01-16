@@ -184,7 +184,7 @@ const listedTokens = computed(() => {
   return (
     _.reverse(
       _.sortBy(_.values(authTokens.state.value), "createdAt"),
-    ) as Array<AuthToken>
+    )
   ).map((token) => {
     const d = new Date(token.expiresAt as unknown as string);
     const isExpired = d.getTime() < now.value;

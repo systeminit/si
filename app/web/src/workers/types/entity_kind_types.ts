@@ -1,19 +1,11 @@
 import { ActionProposedView } from "@/store/actions.store";
 import { AttributePath, ComponentId } from "@/api/sdf/dal/component";
 import { SchemaId, SchemaVariantId } from "@/api/sdf/dal/schema";
-import {
-  ActionId,
-  ActionKind,
-  ActionPrototypeId,
-  ActionState,
-} from "@/api/sdf/dal/action";
+import { ActionId, ActionKind, ActionPrototypeId, ActionState } from "@/api/sdf/dal/action";
 import { FuncId } from "@/api/sdf/dal/func";
 import { AttributeValueId } from "@/store/status.store";
 import { PropId, PropKind } from "@/api/sdf/dal/prop";
-import {
-  PropertyEditorPropWidgetKind,
-  ValidationOutput,
-} from "@/api/sdf/dal/property_editor";
+import { PropertyEditorPropWidgetKind, ValidationOutput } from "@/api/sdf/dal/property_editor";
 import { ViewId } from "@/api/sdf/dal/views";
 import { ChangeSetId } from "@/api/sdf/dal/change_set";
 import { DefaultMap } from "@/utils/defaultmap";
@@ -64,10 +56,7 @@ export enum EntityKind {
   CachedDefaultVariant = "CachedDefaultVariant",
 }
 
-export const GLOBAL_ENTITIES = [
-  EntityKind.CachedSchema,
-  EntityKind.CachedDefaultVariant,
-] as const;
+export const GLOBAL_ENTITIES = [EntityKind.CachedSchema, EntityKind.CachedDefaultVariant] as const;
 export type GlobalEntity = (typeof GLOBAL_ENTITIES)[number];
 
 export const GLOBAL_IDENTIFIER = "-";
@@ -233,10 +222,7 @@ export interface UninstalledVariant {
   isLocked: boolean;
 }
 
-export type CategoryVariant =
-  | SchemaVariant
-  | UninstalledVariant
-  | CachedDefaultVariant;
+export type CategoryVariant = SchemaVariant | UninstalledVariant | CachedDefaultVariant;
 
 export type Categories = {
   displayName: string;
