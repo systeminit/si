@@ -41,3 +41,8 @@ metrics_generator:
     path: /tmp/tempo/generator/wal
   traces_storage:
     path: /tmp/tempo/generator/traces
+  processor:
+    service_graphs:
+      dimensions: []
+    span_metrics:
+      dimensions: []
