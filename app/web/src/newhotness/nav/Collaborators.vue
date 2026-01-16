@@ -71,7 +71,7 @@
 
 <script lang="ts" setup>
 import * as _ from "lodash-es";
-import { computed, onBeforeUnmount, onMounted, ref } from "vue";
+import { computed, ref } from "vue";
 import { SiSearch, Icon } from "@si/vue-lib/design-system";
 import clsx from "clsx";
 import { useRoute, useRouter } from "vue-router";

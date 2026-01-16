@@ -43,7 +43,7 @@ export type UpdateFn = (
   noBroadcast?: boolean,
 ) => void;
 export type RainbowFn = (changeSetId: ChangeSetId, label: string, noBroadcast?: boolean) => void;
-export type LobbyExitFn = (workspacePk: string, changeSetId: string, noBroadcast?: boolean) => void;
+export type LobbyExitFn = (workspacePk: string, changeSetId: string, noBroadcast?: boolean) => Promise<void>;
 
 export type MjolnirBulk = Array<{
   kind: EntityKind;

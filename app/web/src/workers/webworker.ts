@@ -1204,7 +1204,7 @@ const handleWorkspacePatchMessage = async (db: Database, data: WorkspacePatchBat
         try {
           await initIndexAndChangeSet(db, data.meta, span);
           await updateChangeSetWithNewIndex(db, data.meta);
-        } catch (err) {
+        } catch (_err) {
           error("Failed to handle empty patch", data);
         }
         span.end();
@@ -1455,7 +1455,7 @@ const handlePatchOperations = async (
   for (const atom of atomsToInsert) {
     try {
       await postProcess(db, workspaceId, changeSetId, atom.kind, atom.doc, atom.id, indexChecksum, false, true);
-    } catch (err) {
+    } catch (_err) {
       error("Failed to post process atom", atom, error);
     }
   }

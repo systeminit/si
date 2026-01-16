@@ -325,7 +325,7 @@ export const useRealtimeStore = defineStore("realtime", () => {
       // toRebaseChangeSetId is HEAD / where merges are going into
       try {
         topics.push(`changeset/${eventData.toRebaseChangeSetId}`);
-      } catch (err) {
+      } catch (_err) {
         // do nothing
       }
     }

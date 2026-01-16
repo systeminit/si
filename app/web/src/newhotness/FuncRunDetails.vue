@@ -289,7 +289,7 @@ const functionCode = computed<string>(() => {
   try {
     const decodedCode = atob(funcRun.value.functionCodeBase64);
     return decodedCode;
-  } catch (e) {
+  } catch (_e) {
     return "// Error decoding function code";
   }
 });
@@ -300,7 +300,7 @@ const argsJson = computed<string>(() => {
 
   try {
     return JSON.stringify(funcRun.value.functionArgs, null, 2);
-  } catch (e) {
+  } catch (_e) {
     return "// Error formatting arguments";
   }
 });
@@ -311,7 +311,7 @@ const resultJson = computed<string>(() => {
 
   try {
     return JSON.stringify(funcRun.value.resultValue, null, 2);
-  } catch (e) {
+  } catch (_e) {
     return "// Error formatting result";
   }
 });

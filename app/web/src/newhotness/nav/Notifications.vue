@@ -39,7 +39,7 @@
 
 <script setup lang="ts">
 import clsx from "clsx";
-import { computed, ref, onMounted, onBeforeUnmount } from "vue";
+import { computed, ref } from "vue";
 import { Icon, PillCounter } from "@si/vue-lib/design-system";
 import { useQueries } from "@tanstack/vue-query";
 import { ChangeSetId, ChangeSet, ChangeSetStatus } from "@/api/sdf/dal/change_set";

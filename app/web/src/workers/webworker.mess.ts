@@ -1412,7 +1412,7 @@ async function go() {
   db.addListenerInFlight(Comlink.proxy(() => {}));
   db.addListenerReturned(Comlink.proxy(() => {}));
   db.addAtomUpdated(Comlink.proxy(() => {}));
-  db.addListenerLobbyExit(Comlink.proxy(() => {}));
+  db.addListenerLobbyExit(Comlink.proxy(async () => {}));
   db.addConnStatusFn(Comlink.proxy(() => {}));
   await db.initDB(true);
   await db.migrate(true);

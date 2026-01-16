@@ -1,6 +1,5 @@
 import { describe, expect, test } from "vitest";
 import { funcRunStatus, FuncRun, FuncKind, FuncBackendKind, FuncBackendResponseType } from "./func_run";
-import { ManagementState } from "./management_func_job_state";
 
 /**
  * Creates a minimal FuncRun object for testing.

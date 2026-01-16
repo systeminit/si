@@ -971,7 +971,7 @@ const restoreComponent = async () => {
     await sleep(1000);
     const result = await restoreComponents([selectedComponent.value.id]);
     restoreComponentStatus.value = result.success ? "succeeded" : undefined;
-  } catch (e) {
+  } catch (_e) {
     restoreComponentStatus.value = undefined;
   }
 };

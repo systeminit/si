@@ -74,9 +74,7 @@ export default defineConfigWithVueTs(
       // dont want this
       "@typescript-eslint/consistent-type-imports": 0,
       "import/named": 0,
-
-      // warning on this because we have some shenanigans where it is a promise but a literal `await` is not present
-      "@typescript-eslint/require-await": "warn",
+      "@typescript-eslint/require-await": 0,
 
       // "prettier/prettier": "warn",
       "@typescript-eslint/quotes": 0,
@@ -103,10 +101,11 @@ export default defineConfigWithVueTs(
       "no-await-in-loop": 0,
       "no-lonely-if": 0,
       "@typescript-eslint/no-unused-vars": [
-        "warn",
+        "error",
         {
           argsIgnorePattern: "^_|^(response)$",
           varsIgnorePattern: "^_|^(props|emit)$",
+          caughtErrorsIgnorePattern: "^_",
         },
       ],
       "@typescript-eslint/return-await": 0,
@@ -116,7 +115,7 @@ export default defineConfigWithVueTs(
       // curly: ["error", "multi-line"],
       // "brace-style": "error",
       "max-len": [
-        "warn", // just a warning since prettier will enforce
+        "off", // prettier will enforce
         120,
         2,
         {
@@ -167,9 +166,9 @@ export default defineConfigWithVueTs(
       "@typescript-eslint/no-shadow": 0,
       "guard-for-in": 0,
 
+      "no-console": "error",
       // some rules to downgrade to warning while developing --------------------
       // useful so things dont crash when code is temporarily commented out
-      "no-console": "warn",
       "@typescript-eslint/no-empty-function": "warn",
       "no-debugger": "warn",
       "no-alert": "warn",
@@ -191,6 +190,12 @@ export default defineConfigWithVueTs(
       // "no-autofix/no-unreachable": 1,
       // useful while debugging and commenting things out, otherwise gets automatically changed from let to const
       // "no-autofix/prefer-const": "warn",
+
+      // not clear to me why we have these problems
+      "import/no-named-as-default": 0,
+      "import/no-named-as-default-member": 0,
+
+      "@typescript-eslint/no-empty-function": 0,
 
       "vue/block-order": [
         "error",

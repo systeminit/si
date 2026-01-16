@@ -88,7 +88,7 @@ const STATUS_PANEL_KEY = "statusPanel";
 realtimeStore.subscribe(STATUS_PANEL_KEY, `workspace/${ctx.workspacePk.value}`, [
   {
     eventType: "ChangeSetStatusChanged",
-    callback: async (data) => {
+    callback: (data) => {
       if (
         [ChangeSetStatus.Abandoned, ChangeSetStatus.Applied, ChangeSetStatus.Closed].includes(data.changeSet.status) &&
         data.changeSet.id !== ctx.headChangeSetId.value
@@ -102,7 +102,7 @@ realtimeStore.subscribe(STATUS_PANEL_KEY, `workspace/${ctx.workspacePk.value}`, 
   },
   {
     eventType: "ManagementOperationsComplete",
-    callback: async (payload, meta) => {
+    callback: (payload, meta) => {
       if (!payload.requestUlid) return;
       const key = `management-${payload.requestUlid}`;
       if (superBucket[meta.change_set_id]?.[key]) {
@@ -113,7 +113,7 @@ realtimeStore.subscribe(STATUS_PANEL_KEY, `workspace/${ctx.workspacePk.value}`, 
   },
   {
     eventType: "ManagementOperationsFailed",
-    callback: async (payload, meta) => {
+    callback: (payload, meta) => {
       // BUCKET ITEM -- ADD -- MANAGEMENT FUNCS
       const key = `management-${payload.requestUlid}`;
       let bucket = superBucket[meta.change_set_id];
@@ -126,7 +126,7 @@ realtimeStore.subscribe(STATUS_PANEL_KEY, `workspace/${ctx.workspacePk.value}`, 
   },
   {
     eventType: "ManagementOperationsInProgress",
-    callback: async (payload, meta) => {
+    callback: (payload, meta) => {
       // BUCKET ITEM -- ADD -- MANAGEMENT FUNCS
       const key = `management-${payload.requestUlid}`;
       let bucket = superBucket[meta.change_set_id];

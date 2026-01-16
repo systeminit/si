@@ -26,7 +26,7 @@ export const useRainbow = (changeSetId: ComputedRef<ChangeSetId>) => {
        * When its > 0 the system is waiting for data
        */
       return { count: computed(() => queue?.size ?? 0) };
-    } catch (err) {
+    } catch (_err) {
       return { count: 0 };
     }
   });

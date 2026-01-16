@@ -320,17 +320,13 @@ db.getConnections().then((conns) => {
   });
 });
 
-const updateConnectionStatus: ConnStatusFn = async (
-  workspaceId: WorkspacePk,
-  connected: boolean,
-  noBroadcast?: boolean,
-) => {
+const updateConnectionStatus: ConnStatusFn = (workspaceId: WorkspacePk, connected: boolean, noBroadcast?: boolean) => {
   _wsConnections.value[workspaceId] = connected;
 
   // always update to connected
   if (connected) wsConnections.value[workspaceId] = connected;
 
-  await db.setConnections({ ..._wsConnections.value });
+  db.setConnections({ ..._wsConnections.value });
 
   // prevent blips in the UI from quick disconnect -> connect flips
   setTimeout(() => {
@@ -691,7 +687,7 @@ const fetchOpenChangeSets = async (workspaceId: WorkspacePk): Promise<WorkspaceM
       url: `v2/workspaces/${workspaceId}/change-sets`,
     });
     return resp.data;
-  } catch (err) {
+  } catch (_err) {
     return {
       name: "",
       id: "",
