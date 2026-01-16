@@ -93,6 +93,10 @@ pub fn routes(state: AppState) -> Router<AppState> {
                                 "/merge_status",
                                 get(super::change_sets::merge_status::merge_status),
                             )
+                            .route(
+                                "/review",
+                                get(super::change_sets::review::review_change_set),
+                            )
                             .route_layer(
                                 middleware::from_extractor::<TargetChangeSetIdentFromPath>(),
                             ),
