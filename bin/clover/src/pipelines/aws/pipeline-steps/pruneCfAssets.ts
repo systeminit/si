@@ -4,6 +4,11 @@ import { createFunc, strippedBase64 } from "../../../spec/funcs.ts";
 import { CODE_GENERATION_FUNC_SPECS } from "../funcs.ts";
 import { ulid } from "https://deno.land/x/ulid@v0.3.0/mod.ts";
 import { FuncArgumentSpec } from "../../../bindings/FuncArgumentSpec.ts";
+import {
+  createScalarProp,
+  ExpandedPropSpecFor,
+  findPropByName,
+} from "../../../spec/props.ts";
 
 const logger = _logger.ns("pruneCfAssets").seal();
 
@@ -12,11 +17,11 @@ export function pruneCfAssets(specs: ExpandedPkgSpec[]): ExpandedPkgSpec[] {
     const [schema] = spec.schemas;
     const [variant] = schema.variants;
 
-    if (!spec.name.includes("::") || variant.superSchema.handlers) {
+    if (!spec.name.includes("::") || variant.superSchema.handlers?.read) {
       continue;
     }
 
-    logger.debug(`Pruning ${schema.name} because it has no handlers`);
+    logger.debug(`Pruning ${schema.name} because it has no read handler`);
 
     variant.managementFuncs = [];
 
@@ -25,6 +30,23 @@ export function pruneCfAssets(specs: ExpandedPkgSpec[]): ExpandedPkgSpec[] {
         func.funcUniqueId ===
           CODE_GENERATION_FUNC_SPECS.awsCloudFormationLint.id,
     );
+
+    // Add CloudFormationOnly prop to extra
+    const extraProp = findPropByName(
+      variant.domain,
+      "extra",
+    ) as ExpandedPropSpecFor["object"];
+    if (extraProp) {
+      const cfOnlyProp = createScalarProp(
+        "CloudFormationOnly",
+        "boolean",
+        extraProp.metadata.propPath,
+        false,
+      );
+      cfOnlyProp.data.defaultValue = "true";
+      cfOnlyProp.data.hidden = true;
+      extraProp.entries.push(cfOnlyProp);
+    }
 
     const attrFunc = createAttributeFunc();
     spec.funcs.push(attrFunc);
