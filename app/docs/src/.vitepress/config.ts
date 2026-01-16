@@ -353,5 +353,13 @@ export default withMermaid(defineConfig({
       host: process.env.DEV_HOST,
       port: parseInt(process.env.DEV_PORT!, 10),
     },
+    ssr: {
+      noExternal: ['vitepress-plugin-mermaid'],
+    },
+    build: {
+      rollupOptions: {
+        external: ['vscode-languageserver-types'],
+      },
+    },
   },
 }));
