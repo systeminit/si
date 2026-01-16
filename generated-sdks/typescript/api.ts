@@ -295,6 +295,25 @@ export interface CancelActionV1Response {
     'success': boolean;
 }
 /**
+ * Response for change set review endpoint
+ * @export
+ * @interface ChangeSetReviewV1Response
+ */
+export interface ChangeSetReviewV1Response {
+    /**
+     * List of components with changes
+     * @type {Array<ComponentReviewV1>}
+     * @memberof ChangeSetReviewV1Response
+     */
+    'components': Array<ComponentReviewV1>;
+    /**
+     * Summary statistics
+     * @type {ReviewSummaryV1}
+     * @memberof ChangeSetReviewV1Response
+     */
+    'summary': ReviewSummaryV1;
+}
+/**
  * 
  * @export
  * @interface ChangeSetViewV1
@@ -484,6 +503,49 @@ export interface ComponentReferenceOneOf1 {
      * @memberof ComponentReferenceOneOf1
      */
     'componentId': string;
+}
+/**
+ * A single component\'s review data
+ * @export
+ * @interface ComponentReviewV1
+ */
+export interface ComponentReviewV1 {
+    /**
+     * Simplified attribute diffs - easier to consume than raw MV format
+     * @type {object}
+     * @memberof ComponentReviewV1
+     */
+    'attributeDiffs': object;
+    /**
+     * The component ID
+     * @type {string}
+     * @memberof ComponentReviewV1
+     */
+    'componentId': string;
+    /**
+     * The component name
+     * @type {string}
+     * @memberof ComponentReviewV1
+     */
+    'componentName': string;
+    /**
+     * The diff status (Added, Modified, Removed, None)
+     * @type {string}
+     * @memberof ComponentReviewV1
+     */
+    'diffStatus': string;
+    /**
+     * Resource diff (code/template diff) - only included if includeResourceDiff=true
+     * @type {object}
+     * @memberof ComponentReviewV1
+     */
+    'resourceDiff'?: object;
+    /**
+     * The schema name
+     * @type {string}
+     * @memberof ComponentReviewV1
+     */
+    'schemaName': string;
 }
 /**
  * Component data in search results.
@@ -2793,6 +2855,37 @@ export interface RetryActionV1Response {
     'success': boolean;
 }
 /**
+ * Summary statistics for the review
+ * @export
+ * @interface ReviewSummaryV1
+ */
+export interface ReviewSummaryV1 {
+    /**
+     * Number of added components
+     * @type {number}
+     * @memberof ReviewSummaryV1
+     */
+    'added': number;
+    /**
+     * Number of modified components
+     * @type {number}
+     * @memberof ReviewSummaryV1
+     */
+    'modified': number;
+    /**
+     * Number of removed components
+     * @type {number}
+     * @memberof ReviewSummaryV1
+     */
+    'removed': number;
+    /**
+     * Total number of changed components
+     * @type {number}
+     * @memberof ReviewSummaryV1
+     */
+    'totalComponents': number;
+}
+/**
  * 
  * @export
  * @interface SchemaResponse
@@ -3140,6 +3233,97 @@ export interface SecretV1 {
      * @memberof SecretV1
      */
     'name': string;
+}
+/**
+ * Simplified attribute diff for easier CLI consumption
+ * @export
+ * @interface SimplifiedAttributeDiffV1
+ */
+export interface SimplifiedAttributeDiffV1 {
+    /**
+     * The type of change: \"added\", \"removed\", \"modified\"
+     * @type {string}
+     * @memberof SimplifiedAttributeDiffV1
+     */
+    'changeType': string;
+    /**
+     * Whether the value came from schema default
+     * @type {boolean}
+     * @memberof SimplifiedAttributeDiffV1
+     */
+    'fromSchema'?: boolean | null;
+    /**
+     * For subscriptions: the component ID being subscribed to
+     * @type {string}
+     * @memberof SimplifiedAttributeDiffV1
+     */
+    'newSourceComponentId'?: string | null;
+    /**
+     * For subscriptions: the component name being subscribed to
+     * @type {string}
+     * @memberof SimplifiedAttributeDiffV1
+     */
+    'newSourceComponentName'?: string | null;
+    /**
+     * For subscriptions: the path being subscribed to
+     * @type {string}
+     * @memberof SimplifiedAttributeDiffV1
+     */
+    'newSourcePath'?: string | null;
+    /**
+     * For prototypes: the prototype description
+     * @type {string}
+     * @memberof SimplifiedAttributeDiffV1
+     */
+    'newSourcePrototype'?: string | null;
+    /**
+     * How the new value is sourced: \"value\", \"subscription\", \"prototype\"
+     * @type {string}
+     * @memberof SimplifiedAttributeDiffV1
+     */
+    'newSourceType'?: string | null;
+    /**
+     * 
+     * @type {any}
+     * @memberof SimplifiedAttributeDiffV1
+     */
+    'newValue'?: any;
+    /**
+     * For subscriptions (old): the component ID
+     * @type {string}
+     * @memberof SimplifiedAttributeDiffV1
+     */
+    'oldSourceComponentId'?: string | null;
+    /**
+     * For subscriptions (old): the component name
+     * @type {string}
+     * @memberof SimplifiedAttributeDiffV1
+     */
+    'oldSourceComponentName'?: string | null;
+    /**
+     * For subscriptions (old): the path
+     * @type {string}
+     * @memberof SimplifiedAttributeDiffV1
+     */
+    'oldSourcePath'?: string | null;
+    /**
+     * For prototypes (old): the prototype description
+     * @type {string}
+     * @memberof SimplifiedAttributeDiffV1
+     */
+    'oldSourcePrototype'?: string | null;
+    /**
+     * How the old value is sourced
+     * @type {string}
+     * @memberof SimplifiedAttributeDiffV1
+     */
+    'oldSourceType'?: string | null;
+    /**
+     * 
+     * @type {any}
+     * @memberof SimplifiedAttributeDiffV1
+     */
+    'oldValue'?: any;
 }
 /**
  * 
@@ -4493,6 +4677,49 @@ export const ChangeSetsApiAxiosParamCreator = function (configuration?: Configur
                 options: localVarRequestOptions,
             };
         },
+        /**
+         * Returns all components with diffs in a single call. Includes component lookup data for resolving subscription sources.
+         * @summary Get a comprehensive review of all changes in a change set
+         * @param {string} workspaceId Workspace identifier
+         * @param {string} changeSetId Change Set identifier
+         * @param {boolean} [includeResourceDiff] Include resource code diffs (CloudFormation/Terraform)
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        reviewChangeSet: async (workspaceId: string, changeSetId: string, includeResourceDiff?: boolean, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'workspaceId' is not null or undefined
+            assertParamExists('reviewChangeSet', 'workspaceId', workspaceId)
+            // verify required parameter 'changeSetId' is not null or undefined
+            assertParamExists('reviewChangeSet', 'changeSetId', changeSetId)
+            const localVarPath = `/v1/w/{workspace_id}/change-sets/{change_set_id}/review`
+                .replace(`{${"workspace_id"}}`, encodeURIComponent(String(workspaceId)))
+                .replace(`{${"change_set_id"}}`, encodeURIComponent(String(changeSetId)));
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'GET', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+            if (includeResourceDiff !== undefined) {
+                localVarQueryParameter['includeResourceDiff'] = includeResourceDiff;
+            }
+
+
+    
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
     }
 };
 
@@ -4613,6 +4840,21 @@ export const ChangeSetsApiFp = function(configuration?: Configuration) {
             const localVarOperationServerBasePath = operationServerMap['ChangeSetsApi.requestApproval']?.[localVarOperationServerIndex]?.url;
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
         },
+        /**
+         * Returns all components with diffs in a single call. Includes component lookup data for resolving subscription sources.
+         * @summary Get a comprehensive review of all changes in a change set
+         * @param {string} workspaceId Workspace identifier
+         * @param {string} changeSetId Change Set identifier
+         * @param {boolean} [includeResourceDiff] Include resource code diffs (CloudFormation/Terraform)
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async reviewChangeSet(workspaceId: string, changeSetId: string, includeResourceDiff?: boolean, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<ChangeSetReviewV1Response>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.reviewChangeSet(workspaceId, changeSetId, includeResourceDiff, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['ChangeSetsApi.reviewChangeSet']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
     }
 };
 
@@ -4703,6 +4945,16 @@ export const ChangeSetsApiFactory = function (configuration?: Configuration, bas
         requestApproval(requestParameters: ChangeSetsApiRequestApprovalRequest, options?: RawAxiosRequestConfig): AxiosPromise<RequestApprovalChangeSetV1Response> {
             return localVarFp.requestApproval(requestParameters.workspaceId, requestParameters.changeSetId, options).then((request) => request(axios, basePath));
         },
+        /**
+         * Returns all components with diffs in a single call. Includes component lookup data for resolving subscription sources.
+         * @summary Get a comprehensive review of all changes in a change set
+         * @param {ChangeSetsApiReviewChangeSetRequest} requestParameters Request parameters.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        reviewChangeSet(requestParameters: ChangeSetsApiReviewChangeSetRequest, options?: RawAxiosRequestConfig): AxiosPromise<ChangeSetReviewV1Response> {
+            return localVarFp.reviewChangeSet(requestParameters.workspaceId, requestParameters.changeSetId, requestParameters.includeResourceDiff, options).then((request) => request(axios, basePath));
+        },
     };
 };
 
@@ -4791,6 +5043,16 @@ export interface ChangeSetsApiInterface {
      * @memberof ChangeSetsApiInterface
      */
     requestApproval(requestParameters: ChangeSetsApiRequestApprovalRequest, options?: RawAxiosRequestConfig): AxiosPromise<RequestApprovalChangeSetV1Response>;
+
+    /**
+     * Returns all components with diffs in a single call. Includes component lookup data for resolving subscription sources.
+     * @summary Get a comprehensive review of all changes in a change set
+     * @param {ChangeSetsApiReviewChangeSetRequest} requestParameters Request parameters.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof ChangeSetsApiInterface
+     */
+    reviewChangeSet(requestParameters: ChangeSetsApiReviewChangeSetRequest, options?: RawAxiosRequestConfig): AxiosPromise<ChangeSetReviewV1Response>;
 
 }
 
@@ -4949,6 +5211,34 @@ export interface ChangeSetsApiRequestApprovalRequest {
 }
 
 /**
+ * Request parameters for reviewChangeSet operation in ChangeSetsApi.
+ * @export
+ * @interface ChangeSetsApiReviewChangeSetRequest
+ */
+export interface ChangeSetsApiReviewChangeSetRequest {
+    /**
+     * Workspace identifier
+     * @type {string}
+     * @memberof ChangeSetsApiReviewChangeSet
+     */
+    readonly workspaceId: string
+
+    /**
+     * Change Set identifier
+     * @type {string}
+     * @memberof ChangeSetsApiReviewChangeSet
+     */
+    readonly changeSetId: string
+
+    /**
+     * Include resource code diffs (CloudFormation/Terraform)
+     * @type {boolean}
+     * @memberof ChangeSetsApiReviewChangeSet
+     */
+    readonly includeResourceDiff?: boolean
+}
+
+/**
  * ChangeSetsApi - object-oriented interface
  * @export
  * @class ChangeSetsApi
@@ -5049,6 +5339,18 @@ export class ChangeSetsApi extends BaseAPI implements ChangeSetsApiInterface {
      */
     public requestApproval(requestParameters: ChangeSetsApiRequestApprovalRequest, options?: RawAxiosRequestConfig) {
         return ChangeSetsApiFp(this.configuration).requestApproval(requestParameters.workspaceId, requestParameters.changeSetId, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * Returns all components with diffs in a single call. Includes component lookup data for resolving subscription sources.
+     * @summary Get a comprehensive review of all changes in a change set
+     * @param {ChangeSetsApiReviewChangeSetRequest} requestParameters Request parameters.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof ChangeSetsApi
+     */
+    public reviewChangeSet(requestParameters: ChangeSetsApiReviewChangeSetRequest, options?: RawAxiosRequestConfig) {
+        return ChangeSetsApiFp(this.configuration).reviewChangeSet(requestParameters.workspaceId, requestParameters.changeSetId, requestParameters.includeResourceDiff, options).then((request) => request(this.axios, this.basePath));
     }
 }
 

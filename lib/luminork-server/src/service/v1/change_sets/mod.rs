@@ -7,6 +7,7 @@ use axum::{
     },
 };
 use dal::ChangeSetId;
+use frigg::FriggError;
 use sdf_core::EddaClientError;
 use thiserror::Error;
 
@@ -18,6 +19,7 @@ pub mod list;
 pub mod merge_status;
 pub mod purge_open;
 pub mod request_approval;
+pub mod review;
 
 use super::common::ErrorIntoResponse;
 
@@ -44,12 +46,18 @@ pub enum ChangeSetError {
     Component(#[from] dal::ComponentError),
     #[error("edda client error: {0}")]
     EddaClient(#[from] EddaClientError),
+    #[error("frigg error: {0}")]
+    Frigg(#[from] FriggError),
     #[error("func error: {0}")]
     Func(#[from] dal::FuncError),
+    #[error("no diff available for head change set")]
+    HeadDiffNotAvailable,
     #[error("schema error: {0}")]
     Schema(#[from] dal::SchemaError),
     #[error("schema variant error: {0}")]
     SchemaVariant(#[from] dal::SchemaVariantError),
+    #[error("serde json error: {0}")]
+    SerdeJson(#[from] serde_json::Error),
     #[error("transactions error: {0}")]
     Transactions(#[from] dal::TransactionsError),
     #[error("validation error: {0}")]
@@ -75,6 +83,7 @@ impl ErrorIntoResponse for ChangeSetError {
             ),
             ChangeSetError::CannotAbandonHead => (StatusCode::BAD_REQUEST, self.to_string()),
             ChangeSetError::CannotMergeHead => (StatusCode::BAD_REQUEST, self.to_string()),
+            ChangeSetError::HeadDiffNotAvailable => (StatusCode::BAD_REQUEST, self.to_string()),
             ChangeSetError::Validation(_) => (StatusCode::UNPROCESSABLE_ENTITY, self.to_string()),
             _ => (StatusCode::INTERNAL_SERVER_ERROR, self.to_string()),
         }

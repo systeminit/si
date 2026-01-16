@@ -39,6 +39,12 @@ pub use change_sets::{
         MergeStatusV1ResponseActionComponent,
     },
     purge_open::PurgeOpenChangeSetsV1Response,
+    review::{
+        ChangeSetReviewV1Response,
+        ComponentReviewV1,
+        ReviewSummaryV1,
+        SimplifiedAttributeDiffV1,
+    },
 };
 pub use components::{
     ComponentPropKey,
@@ -212,6 +218,7 @@ pub use crate::api_types::func_run::v1::{
         change_sets::merge_status::merge_status,
         change_sets::request_approval::request_approval,
         change_sets::purge_open::purge_open,
+        change_sets::review::review_change_set,
         components::get_component::get_component,
         components::create_component::create_component,
         components::list_components::list_components,
@@ -284,6 +291,10 @@ pub use crate::api_types::func_run::v1::{
             MergeStatusV1Response,
             MergeStatusV1ResponseAction,
             MergeStatusV1ResponseActionComponent,
+            ChangeSetReviewV1Response,
+            ComponentReviewV1,
+            ReviewSummaryV1,
+            SimplifiedAttributeDiffV1,
             ComponentV1RequestPath,
             GetComponentV1Response,
             GetComponentResourceDataV1Response,
