@@ -358,7 +358,10 @@ export default withMermaid(defineConfig({
     },
     build: {
       rollupOptions: {
-        external: ['vscode-languageserver-types'],
+        external: [
+          /^vscode-/,
+          'langium',
+        ],
       },
     },
   },
