@@ -378,6 +378,26 @@ function buildGcpResourceSpec(
     }
   }
 
+  // Add query parameters from insert method as top-level domain props
+  // These are needed for API calls (e.g., serviceId for Cloud Run)
+  if (insert?.parameters) {
+    for (const [paramName, param] of Object.entries(insert.parameters)) {
+      // Only add query parameters (not path params which are in parameterOrder)
+      if (param.location !== "query") continue;
+      // Skip validateOnly and similar optional params
+      if (paramName === "validateOnly") continue;
+      // Skip deprecated parameters
+      if (param.deprecated === true) continue;
+      // Skip if already exists
+      if (domainProperties[paramName]) continue;
+
+      domainProperties[paramName] = {
+        type: param.type || "string",
+        description: param.description || `The ${paramName} for this resource`,
+      };
+    }
+  }
+
   // Remove read-only properties from domain
   const nonReadOnlyDomainProperties = Object.fromEntries(
     Object.entries(domainProperties).filter(([_, prop]) =>
@@ -387,10 +407,13 @@ function buildGcpResourceSpec(
 
   // Remove output-only properties from domain (they belong in resourceValue only)
   // GCP doesn't consistently mark these with readOnly, so we detect via description patterns
+  // BUT: Keep path parameters from insert.parameterOrder - these are required for URL building
+  // Even if marked "[Output Only]" in their description, they're needed as inputs
   const outputOnlyProps = new Set(detectOutputOnlyProperties(insert?.request));
+  const insertPathParams = new Set(insert?.parameterOrder || []);
   const nonOutputOnlyDomainProperties = Object.fromEntries(
     Object.entries(nonReadOnlyDomainProperties).filter(([name]) =>
-      !outputOnlyProps.has(name)
+      !outputOnlyProps.has(name) || insertPathParams.has(name)
     ),
   );
 
