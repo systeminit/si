@@ -44,6 +44,9 @@ use ulid::Ulid;
 const DEFAULT_VERITECH_REQUESTS_CONCURRENCY_LIMIT: usize = 1000;
 const DEFAULT_POOL_SIZE: u32 = 50;
 
+const DEFAULT_POOL_GET_RETRY_LIMIT: u32 = 30;
+const DEFAULT_CONSUMER_MAX_DELIVER: i64 = 10;
+
 const DEFAULT_CYCLONE_CLIENT_EXECUTION_TIMEOUT_SECS: u64 = 60 * 35;
 const DEFAULT_CYCLONE_CLIENT_EXECUTION_TIMEOUT: Duration =
     Duration::from_secs(DEFAULT_CYCLONE_CLIENT_EXECUTION_TIMEOUT_SECS);
@@ -115,6 +118,12 @@ pub struct Config {
 
     #[builder(default = "default_service_endpoints_config()")]
     service_endpoints: ServiceEndpointsConfig,
+
+    #[builder(default = "default_pool_get_retry_limit()")]
+    pool_get_retry_limit: u32,
+
+    #[builder(default = "default_consumer_max_deliver()")]
+    consumer_max_deliver: i64,
 }
 
 impl StandardConfig for Config {
@@ -188,6 +197,16 @@ impl Config {
     pub fn service_endpoints(&self) -> &ServiceEndpointsConfig {
         &self.service_endpoints
     }
+
+    /// Gets the config's pool get retry limit.
+    pub fn pool_get_retry_limit(&self) -> u32 {
+        self.pool_get_retry_limit
+    }
+
+    /// Gets the config's consumer max deliver.
+    pub fn consumer_max_deliver(&self) -> i64 {
+        self.consumer_max_deliver
+    }
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -213,6 +232,10 @@ pub struct ConfigFile {
     heartbeat_app_publish_timeout_secs: u64,
     #[serde(default = "default_service_endpoints_config")]
     service_endpoints: ServiceEndpointsConfig,
+    #[serde(default = "default_pool_get_retry_limit")]
+    pool_get_retry_limit: u32,
+    #[serde(default = "default_consumer_max_deliver")]
+    consumer_max_deliver: i64,
 }
 
 impl Default for ConfigFile {
@@ -235,6 +258,8 @@ impl ConfigFile {
             heartbeat_app_sleep_secs: default_heartbeat_app_sleep_secs(),
             heartbeat_app_publish_timeout_secs: default_heartbeat_app_publish_timeout_secs(),
             service_endpoints: default_service_endpoints_config(),
+            pool_get_retry_limit: default_pool_get_retry_limit(),
+            consumer_max_deliver: default_consumer_max_deliver(),
         }
     }
 
@@ -251,6 +276,8 @@ impl ConfigFile {
             heartbeat_app_sleep_secs: default_heartbeat_app_sleep_secs(),
             heartbeat_app_publish_timeout_secs: default_heartbeat_app_publish_timeout_secs(),
             service_endpoints: default_service_endpoints_config(),
+            pool_get_retry_limit: default_pool_get_retry_limit(),
+            consumer_max_deliver: default_consumer_max_deliver(),
         }
     }
 }
@@ -281,6 +308,8 @@ impl TryFrom<ConfigFile> for Config {
             value.heartbeat_app_publish_timeout_secs,
         ));
         config.service_endpoints(value.service_endpoints);
+        config.pool_get_retry_limit(value.pool_get_retry_limit);
+        config.consumer_max_deliver(value.consumer_max_deliver);
 
         config.build().map_err(Into::into)
     }
@@ -672,6 +701,14 @@ fn default_create_firecracker_setup_scripts() -> bool {
 
 fn default_service_endpoints_config() -> ServiceEndpointsConfig {
     ServiceEndpointsConfig::new(0)
+}
+
+fn default_pool_get_retry_limit() -> u32 {
+    DEFAULT_POOL_GET_RETRY_LIMIT
+}
+
+fn default_consumer_max_deliver() -> i64 {
+    DEFAULT_CONSUMER_MAX_DELIVER
 }
 
 #[allow(clippy::disallowed_methods)] // Used to determine if running in development

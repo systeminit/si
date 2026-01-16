@@ -23,7 +23,10 @@ use naxum::{
     extract::MatchedSubject,
     handler::Handler as _,
     middleware::{
-        ack::AckLayer,
+        ack::{
+            AckLayer,
+            BackoffOnFailure,
+        },
         matched_subject::{
             ForSubject,
             MatchedSubjectLayer,
@@ -81,7 +84,6 @@ use crate::{
 };
 
 const CONSUMER_NAME: &str = "veritech-server";
-const CONSUMER_MAX_DELIVERY: i64 = 5;
 
 /// Server metadata, used with telemetry.
 #[derive(Clone, Debug)]
@@ -170,6 +172,7 @@ impl Server {
                 let pool_config = PoolNoodleConfig {
                     check_health: config.healthcheck_pool(),
                     pool_size: spec.pool_size,
+                    retry_limit: config.pool_get_retry_limit(),
                     shutdown_token: token.clone(),
                     spec: spec.clone(),
                     ..Default::default()
@@ -196,6 +199,7 @@ impl Server {
                     cyclone_pool,
                     Arc::new(decryption_key),
                     config.cyclone_client_execution_timeout(),
+                    config.consumer_max_deliver(),
                     nats.clone(),
                     nats_jetstream.clone(),
                     kill_senders.clone(),
@@ -268,6 +272,7 @@ impl Server {
         cyclone_pool: PoolNoodle<LocalUdsInstance, LocalUdsInstanceSpec>,
         decryption_key: Arc<VeritechDecryptionKey>,
         cyclone_client_execution_timeout: Duration,
+        consumer_max_deliver: i64,
         nats: NatsClient,
         nats_jetstream: NatsClient,
         kill_senders: Arc<Mutex<HashMap<ExecutionId, oneshot::Sender<()>>>>,
@@ -285,7 +290,10 @@ impl Server {
             let context = jetstream::new(nats_jetstream);
             veritech_work_queue(&context, prefix.as_deref())
                 .await?
-                .create_consumer(Self::incoming_consumer_config(prefix.as_deref()))
+                .create_consumer(Self::incoming_consumer_config(
+                    prefix.as_deref(),
+                    consumer_max_deliver,
+                ))
                 .await?
                 .messages()
                 .await?
@@ -312,7 +320,7 @@ impl Server {
                     )
                     .on_response(telemetry_nats::NatsOnResponse::new()),
             )
-            .layer(AckLayer::new())
+            .layer(AckLayer::new().on_failure(BackoffOnFailure::new(consumer_max_deliver)))
             .service(handlers::process_request.with_state(state))
             .map_response(Response::into_response);
 
@@ -386,11 +394,12 @@ impl Server {
     #[inline]
     fn incoming_consumer_config(
         subject_prefix: Option<&str>,
+        max_deliver: i64,
     ) -> async_nats::jetstream::consumer::pull::Config {
         async_nats::jetstream::consumer::pull::Config {
             durable_name: Some(CONSUMER_NAME.to_owned()),
             filter_subject: incoming_subject(subject_prefix).to_string(),
-            max_deliver: CONSUMER_MAX_DELIVERY,
+            max_deliver,
             ..Default::default()
         }
     }
