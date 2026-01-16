@@ -6318,6 +6318,9 @@
   "Indicates whether this bucket has an Object Lock configuration enabled. Enable ``ObjectLockEnabled`` when you apply ``ObjectLockConfiguration`` to a bucket.": {
     "enum": null
   },
+  "Indicates whether this is a zonal (single-AZ) or regional (multi-AZ) NAT gateway.\n A zonal NAT gateway is a NAT Gateway that provides redundancy and scalability within a single availability zone. A regional NAT gateway is a single NAT Gateway that works across multiple availability zones (AZs) in your VPC, providing redundancy, scalability and availability across all the AZs in a Region.\n For more information, see [Regional NAT gateways for automatic multi-AZ expansion](https://docs.aws.amazon.com/vpc/latest/userguide/nat-gateways-regional.html) in the *Amazon VPC User Guide*.": {
+    "enum": null
+  },
   "Indicates whether this matchmaking configuration is being used with Amazon GameLift hosting or as a standalone matchmaking solution.": {
     "enum": null
   },
@@ -11038,6 +11041,9 @@
     "enum": null
   },
   "The NetBIOS name for your domain.": {
+    "enum": null
+  },
+  "The Node.js version used for execution of the Realtime script.": {
     "enum": null
   },
   "The OIDC authorization endpoint.": {
