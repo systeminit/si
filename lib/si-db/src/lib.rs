@@ -33,6 +33,7 @@ pub use management_func_execution::{
 pub use policy_report::{
     DEFAULT_PAGE_NUMBER,
     DEFAULT_PAGE_SIZE,
+    MAX_REPORTS_PER_GROUP,
     PolicyReport,
     PolicyReportError,
     PolicyReportResult,

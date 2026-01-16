@@ -55,6 +55,9 @@ pub const DEFAULT_PAGE_NUMBER: u64 = 1;
 /// The default page size when fetching a batch of [policy reports](PolicyReport).
 pub const DEFAULT_PAGE_SIZE: u64 = 200;
 
+/// The maximum number of reports to return per group when fetching grouped reports.
+pub const MAX_REPORTS_PER_GROUP: i64 = 10;
+
 #[allow(missing_docs)]
 #[remain::sorted]
 #[derive(Debug, Error)]
@@ -148,6 +151,15 @@ pub struct PolicyReportBatch {
     pub total_report_count: u64,
 }
 
+/// Represents a group of policy reports with the same name.
+#[derive(Debug)]
+pub struct PolicyReportGroup {
+    /// The name of the policy.
+    pub name: String,
+    /// The latest reports for this policy (up to 10).
+    pub results: Vec<PolicyReport>,
+}
+
 impl PolicyReport {
     /// Inserts a new policy report entry with a passing [result](PolicyReportResult).
     pub async fn new_pass(
@@ -206,22 +218,20 @@ impl PolicyReport {
         Self::try_from(row)
     }
 
-    /// Fetches a single [`PolicyReport`](PolicyReport) for the current workspace and change set based on ID in the url path.
+    /// Fetches a single [`PolicyReport`](PolicyReport) for the current workspace based on ID in the url path.
     pub async fn fetch_single(
         ctx: &impl SiDbContext,
         id: PolicyReportId,
     ) -> Result<Option<PolicyReport>> {
-        let rows =
-            ctx.txns().await?.pg()
-                .query(
-                    "SELECT * FROM policy_reports WHERE workspace_id = $1 AND change_set_id = $2 and id = $3",
-                    &[
-                        &ctx.tenancy().workspace_pk()?,
-                        &ctx.change_set_id(),
-                        &id,
-                    ],
-                )
-                .await?;
+        let rows = ctx
+            .txns()
+            .await?
+            .pg()
+            .query(
+                "SELECT * FROM policy_reports WHERE workspace_id = $1 AND id = $2",
+                &[&ctx.tenancy().workspace_pk()?, &id],
+            )
+            .await?;
         let mut reports = Vec::with_capacity(rows.len());
         for row in rows {
             reports.push(Self::try_from(row)?);
@@ -230,57 +240,48 @@ impl PolicyReport {
         Ok(report)
     }
 
-    /// Fetches a batch of [`PolicyReports`](PolicyReport) for the current workspace and change set via pagination.
+    /// Fetches a batch of [`PolicyReports`](PolicyReport) for the current workspace via pagination.
     /// Bundles the data into a [`PolicyReportBatch`].
     ///
     /// - If the caller does not provide a page size, the [`DEFAULT_PAGE_SIZE`] is used
     /// - If the caller does not provide a page number, the [`DEFAULT_PAGE_NUMBER`] is used
     /// - If the caller provides a page size that isn't greater than zero, the page size will be `1`
     /// - If the caller provides a page number that isn't greater than zero, the page number will be `1`
+    /// - Only reports matching the provided name will be returned
     pub async fn fetch_batch(
         ctx: &impl SiDbContext,
         page_size: Option<u64>,
         page_number: Option<u64>,
+        name: String,
     ) -> Result<PolicyReportBatch> {
-        // Fallback to the default page size and page number, as needed. We also ensure that the
+        // Fallback to the default page size and page number, as needed. We also ensure that
         // the page number and size are at least "1".
         let page_size = page_size.unwrap_or(DEFAULT_PAGE_SIZE).max(1);
         let page_number = page_number.unwrap_or(DEFAULT_PAGE_NUMBER).max(1);
 
         // Collect the paginated reports. We need an offset if we are beyond the first page.
-        let rows = if page_number == 1 {
-            ctx.txns().await?.pg()
-                .query(
-                    "SELECT * FROM policy_reports WHERE workspace_id = $1 AND change_set_id = $2 ORDER BY created_at DESC LIMIT $3",
-                    &[
-                        &ctx.tenancy().workspace_pk()?,
-                        &ctx.change_set_id(),
-                        &(page_size as i64), // required to make the query happy, but I want to strangle it
-                    ],
-                )
-                .await?
-        } else {
-            let offset = page_number.saturating_sub(1).saturating_mul(page_size);
-            ctx.txns().await?.pg()
-                .query(
-                    "SELECT * FROM policy_reports WHERE workspace_id = $1 AND change_set_id = $2 ORDER BY created_at DESC LIMIT $3 OFFSET $4",
-                    &[
-                        &ctx.tenancy().workspace_pk()?,
-                        &ctx.change_set_id(),
-                        &(page_size as i64), // required to make the query happy, but I want to strangle it
-                        &(offset as i64) // required to make the query happy, but I want to strangle it
-                    ],
-                )
-                .await?
-        };
+        let offset = page_number.saturating_sub(1).saturating_mul(page_size);
+
+        let rows = ctx.txns().await?.pg()
+            .query(
+                "SELECT * FROM policy_reports WHERE workspace_id = $1 AND name = $2 ORDER BY created_at DESC LIMIT $3 OFFSET $4",
+                &[
+                    &ctx.tenancy().workspace_pk()?,
+                    &name,
+                    &(page_size as i64),
+                    &(offset as i64),
+                ],
+            )
+            .await?;
+
         let mut reports = Vec::with_capacity(rows.len());
         for row in rows {
             reports.push(Self::try_from(row)?);
         }
 
-        // Determine the total number of reports available within the workspace and change set.
+        // Determine the total number of reports available within the workspace.
         // Then, derive the total number of pages from that.
-        let total_report_count = Self::total_count(ctx).await?;
+        let total_report_count = Self::total_count(ctx, &name).await?;
         let total_page_count = if total_report_count == 0 {
             0
         } else {
@@ -298,14 +299,58 @@ impl PolicyReport {
         })
     }
 
-    async fn total_count(ctx: &impl SiDbContext) -> Result<u64> {
-        let row = ctx.txns().await?.pg()
+    /// Fetches policy reports grouped by name, with the latest reports for each name.
+    /// Returns a vector of [`PolicyReportGroup`] objects, each containing a policy name and its latest reports.
+    /// The number of reports per group is limited by [`MAX_REPORTS_PER_GROUP`].
+    pub async fn fetch_grouped_by_name(ctx: &impl SiDbContext) -> Result<Vec<PolicyReportGroup>> {
+        // Use a window function to get the latest N reports per policy name in a single query
+        let rows = ctx
+            .txns()
+            .await?
+            .pg()
+            .query(
+                "SELECT * FROM (
+                    SELECT *, ROW_NUMBER() OVER (PARTITION BY name ORDER BY created_at DESC) as rn
+                    FROM policy_reports
+                    WHERE workspace_id = $1
+                ) ranked
+                WHERE rn <= $2
+                ORDER BY name, created_at DESC",
+                &[&ctx.tenancy().workspace_pk()?, &MAX_REPORTS_PER_GROUP],
+            )
+            .await?;
+
+        // Group the reports by name
+        let mut groups_map: std::collections::HashMap<String, Vec<PolicyReport>> =
+            std::collections::HashMap::new();
+
+        for row in rows {
+            let report = Self::try_from(row)?;
+            groups_map
+                .entry(report.name.clone())
+                .or_default()
+                .push(report);
+        }
+
+        // Convert the HashMap into a Vec of PolicyReportGroup, sorted by name
+        let mut groups: Vec<PolicyReportGroup> = groups_map
+            .into_iter()
+            .map(|(name, results)| PolicyReportGroup { name, results })
+            .collect();
+
+        groups.sort_by(|a, b| a.name.cmp(&b.name));
+
+        Ok(groups)
+    }
+
+    async fn total_count(ctx: &impl SiDbContext, name: &str) -> Result<u64> {
+        let row = ctx
+            .txns()
+            .await?
+            .pg()
             .query_one(
-                "SELECT COUNT(*) FROM policy_reports WHERE workspace_id = $1 AND change_set_id = $2",
-                &[
-                    &ctx.tenancy().workspace_pk()?,
-                    &ctx.change_set_id()
-                ],
+                "SELECT COUNT(*) FROM policy_reports WHERE workspace_id = $1 AND name = $2",
+                &[&ctx.tenancy().workspace_pk()?, &name],
             )
             .await?;
 
