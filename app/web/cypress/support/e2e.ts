@@ -54,14 +54,14 @@ Cypress.on('window:before:load', (win) => {
 beforeEach(() => {
   cy.intercept('**', (req) => {
     const startTime = Date.now();
-    cy.task('log', `[NETWORK REQUEST] ${req.method} ${req.url}`);
+    console.log(`[NETWORK REQUEST] ${req.method} ${req.url}`);
     
     if (req.body) {
-      cy.task('log', `[REQUEST BODY] ${JSON.stringify(req.body)}`);
+      console.log(`[REQUEST BODY] ${JSON.stringify(req.body)}`);
     }
     
     if (Object.keys(req.headers).length > 0) {
-      cy.task('log', `[REQUEST HEADERS] ${JSON.stringify(req.headers)}`);
+      console.log(`[REQUEST HEADERS] ${JSON.stringify(req.headers)}`);
     }
 
     req.continue((res) => {
@@ -69,12 +69,12 @@ beforeEach(() => {
       const duration = endTime - startTime;
       
       if (res) {
-        cy.task('log', `[NETWORK RESPONSE] ${req.method} ${req.url} -> ${res.statusCode} (${duration}ms)`);
+        console.log(`[NETWORK RESPONSE] ${req.method} ${req.url} -> ${res.statusCode} (${duration}ms)`);
         if (res.body) {
-          cy.task('log', `[RESPONSE BODY] ${JSON.stringify(res.body)}`);
+          console.log(`[RESPONSE BODY] ${JSON.stringify(res.body)}`);
         }
       } else {
-        cy.task('log', `[NETWORK TIMEOUT/ERROR] ${req.method} ${req.url} (${duration}ms) - No response received`);
+        console.log(`[NETWORK TIMEOUT/ERROR] ${req.method} ${req.url} (${duration}ms) - No response received`);
       }
     });
   }).as('allRequests');
