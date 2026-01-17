@@ -16,7 +16,7 @@
 // When a command from ./commands is ready to use, import with `import './commands'` syntax
 import './commands';
 
-// Global console logging
+// Global console logging - enhanced with prefixes
 Cypress.on('window:before:load', (win) => {
   const originalLog = win.console.log;
   const originalError = win.console.error;
@@ -25,27 +25,27 @@ Cypress.on('window:before:load', (win) => {
   const originalDebug = win.console.debug;
 
   win.console.log = (...args) => {
-    cy.task('log', `[CONSOLE.LOG] ${args.join(' ')}`);
+    console.log(`[CONSOLE.LOG]`, ...args);
     originalLog.apply(win.console, args);
   };
 
   win.console.error = (...args) => {
-    cy.task('log', `[CONSOLE.ERROR] ${args.join(' ')}`);
+    console.log(`[CONSOLE.ERROR]`, ...args);
     originalError.apply(win.console, args);
   };
 
   win.console.warn = (...args) => {
-    cy.task('log', `[CONSOLE.WARN] ${args.join(' ')}`);
+    console.log(`[CONSOLE.WARN]`, ...args);
     originalWarn.apply(win.console, args);
   };
 
   win.console.info = (...args) => {
-    cy.task('log', `[CONSOLE.INFO] ${args.join(' ')}`);
+    console.log(`[CONSOLE.INFO]`, ...args);
     originalInfo.apply(win.console, args);
   };
 
   win.console.debug = (...args) => {
-    cy.task('log', `[CONSOLE.DEBUG] ${args.join(' ')}`);
+    console.log(`[CONSOLE.DEBUG]`, ...args);
     originalDebug.apply(win.console, args);
   };
 });
@@ -82,13 +82,13 @@ beforeEach(() => {
 
 // Additional error handling for uncaught exceptions and promise rejections
 Cypress.on('uncaught:exception', (err) => {
-  cy.task('log', `[UNCAUGHT EXCEPTION] ${err.message}`);
-  cy.task('log', `[STACK TRACE] ${err.stack}`);
+  console.log(`[UNCAUGHT EXCEPTION] ${err.message}`);
+  console.log(`[STACK TRACE] ${err.stack}`);
   return false; // Don't fail the test
 });
 
 Cypress.on('window:before:load', (win) => {
   win.addEventListener('unhandledrejection', (event) => {
-    cy.task('log', `[UNHANDLED PROMISE REJECTION] ${event.reason}`);
+    console.log(`[UNHANDLED PROMISE REJECTION] ${event.reason}`);
   });
 });
