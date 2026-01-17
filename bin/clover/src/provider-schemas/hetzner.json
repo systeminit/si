@@ -53764,6 +53764,11 @@
                     "description": "ID or name of Image to rebuilt from.",
                     "type": "string",
                     "example": "ubuntu-24.04"
+                  },
+                  "user_data": {
+                    "description": "Cloud-Init user data to use during Server rebuild. This field is limited to 32KiB. If not specified, the Server's previous user_data value will be re-used (if any was set).",
+                    "type": "string",
+                    "example": "#cloud-config\nruncmd:\n- [touch, /root/cloud-init-worked]\n"
                   }
                 },
                 "required": [
