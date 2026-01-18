@@ -7068,6 +7068,9 @@
   "Number of days before data expires in the Amazon Security Lake object.": {
     "enum": null
   },
+  "Number of days during which a request for review can be submitted for evaluations created from this form.": {
+    "enum": null
+  },
   "Number of days to retain the telemetry data in the specified destination": {
     "enum": null
   },
