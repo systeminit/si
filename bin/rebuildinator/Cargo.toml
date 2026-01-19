@@ -16,3 +16,6 @@ si-data-nats = { path = "../../lib/si-data-nats" }
 si-id = { path = "../../lib/si-id" }
 si-std = { path = "../../lib/si-std" }
 tokio = { workspace = true }
+
+[build-dependencies]
+si-service-build = { path = "../../lib/si-service-build" }

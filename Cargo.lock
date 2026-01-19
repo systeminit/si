@@ -1205,6 +1205,7 @@ dependencies = [
  "bedrock-server",
  "clap",
  "si-service",
+ "si-service-build",
 ]
 
 [[package]]
@@ -3241,6 +3242,7 @@ dependencies = [
  "forklift-server",
  "innit-client",
  "si-service",
+ "si-service-build",
 ]
 
 [[package]]
@@ -4820,6 +4822,7 @@ dependencies = [
  "innit-client",
  "luminork-server",
  "si-service",
+ "si-service-build",
 ]
 
 [[package]]
@@ -5292,6 +5295,7 @@ dependencies = [
  "clap",
  "futures",
  "si-data-nats",
+ "si-service-build",
  "tokio",
  "tracing",
  "tracing-subscriber",
@@ -5992,6 +5996,7 @@ dependencies = [
  "innit-client",
  "pinga-server",
  "si-service",
+ "si-service-build",
 ]
 
 [[package]]
@@ -6608,6 +6613,7 @@ dependencies = [
  "innit-client",
  "rebaser-server",
  "si-service",
+ "si-service-build",
 ]
 
 [[package]]
@@ -6688,6 +6694,7 @@ dependencies = [
  "edda-client",
  "si-data-nats",
  "si-id",
+ "si-service-build",
  "si-std",
  "tokio",
 ]
@@ -7292,6 +7299,7 @@ dependencies = [
  "innit-client",
  "sdf-server",
  "si-service",
+ "si-service-build",
 ]
 
 [[package]]
@@ -10047,6 +10055,7 @@ dependencies = [
  "clap",
  "innit-client",
  "si-service",
+ "si-service-build",
  "veritech-server",
 ]
 

@@ -24,9 +24,12 @@ use si_std::SensitiveString;
 
 const NAME: &str = "rebuildinator";
 
+include!(concat!(env!("OUT_DIR"), "/git_metadata.rs"));
+
 #[derive(Parser, Debug)]
 #[command(
     name = NAME,
+    version = VERSION,
     about = "Rebuilds MVs for a given list of workspace and change set pairs"
 )]
 struct Args {

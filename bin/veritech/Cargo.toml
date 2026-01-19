@@ -17,3 +17,6 @@ clap = { workspace = true }
 innit-client = { path = "../../lib/innit-client" }
 si-service = { path = "../../lib/si-service" }
 veritech-server = { path = "../../lib/veritech-server" }
+
+[build-dependencies]
+si-service-build = { path = "../../lib/si-service-build" }
