@@ -43,7 +43,7 @@ jobs:
 
       - uses: actions/setup-node@v5
         with:
-          node-version: '18.18.2'
+          node-version: '20'
           cache: 'pnpm'
 
       - name: Install dependencies
