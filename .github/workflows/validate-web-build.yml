@@ -1,0 +1,16 @@
+name: Validate Web Build
+
+on:
+  pull_request:
+    paths:
+      - 'app/web/**'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
+      - '.github/workflows/validate-web-build.yml'
+  workflow_dispatch:
+
+jobs:
+  validate-build:
+    uses: ./.github/workflows/upgrade-web.yml
+    with:
+      environment: build-only

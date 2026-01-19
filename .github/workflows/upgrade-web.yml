@@ -1,4 +1,4 @@
-name: Upgrade web
+name: Build and Deploy Web
 
 # Required for IDP JWT and actions/checkout
 permissions:
@@ -23,6 +23,7 @@ on:
           - tools
           - production
           - perf
+          - build-only
 
 jobs:
   down:
@@ -31,6 +32,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Configure AWS Credentials
+        if: ${{ inputs.environment != 'build-only' }}
         uses: aws-actions/configure-aws-credentials@v5
         with:
           role-to-assume: ${{ vars.AWS_ASSUME_ROLE_ARN }}
@@ -63,6 +65,7 @@ jobs:
           pnpm run build --mode $MODE
 
       - name: Deploy
+        if: ${{ inputs.environment != 'build-only' }}
         uses: islishude/spa-deploy-action@v1.1.1
         with:
           dir-path: app/web/dist
@@ -75,6 +78,7 @@ jobs:
             }
 
       - name: Invalidate web cache
+        if: ${{ inputs.environment != 'build-only' }}
         run: |
           DIST_ID="${{ secrets.CLOUDFRONT_DIST_ID }}"
           # Create a CloudFront invalidation for all objects (/*)
