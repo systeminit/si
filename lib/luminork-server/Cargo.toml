@@ -16,6 +16,7 @@ buck2-resources = { path = "../../lib/buck2-resources" }
 chrono = { workspace = true }
 dal = { path = "../../lib/dal" }
 dal-materialized-views = { path = "../../lib/dal-materialized-views" }
+dal-summary-generator = { path = "../../lib/dal-summary-generator" }
 derive_builder = { workspace = true }
 edda-client = { path = "../../lib/edda-client" }
 edda-core = { path = "../../lib/edda-core" }
