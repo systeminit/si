@@ -9,6 +9,32 @@ import { useFeatureFlagsStore } from "./feature_flags.store";
 
 export type UserId = string;
 
+// Cookie name for tracking accessed workspaces (shared with workspace app)
+const WORKSPACE_TRACKING_COOKIE = "si-workspaces";
+
+// Utility function to read workspace tracking cookie
+function getAccessedWorkspaces(): string[] {
+  const cookie = document.cookie
+    .split("; ")
+    .find((row) => row.startsWith(`${WORKSPACE_TRACKING_COOKIE}=`));
+  if (!cookie) return [];
+  const value = cookie.split("=")[1];
+  if (!value) return [];
+  try {
+    return JSON.parse(decodeURIComponent(value));
+  } catch {
+    return [];
+  }
+}
+
+// Clear the workspace tracking cookie
+function clearWorkspaceTrackingCookie() {
+  const hostname = window.location.hostname;
+  const parts = hostname.split(".");
+  const domain = parts.length >= 2 ? `.${parts.slice(-2).join(".")}` : hostname;
+  document.cookie = `${WORKSPACE_TRACKING_COOKIE}=; domain=${domain}; path=/; max-age=0`;
+}
+
 // TODO: figure out good way to share this type with backend...
 export type User = {
   id: UserId;
@@ -156,53 +182,34 @@ export const useAuthStore = defineStore("auth", {
     },
 
     async logout() {
+      // Check if secure bearer tokens feature is enabled BEFORE resetting posthog
+      const featureFlagsStore = useFeatureFlagsStore();
+      const secureBearerTokensEnabled = featureFlagsStore.SECURE_BEARER_TOKENS;
+
       posthog.reset();
       // see https://github.com/PostHog/posthog-js/issues/205
       posthog._handle_unload(); // flush the buffer
       await promiseDelay(500);
 
-      // Check if secure bearer tokens feature is enabled
-      const featureFlagsStore = useFeatureFlagsStore();
-      const secureBearerTokensEnabled = featureFlagsStore.SECURE_BEARER_TOKENS;
-
-      // Revoke all workspace tokens stored in localStorage if feature flag is enabled
+      // Read workspace IDs from shared cookie and send to backend for revocation
       if (secureBearerTokensEnabled) {
-        const AUTH_API_URL = import.meta.env.VITE_AUTH_API_URL;
-        try {
-          const workspaceTokensRaw = localStorage.getItem("si-auth");
-          if (workspaceTokensRaw) {
-            const workspaceTokens = JSON.parse(workspaceTokensRaw) as Record<
-              string,
-              string
-            >;
-            const workspaceIds = Object.keys(workspaceTokens);
+        const workspaceIds = getAccessedWorkspaces();
 
-            // Revoke each workspace token explicitly
-            await Promise.allSettled(
-              workspaceIds.map(async (workspaceId) => {
-                const token = workspaceTokens[workspaceId];
-                return fetch(`${AUTH_API_URL}/session/logout`, {
-                  method: "POST",
-                  headers: {
-                    Authorization: `Bearer ${token}`,
-                    "Content-Type": "application/json",
-                  },
-                });
-              }),
-            );
-
-            // Clear workspace tokens from localStorage
-            localStorage.removeItem("si-auth");
-          }
-        } catch (error) {
-          // Continue with logout even if workspace token revocation fails
-          console.warn("Failed to revoke workspace tokens:", error);
+        if (workspaceIds.length > 0) {
+          // Send workspace IDs to backend as query parameter
+          const workspaceParam = workspaceIds.join(",");
+          window.location.href = `${import.meta.env.VITE_AUTH_API_URL}/auth/logout?workspaces=${encodeURIComponent(workspaceParam)}`;
+        } else {
+          // No workspaces to revoke, proceed with normal logout
+          window.location.href = `${import.meta.env.VITE_AUTH_API_URL}/auth/logout`;
         }
-      }
 
-      // auth is on http secure cookie, so API is needed to log out
-      // we redirect rather than using an api req so the api can also redirect us to auth0 logout url
-      window.location.href = `${import.meta.env.VITE_AUTH_API_URL}/auth/logout`;
+        // Clear the workspace tracking cookie
+        clearWorkspaceTrackingCookie();
+      } else {
+        // Feature flag disabled, proceed with normal logout
+        window.location.href = `${import.meta.env.VITE_AUTH_API_URL}/auth/logout`;
+      }
     },
 
     async LOAD_USER() {

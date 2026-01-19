@@ -107,3 +107,40 @@ export async function revokeAllWorkspaceTokens(workspaceId: WorkspaceId) {
     tokensToRevoke,
   };
 }
+
+export async function revokeWebSessionTokens(userId: string, workspaceId: WorkspaceId) {
+  // Revoke all web session tokens for this user+workspace
+  // This ensures logout logs the user out of all tabs/devices for this workspace
+  return await prisma.authToken.updateMany({
+    where: {
+      userId,
+      workspaceId,
+      claims: {
+        path: ["role"],
+        equals: "web",
+      },
+      revokedAt: null,
+    },
+    data: {
+      revokedAt: new Date(),
+    },
+  });
+}
+
+export async function revokeAllUserWebSessionTokens(userId: string) {
+  // Revoke ALL web session tokens for this user across ALL workspaces
+  // This is used when logging out from the auth-portal
+  return await prisma.authToken.updateMany({
+    where: {
+      userId,
+      claims: {
+        path: ["role"],
+        equals: "web",
+      },
+      revokedAt: null,
+    },
+    data: {
+      revokedAt: new Date(),
+    },
+  });
+}

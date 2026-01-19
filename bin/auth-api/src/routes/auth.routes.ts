@@ -17,6 +17,8 @@ import {
 import {
   registerAuthToken,
   updateAuthToken,
+  revokeWebSessionTokens,
+  revokeAllUserWebSessionTokens,
 } from "../services/auth_tokens.service";
 import { getCache, setCache } from "../lib/cache";
 import {
@@ -257,24 +259,53 @@ router.get("/auth/logout", async (ctx) => {
         decoded.userId,
       );
 
-      // If secure bearer tokens are enabled and token has jti, revoke it
-      if (secureBearerToken && decoded.jti && user) {
-        await updateAuthToken(decoded.jti, { revokedAt: new Date() });
+      // If secure bearer tokens are enabled, revoke workspace sessions
+      if (secureBearerToken && user) {
+        // Check if specific workspace IDs were provided (from auth-portal via cookie)
+        const workspacesParam = ctx.query.workspaces as string | undefined;
 
-        // Track token revocation event
-        tracker.trackEvent(user, "auth_token_revoked", {
-          tokenId: decoded.jti,
-          workspaceId: decoded.workspaceId,
-          revokedAt: new Date(),
-          revokedBy: user.email,
-          revocationMethod: "auth_portal_logout",
-          tokenFormat: "v2",
-        });
+        if (workspacesParam) {
+          // Revoke tokens for specific workspaces accessed on this machine
+          const workspaceIds = workspacesParam.split(",").filter((id) => id.trim());
+
+          for (const workspaceId of workspaceIds) {
+            await revokeWebSessionTokens(decoded.userId, workspaceId);
+          }
+
+          // Track token revocation event
+          tracker.trackEvent(user, "auth_token_revoked", {
+            workspaceIds: workspaceIds,
+            revokedAt: new Date(),
+            revokedBy: user.email,
+            revocationMethod: "auth_portal_logout",
+            tokenFormat: "v2",
+            revokedLocalWorkspaces: true,
+          });
+        } else if (decoded.workspaceId) {
+          // Fallback: Single workspace token from header/cookie
+          await revokeWebSessionTokens(decoded.userId, decoded.workspaceId);
+
+          // Track token revocation event
+          tracker.trackEvent(user, "auth_token_revoked", {
+            workspaceId: decoded.workspaceId,
+            revokedAt: new Date(),
+            revokedBy: user.email,
+            revocationMethod: "auth_portal_logout",
+            tokenFormat: "v2",
+            revokedAllSessions: true,
+          });
+        }
       }
     }
   } catch (error) {
     // Don't fail logout if token revocation fails
   }
+
+  // Clear the workspace tracking cookie
+  ctx.cookies.set("si-workspaces", null, {
+    domain: process.env.COOKIE_DOMAIN || undefined,
+    path: "/",
+  });
 
   // clear our auth cookie
   ctx.cookies.set(SI_COOKIE_NAME, null);
