@@ -1,0 +1,19 @@
+load(
+    "@prelude-si//:macros.bzl",
+    "container_image",
+)
+
+container_image(
+    name = "tempo",
+    srcs = {
+        "tempo.yaml": ".",
+    },
+    build_args = {
+        "BASE_VERSION": "2.9.0",
+    },
+    run_docker_args = [
+        "--publish",
+        "3200:3200",
+    ],
+    default_target = True,
+)

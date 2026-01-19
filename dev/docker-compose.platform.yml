@@ -36,13 +36,11 @@ services:
       - ./config/grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards
 
   tempo:
-    image: grafana/tempo
+    image: systeminit/tempo:stable
     command:
       - "-config.file=/etc/tempo.yaml"
     ports:
       - "3200:3200"
-    volumes:
-      - ./config/tempo/tempo.yaml:/etc/tempo.yaml
 
   localstack:
     image: localstack/localstack
