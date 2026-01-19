@@ -19,6 +19,38 @@ const AUTH_LOCAL_STORAGE_KEYS = {
   USER_TOKENS: "si-auth",
 };
 
+// Cookie name for tracking accessed workspaces across subdomains
+const WORKSPACE_TRACKING_COOKIE = "si-workspaces";
+
+// Utility functions for managing workspace tracking cookie
+function getAccessedWorkspaces(): string[] {
+  const cookie = document.cookie
+    .split("; ")
+    .find((row) => row.startsWith(`${WORKSPACE_TRACKING_COOKIE}=`));
+  if (!cookie) return [];
+  const value = cookie.split("=")[1];
+  if (!value) return [];
+  try {
+    return JSON.parse(decodeURIComponent(value));
+  } catch {
+    return [];
+  }
+}
+
+function addAccessedWorkspace(workspaceId: string) {
+  const workspaces = getAccessedWorkspaces();
+  if (!workspaces.includes(workspaceId)) {
+    workspaces.push(workspaceId);
+  }
+  // Set cookie with domain=.systeminit.com so it's accessible across subdomains
+  // Extract parent domain from current hostname (e.g., app.systeminit.com -> .systeminit.com)
+  const hostname = window.location.hostname;
+  const parts = hostname.split(".");
+  const domain = parts.length >= 2 ? `.${parts.slice(-2).join(".")}` : hostname;
+
+  document.cookie = `${WORKSPACE_TRACKING_COOKIE}=${encodeURIComponent(JSON.stringify(workspaces))}; domain=${domain}; path=/; max-age=31536000; SameSite=Lax`;
+}
+
 // V1 token format (legacy)
 type TokenDataV1 = {
   user_pk: string;
@@ -238,6 +270,11 @@ export const useAuthStore = () => {
           userPk,
         });
 
+        // Track all workspace IDs in shared cookie for logout
+        Object.keys(tokensByWorkspacePk).forEach((workspaceId) => {
+          addAccessedWorkspace(workspaceId);
+        });
+
         return tokens;
       },
 
@@ -329,6 +366,8 @@ export const useAuthStore = () => {
         });
         // store the tokens in localstorage
         storage.setItem(AUTH_LOCAL_STORAGE_KEYS.USER_TOKENS, JSON.stringify(this.tokens));
+        // track this workspace access in shared cookie for logout
+        addAccessedWorkspace(workspacePk);
         // identify the user in posthog
         posthog.identify(loginResponse.user.pk, {
           email: loginResponse.user.email,
