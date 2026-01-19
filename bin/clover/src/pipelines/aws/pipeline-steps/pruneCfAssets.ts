@@ -9,6 +9,7 @@ import {
   ExpandedPropSpecFor,
   findPropByName,
 } from "../../../spec/props.ts";
+import { propPathToString } from "../../../spec/sockets.ts";
 
 const logger = _logger.ns("pruneCfAssets").seal();
 
@@ -50,6 +51,41 @@ export function pruneCfAssets(specs: ExpandedPkgSpec[]): ExpandedPkgSpec[] {
 
     const attrFunc = createAttributeFunc();
     spec.funcs.push(attrFunc);
+
+    // Add CloudFormationResourceBody prop wired to the attribute function
+    if (extraProp) {
+      const resourceBodyProp = createScalarProp(
+        "CloudFormationResourceBody",
+        "string",
+        extraProp.metadata.propPath,
+        false,
+      );
+      resourceBodyProp.data.hidden = true;
+      resourceBodyProp.data.widgetKind = "CodeEditor";
+      resourceBodyProp.data.funcUniqueId = attrFunc.uniqueId;
+      resourceBodyProp.data.inputs = [
+        {
+          kind: "prop",
+          name: "cfnType",
+          prop_path: propPathToString([
+            "root",
+            "domain",
+            "extra",
+            "AwsResourceType",
+          ]),
+          unique_id: ulid(),
+          deleted: false,
+        },
+        {
+          kind: "prop",
+          name: "cfnProperties",
+          prop_path: propPathToString(["root", "domain"]),
+          unique_id: ulid(),
+          deleted: false,
+        },
+      ];
+      extraProp.entries.push(resourceBodyProp);
+    }
   }
   return specs;
 }
@@ -74,21 +110,14 @@ function createAttributeFunc() {
       uniqueId: ulid(),
       deleted: false,
     },
-    {
-      name: "cfnLogicalResourceName",
-      kind: "string",
-      elementKind: null,
-      uniqueId: ulid(),
-      deleted: false,
-    },
   ];
 
   return createFunc(
-    "Set attributes for building assets in CloudFormation",
+    "si:cfResourceBodyBuilder",
     "jsAttribute",
     "json",
     codeBase64,
-    "4dbf74c51d38d38a9247a501fc49e6f8332addab4343c5e46d3453fee55cfb6a",
+    "e5a9bd4e01cc98f6a1b568210b8a421d842507a05572a913bf8a3fa34c8b5862",
     args,
   );
 }
