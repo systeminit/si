@@ -37,6 +37,7 @@ members = [
   "lib/dal-macros",
   "lib/dal-materialized-views",
   "lib/dal-materialized-views-macros",
+  "lib/dal-summary-generator",
   "lib/dal-test",
   "lib/data-warehouse-stream-client",
   "lib/edda-client",

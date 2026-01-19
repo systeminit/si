@@ -1,0 +1,19 @@
+load("@prelude-si//:macros.bzl", "rust_library")
+
+rust_library(
+    name = "dal-summary-generator",
+    deps = [
+        "//lib/dal:dal",
+        "//lib/si-events-rs:si-events",
+        "//lib/si-id:si-id",
+        "//lib/si-layer-cache:si-layer-cache",
+        "//lib/telemetry-rs:telemetry",
+        "//third-party/rust:chrono",
+        "//third-party/rust:remain",
+        "//third-party/rust:serde_json",
+        "//third-party/rust:thiserror",
+    ],
+    srcs = glob([
+        "src/**/*.rs",
+    ]),
+)

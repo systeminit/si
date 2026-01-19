@@ -28,6 +28,7 @@ mod resource_metadata;
 mod schema;
 mod secret;
 mod split_snapshot;
+mod summary_generator;
 mod validations;
 mod view;
 mod workspace;

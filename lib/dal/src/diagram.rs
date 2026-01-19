@@ -35,6 +35,7 @@ use si_id::{
 use si_layer_cache::LayerDbError;
 use telemetry::prelude::*;
 use thiserror::Error;
+use tokio::time::Instant;
 
 use crate::{
     AttributePrototype,
@@ -382,7 +383,6 @@ pub struct DiagramComponentViews {
 }
 
 impl Diagram {
-    #[instrument(level = "info", skip_all)]
     async fn assemble_component_views(
         ctx: &DalContext,
         base_snapshot: &WorkspaceSnapshotSelector,
@@ -511,7 +511,6 @@ impl Diagram {
             .collect()
     }
 
-    #[instrument(level = "info", skip_all)]
     async fn get_base_snapshot(
         ctx: &DalContext,
     ) -> DiagramResult<(WorkspaceSnapshotSelector, bool)> {
@@ -553,7 +552,6 @@ impl Diagram {
         }
     }
 
-    #[instrument(level = "info", skip_all)]
     async fn assemble_removed_components(
         ctx: &DalContext,
         base_snapshot: WorkspaceSnapshotSelector,
@@ -622,7 +620,6 @@ impl Diagram {
     /// not in this changeset, we can ignore the deleted edge, since we won't
     /// render it. If the components are restored from the base, the edge will
     /// *magically* reappear as deleted.
-    #[instrument(level = "info", skip_all)]
     async fn assemble_removed_management_edges(
         ctx: &DalContext,
         base_snapshot: &WorkspaceSnapshotSelector,
@@ -684,26 +681,21 @@ impl Diagram {
         Ok(removed_edges)
     }
 
-    /// If a subscription is in the base snapshot, but not in the current
-    /// snapshot, that means it has been deleted. If one of the components is
-    /// not in this changeset, we can ignore the deleted edge, since we won't
-    /// render it. If the components are restored from the base, the edge will
-    /// *magically* reappear as deleted.
-    #[instrument(level = "info", skip_all)]
-    async fn assemble_removed_attribute_subscription_edges(
-        _ctx: &DalContext,
-        _base_snapshot: &WorkspaceSnapshotSelector,
-    ) -> DiagramResult<Vec<SummaryDiagramAttributeSubscriptionEdge>> {
-        // TODO implement this
-        Ok(vec![])
-    }
-
-    /// Assemble a [`Diagram`](Self) based on existing [`Nodes`](crate::Node) and
-    /// [`Connections`](crate::Connection).
-    /// If passed a [ViewId], assemble it for that view only, otherwise, do it for the whole
-    /// graph.
-    #[instrument(level = "info", skip(ctx))]
+    #[instrument(
+        name = "diagram.assemble",
+        level = "info",
+        skip_all,
+        fields(
+            ?maybe_view_id,
+            duration_ms_get_base_snapshot = Empty,
+            duration_ms_assemble_component_views = Empty,
+            duration_ms_assemble_removed_components = Empty,
+            duration_ms_assemble_removed_management_edges = Empty
+        )
+    )]
     pub async fn assemble(ctx: &DalContext, maybe_view_id: Option<ViewId>) -> DiagramResult<Self> {
+        let span = current_span_for_instrument_at!("info");
+
         let mut views = vec![];
         let component_info_cache = {
             let mut map = HashMap::new();
@@ -756,8 +748,13 @@ impl Diagram {
             map
         };
 
+        let start = Instant::now();
         let (base_snapshot, not_on_head) = Self::get_base_snapshot(ctx).await?;
+        span.record("duration_ms_get_base_snapshot", start.elapsed().as_millis());
+
         let mut diagram_sockets = HashMap::new();
+
+        let start = Instant::now();
         let mut diagram_component_views = Self::assemble_component_views(
             ctx,
             &base_snapshot,
@@ -765,8 +762,13 @@ impl Diagram {
             &mut diagram_sockets,
         )
         .await?;
+        span.record(
+            "duration_ms_assemble_component_views",
+            start.elapsed().as_millis(),
+        );
 
         if not_on_head {
+            let start = Instant::now();
             let removed_component_summaries = Self::assemble_removed_components(
                 ctx,
                 base_snapshot.clone(),
@@ -774,20 +776,26 @@ impl Diagram {
                 &mut diagram_sockets,
             )
             .await?;
+            span.record(
+                "duration_ms_assemble_removed_components",
+                start.elapsed().as_millis(),
+            );
+
             diagram_component_views
                 .component_views
                 .extend(removed_component_summaries);
 
+            let start = Instant::now();
             let removed_management_edges =
                 Self::assemble_removed_management_edges(ctx, &base_snapshot).await?;
+            span.record(
+                "duration_ms_assemble_removed_management_edges",
+                start.elapsed().as_millis(),
+            );
+
             diagram_component_views
                 .management_edges
                 .extend(removed_management_edges);
-            let removed_attribute_subscription_edges =
-                Self::assemble_removed_attribute_subscription_edges(ctx, &base_snapshot).await?;
-            diagram_component_views
-                .attribute_subscription_edges
-                .extend(removed_attribute_subscription_edges);
         }
 
         Ok(Self {
