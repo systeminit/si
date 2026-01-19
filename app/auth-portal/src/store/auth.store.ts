@@ -5,6 +5,7 @@ import { ApiRequest } from "@si/vue-lib/pinia";
 import { promiseDelay } from "@si/ts-lib";
 import { posthog } from "posthog-js";
 import { ISODateString } from "./shared-types";
+import { useFeatureFlagsStore } from "./feature_flags.store";
 
 export type UserId = string;
 
@@ -159,6 +160,46 @@ export const useAuthStore = defineStore("auth", {
       // see https://github.com/PostHog/posthog-js/issues/205
       posthog._handle_unload(); // flush the buffer
       await promiseDelay(500);
+
+      // Check if secure bearer tokens feature is enabled
+      const featureFlagsStore = useFeatureFlagsStore();
+      const secureBearerTokensEnabled = featureFlagsStore.SECURE_BEARER_TOKENS;
+
+      // Revoke all workspace tokens stored in localStorage if feature flag is enabled
+      if (secureBearerTokensEnabled) {
+        const AUTH_API_URL = import.meta.env.VITE_AUTH_API_URL;
+        try {
+          const workspaceTokensRaw = localStorage.getItem("si-auth");
+          if (workspaceTokensRaw) {
+            const workspaceTokens = JSON.parse(workspaceTokensRaw) as Record<
+              string,
+              string
+            >;
+            const workspaceIds = Object.keys(workspaceTokens);
+
+            // Revoke each workspace token explicitly
+            await Promise.allSettled(
+              workspaceIds.map(async (workspaceId) => {
+                const token = workspaceTokens[workspaceId];
+                return fetch(`${AUTH_API_URL}/session/logout`, {
+                  method: "POST",
+                  headers: {
+                    Authorization: `Bearer ${token}`,
+                    "Content-Type": "application/json",
+                  },
+                });
+              }),
+            );
+
+            // Clear workspace tokens from localStorage
+            localStorage.removeItem("si-auth");
+          }
+        } catch (error) {
+          // Continue with logout even if workspace token revocation fails
+          console.warn("Failed to revoke workspace tokens:", error);
+        }
+      }
+
       // auth is on http secure cookie, so API is needed to log out
       // we redirect rather than using an api req so the api can also redirect us to auth0 logout url
       window.location.href = `${import.meta.env.VITE_AUTH_API_URL}/auth/logout`;
@@ -358,7 +399,6 @@ export const useAuthStore = defineStore("auth", {
         onSuccess: () => {},
       });
     },
-
     // SIGNUP
   },
 });
