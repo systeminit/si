@@ -218,6 +218,9 @@ pip3 install --break-system-packages linode-cli
 # Azure CLI
 pip3 install --break-system-packages azure-cli
 
+# CloudFormation Lint
+pip3 install --break-system-packages cfn-lint
+
 # Pre-warm CLI cache to avoid first-run initialization penalty
 az version > /dev/null 2>&1 || true
 
