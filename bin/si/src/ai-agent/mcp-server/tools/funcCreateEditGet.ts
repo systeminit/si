@@ -256,7 +256,7 @@ export function funcCreateEditGetTool(server: McpServer) {
               ) {
                 return successResponse({
                   funcId: funcId,
-                  name: responseGetFunc.data.displayName,
+                  name: responseGetFunc.data.displayName || responseGetFunc.data.name,
                   functionCode: responseGetFunc.data.code,
                 });
               }
