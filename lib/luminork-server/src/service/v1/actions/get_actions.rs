@@ -9,7 +9,7 @@ use dal::{
 use serde::Serialize;
 use serde_json::json;
 use utoipa::ToSchema;
-
+use si_db::FuncRunDb;
 use super::ActionsResult;
 use crate::{
     api_types::actions::v1::ActionViewV1,

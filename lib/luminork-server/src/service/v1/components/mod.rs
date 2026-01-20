@@ -181,6 +181,8 @@ pub enum ComponentsError {
     SecretNotFound(String),
     #[error("serde_json error: {0}")]
     Serde(#[from] serde_json::Error),
+    #[error("si db error: {0}")]
+    SiDb(#[from] SiDbError),
     #[error("transactions error: {0}")]
     Transactions(#[from] dal::TransactionsError),
     #[error("Ulid Decode Error: {0}")]
@@ -305,6 +307,7 @@ use get_component::{
     GetComponentV1ResponseActionFunction,
     GetComponentV1ResponseManagementFunction,
 };
+use si_db::SiDbError;
 
 pub async fn get_component_functions(
     ctx: &dal::DalContext,

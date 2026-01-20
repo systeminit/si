@@ -24,13 +24,14 @@ pub const CACHE_NAME: &str = DBNAME;
 pub const PARTITION_KEY: &str = "workspace_id";
 
 #[derive(Debug, Clone)]
-pub struct FuncRunLogDb {
+pub struct FuncRunLogLayerDb {
     pub cache: Arc<LayerCache<Arc<FuncRunLog>>>,
     persister_client: PersisterClient,
     get_for_func_run_id_query: String,
 }
 
-impl FuncRunLogDb {
+impl FuncRunLogLayerDb {
+    // NOTE(victor): Won't migrate to si_db::FuncRunLogsDb - layer cache internal func
     pub fn new(cache: Arc<LayerCache<Arc<FuncRunLog>>>, persister_client: PersisterClient) -> Self {
         Self {
             cache,
@@ -39,6 +40,7 @@ impl FuncRunLogDb {
         }
     }
 
+    // NOTE(victor): Migrated to si_db::FuncRunLogsDb as upsert
     pub async fn write(
         &self,
         value: Arc<FuncRunLog>,
@@ -72,6 +74,7 @@ impl FuncRunLogDb {
         Ok(())
     }
 
+    // NOTE(victor): Migrated to si_db::FuncRunLogsDb
     pub async fn get_for_func_run_id(
         &self,
         func_run_id: FuncRunId,
@@ -88,7 +91,8 @@ impl FuncRunLogDb {
         }
     }
 
-    pub async fn insert_to_pg(&self, func_run_log: Arc<FuncRunLog>) -> LayerDbResult<()> {
+    // NOTE(victor): Won't migrate to si_db::FuncRunLogsDb - internal layer cache func
+    async fn insert_to_pg(&self, func_run_log: Arc<FuncRunLog>) -> LayerDbResult<()> {
         self.cache
             .pg()
             .insert_raw(

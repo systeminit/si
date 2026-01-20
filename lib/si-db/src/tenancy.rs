@@ -7,8 +7,8 @@ use si_id::WorkspacePk;
 use telemetry::prelude::*;
 
 use crate::{
-    Error,
-    Result,
+    SiDbError,
+    SiDbResult,
 };
 
 #[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Clone, Copy, Hash)]
@@ -29,7 +29,7 @@ impl Tenancy {
     }
 
     #[instrument(level = "debug", skip_all)]
-    pub async fn check(&self, txn: &PgTxn, tenancy: &Tenancy) -> Result<bool> {
+    pub async fn check(&self, txn: &PgTxn, tenancy: &Tenancy) -> SiDbResult<bool> {
         let row = txn
             .query_one(
                 "SELECT in_tenancy_v1($1::jsonb, $2::ident) AS result",
@@ -40,8 +40,8 @@ impl Tenancy {
         Ok(result)
     }
 
-    pub fn workspace_pk(&self) -> Result<WorkspacePk> {
-        self.workspace_pk.ok_or(Error::NoWorkspace)
+    pub fn workspace_pk(&self) -> SiDbResult<WorkspacePk> {
+        self.workspace_pk.ok_or(SiDbError::NoWorkspace)
     }
 
     pub fn workspace_pk_opt(&self) -> Option<WorkspacePk> {

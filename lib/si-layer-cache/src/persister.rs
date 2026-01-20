@@ -40,7 +40,7 @@ use crate::{
         encrypted_secret,
         func_run::{
             self,
-            FuncRunDb,
+            FuncRunLayerDb,
         },
         func_run_log,
         rebase_batch,
@@ -491,7 +491,7 @@ impl PersisterTask {
                         Ok(())
                     }
                     LayeredEventKind::FuncRunWrite => {
-                        FuncRunDb::insert_to_pg(&pg_layer, &event.payload).await
+                        FuncRunLayerDb::insert_to_pg(&pg_layer, &event.payload).await
                     }
                 }
             }
@@ -1130,7 +1130,7 @@ impl PersistEventTask {
                 // FuncRunLogDb::insert_to_pg(&pg_layer, &event.payload).await?
             }
             LayeredEventKind::FuncRunWrite => {
-                FuncRunDb::insert_to_pg(&pg_layer, &event.payload).await?
+                FuncRunLayerDb::insert_to_pg(&pg_layer, &event.payload).await?
             }
         }
         Ok(())

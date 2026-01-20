@@ -15,6 +15,7 @@ use dal_test::{
     },
     test,
 };
+use si_db::FuncRunDb;
 use si_events::{
     FuncRun,
     FuncRunId,

@@ -13,7 +13,7 @@ use si_id::ActionId;
 use si_layer_cache::LayerDbError;
 use thiserror::Error;
 use utoipa::ToSchema;
-
+use si_db::SiDbError;
 use crate::AppState;
 
 pub mod cancel_action;
@@ -36,6 +36,8 @@ pub enum ActionsError {
     InvalidOnHoldTransition(ActionId),
     #[error("layer db error: {0}")]
     LayerDb(#[from] LayerDbError),
+    #[error("SI db error: {0}")]
+    SiDb(#[from] SiDbError),
     #[error("transactions error: {0}")]
     Transactions(#[from] dal::TransactionsError),
     #[error("validation error: {0}")]

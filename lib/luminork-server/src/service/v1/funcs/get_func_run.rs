@@ -4,6 +4,7 @@ use axum::{
 };
 use serde::Serialize;
 use serde_json::json;
+use si_db::FuncRunDb;
 use utoipa::ToSchema;
 
 use super::{

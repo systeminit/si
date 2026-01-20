@@ -46,7 +46,7 @@ pub enum ManagementFuncExecutionError {
     #[error("pg pool error: {0}")]
     PgPool(#[from] si_data_pg::PgPoolError),
     #[error("si db error: {0}")]
-    SiDb(#[from] crate::Error),
+    SiDb(#[from] crate::SiDbError),
     #[error("si db transactions error: {0}")]
     SiDbTransactions(#[from] crate::transactions::SiDbTransactionsError),
     #[error("strum parse error: {0}")]

@@ -14,6 +14,7 @@ rust_library(
         "//lib/telemetry-rs:telemetry",
         "//third-party/rust:async-trait",
         "//third-party/rust:chrono",
+        "//third-party/rust:postcard",
         "//third-party/rust:postgres-types",
         "//third-party/rust:refinery",
         "//third-party/rust:remain",

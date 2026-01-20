@@ -136,7 +136,7 @@ pub enum ManagementError {
     #[error("schema error: {0}")]
     Schema(#[from] Box<SchemaError>),
     #[error("si db error: {0}")]
-    SiDb(#[from] si_db::Error),
+    SiDb(#[from] si_db::SiDbError),
     #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),
     #[error("ulid decode error: {0}")]

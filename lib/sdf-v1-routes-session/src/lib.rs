@@ -57,7 +57,7 @@ pub enum SessionError {
     #[error("http error: {0}")]
     Request(#[from] reqwest::Error),
     #[error("si db error: {0}")]
-    SiDb(#[from] si_db::Error),
+    SiDb(#[from] si_db::SiDbError),
     #[error("SpiceDb error: {0}")]
     SpiceDb(#[from] SpiceDbError),
     #[error("workspace error: {0}")]

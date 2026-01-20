@@ -27,6 +27,7 @@ use dal_test::{
     },
     test,
 };
+use si_db::FuncRunDb;
 
 #[test]
 async fn attach_multiple_action_funcs(ctx: &mut DalContext) {

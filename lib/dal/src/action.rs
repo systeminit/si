@@ -33,7 +33,7 @@ use strum::{
 };
 use telemetry::prelude::*;
 use thiserror::Error;
-
+use si_db::FuncRunDb;
 use crate::{
     ChangeSetError,
     ChangeSetId,

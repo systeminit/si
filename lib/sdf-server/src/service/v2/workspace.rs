@@ -53,7 +53,7 @@ pub enum WorkspaceAPIError {
     #[error("cannot install workspace using root tenancy")]
     RootTenancyInstallAttempt,
     #[error("si db error: {0}")]
-    SiDb(#[from] si_db::Error),
+    SiDb(#[from] si_db::SiDbError),
     #[error("tokio task join error: {0}")]
     TokioJoin(#[from] JoinError),
     #[error("transactions error: {0}")]

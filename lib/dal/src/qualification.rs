@@ -3,6 +3,10 @@ use serde::{
     Serialize,
 };
 use si_data_pg::PgError;
+use si_db::{
+    FuncRunDb,
+    FuncRunLogDb,
+};
 use si_frontend_types::ComponentQualificationStats;
 use si_id::AttributeValueId;
 use si_layer_cache::LayerDbError;
@@ -173,6 +177,8 @@ pub enum QualificationError {
     Prop(#[from] PropError),
     #[error("error serializing/deserializing json: {0}")]
     SerdeJson(#[from] serde_json::Error),
+    #[error("si db error: {0}")]
+    SiDb(#[from] si_db::SiDbError),
     #[error("validation resolver error: {0}")]
     ValidationResolver(#[from] ValidationError),
 }

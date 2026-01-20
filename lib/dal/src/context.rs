@@ -1743,7 +1743,7 @@ pub enum TransactionsError {
     #[error("serde json error: {0}")]
     SerdeJson(#[from] serde_json::Error),
     #[error("si db error: {0}")]
-    SiDb(#[from] Box<si_db::Error>),
+    SiDb(#[from] Box<si_db::SiDbError>),
     #[error("slow rt error: {0}")]
     SlowRuntime(#[from] Box<SlowRuntimeError>),
     #[error("unable to acquire lock: {0}")]
@@ -1800,8 +1800,8 @@ impl From<rebaser_client::ClientError> for TransactionsError {
     }
 }
 
-impl From<si_db::Error> for TransactionsError {
-    fn from(value: si_db::Error) -> Self {
+impl From<si_db::SiDbError> for TransactionsError {
+    fn from(value: si_db::SiDbError) -> Self {
         Box::new(value).into()
     }
 }

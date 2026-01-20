@@ -53,7 +53,7 @@ pub enum AuditLoggingError {
     #[error("shuttle error: {0}")]
     Shuttle(#[from] ShuttleError),
     #[error("si db error: {0}")]
-    SiDb(#[from] si_db::Error),
+    SiDb(#[from] si_db::SiDbError),
     #[error("transactions error: {0}")]
     Transactions(#[from] Box<TransactionsError>),
 }
@@ -81,7 +81,7 @@ pub(crate) async fn publish_pending(
     let workspace_id = match ctx.workspace_pk() {
         Ok(workspace_id) => workspace_id,
         Err(TransactionsError::SiDb(si_db_err))
-            if matches!(si_db_err.as_ref(), si_db::Error::NoWorkspace) =>
+            if matches!(si_db_err.as_ref(), si_db::SiDbError::NoWorkspace) =>
         {
             return Ok(());
         }
@@ -227,7 +227,7 @@ pub(crate) async fn write(
     let workspace_id = match ctx.workspace_pk() {
         Ok(workspace_id) => workspace_id,
         Err(TransactionsError::SiDb(si_db_err))
-            if matches!(si_db_err.as_ref(), si_db::Error::NoWorkspace) =>
+            if matches!(si_db_err.as_ref(), si_db::SiDbError::NoWorkspace) =>
         {
             return Ok(());
         }
@@ -267,7 +267,7 @@ pub(crate) async fn write_final_message(ctx: &DalContext) -> Result<()> {
     let workspace_id = match ctx.workspace_pk() {
         Ok(workspace_id) => workspace_id,
         Err(TransactionsError::SiDb(si_db_err))
-            if matches!(si_db_err.as_ref(), si_db::Error::NoWorkspace) =>
+            if matches!(si_db_err.as_ref(), si_db::SiDbError::NoWorkspace) =>
         {
             return Ok(());
         }

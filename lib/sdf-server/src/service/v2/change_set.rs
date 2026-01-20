@@ -116,7 +116,7 @@ pub enum Error {
     #[error("serde json error: {0}")]
     SerdeJson(#[from] serde_json::Error),
     #[error("si db error: {0}")]
-    SiDb(#[from] si_db::Error),
+    SiDb(#[from] si_db::SiDbError),
     #[error("slow runtime error: {0}")]
     SlowRuntime(#[from] dal::slow_rt::SlowRuntimeError),
     #[error("spice db error: {0}")]

@@ -174,7 +174,7 @@ pub enum PkgError {
     #[error("json serialization error: {0}")]
     SerdeJson(#[from] serde_json::Error),
     #[error("si db error: {0}")]
-    SiDb(#[from] si_db::Error),
+    SiDb(#[from] si_db::SiDbError),
     #[error(
         "taking output socket as input for a prop is unsupported for name ({0}) and socket name ({1})"
     )]
