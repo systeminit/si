@@ -51,6 +51,14 @@ use crate::{
     response::Response,
 };
 
+#[derive(Debug, Clone)]
+enum SemaphoreMode {
+    /// Permits are released when the request completes (standard behavior).
+    Internal(Arc<Semaphore>),
+    /// Permits are forgotten after acquisition; owner restores via `add_permits()`.
+    External(Arc<Semaphore>),
+}
+
 pub fn serve<M, S, T, E, R>(stream: T, make_service: M) -> Serve<M, S, T, E, R>
 where
     M: for<'a> Service<IncomingMessage<'a, R>, Error = Infallible, Response = S>,
@@ -60,7 +68,14 @@ where
     E: error::Error,
     R: MessageHead,
 {
-    serve_with_incoming_limit(stream, make_service, None)
+    Serve {
+        stream,
+        make_service,
+        semaphore: None,
+        _service_marker: PhantomData,
+        _stream_error_marker: PhantomData,
+        _request_marker: PhantomData,
+    }
 }
 
 pub fn serve_with_incoming_limit<M, S, T, E, R>(
@@ -79,7 +94,34 @@ where
     Serve {
         stream,
         make_service,
-        limit: limit.into(),
+        semaphore: limit
+            .into()
+            .map(|l| SemaphoreMode::Internal(Arc::new(Semaphore::new(l)))),
+        _service_marker: PhantomData,
+        _stream_error_marker: PhantomData,
+        _request_marker: PhantomData,
+    }
+}
+
+/// Like [`serve_with_incoming_limit`], but permits are forgotten after acquisition
+/// and must be restored by the semaphore owner via `add_permits()`.
+pub fn serve_with_external_semaphore<M, S, T, E, R>(
+    stream: T,
+    make_service: M,
+    semaphore: Arc<Semaphore>,
+) -> Serve<M, S, T, E, R>
+where
+    M: for<'a> Service<IncomingMessage<'a, R>, Error = Infallible, Response = S>,
+    S: Service<Message<R>, Response = Response, Error = Infallible> + Clone + Send + 'static,
+    S::Future: Send,
+    T: Stream<Item = Result<R, E>>,
+    E: error::Error,
+    R: MessageHead,
+{
+    Serve {
+        stream,
+        make_service,
+        semaphore: Some(SemaphoreMode::External(semaphore)),
         _service_marker: PhantomData,
         _stream_error_marker: PhantomData,
         _request_marker: PhantomData,
@@ -90,7 +132,7 @@ where
 pub struct Serve<M, S, T, E, R> {
     stream: T,
     make_service: M,
-    limit: Option<usize>,
+    semaphore: Option<SemaphoreMode>,
     _service_marker: PhantomData<S>,
     _stream_error_marker: PhantomData<E>,
     _request_marker: PhantomData<R>,
@@ -115,7 +157,7 @@ impl<M, S, T, E, R> Serve<M, S, T, E, R> {
         WithGracefulShutdown {
             stream: self.stream,
             make_service: self.make_service,
-            limit: self.limit,
+            semaphore: self.semaphore,
             signal,
             _service_marker: PhantomData,
             _stream_error_marker: PhantomData,
@@ -129,7 +171,7 @@ impl<M, S, T, E, R> Serve<M, S, T, E, R> {
 pub struct WithGracefulShutdown<M, S, T, E, R, F> {
     stream: T,
     make_service: M,
-    limit: Option<usize>,
+    semaphore: Option<SemaphoreMode>,
     signal: F,
     _service_marker: PhantomData<S>,
     _stream_error_marker: PhantomData<E>,
@@ -168,7 +210,7 @@ where
         let Self {
             stream,
             mut make_service,
-            limit,
+            semaphore,
             signal,
             ..
         } = self;
@@ -192,8 +234,6 @@ where
             }
         });
 
-        let semaphore = limit.map(|limit| Arc::new(Semaphore::new(limit)));
-
         private::ServeFuture(Box::pin(async move {
             tokio::pin!(stream);
 
@@ -209,7 +249,7 @@ where
                         tracker.close();
                         break;
                     }
-                    (msg, permit) = next_message(&mut stream, semaphore.clone()) => {
+                    (msg, permit) = next_message(&mut stream, &semaphore) => {
                         match msg {
                             Some(Ok(msg)) => {
                                 metric!(counter.naxum.next_message.failed = 0);
@@ -275,25 +315,36 @@ where
 
 async fn next_message<T, E, R>(
     stream: &mut Pin<&mut T>,
-    semaphore: Option<Arc<Semaphore>>,
+    semaphore: &Option<SemaphoreMode>,
 ) -> (Option<Result<Message<R>, E>>, Option<OwnedSemaphorePermit>)
 where
     T: Stream<Item = Result<R, E>> + Send + 'static,
     E: error::Error,
     R: MessageHead + Send + 'static,
 {
+    // Acquire permit before awaiting next message on stream, thereby limiting the number of
+    // spawned processing requests
     let permit = match semaphore {
-        Some(semaphore) => {
-            // Acquire permit before awaitng next message on stream, thereby limiting the number of
-            // spawned processing requests
+        Some(SemaphoreMode::Internal(semaphore)) => {
+            #[allow(clippy::expect_used)]
+            // errors only if semaphore is closed (we never close)
             Some(
-                #[allow(clippy::expect_used)]
-                // errors only if semaphore is closed (we never close)
                 semaphore
+                    .clone()
                     .acquire_owned()
                     .await
                     .expect("semaphore will not be closed"),
             )
+        }
+        Some(SemaphoreMode::External(semaphore)) => {
+            #[allow(clippy::expect_used)]
+            let permit = semaphore
+                .clone()
+                .acquire_owned()
+                .await
+                .expect("semaphore will not be closed");
+            permit.forget();
+            None
         }
         None => None,
     };

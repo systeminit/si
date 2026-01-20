@@ -1,6 +1,7 @@
 use std::{
     collections::HashMap,
     env,
+    time::Duration,
 };
 
 use base64::{
@@ -23,9 +24,12 @@ use cyclone_core::{
     SchemaVariantDefinitionRequest,
     ValidationRequest,
 };
+use futures::future::join_all;
 use si_data_nats::{
     NatsClient,
     NatsConfig,
+    async_nats::jetstream::consumer::PullConsumer,
+    jetstream,
 };
 use test_log::test;
 use tokio::{
@@ -47,6 +51,7 @@ use veritech_server::{
 
 const WORKSPACE_ID: &str = "workspace";
 const CHANGE_SET_ID: &str = "changeset";
+const POOL_SIZE: u32 = 4;
 
 fn nats_config(subject_prefix: String) -> NatsConfig {
     let mut config = NatsConfig::default();
@@ -83,7 +88,7 @@ async fn veritech_server_for_uds_cyclone(
             .try_lang_server_cmd_path(config_file.cyclone.lang_server_cmd_path())
             .expect("failed to setup lang_js_cmd_path")
             .all_endpoints()
-            .pool_size(4_u32)
+            .pool_size(POOL_SIZE)
             .build()
             .expect("failed to build cyclone spec"),
     );
@@ -558,4 +563,93 @@ async fn executes_simple_debug_function() {
             panic!("debug function did not succeed and should have: {failure:?}")
         }
     }
+}
+
+#[allow(clippy::disallowed_methods)] // `$RUST_LOG` is checked for in macro
+#[test(tokio::test(flavor = "multi_thread", worker_threads = 4))]
+async fn backpressure_queues_messages_in_nats() {
+    let prefix = nats_prefix();
+    run_veritech_server_for_uds_cyclone(prefix.clone()).await;
+    let client = client(prefix.clone()).await;
+    let nats_client = nats(prefix.clone()).await;
+
+    tokio::time::sleep(Duration::from_secs(5)).await;
+
+    let js_context = jetstream::new(nats_client.clone());
+    let stream = veritech_core::veritech_work_queue(&js_context, Some(&prefix))
+        .await
+        .expect("failed to get work queue stream");
+
+    let mut consumer: PullConsumer = stream
+        .get_consumer("veritech-server")
+        .await
+        .expect("failed to get consumer");
+
+    let slow_code = base64_encode(
+        r#"async function slow(input) {
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            return input.value;
+        }"#,
+    );
+
+    // Flood pool with requests
+    let num_requests = POOL_SIZE * 3;
+    let request_handles: Vec<_> = (0..num_requests)
+        .map(|i| {
+            let client = client.clone();
+            let code = slow_code.clone();
+            tokio::spawn(async move {
+                let (tx, _rx) = mpsc::channel(64);
+
+                let request = ResolverFunctionRequest {
+                    execution_id: format!("backpressure-test-{i}"),
+                    handler: "slow".to_string(),
+                    component: ResolverFunctionComponent {
+                        data: ComponentView {
+                            properties: serde_json::json!({ "value": i }),
+                            kind: ComponentKind::Standard,
+                        },
+                        parents: vec![],
+                    },
+                    response_type: ResolverFunctionResponseType::Integer,
+                    code_base64: code,
+                    before: vec![],
+                };
+
+                client
+                    .execute_resolver_function(tx, &request, WORKSPACE_ID, CHANGE_SET_ID)
+                    .await
+            })
+        })
+        .collect();
+
+    // Give requests time to be published to NATS and start processing
+    tokio::time::sleep(Duration::from_millis(500)).await;
+
+    let info = consumer.info().await.expect("failed to get consumer info");
+
+    assert!(
+        info.num_pending > 0 || info.num_ack_pending > 0,
+        "expected pending messages in NATS due to backpressure, but found none. \
+         num_pending={}, num_ack_pending={}",
+        info.num_pending,
+        info.num_ack_pending
+    );
+
+    let results: Vec<_> = join_all(request_handles).await.into_iter().collect();
+
+    let success_count = results
+        .iter()
+        .filter(|r| {
+            r.as_ref()
+                .ok()
+                .and_then(|inner| inner.as_ref().ok())
+                .is_some_and(|result| matches!(result, FunctionResult::Success(_)))
+        })
+        .count();
+
+    assert_eq!(
+        success_count, num_requests as usize,
+        "all requests should eventually succeed with backpressure (got {success_count}/{num_requests})"
+    );
 }

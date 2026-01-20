@@ -195,7 +195,6 @@ impl Server {
 
                 let inner_future = Self::build_app(
                     metadata.clone(),
-                    config.veritech_requests_concurrency_limit(),
                     cyclone_pool,
                     Arc::new(decryption_key),
                     config.cyclone_client_execution_timeout(),
@@ -268,7 +267,6 @@ impl Server {
     #[allow(clippy::too_many_arguments)]
     async fn build_app(
         metadata: Arc<ServerMetadata>,
-        concurrency_limit: usize,
         cyclone_pool: PoolNoodle<LocalUdsInstance, LocalUdsInstanceSpec>,
         decryption_key: Arc<VeritechDecryptionKey>,
         cyclone_client_execution_timeout: Duration,
@@ -299,6 +297,8 @@ impl Server {
                 .await?
         };
 
+        let admission_semaphore = cyclone_pool.admission_semaphore();
+
         let state = AppState::new(
             metadata,
             cyclone_pool,
@@ -324,9 +324,12 @@ impl Server {
             .service(handlers::process_request.with_state(state))
             .map_response(Response::into_response);
 
-        let inner =
-            naxum::serve_with_incoming_limit(incoming, app.into_make_service(), concurrency_limit)
-                .with_graceful_shutdown(naxum::wait_on_cancelled(token));
+        let inner = naxum::serve_with_external_semaphore(
+            incoming,
+            app.into_make_service(),
+            admission_semaphore,
+        )
+        .with_graceful_shutdown(naxum::wait_on_cancelled(token));
 
         Ok(Box::new(inner.into_future()))
     }
