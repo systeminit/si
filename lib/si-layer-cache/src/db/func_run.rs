@@ -16,6 +16,7 @@ use si_events::{
     WebEvent,
     WorkspacePk,
 };
+use si_id::ulid::Ulid;
 use telemetry::prelude::*;
 
 use super::serialize;
@@ -40,6 +41,8 @@ pub const PARTITION_KEY: &str = "workspace_id";
 pub struct FuncRunLayerDb {
     pub cache: Arc<LayerCache<Arc<FuncRun>>>,
     persister_client: PersisterClient,
+    read_id_batch_query: String,
+    read_id_batch_no_cutoff_query: String,
     ready_many_for_workspace_id_query: String,
     get_last_qualification_for_attribute_value_id: String,
     list_action_history: String,
@@ -61,6 +64,12 @@ impl FuncRunLayerDb {
         Self {
             cache,
             persister_client,
+            read_id_batch_query: format!(
+                "SELECT key FROM {DBNAME} WHERE key < $1 ORDER BY created_at DESC LIMIT $2"
+            ),
+            read_id_batch_no_cutoff_query: format!(
+                "SELECT key FROM {DBNAME} ORDER BY created_at DESC LIMIT $1"
+            ),
             ready_many_for_workspace_id_query: format!(
                 "SELECT * FROM {DBNAME} WHERE workspace_id = $1"
             ),
@@ -337,6 +346,42 @@ impl FuncRunLayerDb {
             }
             None => Ok(None),
         }
+    }
+
+    // NOTE(victor): Created for the data migration only, won't be ported to si_db::FuncRunDb
+    pub async fn read_batch_of_ids(
+        &self,
+        batch_size: i64,
+        cutoff_id: Option<FuncRunId>,
+    ) -> LayerDbResult<Vec<FuncRunId>> {
+        let maybe_rows = if let Some(cutoff_id) = cutoff_id {
+            let id_str = cutoff_id.to_string();
+            self
+                .cache
+                .pg()
+                .query(&self.read_id_batch_query, &[&id_str, &batch_size])
+                .await?
+        } else {
+            self
+                .cache
+                .pg()
+                .query(&self.read_id_batch_no_cutoff_query, &[&batch_size])
+                .await?
+        };
+
+        let Some(rows) = maybe_rows else {
+            return Ok(vec![]);
+        };
+
+        let mut func_runs = Vec::new();
+        for row in rows {
+            let id_string: String = row.get("key");
+            let ulid = Ulid::from_string(&id_string)?;
+            let func_id = FuncRunId::from(ulid);
+
+            func_runs.push(func_id)
+        }
+        Ok(func_runs)
     }
 
     // NOTE(victor): Migrated to si_db::FuncRunDb

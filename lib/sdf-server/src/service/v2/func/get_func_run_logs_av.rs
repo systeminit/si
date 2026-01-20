@@ -12,7 +12,7 @@ use serde::{
     Deserialize,
     Serialize,
 };
-
+use si_db::{FuncRunDb, FuncRunLogDb};
 use super::get_func_run::FuncRunLogView;
 use crate::{
     extract::HandlerContext,
@@ -41,24 +41,18 @@ pub async fn get_func_run_logs_av(
         .build(access_builder.build(change_set_id.into()))
         .await?;
 
-    let maybe_av_run = ctx
-        .layer_db()
-        .func_run()
-        .get_last_qualification_for_attribute_value_id(
-            ctx.events_tenancy().workspace_pk,
-            attribute_value_id,
-        )
-        .await?;
+    let maybe_av_run = FuncRunDb::get_last_qualification_for_attribute_value_id(
+        &ctx,
+        ctx.events_tenancy().workspace_pk,
+        attribute_value_id,
+    ).await?;
+
     match maybe_av_run {
         Some(av_run) => {
-            let logs = ctx
-                .layer_db()
-                .func_run_log()
-                .get_for_func_run_id(av_run.id())
+            let logs = FuncRunLogDb::get_for_func_run_id(&ctx, av_run.id())
                 .await?
-                .map(Arc::unwrap_or_clone)
                 .map(|v| v.into());
-
+            
             Ok(Json(GetFuncRunLogsResponse { logs }))
         }
         None => Ok(Json(GetFuncRunLogsResponse { logs: None })), // todo return friendly error?

@@ -34,6 +34,7 @@ module-index-client = { path = "../../lib/module-index-client" }
 nats-multiplexer = { path = "../../lib/nats-multiplexer" }
 nats-multiplexer-client = { path = "../../lib/nats-multiplexer-client" }
 permissions = { path = "../../lib/permissions" }
+postcard = { workspace = true }
 rebaser-client = { path = "../../lib/rebaser-client" }
 remain = { workspace = true }
 reqwest = { workspace = true }

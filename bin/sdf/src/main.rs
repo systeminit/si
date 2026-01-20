@@ -9,6 +9,7 @@ use innit_client::InnitClient;
 use sdf_server::{
     BackfillConfig,
     Config,
+    FuncRunsBackfiller,
     LayerCacheBackfiller,
     Migrator,
     Server,
@@ -146,6 +147,18 @@ async fn async_main() -> Result<()> {
             .await
         } else if config.migration_mode().is_backfill_layer_cache() {
             backfill_layer_cache(
+                config,
+                main_tracker,
+                main_token,
+                helping_tasks_tracker,
+                helping_tasks_token,
+                telemetry_tracker,
+                telemetry_token,
+                telemetry_shutdown,
+            )
+            .await
+        } else if config.migration_mode().is_backfill_func_runs() {
+            backfill_func_runs(
                 config,
                 main_tracker,
                 main_token,
@@ -388,6 +401,48 @@ async fn generate_symmetric_key(
 
     shutdown::graceful_with_handle(handle)
         .group(main_tracker, main_token)
+        .group(telemetry_tracker, telemetry_token)
+        .telemetry_guard(telemetry_shutdown.into_future())
+        .timeout(GRACEFUL_SHUTDOWN_TIMEOUT)
+        .wait()
+        .await
+        .map_err(Into::into)
+}
+
+#[inline]
+#[allow(clippy::too_many_arguments)]
+async fn backfill_func_runs(
+    config: Config,
+    main_tracker: TaskTracker,
+    main_token: CancellationToken,
+    helping_tasks_tracker: TaskTracker,
+    helping_tasks_token: CancellationToken,
+    telemetry_tracker: TaskTracker,
+    telemetry_token: CancellationToken,
+    telemetry_shutdown: TelemetryShutdownGuard,
+) -> Result<()> {
+    // Extract parameters before config is moved
+    let cutoff_id = config
+        .backfill_func_runs_cutoff_id()
+        .and_then(|id_str| id_str.parse().ok());
+    let batch_size = config.backfill_key_batch_size() as i64;
+
+    let backfiller = FuncRunsBackfiller::new(
+        config,
+        &helping_tasks_tracker,
+        helping_tasks_token.clone(),
+    )
+    .await?;
+
+    let handle = main_tracker.spawn(backfiller.upload_all_func_runs(
+        main_token.clone(),
+        cutoff_id,
+        batch_size,
+    ));
+
+    shutdown::graceful_with_handle(handle)
+        .group(main_tracker, main_token)
+        .group(helping_tasks_tracker, helping_tasks_token)
         .group(telemetry_tracker, telemetry_token)
         .telemetry_guard(telemetry_shutdown.into_future())
         .timeout(GRACEFUL_SHUTDOWN_TIMEOUT)

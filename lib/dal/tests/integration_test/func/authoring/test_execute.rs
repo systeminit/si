@@ -237,16 +237,14 @@ async fn wait_for_func_run_with_success_state(ctx: &DalContext, func_run_id: Fun
     let seconds = 15;
 
     for _ in 0..(seconds * 10) {
-        let func_run = ctx
-            .layer_db()
-            .func_run()
-            .read(func_run_id)
+        let func_run= FuncRunDb::read(ctx, func_run_id)
             .await
             .expect("could not read func run")
             .expect("func run not found");
 
+
         if func_run.state() == FuncRunState::Success {
-            return Arc::unwrap_or_clone(func_run);
+            return func_run;
         }
 
         tokio::time::sleep(Duration::from_millis(100)).await;

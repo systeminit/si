@@ -50,13 +50,11 @@ pub async fn get_actions(
         let func_id = ActionPrototype::func_id(ctx, prototype_id).await?;
         let func = Func::get_by_id(ctx, func_id).await?;
         let prototype = ActionPrototype::get_by_id(ctx, prototype_id).await?;
-        let func_run_id = ctx
-            .layer_db()
-            .func_run()
-            .get_last_run_for_action_id_opt(ctx.events_tenancy().workspace_pk, action.id())
+
+        let func_run_id = FuncRunDb::get_last_run_for_action_id_opt(ctx, ctx.events_tenancy().workspace_pk, action.id())
             .await?
             .map(|f| f.id());
-
+        
         let action = ActionViewV1 {
             id: action_id,
             prototype_id: prototype.id(),

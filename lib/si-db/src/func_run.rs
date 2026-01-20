@@ -158,6 +158,175 @@ impl FuncRunDb {
         Ok(())
     }
 
+    /// Write multiple func runs to the database in a single INSERT query.
+    /// This is more efficient than calling upsert multiple times.
+    pub async fn upsert_batch(
+        ctx: &impl SiDbContext,
+        func_runs: Vec<FuncRun>,
+    ) -> SiDbResult<()> {
+        if func_runs.is_empty() {
+            return Ok(());
+        }
+
+        // Build the VALUES part of the query dynamically
+        // Store all the data we need to keep alive for the query
+        struct RowData {
+            id: String,
+            workspace_pk: String,
+            created_at: chrono::DateTime<chrono::Utc>,
+            updated_at: chrono::DateTime<chrono::Utc>,
+            state: String,
+            function_kind: String,
+            change_set_id: String,
+            actor: String,
+            component_id: Option<String>,
+            attribute_value_id: Option<String>,
+            action_id: Option<String>,
+            action_originating_change_set_id: Option<String>,
+            json: serde_json::Value,
+            postcard_bytes: Vec<u8>,
+        }
+
+        let mut values_clauses = Vec::new();
+        let mut row_data_vec = Vec::new();
+        let mut param_index = 1;
+
+        for func_run in &func_runs {
+            let json: serde_json::Value = serde_json::to_value(func_run)?;
+            let postcard_bytes = postcard::to_stdvec(func_run)
+                .map_err(|e| SiDbError::Postcard(e.to_string()))?;
+
+            // Create placeholders for this row ($1, $2, ... $15)
+            let placeholders: Vec<String> = (param_index..param_index + 15)
+                .map(|i| format!("${}", i))
+                .collect();
+            values_clauses.push(format!("({})", placeholders.join(", ")));
+
+            row_data_vec.push(RowData {
+                id: func_run.id().to_string(),
+                workspace_pk: func_run.tenancy().workspace_pk.to_string(),
+                created_at: func_run.created_at(),
+                updated_at: func_run.updated_at(),
+                state: func_run.state().to_string(),
+                function_kind: func_run.function_kind().to_string(),
+                change_set_id: func_run.tenancy().change_set_id.to_string(),
+                actor: func_run.actor().to_string(),
+                component_id: func_run.component_id().map(|v| v.to_string()),
+                attribute_value_id: func_run.attribute_value_id().map(|v| v.to_string()),
+                action_id: func_run.action_id().map(|v| v.to_string()),
+                action_originating_change_set_id: func_run
+                    .action_originating_change_set_id()
+                    .map(|v| v.to_string()),
+                json,
+                postcard_bytes,
+            });
+
+            param_index += 15;
+        }
+
+        let query = format!(
+            "INSERT INTO func_runs (
+                key,
+                sort_key,
+                created_at,
+                updated_at,
+                state,
+                function_kind,
+                workspace_id,
+                change_set_id,
+                actor_id,
+                component_id,
+                attribute_value_id,
+                action_id,
+                action_originating_change_set_id,
+                json_value,
+                value
+            ) VALUES {}
+            ON CONFLICT (key) DO UPDATE SET
+                updated_at = EXCLUDED.updated_at,
+                state = EXCLUDED.state,
+                json_value = EXCLUDED.json_value,
+                value = EXCLUDED.value",
+            values_clauses.join(", ")
+        );
+
+        // Build the parameter array dynamically
+        // We need to store the slices separately to keep them alive
+        let postcard_slices: Vec<&[u8]> = row_data_vec
+            .iter()
+            .map(|rd| rd.postcard_bytes.as_slice())
+            .collect();
+
+        let mut params: Vec<&(dyn postgres_types::ToSql + Sync)> = Vec::new();
+        for (idx, row_data) in row_data_vec.iter().enumerate() {
+            params.push(&row_data.id);
+            params.push(&row_data.workspace_pk);
+            params.push(&row_data.created_at);
+            params.push(&row_data.updated_at);
+            params.push(&row_data.state);
+            params.push(&row_data.function_kind);
+            params.push(&row_data.workspace_pk);
+            params.push(&row_data.change_set_id);
+            params.push(&row_data.actor);
+            params.push(&row_data.component_id);
+            params.push(&row_data.attribute_value_id);
+            params.push(&row_data.action_id);
+            params.push(&row_data.action_originating_change_set_id);
+            params.push(&row_data.json);
+            params.push(&postcard_slices[idx]);
+        }
+
+        ctx.txns()
+            .await?
+            .pg()
+            .execute(&query, &params[..])
+            .await?;
+
+        Ok(())
+    }
+
+    /// Returns the IDs from the input batch that do NOT exist in the database.
+    /// This is useful for determining which func runs need to be migrated.
+    pub async fn find_missing_ids(
+        ctx: &impl SiDbContext,
+        ids: &[FuncRunId],
+    ) -> SiDbResult<Vec<FuncRunId>> {
+        if ids.is_empty() {
+            return Ok(vec![]);
+        }
+
+        // Convert IDs to strings for the query
+        let id_strings: Vec<String> = ids.iter().map(|id| id.to_string()).collect();
+
+        // Build a query with ANY to check which IDs exist
+        let query = format!(
+            "SELECT key FROM {} WHERE key = ANY($1)",
+            DBNAME
+        );
+
+        let rows = ctx
+            .txns()
+            .await?
+            .pg()
+            .query(&query, &[&id_strings])
+            .await?;
+
+        // Collect the IDs that exist in the database
+        let existing_ids: std::collections::HashSet<String> = rows
+            .iter()
+            .map(|row| row.get::<_, String>("key"))
+            .collect();
+
+        // Return the IDs that don't exist
+        let missing_ids: Vec<FuncRunId> = ids
+            .iter()
+            .filter(|id| !existing_ids.contains(&id.to_string()))
+            .copied()
+            .collect();
+
+        Ok(missing_ids)
+    }
+
     pub async fn get_last_run_for_action_id_opt(
         ctx: &impl SiDbContext,
         workspace_pk: WorkspacePk,

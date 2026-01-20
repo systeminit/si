@@ -10,7 +10,7 @@ use serde::{
     Deserialize,
     Serialize,
 };
-use si_db::Visibility;
+use si_db::{FuncRunDb, Visibility};
 use si_events::{
     ActionResultState,
     ComponentId,
@@ -63,18 +63,13 @@ pub async fn history(
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
     let mut result = vec![];
-    if let Some(management_history_list) = ctx
-        .layer_db()
-        .func_run()
-        .list_management_history(
-            ctx.events_tenancy().workspace_pk,
-            ctx.events_tenancy().change_set_id,
-        )
-        .await?
-    {
-        for func_run in management_history_list {
-            result.push(ManagementHistoryItem::try_from(func_run)?);
-        }
+
+    for func_run in FuncRunDb::list_management_history(
+        &ctx,
+        ctx.events_tenancy().workspace_pk,
+        ctx.events_tenancy().change_set_id,
+    ).await? {
+        result.push(ManagementHistoryItem::try_from(func_run)?);
     }
 
     Ok(Json(result))

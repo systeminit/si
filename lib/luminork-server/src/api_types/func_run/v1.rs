@@ -274,12 +274,8 @@ impl FuncRunViewV1 {
             }
         };
 
-        let logs = ctx
-            .layer_db()
-            .func_run_log()
-            .get_for_func_run_id(func_run.id())
+        let logs = FuncRunLogDb::get_for_func_run_id(ctx, func_run.id())
             .await?
-            .map(Arc::<FuncRunLog>::unwrap_or_clone)
             .map(|v| v.into());
 
         Ok(FuncRunViewV1 {

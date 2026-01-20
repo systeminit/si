@@ -817,11 +817,9 @@ impl Action {
         ctx: &DalContext,
         id: ActionId,
     ) -> ActionResult<Option<FuncRunId>> {
-        Ok(ctx
-            .layer_db()
-            .func_run()
-            .get_last_run_for_action_id_opt(ctx.events_tenancy().workspace_pk, id)
-            .await?
+        Ok(FuncRunDb::get_last_run_for_action_id_opt(ctx, ctx.events_tenancy().workspace_pk, id)
+            .await
+            .expect("unable to get func run id")
             .map(|f| f.id()))
     }
 

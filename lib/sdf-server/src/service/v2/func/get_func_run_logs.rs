@@ -1,10 +1,9 @@
-use std::sync::Arc;
-
 use axum::{
     Json,
     extract::Path,
 };
 use dal::WorkspacePk;
+use si_db::FuncRunLogDb;
 use si_events::FuncRunId;
 
 use super::get_func_run::FuncRunLogView;
@@ -41,12 +40,8 @@ pub async fn get_func_run_logs(
         .await?;
 
     // Fetch only the logs for this function run
-    let logs = ctx
-        .layer_db()
-        .func_run_log()
-        .get_for_func_run_id(func_run_id)
+    let logs = FuncRunLogDb::get_for_func_run_id(&ctx, func_run_id)
         .await?
-        .map(Arc::unwrap_or_clone)
         .map(|v| v.into());
 
     Ok(Json(GetFuncRunLogsResponse { logs }))

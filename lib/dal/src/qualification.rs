@@ -229,14 +229,12 @@ impl QualificationView {
         ctx: &DalContext,
         attribute_value_id: AttributeValueId,
     ) -> Result<Option<Self>, QualificationError> {
-        let maybe_qual_run = ctx
-            .layer_db()
-            .func_run()
-            .get_last_qualification_for_attribute_value_id(
-                ctx.events_tenancy().workspace_pk,
-                attribute_value_id,
-            )
-            .await?;
+        let maybe_qual_run = FuncRunDb::get_last_qualification_for_attribute_value_id(
+            ctx,
+            ctx.events_tenancy().workspace_pk,
+            attribute_value_id,
+        )
+        .await?;
         match maybe_qual_run {
             Some(qual_run) => {
                 let qualification_entry: QualificationEntry =
@@ -262,10 +260,7 @@ impl QualificationView {
                     sub_checks: vec![sub_check],
                 });
 
-                let (output, finalized) = match ctx
-                    .layer_db()
-                    .func_run_log()
-                    .get_for_func_run_id(qual_run.id())
+                let (output, finalized) = match FuncRunLogDb::get_for_func_run_id(ctx, qual_run.id())
                     .await?
                 {
                     Some(func_run_logs) => {

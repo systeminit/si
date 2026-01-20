@@ -122,7 +122,7 @@ pub async fn get_func_run(
     tracker: PosthogEventTracker,
     Path(FuncRunV1RequestPath { func_run_id }): Path<FuncRunV1RequestPath>,
 ) -> FuncsResult<Json<GetFuncRunV1Response>> {
-    let maybe_func_run = ctx.layer_db().func_run().read(func_run_id).await?;
+    let maybe_func_run = FuncRunDb::read(ctx, func_run_id).await?;
     match maybe_func_run {
         Some(func_run) => {
             let func_run_view = FuncRunViewV1::assemble(ctx, &func_run).await?;

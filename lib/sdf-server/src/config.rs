@@ -160,6 +160,9 @@ pub struct Config {
 
     #[builder(default = "default_backfill_max_concurrent_uploads()")]
     backfill_max_concurrent_uploads: usize,
+
+    #[builder(default)]
+    backfill_func_runs_cutoff_id: Option<String>,
 }
 
 impl StandardConfig for Config {
@@ -302,6 +305,10 @@ impl Config {
     pub fn backfill_max_concurrent_uploads(&self) -> usize {
         self.backfill_max_concurrent_uploads
     }
+
+    pub fn backfill_func_runs_cutoff_id(&self) -> Option<&str> {
+        self.backfill_func_runs_cutoff_id.as_deref()
+    }
 }
 
 impl ConfigBuilder {
@@ -366,6 +373,8 @@ pub struct ConfigFile {
     backfill_checkpoint_interval_secs: u64,
     #[serde(default = "default_backfill_max_concurrent_uploads")]
     backfill_max_concurrent_uploads: usize,
+    #[serde(default)]
+    backfill_func_runs_cutoff_id: Option<String>,
 }
 
 impl Default for ConfigFile {
@@ -396,6 +405,7 @@ impl Default for ConfigFile {
             backfill_key_batch_size: default_backfill_key_batch_size(),
             backfill_checkpoint_interval_secs: default_backfill_checkpoint_interval_secs(),
             backfill_max_concurrent_uploads: default_backfill_max_concurrent_uploads(),
+            backfill_func_runs_cutoff_id: None,
         }
     }
 }
@@ -437,6 +447,7 @@ impl TryFrom<ConfigFile> for Config {
             backfill_key_batch_size: value.backfill_key_batch_size,
             backfill_checkpoint_interval_secs: value.backfill_checkpoint_interval_secs,
             backfill_max_concurrent_uploads: value.backfill_max_concurrent_uploads,
+            backfill_func_runs_cutoff_id: value.backfill_func_runs_cutoff_id,
         })
     }
 }
