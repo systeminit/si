@@ -54,6 +54,7 @@ export enum routes {
   MgmtFuncRun = "MgmtFuncRun",
   PolicyReports = "PolicyReports",
   PolicyReport = "PolicyReport",
+  GroupedPolicyReports = "GroupedPolicyReports",
   MgmtFuncGetJobState = "MgmtFuncGetJobState",
   MgmtFuncGetLatest = "MgmtFuncGetLatest",
   UpdateComponentAttributes = "UpdateComponentAttributes",
@@ -128,8 +129,6 @@ const _routes: Record<routes, string> = {
   MgmtFuncGetJobState: "/management/state/<funcRunId>",
   MgmtFuncGetLatest: "/management/component/<componentId>/latest",
   MgmtFuncRun: "/management/prototype/<prototypeId>/<componentId>/<viewId>",
-  PolicyReports: "/policy-reports",
-  PolicyReport: "/policy-reports/<policyId>",
   RefreshAction: "/action/refresh/<componentId>",
   RestoreComponents: "/components/restore",
   SetDefaultSubscriptionSource: "/components/<id>/attributes/default_source",
@@ -147,6 +146,9 @@ const _routes: Record<routes, string> = {
   ChangeSetInitializeAndApply: "/change-sets/create_initialize_apply",
   ComponentsOnHead: "/change-sets/components_on_head",
   WorkspaceListUsers: "/users",
+  PolicyReports: "/policy-reports",
+  PolicyReport: "/policy-reports/<policyId>",
+  GroupedPolicyReports: "/policy-reports/grouped-by-name",
   // Auth Api Endpoints
   Workspaces: "/workspaces",
   GenerateApiToken: "/authTokens",
@@ -259,6 +261,9 @@ export class APICall<Response, Args> {
         _routes.ChangeSetInitializeAndApply,
         _routes.WorkspaceListUsers,
         _routes.ComponentsOnHead,
+        _routes.GroupedPolicyReports,
+        _routes.PolicyReports,
+        _routes.PolicyReport,
       ].includes(this.path)
     ) {
       return `v2/workspaces/${this.workspaceId}${this.pathWithArgs()}`;

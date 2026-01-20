@@ -27,6 +27,10 @@
           <span class="grow"
             ><TruncateWithTooltip class="py-2xs">{{ policy.name }}</TruncateWithTooltip></span
           >
+          <span class="shrink flex flex-row items-center">
+            <Icon name="git-branch" tone="neutral" size="xs" />
+            <TruncateWithTooltip class="py-2xs">{{ policy.changeSetName }}</TruncateWithTooltip>
+          </span>
           <span class="shrink">
             <Timestamp refresh size="normal" relative="standard" showTimeIfToday :date="policy.createdAt" />
           </span>
@@ -47,7 +51,10 @@
           @select="(p) => navigateToPolicy(p)"
         />
       </div>
-      <div v-if="!policy" class="w-full">
+      <div v-if="policyQuery.isLoading.value">
+        <DelayedLoader size="full" />
+      </div>
+      <div v-else-if="!policy" class="w-full">
         <EmptyStateCard
           iconName="no-changes"
           primaryText="Could not find this Policy Report"
@@ -79,6 +86,7 @@ import MarkdownRender from "./MarkdownRender.vue";
 import { routes, useApi } from "./api_composables";
 import { useContext } from "./logic_composables/context";
 import { prevPage } from "./logic_composables/navigation_stack";
+import DelayedLoader from "@/newhotness/layout_components/DelayedLoader.vue";
 
 const router = useRouter();
 const route = useRoute();
@@ -87,7 +95,6 @@ const route = useRoute();
 const navigateBack = () => {
   const lastPage = prevPage();
   // if we aren't coming from new-hotness, go to where we came from
-  // usually component details
   if (lastPage && lastPage.name !== "new-hotness") {
     router.push({
       name: lastPage.name,
@@ -95,21 +102,23 @@ const navigateBack = () => {
     });
   } else {
     router.push({
-      name: "new-hotness",
+      name: "new-hotness-policy-home",
       params: {
         workspacePk: route.params.workspacePk,
         changeSetId: route.params.changeSetId,
       },
-      query: { retainSessionState: 1 },
     });
   }
 };
 
 const props = defineProps<{
   policyId: string;
+  policyName: string;
 }>();
 
-const { policyReports, page, maxPages } = usePolicy();
+const policyName = computed(() => props.policyName);
+
+const { policyReports, page, maxPages } = usePolicy(policyName);
 
 watch(
   route.query,
@@ -152,6 +161,7 @@ const navigateToPolicy = (policy: Policy) => {
       workspacePk: route.params.workspacePk,
       changeSetId: route.params.changeSetId,
       policyId: policy.id,
+      policyName: policy.name,
     },
     query: {
       page: page.value,

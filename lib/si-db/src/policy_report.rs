@@ -62,6 +62,8 @@ pub const MAX_REPORTS_PER_GROUP: i64 = 10;
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub enum PolicyReportError {
+    #[error("look up error, record not found")]
+    LookupError,
     #[error("could not parse policy report result: {0}")]
     ParsePolicyReportResult(#[source] strum::ParseError),
     #[error("pg error: {0}")]
@@ -85,6 +87,8 @@ pub struct PolicyReport {
     pub workspace_id: WorkspacePk,
     /// The change set the policy report was generated for.
     pub change_set_id: ChangeSetId,
+    /// The change set name the policy report was generated for.
+    pub change_set_name: String,
     /// The user that generated the policy report.
     pub user_id: Option<UserPk>,
     /// When the policy report was generated.
@@ -124,6 +128,7 @@ impl TryFrom<PgRow> for PolicyReport {
             id: row.try_get("id")?,
             workspace_id: row.try_get("workspace_id")?,
             change_set_id: row.try_get("change_set_id")?,
+            change_set_name: row.try_get("change_set_name")?,
             user_id: row.try_get("user_id")?,
             name: row.try_get("name")?,
             policy: row.try_get("policy")?,
@@ -215,7 +220,13 @@ impl PolicyReport {
             )
             .await?;
 
-        Self::try_from(row)
+        let policy_id = row.try_get("id")?;
+        let lookup_report = Self::fetch_single(ctx, policy_id).await?;
+        if let Some(lookup_report) = lookup_report {
+            Ok(lookup_report)
+        } else {
+            Err(PolicyReportError::LookupError)
+        }
     }
 
     /// Fetches a single [`PolicyReport`](PolicyReport) for the current workspace based on ID in the url path.
@@ -228,7 +239,7 @@ impl PolicyReport {
             .await?
             .pg()
             .query(
-                "SELECT * FROM policy_reports WHERE workspace_id = $1 AND id = $2",
+                "SELECT policy_reports.*, change_set_pointers.name as change_set_name FROM policy_reports INNER JOIN change_set_pointers ON change_set_pointers.id = policy_reports.change_set_id WHERE policy_reports.workspace_id = $1 AND policy_reports.id = $2",
                 &[&ctx.tenancy().workspace_pk()?, &id],
             )
             .await?;
@@ -264,7 +275,7 @@ impl PolicyReport {
 
         let rows = ctx.txns().await?.pg()
             .query(
-                "SELECT * FROM policy_reports WHERE workspace_id = $1 AND name = $2 ORDER BY created_at DESC LIMIT $3 OFFSET $4",
+                "SELECT policy_reports.*, change_set_pointers.name as change_set_name FROM policy_reports INNER JOIN change_set_pointers ON change_set_pointers.id = policy_reports.change_set_id WHERE policy_reports.workspace_id = $1 AND policy_reports.name = $2 ORDER BY created_at DESC LIMIT $3 OFFSET $4",
                 &[
                     &ctx.tenancy().workspace_pk()?,
                     &name,
@@ -309,13 +320,14 @@ impl PolicyReport {
             .await?
             .pg()
             .query(
-                "SELECT * FROM (
+                "SELECT *, change_set_pointers.name as change_set_name FROM (
                     SELECT *, ROW_NUMBER() OVER (PARTITION BY name ORDER BY created_at DESC) as rn
                     FROM policy_reports
                     WHERE workspace_id = $1
                 ) ranked
+                INNER JOIN change_set_pointers ON change_set_pointers.id = ranked.change_set_id
                 WHERE rn <= $2
-                ORDER BY name, created_at DESC",
+                ORDER BY ranked.name, ranked.created_at DESC",
                 &[&ctx.tenancy().workspace_pk()?, &MAX_REPORTS_PER_GROUP],
             )
             .await?;
