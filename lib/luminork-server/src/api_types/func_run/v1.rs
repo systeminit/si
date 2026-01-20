@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use chrono::{
     DateTime,
     Utc,
@@ -14,6 +12,7 @@ use serde::{
     Deserialize,
     Serialize,
 };
+use si_db::FuncRunLogDb;
 use si_events::{
     ActionKind,
     ActionResultState,

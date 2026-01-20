@@ -23,7 +23,7 @@ pub enum AuditLogError {
     #[error("dal transactions error: {0}")]
     DalTransactions(#[from] Box<dal::TransactionsError>),
     #[error("si db error: {0}")]
-    SiDb(#[from] si_db::Error),
+    SiDb(#[from] si_db::SiDbError),
 }
 
 impl From<dal::audit_logging::AuditLoggingError> for AuditLogError {

@@ -32,6 +32,7 @@ use tokio::sync::{
     oneshot,
 };
 use ulid::Ulid;
+use si_db::{FuncRunDb, FuncRunLogDb};
 use veritech_client::{
     BeforeFunction,
     FunctionResult,
@@ -187,7 +188,7 @@ pub enum FuncRunnerError {
     #[error("serde json error: {0}")]
     SerdeJson(#[from] serde_json::Error),
     #[error("si db error: {0}")]
-    SiDb(#[from] si_db::Error),
+    SiDb(#[from] si_db::SiDbError),
     #[error(
         "too many attribute prototype arguments for protoype corresponding to component ({0}) and prop ({1}): {2:?}"
     )]

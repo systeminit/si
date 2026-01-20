@@ -12,7 +12,7 @@ use serde::{
 use si_id::UserPk;
 
 use crate::{
-    Result,
+    SiDbResult,
     context::SiDbContext,
     history_event::HistoryActor,
     user::User,
@@ -54,7 +54,7 @@ impl ActorView {
     pub async fn from_history_actor(
         ctx: &impl SiDbContext,
         history_actor: HistoryActor,
-    ) -> Result<Self> {
+    ) -> SiDbResult<Self> {
         match history_actor {
             HistoryActor::User(user_pk) => {
                 let user = User::get_by_pk(ctx, user_pk).await?;

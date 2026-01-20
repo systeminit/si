@@ -58,7 +58,7 @@ pub enum DalWrapperError {
     #[error("permissions error: {0}")]
     Permissions(#[from] permissions::Error),
     #[error("si db error: {0}")]
-    SiDb(#[from] si_db::Error),
+    SiDb(#[from] si_db::SiDbError),
     #[error("spicedb lookup subjects error: {0}")]
     SpiceDBLookupSubjects(#[source] si_data_spicedb::Error),
     #[error("transactions error: {0}")]

@@ -5,6 +5,8 @@ use si_id::UserPk;
 mod actor_view;
 pub mod change_set;
 mod context;
+mod func_run;
+mod func_run_log;
 mod history_event;
 pub mod key_pair;
 mod management_func_execution;
@@ -20,6 +22,8 @@ pub mod workspace;
 
 pub use actor_view::ActorView;
 pub use context::SiDbContext;
+pub use func_run::FuncRunDb;
+pub use func_run_log::FuncRunLogDb;
 pub use history_event::{
     HistoryActor,
     HistoryEvent,
@@ -54,7 +58,11 @@ mod embedded {
 
 #[remain::sorted]
 #[derive(thiserror::Error, Debug)]
-pub enum Error {
+pub enum SiDbError {
+    #[error("action id not found: {0}")]
+    ActionIdNotFound(si_events::ActionId),
+    #[error("missing func run: {0}")]
+    MissingFuncRun(si_events::FuncRunId),
     #[error("nats error")]
     Nats(#[from] si_data_nats::NatsError),
     #[error("no workspace")]
@@ -63,6 +71,8 @@ pub enum Error {
     Pg(#[from] si_data_pg::PgError),
     #[error("pg pool error: {0}")]
     PgPool(#[from] si_data_pg::PgPoolError),
+    #[error("postcard error: {0}")]
+    Postcard(String),
     #[error("error serializing/deserializing json: {0}")]
     SerdeJson(#[from] serde_json::Error),
     #[error("si db transactions error: {0}")]
@@ -71,4 +81,4 @@ pub enum Error {
     UserNotFound(UserPk),
 }
 
-pub type Result<T> = std::result::Result<T, Error>;
+pub type SiDbResult<T> = Result<T, SiDbError>;

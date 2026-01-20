@@ -125,7 +125,7 @@ pub enum WorkspaceError {
     #[error("serde json error: {0}")]
     SerdeJson(#[from] serde_json::Error),
     #[error("si db error: {0}")]
-    SiDb(#[from] si_db::Error),
+    SiDb(#[from] si_db::SiDbError),
     #[error("strum parse error: {0}")]
     StrumParse(#[from] strum::ParseError),
     #[error("transactions error: {0}")]

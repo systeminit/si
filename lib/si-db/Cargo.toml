@@ -11,6 +11,7 @@ publish.workspace = true
 [dependencies]
 async-trait = { workspace = true }
 chrono = { workspace = true }
+postcard = { workspace = true }
 postgres-types = { workspace = true }
 refinery = { workspace = true }
 remain = { workspace = true }

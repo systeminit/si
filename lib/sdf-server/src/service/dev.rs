@@ -28,7 +28,7 @@ pub enum DevError {
     #[error("pg error: {0}")]
     Pg(#[from] si_data_pg::PgError),
     #[error("si db error: {0}")]
-    SiDb(#[from] si_db::Error),
+    SiDb(#[from] si_db::SiDbError),
     #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),
     #[error("could not publish websocket event: {0}")]

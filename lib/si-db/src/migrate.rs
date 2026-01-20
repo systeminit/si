@@ -23,7 +23,7 @@ use tokio::{
     time::Instant,
 };
 
-use crate::Result;
+use crate::SiDbResult;
 
 mod embedded {
     use refinery::embed_migrations;
@@ -32,13 +32,13 @@ mod embedded {
 }
 
 #[instrument(level = "info", skip_all)]
-pub async fn migrate_all(pg_pool: &PgPool) -> Result<()> {
+pub async fn migrate_all(pg_pool: &PgPool) -> SiDbResult<()> {
     migrate(pg_pool).await?;
     Ok(())
 }
 
 #[instrument(level = "info", skip_all)]
-pub async fn migrate_all_with_progress(pg_pool: &PgPool) -> Result<()> {
+pub async fn migrate_all_with_progress(pg_pool: &PgPool) -> SiDbResult<()> {
     let mut interval = time::interval(Duration::from_secs(5));
     let instant = Instant::now();
     let migrate_all = migrate_all(pg_pool);
@@ -63,7 +63,7 @@ pub async fn migrate_all_with_progress(pg_pool: &PgPool) -> Result<()> {
 }
 
 #[instrument(level = "info", skip_all)]
-pub async fn migrate(pg: &PgPool) -> Result<()> {
+pub async fn migrate(pg: &PgPool) -> SiDbResult<()> {
     pg.migrate(embedded::migrations::runner()).await?;
     Ok(())
 }
@@ -82,6 +82,7 @@ pub async fn migrate(pg: &PgPool) -> Result<()> {
 )]
 #[strum(serialize_all = "camelCase")]
 pub enum MigrationMode {
+    BackfillFuncRuns,
     BackfillLayerCache,
     GarbageCollectSnapshots,
     Run,
@@ -115,6 +116,10 @@ impl MigrationMode {
 
     pub fn is_backfill_layer_cache(&self) -> bool {
         matches!(self, Self::BackfillLayerCache)
+    }
+
+    pub fn is_backfill_func_runs(&self) -> bool {
+        matches!(self, Self::BackfillFuncRuns)
     }
 }
 

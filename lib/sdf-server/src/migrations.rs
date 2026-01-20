@@ -45,7 +45,7 @@ pub enum MigratorError {
     #[error("error while migrating cached modules: {0}")]
     MigrateCachedModules(#[source] Box<dyn std::error::Error + 'static + Sync + Send>),
     #[error("error while migrating dal database: {0}")]
-    MigrateDalDatabase(#[source] si_db::Error),
+    MigrateDalDatabase(#[source] si_db::SiDbError),
     #[error("error while migrating layer db database: {0}")]
     MigrateLayerDbDatabase(#[source] si_layer_cache::LayerDbError),
     #[error("error while migrating snapshots: {0}")]
