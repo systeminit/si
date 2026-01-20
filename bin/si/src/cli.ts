@@ -81,6 +81,10 @@ import {
   callChangeSetOpen,
   type ChangeSetOpenOptions,
 } from "./change-set/open.ts";
+import {
+  callChangeSetReview,
+  type ChangeSetReviewOptions,
+} from "./change-set/review.ts";
 import { doLogin } from "./cli/login.ts";
 import {
   getCurrentUser,
@@ -1617,6 +1621,22 @@ function buildChangeSetCommand() {
         )
         .action(async (options) => {
           await callChangeSetList(options as ChangeSetListOptions);
+        }),
+    )
+    .command(
+      "review",
+      createSubCommand(true)
+        .description("Review all changes in a change set")
+        .arguments("<change-set-id-or-name:string>")
+        .option(
+          "--include-resource-diff",
+          "Include resource code diffs (CloudFormation/Terraform)",
+        )
+        .action(async (options, changeSetIdOrName) => {
+          await callChangeSetReview({
+            ...options,
+            changeSetIdOrName: changeSetIdOrName as string,
+          } as ChangeSetReviewOptions);
         }),
     );
 }

@@ -408,6 +408,93 @@ si change-set list
 None
 
 
+### change-set review
+
+Review all component changes in a change set.
+
+Displays a comprehensive view of all attribute changes, including what values changed and where they come from (subscriptions, static values, or prototypes). This command provides a clean, filtered view of changes without noise from internal fields or empty defaults.
+
+> Syntax
+
+```bash
+si change-set review <change-set-id-or-name> [OPTIONS]
+```
+
+#### Parameters
+
+| Name                  | Type   | Required | Description                                      | Default |
+| --------------------- | ------ | -------- | ------------------------------------------------ | ------- |
+| change-set-id-or-name | string | true     | Change set ID or name                            | -       |
+| --include-resource-diff | flag | false    | Include resource code diffs (CloudFormation/Terraform) | false |
+
+#### Output
+
+The command displays:
+- Summary of total changes (added, modified, removed components)
+- Each component with changes, showing:
+  - Component name and schema
+  - Diff status (Added, Modified, Removed)
+  - All changed attributes with their paths
+  - Values and their sources (subscriptions, static values, or prototypes)
+
+**Change indicators:**
+- `+` - Attribute added
+- `~` - Attribute modified
+- `-` - Attribute removed
+
+**Source formats:**
+- Static value: `"value"`
+- Subscription: `$source: component-name -> /path`
+- Prototype: `$source: FunctionName()`
+
+#### Examples
+
+```bash
+# Review a change set by name
+si change-set review my-change-set
+
+# Review a change set by ID
+si change-set review 01H9ZQD35JPMBGHH69BT0Q79AA
+
+# Include CloudFormation/Terraform code diffs
+si change-set review my-change-set --include-resource-diff
+```
+
+#### Sample Output
+
+```
+✨ info    si              Found 2 component(s) with changes: 2 added, 0 modified, 0 removed
+
+✨ info    si              Component: my-vpc (AWS::EC2::VPC)
+✨ info    si              Status: Added
+✨ info    si              All attributes are new:
+✨ info    si                + "/domain/cidrBlock"
+✨ info    si                    Value: "10.0.0.0/16"
+✨ info    si                + "/domain/extra/Region"
+✨ info    si                    Value: "$source: region-1 -> /domain/region"
+✨ info    si                + "/si/name"
+✨ info    si                    Value: "my-vpc"
+
+✨ info    si              Component: existing-subnet (AWS::EC2::Subnet)
+✨ info    si              Status: Modified
+✨ info    si                ~ "/domain/availabilityZone"
+✨ info    si                    Old:
+✨ info    si                      Value: "us-east-1a"
+✨ info    si                    New:
+✨ info    si                      Value: "us-east-1b"
+
+✨ info    si              Summary: 2 added, 0 modified, 0 removed
+```
+
+#### Behavior
+
+- Returns a filtered view (excludes internal fields like `/si/type`, `/si/color` and empty defaults)
+- Shows subscription sources with component names for clarity
+- If review data is still being generated (MVs not ready), displays a message to retry in a few seconds
+- Cannot be used on HEAD change set (HEAD has no diffs to review)
+
+---
+
 ## ai-agent
 
 Manages the SI AI Agent (MCP server).

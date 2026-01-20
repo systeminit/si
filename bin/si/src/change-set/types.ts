@@ -22,3 +22,8 @@ export interface ChangeSetApplyOptions extends ChangeSetByIdOrNameOptions {
   /** Don't wait for actions to complete, return immediately after applying */
   detach?: boolean;
 }
+
+export interface ChangeSetReviewOptions extends ChangeSetByIdOrNameOptions {
+  /** Include resource code diffs (CloudFormation/Terraform) */
+  includeResourceDiff?: boolean;
+}
