@@ -26,7 +26,9 @@ veritech-core = { path = "../../lib/veritech-core" }
 
 [dev-dependencies]
 base64 = { workspace = true }
+futures = { workspace = true }
 test-log = { workspace = true }
 tracing = { workspace = true }
 uuid = { workspace = true }
+veritech-core = { path = "../../lib/veritech-core" }
 veritech-server = { path = "../../lib/veritech-server" }

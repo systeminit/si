@@ -194,6 +194,11 @@ where
         Arc::clone(&self.0)
     }
 
+    /// Returns the admission semaphore for external backpressure control.
+    pub fn admission_semaphore(&self) -> Arc<Semaphore> {
+        self.inner().admission_semaphore.clone()
+    }
+
     /// This will attempt to get a ready, healthy instance from the pool.
     /// If there are no instances, it will give the main loop a chance to fill the pool and try
     /// again. It will throw an error if there are no available instances after enough retries.
@@ -281,6 +286,7 @@ where
     spec: S,
     queue_rx: Mutex<Receiver<PoolNoodleTaskType<I, S>>>,
     queue_tx: Sender<PoolNoodleTaskType<I, S>>,
+    admission_semaphore: Arc<Semaphore>,
 }
 
 impl<I, E, S> PoolNoodleInner<I, S>
@@ -305,6 +311,7 @@ where
             spec: config.spec,
             queue_rx: queue_rx.into(),
             queue_tx,
+            admission_semaphore: Arc::new(Semaphore::new(0)),
         }
     }
 
@@ -405,6 +412,7 @@ where
             warn!("failed to push to ready queue: {}", id);
         }
         metric!(counter.pool_noodle.ready = 1);
+        self.admission_semaphore.add_permits(1);
     }
 }
 
@@ -516,5 +524,64 @@ mod tests {
         drop(c);
         shutdown_token.cancel();
         assert!(pool.get().await.is_err());
+    }
+
+    #[tokio::test]
+    async fn admission_semaphore_tracks_ready_instances() {
+        let shutdown_token = CancellationToken::new();
+        let pool_size = 3_u32;
+
+        let spec = DummyInstanceSpec {};
+
+        let config = PoolNoodleConfig {
+            check_health: false,
+            max_concurrency: 10,
+            pool_size,
+            retry_limit: 3,
+            shutdown_token: shutdown_token.clone(),
+            spec,
+        };
+        let mut pool = PoolNoodle::new(config).await;
+
+        // Before running, semaphore should have 0 permits
+        let semaphore = pool.admission_semaphore();
+        assert_eq!(
+            semaphore.available_permits(),
+            0,
+            "semaphore should start with 0 permits"
+        );
+
+        pool.run().expect("failed to start");
+
+        // Wait for the pool to initialize all instances
+        // The semaphore should gain permits as instances become ready
+        let timeout_result = tokio::time::timeout(Duration::from_secs(5), async {
+            loop {
+                let permits = semaphore.available_permits();
+                if permits >= pool_size as usize {
+                    return permits;
+                }
+                sleep(Duration::from_millis(50)).await;
+            }
+        })
+        .await;
+
+        let final_permits = timeout_result.expect("timed out waiting for pool to initialize");
+        assert_eq!(
+            final_permits, pool_size as usize,
+            "semaphore should have permits equal to pool size"
+        );
+
+        // When we take an instance from the pool, the permit count should not
+        // change because permits are managed by naxum, not by get().
+        let permits_before_get = semaphore.available_permits();
+        let _instance = pool.get().await.expect("should be able to get an instance");
+        assert_eq!(
+            semaphore.available_permits(),
+            permits_before_get,
+            "pool.get() should not consume semaphore permits"
+        );
+
+        shutdown_token.cancel();
     }
 }

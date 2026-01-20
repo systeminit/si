@@ -41,7 +41,6 @@ use telemetry::prelude::*;
 use thiserror::Error;
 use ulid::Ulid;
 
-const DEFAULT_VERITECH_REQUESTS_CONCURRENCY_LIMIT: usize = 1000;
 const DEFAULT_POOL_SIZE: u32 = 50;
 
 const DEFAULT_POOL_GET_RETRY_LIMIT: u32 = 30;
@@ -100,9 +99,6 @@ pub struct Config {
 
     #[builder(default = "default_cyclone_client_execution_timeout()")]
     cyclone_client_execution_timeout: Duration,
-
-    #[builder(default = "default_veritech_requests_concurrency_limit()")]
-    veritech_requests_concurrency_limit: usize,
 
     #[builder(default = "random_instance_id()")]
     instance_id: String,
@@ -167,11 +163,6 @@ impl Config {
         self.cyclone_client_execution_timeout
     }
 
-    /// Gets the config's veritech requests concurrency limit.
-    pub fn veritech_requests_concurrency_limit(&self) -> usize {
-        self.veritech_requests_concurrency_limit
-    }
-
     /// Gets the config's instance ID.
     pub fn instance_id(&self) -> &str {
         self.instance_id.as_ref()
@@ -220,8 +211,6 @@ pub struct ConfigFile {
     healthcheck_pool: bool,
     #[serde(default = "default_cyclone_client_execution_timeout_secs")]
     cyclone_client_execution_timeout_secs: u64,
-    #[serde(default = "default_veritech_requests_concurrency_limit")]
-    veritech_requests_concurrency_limit: usize,
     #[serde(default = "random_instance_id")]
     instance_id: String,
     #[serde(default = "default_heartbeat_app")]
@@ -252,7 +241,6 @@ impl ConfigFile {
             crypto: Default::default(),
             healthcheck_pool: default_healthcheck_pool(),
             cyclone_client_execution_timeout_secs: default_cyclone_client_execution_timeout_secs(),
-            veritech_requests_concurrency_limit: default_veritech_requests_concurrency_limit(),
             instance_id: random_instance_id(),
             heartbeat_app: default_heartbeat_app(),
             heartbeat_app_sleep_secs: default_heartbeat_app_sleep_secs(),
@@ -270,7 +258,6 @@ impl ConfigFile {
             crypto: Default::default(),
             healthcheck_pool: default_healthcheck_pool(),
             cyclone_client_execution_timeout_secs: default_cyclone_client_execution_timeout_secs(),
-            veritech_requests_concurrency_limit: default_veritech_requests_concurrency_limit(),
             instance_id: random_instance_id(),
             heartbeat_app: default_heartbeat_app(),
             heartbeat_app_sleep_secs: default_heartbeat_app_sleep_secs(),
@@ -299,7 +286,6 @@ impl TryFrom<ConfigFile> for Config {
         config.cyclone_client_execution_timeout(Duration::from_secs(
             value.cyclone_client_execution_timeout_secs,
         ));
-        config.veritech_requests_concurrency_limit(value.veritech_requests_concurrency_limit);
         config.instance_id(value.instance_id);
 
         config.heartbeat_app(value.heartbeat_app);
@@ -669,10 +655,6 @@ fn default_cyclone_client_execution_timeout() -> Duration {
 
 fn default_cyclone_client_execution_timeout_secs() -> u64 {
     DEFAULT_CYCLONE_CLIENT_EXECUTION_TIMEOUT_SECS
-}
-
-fn default_veritech_requests_concurrency_limit() -> usize {
-    DEFAULT_VERITECH_REQUESTS_CONCURRENCY_LIMIT
 }
 
 fn default_heartbeat_app() -> bool {

@@ -32,8 +32,10 @@ rust_test(
     deps = [
         "//lib/cyclone-core:cyclone-core",
         "//lib/si-data-nats:si-data-nats",
+        "//lib/veritech-core:veritech-core",
         "//lib/veritech-server:veritech-server",
         "//third-party/rust:base64",
+        "//third-party/rust:futures",
         "//third-party/rust:serde_json",
         "//third-party/rust:test-log",
         "//third-party/rust:tokio",
