@@ -1,5 +1,6 @@
 load(
     "@prelude-si//:macros.bzl",
+    "container_image",
     "rust_binary",
     "rust_binary_artifact",
 )
@@ -24,4 +25,17 @@ rust_binary(
 rust_binary_artifact(
     name = "rebaser",
     binary = ":rebaser"
+)
+
+container_image(
+    name = "rebaser",
+    build_args = {
+        # Source: https://gcr.io/distroless/cc-debian13:nonroot
+        # Copy `Digest` value for exact pinning
+        "IMAGE": "gcr.io/distroless/cc-debian13",
+        "DIGEST": "sha256:580333af04e2a47e2578007066678939d06ff9c5c6bcbed07f7d9bb46b90b9d4",
+    },
+    srcs = {
+        ":rebaser": ".",
+    },
 )
