@@ -12,3 +12,6 @@ publish.workspace = true
 bedrock-server = { path = "../../lib/bedrock-server" }
 clap = { workspace = true }
 si-service = { path = "../../lib/si-service" }
+
+[build-dependencies]
+si-service-build = { path = "../../lib/si-service-build" }

@@ -17,3 +17,6 @@ clap = { workspace = true }
 forklift-server = { path = "../../lib/forklift-server" }
 innit-client = { path = "../../lib/innit-client" }
 si-service = { path = "../../lib/si-service" }
+
+[build-dependencies]
+si-service-build = { path = "../../lib/si-service-build" }

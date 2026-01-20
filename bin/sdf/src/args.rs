@@ -24,6 +24,8 @@ use si_service::prelude::*;
 
 pub const NAME: &str = "sdf";
 
+include!(concat!(env!("OUT_DIR"), "/git_metadata.rs"));
+
 /// Parse, validate, and return the CLI arguments as a typed struct.
 pub(crate) fn parse() -> Args {
     Args::parse()
@@ -34,7 +36,7 @@ pub(crate) fn parse() -> Args {
 /// Super Dimension Fortress (SDF) is the central and primary API surface which handles front end
 /// calls and dispatches function executions, among other great things.
 #[derive(Parser, Debug)]
-#[command(name = NAME, max_term_width = 100)]
+#[command(name = NAME, version = VERSION, max_term_width = 100)]
 pub(crate) struct Args {
     /// Sets the verbosity mode.
     ///

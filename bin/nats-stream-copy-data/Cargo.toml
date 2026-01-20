@@ -15,3 +15,6 @@ si-data-nats = { path = "../../lib/si-data-nats" }
 tokio = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
+
+[build-dependencies]
+si-service-build = { path = "../../lib/si-service-build" }

@@ -5,6 +5,8 @@ use si_data_nats::Subject;
 
 pub const NAME: &str = "nats-stream-copy-data";
 
+include!(concat!(env!("OUT_DIR"), "/git_metadata.rs"));
+
 /// Parse, validate, and return the CLI arguments as a typed struct.
 pub(crate) fn parse() -> Args {
     Args::parse()
@@ -12,7 +14,7 @@ pub(crate) fn parse() -> Args {
 
 /// Copy messages from one NATS stream to another
 #[derive(Parser, Debug)]
-#[command(name = NAME, max_term_width = 100)]
+#[command(name = NAME, version = VERSION, max_term_width = 100)]
 pub(crate) struct Args {
     /// Source Stream to copy messages from
     pub(crate) source_stream: String,

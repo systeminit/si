@@ -14,12 +14,14 @@ use si_service::prelude::*;
 
 const NAME: &str = "bedrock";
 
+include!(concat!(env!("OUT_DIR"), "/git_metadata.rs"));
+
 pub(crate) fn parse() -> Args {
     Args::parse()
 }
 
 #[derive(Parser, Debug)]
-#[command(name = NAME, max_term_width = 100)]
+#[command(name = NAME, version = VERSION, max_term_width = 100)]
 pub(crate) struct Args {
     /// Sets the verbosity mode.
     ///

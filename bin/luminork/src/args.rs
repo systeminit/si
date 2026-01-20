@@ -23,6 +23,8 @@ use si_service::prelude::*;
 
 pub const NAME: &str = "luminork";
 
+include!(concat!(env!("OUT_DIR"), "/git_metadata.rs"));
+
 /// Parse, validate, and return the CLI arguments as a typed struct.
 pub(crate) fn parse() -> Args {
     Args::parse()
@@ -33,7 +35,7 @@ pub(crate) fn parse() -> Args {
 /// Luminork is the external and primary API surface which allows
 /// integration with System Initiatve for third party systems.
 #[derive(Parser, Debug)]
-#[command(name = NAME, max_term_width = 100)]
+#[command(name = NAME, version = VERSION, max_term_width = 100)]
 pub(crate) struct Args {
     /// Sets the verbosity mode.
     ///
