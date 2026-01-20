@@ -202,6 +202,7 @@ const props = defineProps({
   tabIndex: Number,
   tooltip: { type: String },
   tooltipPlacement: { type: String as PropType<Placement>, default: "left" },
+  tooltipTheme: { type: String },
 });
 
 const truncateRef = ref<InstanceType<typeof TruncateWithTooltip>>();
@@ -379,6 +380,7 @@ const tooltipObject = computed(() =>
     ? {
         content: props.tooltip,
         placement: props.tooltipPlacement,
+        theme: props.tooltipTheme,
       }
     : undefined,
 );

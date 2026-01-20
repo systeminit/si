@@ -171,6 +171,15 @@ watch([selectedWorkspace, user], () => {
   max-width: 380px;
 }
 
+.v-popper--theme-apply-button > .v-popper__wrapper > .v-popper__inner {
+  max-width: 390px;
+  font-size: 13px;
+  line-height: 1.25;
+  background-color: #262626 !important;
+  border: 1px solid #5a5a5a !important;
+  border-radius: 0.25rem !important;
+}
+
 .v-popper--theme-attribute-docs > .v-popper__wrapper > .v-popper__inner {
   border-radius: 0.5rem !important;
   max-width: 420px;

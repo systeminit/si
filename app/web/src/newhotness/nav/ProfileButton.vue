@@ -1,3 +1,4 @@
+<!-- eslint-disable vue/no-multiple-template-root -->
 <template>
   <NavbarButton ref="navbarButtonRef" class="flex-none py-xs" tooltipText="Profile">
     <template #default="{ open, hovered }">
@@ -38,6 +39,12 @@
         <DropdownMenuItem icon="question-circle" label="Documentation" href="https://docs.systeminit.com/" />
         <DropdownMenuItem icon="logo-discord" label="Discord Community" href="https://discord.gg/system-init" />
         <DropdownMenuItem icon="settings" label="Workspace Settings" @click="openSettings" />
+        <DropdownMenuItem
+          v-if="featureFlagsStore.SQLITE_TOOLS"
+          icon="odin"
+          label="SQLite Tools"
+          @click="openSQLiteTools"
+        />
       </template>
       <DropdownMenuItem class="profile-dropdown-menu-logout" icon="logout" label="Logout" linkToNamedRoute="logout" />
     </template>
@@ -47,6 +54,12 @@
         @openImportModal="importModalRef?.open()"
         @openExportModal="exportModalRef?.open()"
         @openIntegrationsModal="integrationsModalRef?.open()"
+      />
+      <SQLiteToolsMenuItems
+        v-if="secondaryMenu === 'sqlite'"
+        :changeSetId="changeSetId"
+        :workspaceId="workspaceId"
+        @hammer="hammerModalRef.open"
       />
       <template v-else>
         <DropdownMenuItem checkable :checked="!userOverrideTheme" icon="bolt" @select="userOverrideTheme = null">
@@ -71,6 +84,11 @@
       </template>
     </template>
   </NavbarButton>
+  <SQLiteToolsHammerModal
+    ref="hammerModalRef"
+    :changeSetId="changeSetId"
+    :workspaceId="workspaceId"
+  />
 </template>
 
 <script lang="ts" setup>
@@ -87,14 +105,20 @@ import NavbarButton from "@/components/layout/navbar/NavbarButton.vue";
 import UserIcon from "@/components/layout/navbar/UserIcon.vue";
 import WorkspaceSettingsMenuItems from "@/components/layout/navbar/WorkspaceSettingsMenuItems.vue";
 import { useContext } from "../logic_composables/context";
+import SQLiteToolsMenuItems from "./SQLiteToolsMenuItems.vue";
+import SQLiteToolsHammerModal from "./SQLiteToolsHammerModal.vue";
 
 const importModalRef = ref<InstanceType<typeof WorkspaceImportModal>>();
 const exportModalRef = ref<InstanceType<typeof WorkspaceExportModal>>();
 const integrationsModalRef = ref<InstanceType<typeof WorkspaceIntegrationsModal>>();
 
-defineProps({
-  showTopLevelMenuItems: { type: Boolean },
-});
+defineProps<{
+  showTopLevelMenuItems?: boolean;
+  changeSetId: string;
+  workspaceId: string;
+}>();
+
+const hammerModalRef = ref();
 
 const featureFlagsStore = useFeatureFlagsStore();
 const ctx = useContext();
@@ -113,7 +137,7 @@ const themeIcon = computed(() => {
   else return "bolt";
 });
 
-const secondaryMenu = ref<"theme" | "settings">("theme");
+const secondaryMenu = ref<"theme" | "settings" | "sqlite">("theme");
 
 const changeTheme = () => {
   secondaryMenu.value = "theme";
@@ -122,6 +146,11 @@ const changeTheme = () => {
 
 const openSettings = () => {
   secondaryMenu.value = "settings";
+  navbarButtonRef.value?.openSecondary();
+};
+
+const openSQLiteTools = () => {
+  secondaryMenu.value = "sqlite";
   navbarButtonRef.value?.openSecondary();
 };
 </script>
