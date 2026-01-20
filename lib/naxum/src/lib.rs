@@ -37,6 +37,7 @@ pub use self::{
     },
     serve::{
         serve,
+        serve_with_external_semaphore,
         serve_with_incoming_limit,
     },
     service_ext::ServiceExt,
