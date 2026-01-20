@@ -1,0 +1,22 @@
+load(
+    "@prelude-si//:macros.bzl",
+    "container_image",
+)
+
+container_image(
+    name = "grafana",
+    srcs = glob([
+        "provisioning/**/*.json",
+        "provisioning/**/*.yml",
+        "provisioning/**/*.yaml",
+        "provisioning/**/*.md",
+    ]),
+    build_args = {
+        "BASE_VERSION": "latest",
+    },
+    run_docker_args = [
+        "--publish",
+        "3000:3000",
+    ],
+    default_target = True,
+)

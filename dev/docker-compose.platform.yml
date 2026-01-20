@@ -25,15 +25,16 @@ services:
 
   grafana:
     image: grafana/grafana-enterprise
+    build:
+      context: ../component/grafana
+      args:
+        BASE_VERSION: latest
     environment:
       - "GF_AUTH_ANONYMOUS_ENABLED=true"
       - "GF_AUTH_ANONYMOUS_ORG_ROLE=Admin"
       - "GF_AUTH_DISABLE_LOGIN_FORM=true"
     ports:
       - "3000:3000"
-    volumes:
-      - ./config/grafana/provisioning/datasources:/etc/grafana/provisioning/datasources
-      - ./config/grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards
 
   jaeger:
     image: systeminit/jaeger:stable
