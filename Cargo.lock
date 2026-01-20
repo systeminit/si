@@ -7378,6 +7378,7 @@ dependencies = [
  "nats-multiplexer",
  "nats-multiplexer-client",
  "permissions",
+ "postcard",
  "pretty_assertions_sorted",
  "rebaser-client",
  "remain",

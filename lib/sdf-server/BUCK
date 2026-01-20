@@ -55,6 +55,7 @@ rust_library(
         "//third-party/rust:futures-lite",
         "//third-party/rust:hyper",
         "//third-party/rust:jsonptr",
+        "//third-party/rust:postcard",
         "//third-party/rust:remain",
         "//third-party/rust:reqwest",
         "//third-party/rust:serde",

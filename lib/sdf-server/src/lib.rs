@@ -23,6 +23,7 @@ mod app;
 mod app_state;
 mod config;
 mod extract;
+mod func_runs_backfill;
 mod garbage_collection;
 mod init;
 pub mod key_generation;
@@ -70,6 +71,11 @@ pub use self::{
         StandardConfigFile,
         WorkspacePermissions,
         WorkspacePermissionsMode,
+    },
+    func_runs_backfill::{
+        FuncRunsBackfillError,
+        FuncRunsBackfillResult,
+        FuncRunsBackfiller,
     },
     garbage_collection::SnapshotGarbageCollector,
     layer_cache_backfill::{

@@ -24,7 +24,7 @@ use si_events::{
 use si_std::CanonicalFileError;
 use thiserror::Error;
 use tokio_stream::Elapsed;
-
+use ulid::DecodeError;
 use crate::{
     activities::{
         Activity,
@@ -242,6 +242,8 @@ pub enum LayerDbError {
     ContentConversion(String),
     #[error("could not convert to key from string")]
     CouldNotConvertToKeyFromString(String),
+    #[error("decoding error: {0}")]
+    Decode(#[from] DecodeError),
     #[error("decompression error: {0}")]
     Decompress(String),
     #[error("Foyer error: {0}")]
