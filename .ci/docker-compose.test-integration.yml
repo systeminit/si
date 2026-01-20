@@ -88,7 +88,6 @@ services:
       - "ZED_KEYRING_PASSWORD=orc"
 
   versitygw:
-    #<<: *loki-logged-service
     image: systeminit/versitygw:stable
     entrypoint: ["/bin/sh"]
     command:
