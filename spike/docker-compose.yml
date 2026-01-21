@@ -51,7 +51,7 @@ services:
     ports:
       - "9200:9200"
     environment:
-      VGW_DATA_DIR: /data
+      VGW_DATA_DIR: /s3
     volumes:
       - ./s3:/s3
     healthcheck:
@@ -120,7 +120,7 @@ services:
       - spike-network
 
   grafana:
-    image: systeminit/grafana:stable
+    image: grafana/grafana-enterprise:latest
     container_name: spike-grafana
     ports:
       - "3000:3000"
