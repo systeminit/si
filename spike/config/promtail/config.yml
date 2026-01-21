@@ -1,0 +1,53 @@
+clients:
+  - url: http://loki:3100/loki/api/v1/push
+
+scrape_configs:
+  - job_name: services
+    # Note: ensure configs are sorted alphabetically by service name
+
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: bedrock
+          __path__: /var/log/services/bedrock*.log
+      - targets:
+          - localhost
+        labels:
+          job: edda
+          __path__: /var/log/services/edda*.log
+      - targets:
+          - localhost
+        labels:
+          job: forklift
+          __path__: /var/log/services/forklift*.log
+      - targets:
+          - localhost
+        labels:
+          job: innit
+          __path__: /var/log/services/innit*.log
+      - targets:
+          - localhost
+        labels:
+          job: luminork
+          __path__: /var/log/services/luminork*.log
+      - targets:
+          - localhost
+        labels:
+          job: pinga
+          __path__: /var/log/services/pinga*.log
+      - targets:
+          - localhost
+        labels:
+          job: rebaser
+          __path__: /var/log/services/rebaser*.log
+      - targets:
+          - localhost
+        labels:
+          job: sdf
+          __path__: /var/log/services/sdf*.log
+      - targets:
+          - localhost
+        labels:
+          job: veritech
+          __path__: /var/log/services/veritech*.log

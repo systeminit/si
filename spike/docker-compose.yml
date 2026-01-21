@@ -1,0 +1,330 @@
+version: '3.8'
+
+networks:
+  spike-network:
+    driver: bridge
+
+volumes:
+  postgres-data:
+
+services:
+  # =============================================================================
+  # Layer 1: Infrastructure Services
+  # =============================================================================
+
+  postgres:
+    image: systeminit/postgres:stable
+    container_name: spike-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_PASSWORD: bugbear
+      POSTGRES_USER: si
+      POSTGRES_DB: si
+      POSTGRES_MULTIPLE_DBS: si_layer_db,si_auth,si_auth_prisma_shadow_db,si_module_index,si_audit
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "[ -f /tmp/ready ]"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - spike-network
+
+  nats:
+    image: systeminit/nats:stable
+    container_name: spike-nats
+    ports:
+      - "4222:4222"
+      - "8222:8222"
+    command: ["--config", "nats-server.conf"]
+    volumes:
+      - ./config/nats/nats-server.conf:/nats-server.conf:ro
+      - ./data:/data
+    networks:
+      - spike-network
+
+  versitygw:
+    image: systeminit/versitygw:stable
+    container_name: spike-versitygw
+    ports:
+      - "9200:9200"
+    environment:
+      VGW_DATA_DIR: /data
+    volumes:
+      - ./s3:/s3
+    healthcheck:
+      test: ["CMD-SHELL", "[ -f /tmp/ready ]"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - spike-network
+
+  # =============================================================================
+  # Layer 2: Observability Services
+  # =============================================================================
+
+  jaeger:
+    image: systeminit/jaeger:stable
+    container_name: spike-jaeger
+    ports:
+      - "16686:16686"
+    networks:
+      - spike-network
+
+  otelcol:
+    image: systeminit/otelcol:stable
+    container_name: spike-otelcol
+    ports:
+      - "4317:4317"
+      - "4318:4318"
+    volumes:
+      - ../component/otelcol/config.yaml:/etc/otelcol/config.yaml:ro
+    depends_on:
+      - jaeger
+    networks:
+      - spike-network
+
+  loki:
+    image: grafana/loki:latest
+    container_name: spike-loki
+    ports:
+      - "3100:3100"
+    volumes:
+      - ./config/loki/config.yml:/etc/loki/local-config.yaml:ro
+    networks:
+      - spike-network
+
+  promtail:
+    image: grafana/promtail:latest
+    container_name: spike-promtail
+    command: ["-config.file=/etc/promtail/config.yml"]
+    volumes:
+      - ./log:/var/log/services:ro
+      - ./config/promtail/config.yml:/etc/promtail/config.yml:ro
+    networks:
+      - spike-network
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: spike-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./config/prometheus/config.yml:/etc/prometheus/prometheus.yml:ro
+    depends_on:
+      - otelcol
+    networks:
+      - spike-network
+
+  grafana:
+    image: systeminit/grafana:stable
+    container_name: spike-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Admin
+      GF_AUTH_DISABLE_LOGIN_FORM: "true"
+    networks:
+      - spike-network
+
+  # =============================================================================
+  # Layer 3: SI Core Services
+  # =============================================================================
+
+  veritech:
+    image: systeminit/veritech:stable
+    container_name: spike-veritech
+    environment:
+      SI_NATS__URL: nats://nats:4222
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otelcol:4317
+      SI_LOG_FILE_DIRECTORY: /var/log/services
+      SI_FORCE_COLOR: "false"
+    volumes:
+      - ./log:/var/log/services
+    depends_on:
+      - nats
+      - otelcol
+    networks:
+      - spike-network
+
+  rebaser:
+    image: systeminit/rebaser:stable
+    container_name: spike-rebaser
+    environment:
+      SI_NATS__URL: nats://nats:4222
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otelcol:4317
+      SI_LOG_FILE_DIRECTORY: /var/log/services
+      SI_FORCE_COLOR: "false"
+      SI_PG__HOSTNAME: postgres
+      SI_PG__PORT: "5432"
+      SI_PG__DBNAME: si_layer_db
+      SI_PG__USER: si
+      SI_PG__PASSWORD: bugbear
+    volumes:
+      - ./log:/var/log/services
+    depends_on:
+      postgres:
+        condition: service_healthy
+      nats:
+        condition: service_started
+      otelcol:
+        condition: service_started
+    networks:
+      - spike-network
+
+  edda:
+    image: systeminit/edda:stable
+    container_name: spike-edda
+    environment:
+      SI_NATS__URL: nats://nats:4222
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otelcol:4317
+      SI_LOG_FILE_DIRECTORY: /var/log/services
+      SI_FORCE_COLOR: "false"
+    volumes:
+      - ./log:/var/log/services
+    depends_on:
+      - nats
+      - otelcol
+    networks:
+      - spike-network
+
+  forklift:
+    image: systeminit/forklift:stable
+    container_name: spike-forklift
+    environment:
+      SI_NATS__URL: nats://nats:4222
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otelcol:4317
+      SI_LOG_FILE_DIRECTORY: /var/log/services
+      SI_FORCE_COLOR: "false"
+    volumes:
+      - ./log:/var/log/services
+    depends_on:
+      - nats
+      - otelcol
+    networks:
+      - spike-network
+
+  innit:
+    image: systeminit/innit:stable
+    container_name: spike-innit
+    environment:
+      SI_NATS__URL: nats://nats:4222
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otelcol:4317
+      SI_LOG_FILE_DIRECTORY: /var/log/services
+      SI_FORCE_COLOR: "false"
+    volumes:
+      - ./log:/var/log/services
+    depends_on:
+      - nats
+      - otelcol
+    networks:
+      - spike-network
+
+  pinga:
+    image: systeminit/pinga:stable
+    container_name: spike-pinga
+    environment:
+      SI_NATS__URL: nats://nats:4222
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otelcol:4317
+      SI_LOG_FILE_DIRECTORY: /var/log/services
+      SI_FORCE_COLOR: "false"
+    volumes:
+      - ./log:/var/log/services
+    depends_on:
+      - nats
+      - otelcol
+      - veritech
+    networks:
+      - spike-network
+
+  # =============================================================================
+  # Layer 4: SI Application Services
+  # =============================================================================
+
+  sdf:
+    image: systeminit/sdf:stable
+    container_name: spike-sdf
+    ports:
+      - "5156:5156"
+    environment:
+      SI_NATS__URL: nats://nats:4222
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otelcol:4317
+      SI_LOG_FILE_DIRECTORY: /var/log/services
+      SI_FORCE_COLOR: "false"
+      SI_PG__HOSTNAME: postgres
+      SI_PG__PORT: "5432"
+      SI_PG__DBNAME: si
+      SI_PG__USER: si
+      SI_PG__PASSWORD: bugbear
+    volumes:
+      - ./log:/var/log/services
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:5156/api/"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    depends_on:
+      postgres:
+        condition: service_healthy
+      nats:
+        condition: service_started
+      otelcol:
+        condition: service_started
+      pinga:
+        condition: service_started
+      veritech:
+        condition: service_started
+      rebaser:
+        condition: service_started
+      edda:
+        condition: service_started
+      forklift:
+        condition: service_started
+    networks:
+      - spike-network
+
+  luminork:
+    image: systeminit/luminork:stable
+    container_name: spike-luminork
+    ports:
+      - "5380:5380"
+    environment:
+      SI_NATS__URL: nats://nats:4222
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otelcol:4317
+      SI_LOG_FILE_DIRECTORY: /var/log/services
+      SI_FORCE_COLOR: "false"
+      SI_PG__HOSTNAME: postgres
+      SI_PG__PORT: "5432"
+      SI_PG__DBNAME: si
+      SI_PG__USER: si
+      SI_PG__PASSWORD: bugbear
+    volumes:
+      - ./log:/var/log/services
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:5380/"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    depends_on:
+      postgres:
+        condition: service_healthy
+      nats:
+        condition: service_started
+      otelcol:
+        condition: service_started
+      pinga:
+        condition: service_started
+      veritech:
+        condition: service_started
+      rebaser:
+        condition: service_started
+      edda:
+        condition: service_started
+      forklift:
+        condition: service_started
+    networks:
+      - spike-network
