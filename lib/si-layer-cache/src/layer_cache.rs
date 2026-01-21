@@ -11,6 +11,12 @@ use serde::{
     de::DeserializeOwned,
 };
 use si_data_pg::PgPool;
+use si_events::{
+    Actor,
+    ChangeSetId,
+    Tenancy,
+    WorkspacePk,
+};
 use si_runtime::DedicatedExecutor;
 use telemetry::prelude::*;
 use telemetry_utils::monotonic;
@@ -24,6 +30,10 @@ use crate::{
     LayerDbError,
     db::serialize,
     error::LayerDbResult,
+    event::{
+        LayeredEvent,
+        LayeredEventKind,
+    },
     hybrid_cache::{
         Cache,
         CacheConfig,
@@ -272,6 +282,11 @@ where
 
                         let result = self.pg.get(&key).await?;
 
+                        // Write back to S3 if found in PG
+                        if let Some(ref bytes) = result {
+                            self.queue_s3_writeback(key.clone(), bytes.clone());
+                        }
+
                         let result_label: &'static str =
                             if result.is_some() { "hit" } else { "miss" };
                         monotonic!(
@@ -447,6 +462,11 @@ where
 
                         let result = self.pg.get(&key).await?;
 
+                        // Write back to S3 if found in PG
+                        if let Some(ref bytes) = result {
+                            self.queue_s3_writeback(key.clone(), bytes.clone());
+                        }
+
                         let result_label: &'static str =
                             if result.is_some() { "hit" } else { "miss" };
                         monotonic!(
@@ -557,6 +577,11 @@ where
                             );
 
                             if let Some(pg_results) = self.pg.get_many(&still_not_found).await? {
+                                // Queue write-backs for all PG-sourced data
+                                for (key, bytes) in &pg_results {
+                                    self.queue_s3_writeback(Arc::from(key.as_str()), bytes.clone());
+                                }
+
                                 // Merge S3 and PG results
                                 let mut combined = s3_results;
                                 combined.extend(pg_results);
@@ -576,7 +601,16 @@ where
                             to_backend = BackendType::Postgres.as_ref()
                         );
 
-                        self.pg.get_many(&not_found).await?
+                        let pg_results = self.pg.get_many(&not_found).await?;
+
+                        // Queue write-backs for all PG-sourced data
+                        if let Some(ref results) = pg_results {
+                            for (key, bytes) in results {
+                                self.queue_s3_writeback(Arc::from(key.as_str()), bytes.clone());
+                            }
+                        }
+
+                        pg_results
                     }
                 }
 
@@ -687,5 +721,52 @@ where
             .ok_or(LayerDbError::S3NotConfigured)?;
 
         s3_layer.put_direct(key, value).await
+    }
+
+    /// Queue an async write-back to S3 for data found during PG fallback.
+    /// This is a fire-and-forget operation - failures are logged but don't affect the read.
+    fn queue_s3_writeback(&self, key: Arc<str>, value: Vec<u8>) {
+        // Only queue if we have S3 layers configured
+        let Some(s3_layers) = &self.s3_layers else {
+            return;
+        };
+
+        let Some(s3_layer) = s3_layers.get(self.name.as_str()) else {
+            return;
+        };
+
+        monotonic!(
+            layer_cache_fallback_writeback_attempted = 1,
+            cache_name = self.name.as_str(),
+            backend = BackendType::S3.as_ref()
+        );
+
+        // Create a write-back event with synthetic metadata.
+        // This is a caching operation, not a domain event.
+        // The S3Layer will automatically transform the key to the correct S3 format.
+        let event = LayeredEvent::new(
+            LayeredEventKind::Raw,
+            Arc::new(self.name.clone()),
+            key, // Original PG key - S3Layer transforms it
+            Arc::new(value),
+            Arc::new(String::new()), // Empty sort key - not used by S3Layer
+            None,                    // No web events for write-back
+            Tenancy::new(WorkspacePk::NONE, ChangeSetId::new()),
+            Actor::System,
+        );
+
+        // Queue for async S3 write - log on failure but don't block read
+        if let Err(e) = s3_layer.insert(event) {
+            warn!(
+                cache.name = self.name.as_str(),
+                error = ?e,
+                "failed to queue S3 write-back for fallback data"
+            );
+            monotonic!(
+                layer_cache_fallback_writeback_failed = 1,
+                cache_name = self.name.as_str(),
+                backend = BackendType::S3.as_ref()
+            );
+        }
     }
 }

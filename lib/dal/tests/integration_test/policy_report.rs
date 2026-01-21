@@ -384,7 +384,7 @@ async fn grouped_by_name(ctx: &mut DalContext) -> Result<()> {
     assert_eq!(&policy_many_reports, &groups[0].name);
     assert_eq!(
         MAX_REPORTS_PER_GROUP as usize, // expected
-        groups[0].results.len()          // actual
+        groups[0].results.len()         // actual
     );
     // Verify all reports have the correct name
     for report in &groups[0].results {
@@ -405,16 +405,16 @@ async fn grouped_by_name(ctx: &mut DalContext) -> Result<()> {
     // Verify group 2: policy with one report
     assert_eq!(&policy_one_report, &groups[1].name);
     assert_eq!(
-        1,                           // expected
-        groups[1].results.len()      // actual
+        1,                       // expected
+        groups[1].results.len()  // actual
     );
     assert_eq!(&policy_one_report, &groups[1].results[0].name);
 
     // Verify group 3: policy with two reports
     assert_eq!(&policy_two_reports, &groups[2].name);
     assert_eq!(
-        2,                           // expected
-        groups[2].results.len()      // actual
+        2,                       // expected
+        groups[2].results.len()  // actual
     );
     for report in &groups[2].results {
         assert_eq!(&policy_two_reports, &report.name);
