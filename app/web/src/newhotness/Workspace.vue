@@ -29,6 +29,7 @@
         :componentId="componentId"
         :viewId="viewId"
         :connected="haveWSConn"
+        :onHead="ctx.onHead.value"
       />
 
       <!-- Right -->

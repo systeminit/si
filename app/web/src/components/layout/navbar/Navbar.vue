@@ -12,7 +12,13 @@
     <NavbarPanelLeft :invalidWorkspace="invalidWorkspace" />
 
     <!-- Center -->
-    <NavbarPanelCenter v-if="!invalidWorkspace" />
+    <NavbarPanelCenter
+      v-if="!invalidWorkspace && workspacesStore.urlSelectedWorkspaceId && changeSetStore.selectedChangeSetId"
+      :workspaceId="workspacesStore.urlSelectedWorkspaceId"
+      :changeSetId="changeSetStore.selectedChangeSetId"
+      :onHead="changeSetStore.headSelected"
+      connected
+    />
 
     <!-- Right -->
     <NavbarPanelRight :invalidWorkspace="invalidWorkspace" />
@@ -24,11 +30,13 @@ import { useThemeContainer } from "@si/vue-lib/design-system";
 import clsx from "clsx";
 import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import { useWorkspacesStore } from "@/store/workspaces.store";
-import NavbarPanelCenter from "./NavbarPanelCenter.vue";
+import NavbarPanelCenter from "@/newhotness/nav/NavbarPanelCenter.vue";
 import NavbarPanelRight from "./NavbarPanelRight.vue";
 import NavbarPanelLeft from "./NavbarPanelLeft.vue";
+import { useChangeSetsStore } from "@/store/change_sets.store";
 
 const workspacesStore = useWorkspacesStore();
+const changeSetStore = useChangeSetsStore();
 
 const invalidWorkspace = computed(
   () => !!(workspacesStore.urlSelectedWorkspaceId && !workspacesStore.selectedWorkspace),

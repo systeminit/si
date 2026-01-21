@@ -38,6 +38,10 @@
                     'text-neutral-900 bg-neutral-200 border-neutral-400 hover:bg-neutral-100',
                     'text-white bg-neutral-700 border-neutral-600 hover:bg-neutral-600',
                   ),
+                  flat: themeClasses(
+                    'text-neutral-900 bg-100 border-neutral-400 hover:bg-neutral-200',
+                    'text-white bg-neutral-800 border-neutral-600 hover:bg-neutral-700',
+                  ),
                   action: [
                     'text-white',
                     themeClasses(
@@ -56,6 +60,15 @@
                   empty: '',
                 }[tone],
               ],
+          active &&
+            {
+              neutral: themeClasses('bg-neutral-100', 'bg-neutral-600'),
+              flat: themeClasses('bg-neutral-200', 'bg-neutral-700'),
+              action: themeClasses('bg-[#2583EC]', 'bg-[#1D5BA0]'),
+              warning: themeClasses('bg-white', 'bg-[#67452D]'),
+              destructive: themeClasses('bg-white', 'bg-[#562E2E]'),
+              empty: '',
+            }[tone],
           // focus styles
           'focus:outline-2',
           tone !== 'action'
@@ -134,6 +147,7 @@
               'min-w-[22px] text-center',
               {
                 neutral: '',
+                flat: '',
                 action: '',
                 warning: '',
                 destructive: '',
@@ -203,6 +217,7 @@ const props = defineProps({
   tooltip: { type: String },
   tooltipPlacement: { type: String as PropType<Placement>, default: "left" },
   tooltipTheme: { type: String },
+  active: { type: Boolean },
 });
 
 const truncateRef = ref<InstanceType<typeof TruncateWithTooltip>>();
@@ -399,6 +414,7 @@ const computedIconSize = computed(() => {
 export type ButtonSizes = "2xs" | "xs" | "sm" | "md" | "lg" | "xl";
 export const BUTTON_TONES = [
   "neutral",
+  "flat", // similar to neutral, but has the same bg as the content its sitting on top of
   "action",
   "warning",
   "destructive",
