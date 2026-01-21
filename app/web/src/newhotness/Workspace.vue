@@ -8,7 +8,7 @@
           'navbar relative shadow-[0_4px_4px_0_rgba(0,0,0,0.15)] border-b',
           'z-[1001] h-[60px] overflow-hidden shrink-0 flex flex-row justify-between select-none',
           'bg-neutral-800 border-neutral-600 text-white',
-          windowWidth > 740 && 'gap-sm',
+          gapInNav && 'gap-sm',
         )
       "
     >
@@ -170,7 +170,7 @@ import {
   startMouseEmitters,
   startKeyEmitter,
   startWindowResizeEmitter,
-  windowResizeEmitter,
+  windowWidthReactive
 } from "./logic_composables/emitters";
 import { getUserPkFromToken, tokensByWorkspacePk } from "./logic_composables/tokens";
 import ComponentPage from "./ComponentDetails.vue";
@@ -425,6 +425,8 @@ watch(
 startKeyEmitter(document);
 startMouseEmitters(window);
 startWindowResizeEmitter(window);
+
+const gapInNav = computed(() => windowWidthReactive.value > 800);
 
 provide("CONTEXT", ctx.value);
 
@@ -891,12 +893,6 @@ const connectionShouldBeEnabled = computed(() => {
   }
 });
 
-const windowWidth = ref(window.innerWidth);
-
-const windowResizeHandler = () => {
-  windowWidth.value = window.innerWidth;
-};
-
 const openChangesetModal = () => {
   navbarPanelLeftRef.value?.openCreateModal();
 };
@@ -920,11 +916,6 @@ const invalidatePaginatedFuncRuns = _.debounce(() => {
   }
   queryClient.invalidateQueries({ queryKey });
 }, 250);
-
-onMounted(() => {
-  windowResizeHandler();
-  windowResizeEmitter.on("resize", windowResizeHandler);
-});
 
 const invalidateOneFuncRun = _.debounce((funcRunId: string) => {
   const queryKey = [ctx.value.changeSetId, "funcRunLogs", funcRunId];
@@ -985,11 +976,6 @@ watch(
   },
   { immediate: true },
 );
-
-onBeforeUnmount(() => {
-  windowResizeEmitter.off("resize", windowResizeHandler);
-  realtimeStore.unsubscribe(funcRunKey);
-});
 </script>
 
 <style lang="less">

@@ -239,7 +239,7 @@ import { IncomingConnections, ComponentInList, EntityKind } from "@/workers/type
 import { bifrostList, useMakeArgs, useMakeKey } from "@/store/realtime/heimdall";
 import ExploreMapSkeleton from "@/newhotness/skeletons/ExploreMapSkeleton.vue";
 import { SelectionsInQueryString } from "./Workspace.vue";
-import { KeyDetails } from "./logic_composables/emitters";
+import { KeyDetails, windowResizeEmitter } from "./logic_composables/emitters";
 import { assertIsDefined, Context, ExploreContext } from "./types";
 import ExploreGridTile from "./explore_grid/ExploreGridTile.vue";
 import ConnectionsPanel from "./ConnectionsPanel.vue";
@@ -1007,11 +1007,11 @@ onMounted(() => {
   applyZoom();
 
   // Set up window resize listener for reactive dimensions
-  window.addEventListener("resize", updateWindowDimensions);
+  windowResizeEmitter.on("resize", updateWindowDimensions);
 });
 
 onUnmounted(() => {
-  window.removeEventListener("resize", updateWindowDimensions);
+  windowResizeEmitter.off("resize", updateWindowDimensions);
 });
 
 const mousemove = (event: MouseEvent) => {
