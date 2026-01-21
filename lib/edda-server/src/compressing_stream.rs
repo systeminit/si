@@ -946,6 +946,11 @@ where
                     for span_context in span_contexts.iter() {
                         if span_context.is_valid() {
                             span.add_link(span_context.clone());
+                        } else {
+                            monotonic!(
+                                compressing_stream_span_context_invalid_for_linking = 1,
+                                should_close = "yes"
+                            );
                         }
                     }
 
@@ -1341,6 +1346,11 @@ where
                     for span_context in span_contexts.iter() {
                         if span_context.is_valid() {
                             span.add_link(span_context.clone());
+                        } else {
+                            monotonic!(
+                                compressing_stream_span_context_invalid_for_linking = 1,
+                                should_close = "no"
+                            );
                         }
                     }
 
