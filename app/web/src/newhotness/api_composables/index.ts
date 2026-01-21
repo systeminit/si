@@ -1,6 +1,6 @@
 import { computed, ComputedRef, inject, Ref, ref, unref, watch } from "vue";
 import { AxiosInstance, AxiosResponse } from "axios";
-import { Span, trace } from "@opentelemetry/api";
+import { Span, context, propagation, trace } from "@opentelemetry/api";
 import { RouteLocationRaw } from "vue-router";
 import { authApiInstance as auth, sdfApiInstance as sdf } from "@/store/apis.web";
 import { changeSetExists, muspelheimStatuses } from "@/store/realtime/heimdall";
@@ -321,6 +321,10 @@ export class APICall<Response, Args> {
 
       headers["Content-Encoding"] = "gzip";
     }
+
+    // Carry over watchedApi spans
+    const spanContext = trace.setSpan(context.active(), this.obs.span);
+    propagation.inject(spanContext, headers);
 
     const req = await this.api()<Response>({
       method,
