@@ -113,21 +113,23 @@ export interface FuncRunLog {
 export function funcRunStatus(
   funcRun?: FuncRun,
   managementState?: ManagementState,
-): FuncRunState | "ActionFailure" | undefined | null {
+): FuncRunState | "ActionFailure" | "Warning" | undefined | null {
   if (!funcRun) return null;
 
   // If the management job is in flight, we are "running".
   if (managementState === "executing" || managementState === "operating" || managementState === "pending")
     return "Running";
 
-  // If the qualification ran successfully, but it resulted in failure, then the state is a failure state.
-  if (
-    funcRun.functionKind === FuncKind.Qualification &&
-    funcRun.state === "Success" &&
+  // If the qualification ran successfully, check the result for failure or warning
+  if (funcRun.functionKind === FuncKind.Qualification && funcRun.state === "Success") {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (funcRun.unprocessedResultValue as any)?.result !== "success"
-  ) {
-    return "Failure";
+    const result = (funcRun.unprocessedResultValue as any)?.result;
+    if (result === "failure") {
+      return "Failure";
+    }
+    if (result === "warning") {
+      return "Warning";
+    }
   }
 
   // Check both the management func and its operations for terminating state.

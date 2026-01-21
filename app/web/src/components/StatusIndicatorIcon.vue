@@ -68,7 +68,7 @@ const CONFIG = {
   },
   qualification: {
     success: { iconName: "check-hex-outline", tone: "success" },
-    warning: { iconName: "x-hex-outline", tone: "warning" },
+    warning: { iconName: "exclamation-circle-carbon", tone: "warning" },
     failure: { iconName: "x-hex-outline", tone: "destructive" },
     running: { iconName: "loader", tone: "action" },
     notexists: { iconName: "empty", tone: "empty" },
@@ -123,6 +123,7 @@ const CONFIG = {
     Postprocessing: { iconName: "loader", tone: "action" },
     Failure: { iconName: "close-outline", tone: "destructive" },
     ActionFailure: { iconName: "close-outline", tone: "destructive" },
+    Warning: { iconName: "exclamation-circle-carbon", tone: "warning" },
     Success: { iconName: "checkmark-outline", tone: "success" },
   },
 };
