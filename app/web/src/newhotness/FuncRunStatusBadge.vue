@@ -6,6 +6,7 @@
         themeClasses('text-neutral-800 bg-neutral-50', 'text-neutral-100 bg-neutral-900'),
         status === 'Success' && themeClasses('border-success-500', 'border-success-800'),
         status === 'Failure' && themeClasses('border-destructive-500', 'border-destructive-600'),
+        status === 'Warning' && themeClasses('border-warning-500', 'border-warning-600'),
         (status === 'Running' || status === 'Unknown') && 'border-neutral-600',
       )
     "
@@ -13,7 +14,13 @@
     <Icon
       size="2xs"
       :name="iconName"
-      :class="clsx(status === 'Success' && 'text-success-400', status === 'Failure' && 'text-destructive-400')"
+      :class="
+        clsx(
+          status === 'Success' && 'text-success-400',
+          status === 'Failure' && 'text-destructive-400',
+          status === 'Warning' && 'text-warning-400',
+        )
+      "
     />
     <span class="text-xs">{{ status }}</span>
   </div>
@@ -29,11 +36,12 @@ const props = defineProps<{
   status: string | FuncRunState | null | undefined;
 }>();
 
-type Status = "Success" | "Failure" | "Running" | "Unknown";
+type Status = "Success" | "Failure" | "Warning" | "Running" | "Unknown";
 
 const status = computed<Status>(() => {
   if (props.status === "Success") return "Success";
   if (props.status === "Failure" || props.status === "ActionFailure") return "Failure";
+  if (props.status === "Warning") return "Warning";
   if (props.status === "Running" || props.status === "Postprocessing") return "Running";
   return "Unknown";
 });
@@ -41,6 +49,7 @@ const status = computed<Status>(() => {
 const iconName = computed(() => {
   if (status.value === "Success") return "circle-full";
   if (status.value === "Failure") return "triangle";
+  if (status.value === "Warning") return "triangle";
   if (status.value === "Running") return "loader";
   return "question-circle";
 });
