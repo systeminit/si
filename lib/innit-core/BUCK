@@ -4,12 +4,8 @@ rust_library(
     name = "innit-core",
     deps = [
         "//lib/config-file:config-file",
-
         "//third-party/rust:aws-sdk-ssm",
-        "//third-party/rust:chrono",
-        "//third-party/rust:serde",
-        "//third-party/rust:serde_json",
-        "//third-party/rust:ulid"
+        "//third-party/rust:serde"
     ],
     srcs = glob([
         "src/**/*.rs",

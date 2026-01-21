@@ -16,7 +16,6 @@ use serde_json::{
     Value,
     json,
 };
-use si_data_ssm::ParameterStoreClientError;
 use thiserror::Error;
 
 mod clear_cache;
@@ -28,7 +27,10 @@ use super::{
     app_state::AppState,
     server::ServerError,
 };
-use crate::api_error::ApiError;
+use crate::{
+    api_error::ApiError,
+    parameter_storage::ParameterStoreError,
+};
 
 pub fn public_routes(state: AppState) -> Router {
     Router::new()
@@ -55,12 +57,11 @@ async fn system_status_route() -> Json<Value> {
     Json(json!({ "ok": true }))
 }
 
-#[allow(clippy::large_enum_variant)]
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub enum AppError {
-    #[error("parameter store client error: {0}")]
-    ParameterStoreClient(#[from] ParameterStoreClientError),
+    #[error("parameter storage error: {0}")]
+    ParameterStore(#[from] ParameterStoreError),
     #[error("server error: {0}")]
     Server(#[from] ServerError),
 }

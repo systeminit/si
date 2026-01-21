@@ -9,6 +9,5 @@ rust-version.workspace = true
 publish.workspace = true
 
 [dependencies]
-aws-sdk-ssm = { workspace = true }
 config-file = { path = "../../lib/config-file" }
 serde = { workspace = true }

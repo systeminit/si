@@ -9,6 +9,7 @@ rust-version.workspace = true
 publish.workspace = true
 
 [dependencies]
+async-trait = { workspace = true }
 aws-sdk-ssm = { workspace = true }
 remain = { workspace = true }
 si-aws-config = { path = "../../lib/si-aws-config" }

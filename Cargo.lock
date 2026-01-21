@@ -4414,7 +4414,6 @@ dependencies = [
 name = "innit-core"
 version = "0.1.0"
 dependencies = [
- "aws-sdk-ssm",
  "config-file",
  "serde",
 ]
@@ -4423,6 +4422,7 @@ dependencies = [
 name = "innit-server"
 version = "0.1.0"
 dependencies = [
+ "async-trait",
  "axum 0.6.20",
  "buck2-resources",
  "dashmap",
@@ -4438,6 +4438,7 @@ dependencies = [
  "si-settings",
  "si-std",
  "si-tls",
+ "strum",
  "telemetry",
  "thiserror 2.0.12",
  "tokio",
@@ -8051,6 +8052,7 @@ dependencies = [
 name = "si-data-ssm"
 version = "0.1.0"
 dependencies = [
+ "async-trait",
  "aws-sdk-ssm",
  "remain",
  "si-aws-config",

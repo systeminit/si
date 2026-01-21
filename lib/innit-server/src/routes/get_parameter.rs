@@ -11,6 +11,7 @@ use telemetry::tracing::info;
 use super::AppError;
 use crate::{
     app_state::AppState,
+    parameter_storage::ParameterStoreKind,
     routes::Json,
 };
 
@@ -18,7 +19,7 @@ pub async fn get_parameter_route(
     Path(name): Path<String>,
     State(AppState {
         parameter_cache,
-        parameter_store_client,
+        parameter_storage,
         ..
     }): State<AppState>,
 ) -> Result<Json<GetParameterResponse>, AppError> {
@@ -36,7 +37,7 @@ pub async fn get_parameter_route(
         }));
     }
 
-    let parameter: Parameter = parameter_store_client
+    let parameter: Parameter = parameter_storage
         .get_parameter(name.clone())
         .await?
         .into();

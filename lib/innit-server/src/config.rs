@@ -19,6 +19,10 @@ use si_std::{
     CanonicalFileError,
 };
 use si_tls::CertificateSource;
+use strum::{
+    Display,
+    EnumString,
+};
 use telemetry::prelude::*;
 use thiserror::Error;
 use ulid::Ulid;
@@ -49,7 +53,19 @@ impl ConfigError {
 
 type Result<T> = std::result::Result<T, ConfigError>;
 
-/// The config for the forklift server.
+#[remain::sorted]
+#[derive(
+    Debug, Default, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, EnumString, Display,
+)]
+#[serde(rename_all = "lowercase")]
+#[strum(serialize_all = "lowercase")]
+pub enum Mode {
+    Env,
+    #[default]
+    Ssm,
+}
+
+/// The config for the server.
 #[derive(Debug, Builder)]
 pub struct Config {
     #[builder(default = "default_cache_ttl()")]
@@ -78,6 +94,9 @@ pub struct Config {
 
     #[builder(default)]
     dev_mode: bool,
+
+    #[builder(default = "Mode::default()")]
+    mode: Mode,
 }
 
 impl StandardConfig for Config {
@@ -124,6 +143,10 @@ impl Config {
     pub fn client_ca_arns(&self) -> Option<&Vec<String>> {
         self.client_ca_arns.as_ref()
     }
+
+    pub fn mode(&self) -> Mode {
+        self.mode
+    }
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -147,6 +170,9 @@ pub struct ConfigFile {
 
     #[serde(default)]
     pub dev_mode: bool,
+
+    #[serde(default)]
+    mode: Mode,
 }
 
 impl Default for ConfigFile {
@@ -161,6 +187,7 @@ impl Default for ConfigFile {
             socket_addr: get_default_socket_addr(),
             test_endpoint: default_test_endpoint(),
             dev_mode: false,
+            mode: Mode::default(),
         }
     }
 }
@@ -182,6 +209,7 @@ impl TryFrom<ConfigFile> for Config {
         config.instance_id(value.instance_id);
         config.quiescent_period(Duration::from_secs(value.quiescent_period_secs));
         config.dev_mode(value.dev_mode);
+        config.mode(value.mode);
         config.build().map_err(Into::into)
     }
 }

@@ -27,6 +27,7 @@
 
 use std::fmt::Debug;
 
+pub use aws_sdk_ssm::types::Parameter as SsmParameter; // re-export so consumers directly rely on "aws-sdk-ssm"
 use aws_sdk_ssm::{
     config::{
         Credentials,

@@ -24,10 +24,6 @@ use si_data_acmpca::{
     PrivateCertManagerClient,
     PrivateCertManagerClientError,
 };
-use si_data_ssm::{
-    ParameterStoreClient,
-    ParameterStoreClientError,
-};
 use si_tls::{
     CertificateSource,
     ClientCertificateVerifier,
@@ -59,6 +55,10 @@ use crate::{
     app_state::AppState,
     middleware::client_cert_auth::verify_client_cert_middleware,
     parameter_cache::ParameterCache,
+    parameter_storage::{
+        ParameterStore,
+        ParameterStoreError,
+    },
 };
 
 #[remain::sorted]
@@ -68,8 +68,8 @@ pub enum ServerError {
     CertificateClient(#[from] PrivateCertManagerClientError),
     #[error("hyper server error")]
     Hyper(#[from] hyper::Error),
-    #[error("Parameter Store error: {0}")]
-    ParameterStore(#[from] ParameterStoreClientError),
+    #[error("parameter store error")]
+    ParameterStore(#[from] ParameterStoreError),
     #[error("serde json error: {0}")]
     SerdeJson(#[from] serde_json::Error),
     #[error("failed to setup signal handler")]
@@ -97,11 +97,8 @@ impl Server<()> {
         config: Config,
         token: CancellationToken,
     ) -> ServerResult<Server<AddrIncoming>> {
-        let parameter_store_client = if let Some(endpoint) = config.test_endpoint() {
-            ParameterStoreClient::new_for_test(endpoint)
-        } else {
-            ParameterStoreClient::new().await?
-        };
+        let parameter_store =
+            ParameterStore::new(config.mode(), config.test_endpoint().clone()).await?;
 
         // dev mode, no certs necessary
         // use a cert if one is supplied
@@ -126,7 +123,7 @@ impl Server<()> {
         let service = build_service(
             client_cert_verifier,
             parameter_cache,
-            parameter_store_client,
+            parameter_store,
             token.clone(),
         )?;
 
@@ -171,10 +168,10 @@ where
 pub fn build_service(
     client_cert_verifier: Option<Arc<ClientCertificateVerifier>>,
     parameter_cache: ParameterCache,
-    parameter_store_client: ParameterStoreClient,
+    parameter_storage: ParameterStore,
     token: CancellationToken,
 ) -> ServerResult<Router> {
-    let state = AppState::new(parameter_cache, parameter_store_client, token);
+    let state = AppState::new(parameter_cache, parameter_storage, token);
 
     let public_routes = routes::public_routes(state.clone());
     let mut protected_routes = routes::protected_routes(state);

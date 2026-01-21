@@ -10,8 +10,9 @@ rust_library(
         "//lib/si-settings:si-settings",
         "//lib/si-std:si-std",
         "//lib/si-tls:si-tls",
-
         "//lib/telemetry-rs:telemetry",
+        "//third-party/rust:async-trait",
+        "//third-party/rust:aws-sdk-ssm",
         "//third-party/rust:axum",
         "//third-party/rust:dashmap",
         "//third-party/rust:derive_builder",
@@ -21,6 +22,7 @@ rust_library(
         "//third-party/rust:remain",
         "//third-party/rust:serde",
         "//third-party/rust:serde_json",
+        "//third-party/rust:strum",
         "//third-party/rust:thiserror",
         "//third-party/rust:tokio",
         "//third-party/rust:tokio-rustls",

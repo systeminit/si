@@ -13,13 +13,16 @@ use innit_core::{
 use telemetry::tracing::info;
 
 use super::AppError;
-use crate::app_state::AppState;
+use crate::{
+    app_state::AppState,
+    parameter_storage::ParameterStoreKind,
+};
 
 pub async fn create_parameter_route(
     Path(name): Path<String>,
     State(AppState {
         parameter_cache,
-        parameter_store_client,
+        parameter_storage,
         ..
     }): State<AppState>,
     Json(CreateParameterRequest { value }): Json<CreateParameterRequest>,
@@ -30,7 +33,7 @@ pub async fn create_parameter_route(
         name.clone()
     };
 
-    parameter_store_client
+    parameter_storage
         .create_string_parameter(name.clone(), value.clone())
         .await?;
 

@@ -15,7 +15,7 @@ use serde_json::{
     Value,
     json,
 };
-use si_data_ssm::ParameterStoreClientError;
+use si_data_ssm::SsmParameterStoreClientError;
 use thiserror::Error;
 
 use super::{
@@ -62,7 +62,7 @@ pub fn public_routes(state: AppState) -> Router {
 #[derive(Debug, Error)]
 pub enum AppError {
     #[error("parameter store client error: {0}")]
-    ParameterStoreClient(#[from] ParameterStoreClientError),
+    ParameterStoreClient(#[from] SsmParameterStoreClientError),
     #[error("server error: {0}")]
     Server(#[from] ServerError),
 }

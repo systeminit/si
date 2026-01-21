@@ -8,6 +8,7 @@ use innit_server::{
     Config,
     ConfigError,
     ConfigFile,
+    Mode,
     StandardConfigFile,
 };
 use si_service::prelude::*;
@@ -78,6 +79,15 @@ pub(crate) struct Args {
     /// The address and port to bind the HTTP server to [example: 0.0.0.0:80]
     #[arg(long, env)]
     pub(crate) socket_addr: Option<String>,
+
+    /// Mode for parameter storage backend [options: env, ssm]
+    #[arg(
+        long = "mode",
+        env = "SI_INNIT_MODE",
+        default_value = "ssm",
+        hide_env_values = true
+    )]
+    pub(crate) mode: Mode,
 }
 
 impl TryFrom<Args> for Config {
@@ -91,6 +101,7 @@ impl TryFrom<Args> for Config {
             if let Some(socket_addr) = args.socket_addr {
                 config_map.set("socket_addr", socket_addr);
             }
+            config_map.set("mode", args.mode.to_string());
         })?
         .try_into()
     }

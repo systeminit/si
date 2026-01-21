@@ -9,6 +9,7 @@ rust-version.workspace = true
 publish.workspace = true
 
 [dependencies]
+async-trait = { workspace = true }
 axum = { workspace = true }
 buck2-resources = { path = "../../lib/buck2-resources" }
 dashmap = { workspace = true }
@@ -24,6 +25,7 @@ si-data-ssm = { path = "../../lib/si-data-ssm" }
 si-settings = { path = "../../lib/si-settings" }
 si-std = { path = "../../lib/si-std" }
 si-tls = { path = "../../lib/si-tls" }
+strum = { workspace = true }
 telemetry = { path = "../../lib/telemetry-rs" }
 thiserror = { workspace = true }
 tokio = { workspace = true }

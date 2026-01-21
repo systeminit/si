@@ -1,7 +1,3 @@
-use aws_sdk_ssm::types::{
-    Parameter as AwsParameter,
-    ParameterType as AwsParameterType,
-};
 use config_file::parameter_provider::{
     Parameter as ParameterProviderParameter,
     ParameterType as ParameterProviderParameterType,
@@ -16,19 +12,6 @@ pub struct Parameter {
     pub name: String,
     pub value: Option<String>,
     pub r#type: Option<ParameterType>,
-}
-
-impl From<AwsParameter> for Parameter {
-    fn from(p: AwsParameter) -> Self {
-        Self {
-            name: p.name().unwrap_or_default().to_string(),
-            value: p.value().map(|s| s.to_string()),
-            r#type: p.r#type().map(|t| match t {
-                AwsParameterType::StringList => ParameterType::StringList,
-                _ => ParameterType::String,
-            }),
-        }
-    }
 }
 
 impl From<Parameter> for ParameterProviderParameter {
