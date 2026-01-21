@@ -48,6 +48,7 @@ import ApprovalPendingModal from "./ApprovalPendingModal.vue";
 import { useContext } from "../logic_composables/context";
 import { approverForChangeSet } from "../logic_composables/change_set";
 import { useApi, routes, apiContextForChangeSet } from "../api_composables";
+import { windowWidthReactive } from "../logic_composables/emitters";
 
 const props = defineProps<{
   changeSetsNeedingApproval: ChangeSet[];
@@ -118,21 +119,7 @@ const tooltipText = computed(() => {
   }
 });
 
-const windowWidth = ref(window.innerWidth);
-
-const windowResizeHandler = () => {
-  windowWidth.value = window.innerWidth;
-};
-
-onMounted(() => {
-  windowResizeHandler();
-  window.addEventListener("resize", windowResizeHandler);
-});
-onBeforeUnmount(() => {
-  window.removeEventListener("resize", windowResizeHandler);
-});
-
-const compact = computed(() => windowWidth.value < 850);
+const compact = computed(() => windowWidthReactive.value < 850);
 
 const openPendingApprovalsModal = () => {
   if (numberICanApprove.value > 0 || currentChangeSetNeedsApproval.value) {

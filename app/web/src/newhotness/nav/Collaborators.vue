@@ -81,6 +81,7 @@ import UserIcon from "./UserIcon.vue";
 import UserCard from "./UserCard.vue";
 import { useContext } from "../logic_composables/context";
 import { useChangeSets } from "../logic_composables/change_set";
+import { windowWidthReactive } from "../logic_composables/emitters";
 
 const presenceStore = usePresenceStore();
 const router = useRouter();
@@ -214,21 +215,7 @@ const openMoreUsersPopover = () => {
   moreUsersPopoverRef.value.open();
 };
 
-const windowWidth = ref(window.innerWidth);
-
-const windowResizeHandler = () => {
-  windowWidth.value = window.innerWidth;
-};
-
-onMounted(() => {
-  windowResizeHandler();
-  window.addEventListener("resize", windowResizeHandler);
-});
-onBeforeUnmount(() => {
-  window.removeEventListener("resize", windowResizeHandler);
-});
-
-const showOneIcon = computed(() => windowWidth.value < 850);
+const showOneIcon = computed(() => windowWidthReactive.value < 850);
 
 const filterString = ref("");
 const filterStringCleaned = computed(() => {
