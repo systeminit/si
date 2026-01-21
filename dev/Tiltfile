@@ -40,7 +40,7 @@ groups = {
     ],
     "telemetry": [
         "grafana",
-        "jaeger",
+        "tempo",
         "loki",
         "node_exporter",
         "prometheus",
@@ -165,11 +165,6 @@ compose_services = {
             link("http://localhost:3000", "grafana-ui"),
         ],
     },
-    "jaeger": {
-        "links": [
-            link("http://localhost:16686", "jaeger-ui"),
-        ],
-    },
     "localstack": {
         "links": [
             link("http://localhost:4566", "localstack-api"),
@@ -184,6 +179,11 @@ compose_services = {
     "prometheus": {},
     "promtail": {},
     "spicedb": {},
+    "tempo": {
+        "links": [
+            link("http://localhost:3200", "tempo-ui"),
+        ],
+    },
     "versitygw": {},
 }
 for service, kwargs in compose_services.items():

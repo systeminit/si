@@ -215,7 +215,7 @@ These external services are deployed via [`docker compose`](https://docs.docker.
 Thus, it is worth checking if you are running these services to avoid conflicts when running SI.
 Potentially conflicting services include, but are not limited to, the following:
 
-* Jaeger
+* Tempo
 * NATS and NATS Jetstream
 * OpenTelemetry
 * PostgreSQL

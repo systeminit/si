@@ -1,3 +1,4 @@
+---
 receivers:
   otlp:
     protocols:
@@ -203,10 +204,12 @@ processors:
 exporters:
   debug:
     verbosity: normal
-  otlp:
-    endpoint: jaeger:4317
+  otlp/tempo:
+    endpoint: tempo:4317
     tls:
       insecure: true
+  otlphttp/loki:
+    endpoint: http://loki:3100/otlp
   prometheus:
     endpoint: otelcol:9090
 
@@ -219,7 +222,7 @@ service:
     logs:
       receivers: [otlp]
       processors: [batch]
-      exporters: [debug, otlp]
+      exporters: [debug, otlphttp/loki]
     traces:
       receivers: [otlp]
       processors:
@@ -227,7 +230,7 @@ service:
         - transform/spanevent
         - filter/spanevent
         - batch
-      exporters: [debug, otlp]
+      exporters: [debug, otlp/tempo]
     metrics:
       receivers: [otlp]
       processors: [batch]

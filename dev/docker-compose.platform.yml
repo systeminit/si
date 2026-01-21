@@ -35,11 +35,12 @@ services:
       - ./config/grafana/provisioning/datasources:/etc/grafana/provisioning/datasources
       - ./config/grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards
 
-  jaeger:
-    image: systeminit/jaeger:stable
+  tempo:
+    image: systeminit/tempo:stable
+    command:
+      - "-config.file=/etc/tempo.yaml"
     ports:
-      # jaeger ui
-      - "16686:16686"
+      - "3200:3200"
 
   localstack:
     image: localstack/localstack
@@ -84,7 +85,7 @@ services:
       # receiver: http (external for host-run servers)
       - "4318:4318"
     depends_on:
-      - jaeger
+      - tempo
 
   postgres:
     image: systeminit/postgres:stable

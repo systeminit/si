@@ -1,0 +1,84 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "datasource": {
+        "type": "tempo",
+        "uid": "tempo"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "hideFrom": {
+              "tooltip": false,
+              "viz": false,
+              "legend": false
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 16,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "id": 1,
+      "options": {
+        "edges": {},
+        "nodes": {}
+      },
+      "pluginVersion": "10.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum by (client, server) (rate(traces_service_graph_request_total[5m]))",
+          "refId": "A"
+        }
+      ],
+      "title": "Service Dependency Graph",
+      "type": "nodeGraph",
+      "description": "Service dependencies derived from trace spans. Click nodes to filter traces for that service."
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 38,
+  "tags": ["tempo", "tracing", "service-graph"],
+  "templating": {
+    "list": []
+  },
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "",
+  "title": "Tempo - Service Dependencies",
+  "uid": "tempo-service-dependencies",
+  "version": 1,
+  "weekStart": ""
+}
