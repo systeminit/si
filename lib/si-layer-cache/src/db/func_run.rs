@@ -45,7 +45,6 @@ pub struct FuncRunLayerDb {
     read_id_batch_no_cutoff_query: String,
     ready_many_for_workspace_id_query: String,
     get_last_qualification_for_attribute_value_id: String,
-    list_action_history: String,
     get_last_action_by_action_id: String,
     list_management_history: String,
     get_last_management_by_func_and_component_id: String,
@@ -78,11 +77,6 @@ impl FuncRunLayerDb {
                    WHERE attribute_value_id = $2 AND workspace_id = $1
                    ORDER BY updated_at DESC
                    LIMIT 1",
-            ),
-            list_action_history: format!(
-                "SELECT value FROM {DBNAME}
-                   WHERE function_kind = 'Action' AND workspace_id = $1
-                   ORDER BY updated_at DESC",
             ),
             get_last_action_by_action_id: format!(
                 "
@@ -356,14 +350,12 @@ impl FuncRunLayerDb {
     ) -> LayerDbResult<Vec<FuncRunId>> {
         let maybe_rows = if let Some(cutoff_id) = cutoff_id {
             let id_str = cutoff_id.to_string();
-            self
-                .cache
+            self.cache
                 .pg()
                 .query(&self.read_id_batch_query, &[&id_str, &batch_size])
                 .await?
         } else {
-            self
-                .cache
+            self.cache
                 .pg()
                 .query(&self.read_id_batch_no_cutoff_query, &[&batch_size])
                 .await?

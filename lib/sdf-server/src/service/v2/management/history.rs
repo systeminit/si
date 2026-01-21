@@ -10,7 +10,10 @@ use serde::{
     Deserialize,
     Serialize,
 };
-use si_db::{FuncRunDb, Visibility};
+use si_db::{
+    FuncRunDb,
+    Visibility,
+};
 use si_events::{
     ActionResultState,
     ComponentId,
@@ -68,7 +71,9 @@ pub async fn history(
         &ctx,
         ctx.events_tenancy().workspace_pk,
         ctx.events_tenancy().change_set_id,
-    ).await? {
+    )
+    .await?
+    {
         result.push(ManagementHistoryItem::try_from(func_run)?);
     }
 

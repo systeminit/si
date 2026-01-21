@@ -260,25 +260,24 @@ impl QualificationView {
                     sub_checks: vec![sub_check],
                 });
 
-                let (output, finalized) = match FuncRunLogDb::get_for_func_run_id(ctx, qual_run.id())
-                    .await?
-                {
-                    Some(func_run_logs) => {
-                        let output = func_run_logs
-                            .logs()
-                            .iter()
-                            .map(|l| QualificationOutputStreamView {
-                                stream: l.stream.clone(),
-                                line: l.message.clone(),
-                                level: l.level.clone(),
-                            })
-                            .collect();
-                        let finalized = func_run_logs.is_finalized();
+                let (output, finalized) =
+                    match FuncRunLogDb::get_for_func_run_id(ctx, qual_run.id()).await? {
+                        Some(func_run_logs) => {
+                            let output = func_run_logs
+                                .logs()
+                                .iter()
+                                .map(|l| QualificationOutputStreamView {
+                                    stream: l.stream.clone(),
+                                    line: l.message.clone(),
+                                    level: l.level.clone(),
+                                })
+                                .collect();
+                            let finalized = func_run_logs.is_finalized();
 
-                        (output, finalized)
-                    }
-                    None => (Vec::new(), false),
-                };
+                            (output, finalized)
+                        }
+                        None => (Vec::new(), false),
+                    };
 
                 Ok(Some(QualificationView {
                     title: qual_run

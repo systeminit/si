@@ -10,8 +10,8 @@ use si_events::{
 };
 
 use crate::{
-    SiDbError,
     SiDbContext,
+    SiDbError,
     SiDbResult,
     transactions::SiDbTransactions as _,
 };
@@ -24,10 +24,6 @@ const GET_LAST_QUALIFICATION_FOR_ATTRIBUTE_VALUE_ID_QUERY: &str = "SELECT value 
         WHERE attribute_value_id = $2 AND workspace_id = $1
         ORDER BY updated_at DESC
         LIMIT 1";
-
-const LIST_ACTION_HISTORY_QUERY: &str = "SELECT value FROM func_runs
-        WHERE function_kind = 'Action' AND workspace_id = $1
-        ORDER BY updated_at DESC";
 
 const GET_LAST_ACTION_BY_ACTION_ID_QUERY: &str = "SELECT value FROM func_runs
         WHERE function_kind = 'Action' AND workspace_id = $1 AND action_id = $2
@@ -78,19 +74,15 @@ const PAGINATED_COMPONENT_QUERY_NO_CURSOR: &str = "SELECT * FROM func_runs
         LIMIT $4";
 
 #[derive(Debug, Clone)]
-pub struct FuncRunDb {
-}
+pub struct FuncRunDb {}
 
 impl FuncRunDb {
     /// Write a new func run to the database.
     /// This function can be used to replace the layer-cache write() function.
-    pub async fn upsert(
-        ctx: &impl SiDbContext,
-        func_run: FuncRun,
-    ) -> SiDbResult<()> {
+    pub async fn upsert(ctx: &impl SiDbContext, func_run: FuncRun) -> SiDbResult<()> {
         let json: serde_json::Value = serde_json::to_value(&func_run)?;
-        let postcard_bytes = postcard::to_stdvec(&func_run)
-            .map_err(|e| SiDbError::Postcard(e.to_string()))?;
+        let postcard_bytes =
+            postcard::to_stdvec(&func_run).map_err(|e| SiDbError::Postcard(e.to_string()))?;
 
         ctx.txns()
             .await?
@@ -160,10 +152,7 @@ impl FuncRunDb {
 
     /// Write multiple func runs to the database in a single INSERT query.
     /// This is more efficient than calling upsert multiple times.
-    pub async fn upsert_batch(
-        ctx: &impl SiDbContext,
-        func_runs: Vec<FuncRun>,
-    ) -> SiDbResult<()> {
+    pub async fn upsert_batch(ctx: &impl SiDbContext, func_runs: Vec<FuncRun>) -> SiDbResult<()> {
         if func_runs.is_empty() {
             return Ok(());
         }
@@ -193,12 +182,12 @@ impl FuncRunDb {
 
         for func_run in &func_runs {
             let json: serde_json::Value = serde_json::to_value(func_run)?;
-            let postcard_bytes = postcard::to_stdvec(func_run)
-                .map_err(|e| SiDbError::Postcard(e.to_string()))?;
+            let postcard_bytes =
+                postcard::to_stdvec(func_run).map_err(|e| SiDbError::Postcard(e.to_string()))?;
 
             // Create placeholders for this row ($1, $2, ... $15)
             let placeholders: Vec<String> = (param_index..param_index + 15)
-                .map(|i| format!("${}", i))
+                .map(|i| format!("${i}"))
                 .collect();
             values_clauses.push(format!("({})", placeholders.join(", ")));
 
@@ -276,11 +265,7 @@ impl FuncRunDb {
             params.push(&postcard_slices[idx]);
         }
 
-        ctx.txns()
-            .await?
-            .pg()
-            .execute(&query, &params[..])
-            .await?;
+        ctx.txns().await?.pg().execute(&query, &params[..]).await?;
 
         Ok(())
     }
@@ -299,23 +284,13 @@ impl FuncRunDb {
         let id_strings: Vec<String> = ids.iter().map(|id| id.to_string()).collect();
 
         // Build a query with ANY to check which IDs exist
-        let query = format!(
-            "SELECT key FROM {} WHERE key = ANY($1)",
-            DBNAME
-        );
+        let query = format!("SELECT key FROM {DBNAME} WHERE key = ANY($1)");
 
-        let rows = ctx
-            .txns()
-            .await?
-            .pg()
-            .query(&query, &[&id_strings])
-            .await?;
+        let rows = ctx.txns().await?.pg().query(&query, &[&id_strings]).await?;
 
         // Collect the IDs that exist in the database
-        let existing_ids: std::collections::HashSet<String> = rows
-            .iter()
-            .map(|row| row.get::<_, String>("key"))
-            .collect();
+        let existing_ids: std::collections::HashSet<String> =
+            rows.iter().map(|row| row.get::<_, String>("key")).collect();
 
         // Return the IDs that don't exist
         let missing_ids: Vec<FuncRunId> = ids
@@ -446,7 +421,7 @@ impl FuncRunDb {
             .await?
             .pg()
             .query_opt(
-                &format!("SELECT value FROM {} WHERE key = $1", DBNAME),
+                &format!("SELECT value FROM {DBNAME} WHERE key = $1"),
                 &[&key.to_string()],
             )
             .await?;
@@ -467,7 +442,7 @@ impl FuncRunDb {
             .await?
             .pg()
             .query_opt(
-                &format!("SELECT value FROM {} WHERE key = $1", DBNAME),
+                &format!("SELECT value FROM {DBNAME} WHERE key = $1"),
                 &[&key.to_string()],
             )
             .await?;
@@ -613,4 +588,3 @@ impl FuncRunDb {
         Ok(func_runs)
     }
 }
-

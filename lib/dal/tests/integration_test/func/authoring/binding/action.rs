@@ -125,10 +125,14 @@ async fn detach_attach_then_delete_action_func_while_enqueued(ctx: &mut DalConte
         let _prototype = ActionPrototype::get_by_id(ctx, prototype_id)
             .await
             .expect("unable to get prototype");
-        let _func_run_id = FuncRunDb::get_last_run_for_action_id_opt(ctx, ctx.events_tenancy().workspace_pk, action.id())
-            .await
-            .expect("unable to get func run id")
-            .map(|f| f.id());
+        let _func_run_id = FuncRunDb::get_last_run_for_action_id_opt(
+            ctx,
+            ctx.events_tenancy().workspace_pk,
+            action.id(),
+        )
+        .await
+        .expect("unable to get func run id")
+        .map(|f| f.id());
         let _component_id = Action::component_id(ctx, action_id)
             .await
             .expect("unable to get component id");

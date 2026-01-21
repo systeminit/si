@@ -9,6 +9,10 @@ use serde::{
     Serialize,
 };
 use serde_json;
+use si_db::{
+    FuncRunDb,
+    FuncRunLogDb,
+};
 use si_events::{
     ActionId,
     ActionResultState,
@@ -32,7 +36,6 @@ use tokio::sync::{
     oneshot,
 };
 use ulid::Ulid;
-use si_db::{FuncRunDb, FuncRunLogDb};
 use veritech_client::{
     BeforeFunction,
     FunctionResult,
@@ -1471,7 +1474,12 @@ impl FuncRunner {
         action_id: ActionId,
         update_fn: impl FnOnce(&mut FuncRun),
     ) -> FuncRunnerResult<()> {
-        let mut func_run = FuncRunDb::get_last_run_for_action_id(ctx, ctx.events_tenancy().workspace_pk, action_id).await?;
+        let mut func_run = FuncRunDb::get_last_run_for_action_id(
+            ctx,
+            ctx.events_tenancy().workspace_pk,
+            action_id,
+        )
+        .await?;
 
         update_fn(&mut func_run);
 

@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use axum::{
     Json,
     extract::Path,
@@ -12,7 +10,11 @@ use serde::{
     Deserialize,
     Serialize,
 };
-use si_db::{FuncRunDb, FuncRunLogDb};
+use si_db::{
+    FuncRunDb,
+    FuncRunLogDb,
+};
+
 use super::get_func_run::FuncRunLogView;
 use crate::{
     extract::HandlerContext,
@@ -45,14 +47,15 @@ pub async fn get_func_run_logs_av(
         &ctx,
         ctx.events_tenancy().workspace_pk,
         attribute_value_id,
-    ).await?;
+    )
+    .await?;
 
     match maybe_av_run {
         Some(av_run) => {
             let logs = FuncRunLogDb::get_for_func_run_id(&ctx, av_run.id())
                 .await?
                 .map(|v| v.into());
-            
+
             Ok(Json(GetFuncRunLogsResponse { logs }))
         }
         None => Ok(Json(GetFuncRunLogsResponse { logs: None })), // todo return friendly error?

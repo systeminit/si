@@ -57,7 +57,12 @@ use serde::{
     Deserialize,
     Serialize,
 };
-use si_db::{ManagementFuncExecutionError, ManagementFuncJobState, ManagementState, SiDbError};
+use si_db::{
+    ManagementFuncExecutionError,
+    ManagementFuncJobState,
+    ManagementState,
+    SiDbError,
+};
 use si_layer_cache::LayerDbError;
 use telemetry::prelude::*;
 use thiserror::Error;

@@ -422,23 +422,25 @@ async fn backfill_func_runs(
     telemetry_shutdown: TelemetryShutdownGuard,
 ) -> Result<()> {
     // Extract parameters before config is moved
-    let cutoff_id = config
+    let func_run_cutoff_id = config
         .backfill_func_runs_cutoff_id()
+        .and_then(|id_str| id_str.parse().ok());
+    let func_run_log_cutoff_id = config
+        .backfill_func_run_logs_cutoff_id()
         .and_then(|id_str| id_str.parse().ok());
     let batch_size = config.backfill_key_batch_size() as i64;
 
-    let backfiller = FuncRunsBackfiller::new(
-        config,
-        &helping_tasks_tracker,
-        helping_tasks_token.clone(),
-    )
-    .await?;
-
-    let handle = main_tracker.spawn(backfiller.upload_all_func_runs(
-        main_token.clone(),
-        cutoff_id,
-        batch_size,
-    ));
+    let handle = main_tracker.spawn(
+        FuncRunsBackfiller::upload_all_func_runs_and_logs_concurrently(
+            config,
+            helping_tasks_tracker.clone(),
+            helping_tasks_token.clone(),
+            main_token.clone(),
+            func_run_cutoff_id,
+            func_run_log_cutoff_id,
+            batch_size,
+        ),
+    );
 
     shutdown::graceful_with_handle(handle)
         .group(main_tracker, main_token)

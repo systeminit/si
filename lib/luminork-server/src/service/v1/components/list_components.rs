@@ -18,10 +18,7 @@ use utoipa::{
     self,
     ToSchema,
 };
-use si_db::{
-    FuncRunDb,
-    FuncRunLogDb,
-};
+
 use super::ComponentsError;
 use crate::{
     extract::{
