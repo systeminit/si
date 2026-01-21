@@ -1505,6 +1505,116 @@
           ]
         }
       }
+    },
+    {
+      "id": 500,
+      "type": "row",
+      "title": "Span Linking",
+      "gridPos": {
+        "x": 0,
+        "y": 56,
+        "w": 24,
+        "h": 1
+      },
+      "collapsed": false
+    },
+    {
+      "id": 501,
+      "type": "timeseries",
+      "title": "Invalid Span Contexts for Linking",
+      "interval": "1m",
+      "gridPos": {
+        "x": 0,
+        "y": 57,
+        "w": 24,
+        "h": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "sum(rate(compressing_stream_span_context_invalid_for_linking_total{exported_job=~\"${service}\", should_close=\"yes\"}[$__interval]))",
+          "legendFormat": "Should close stream",
+          "refId": "A",
+          "description": "Rate of invalid span contexts when stream should close"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "sum(rate(compressing_stream_span_context_invalid_for_linking_total{exported_job=~\"${service}\", should_close=\"no\"}[$__interval]))",
+          "legendFormat": "Normal operation",
+          "refId": "B",
+          "description": "Rate of invalid span contexts during normal operation"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "never"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Should close stream"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "orange"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Normal operation"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "yellow"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        },
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max",
+            "mean"
+          ]
+        }
+      }
     }
   ],
   "time": {
