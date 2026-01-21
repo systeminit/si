@@ -229,6 +229,8 @@ const getButtonTooltip = (variant: string) => {
     return "The empty variant is used to clear all tone related styles";
   } else if (variant === "nostyle") {
     return "The nostyle variant is used to clear ALL styles";
+  } else if (variant === "flat") {
+    return "Similar to the neutral style, but meant to have the same bg color as the things it is sitting on top of (e.g. appear to not have a separate bg color)";
   } else {
     return undefined;
   }

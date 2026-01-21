@@ -29,6 +29,7 @@
         :componentId="componentId"
         :viewId="viewId"
         :connected="haveWSConn"
+        :onHead="ctx.onHead.value"
       />
 
       <!-- Right -->
@@ -132,9 +133,10 @@
       <main v-else class="grow min-h-0">
         <ComponentPage v-if="componentId" :componentId="componentId" />
         <FuncRunDetails v-else-if="funcRunId" :funcRunId="funcRunId" />
-        <PolicyDetails v-else-if="policyId" :policyId="policyId" />
+        <PolicyDetails v-else-if="policyId && policyName" :policyId="policyId" :policyName="policyName" />
         <LatestFuncRunDetails v-else-if="actionId" :functionKind="FunctionKind.Action" :actionId="actionId" />
         <Review v-else-if="onReviewPage" />
+        <PolicyHome v-else-if="onPolicyHomePage" />
         <Explore v-else @openChangesetModal="openChangesetModal" />
       </main>
     </template>
@@ -164,6 +166,7 @@ import Lobby from "./Lobby.vue";
 import Explore, { GroupByUrlQuery, SortByUrlQuery } from "./Explore.vue";
 import FuncRunDetails from "./FuncRunDetails.vue";
 import PolicyDetails from "./PolicyDetail.vue";
+import PolicyHome from "./PolicyHome.vue";
 import LatestFuncRunDetails from "./LatestFuncRunDetails.vue";
 import { Context, FunctionKind, AuthApiWorkspace } from "./types";
 import {
@@ -199,6 +202,7 @@ const props = defineProps<{
   funcRunId?: string;
   actionId?: string;
   policyId?: string;
+  policyName?: string;
 }>();
 
 const authStore = useAuthStore();
@@ -953,6 +957,7 @@ const bumpToWorkspaces = () => {
 };
 
 const onReviewPage = computed(() => route.name === "new-hotness-review");
+const onPolicyHomePage = computed(() => route.name === "new-hotness-policy-home");
 
 // POSTHOG TRACKING
 watch(heimdall.initCompleted, () => {

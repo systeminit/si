@@ -114,8 +114,14 @@ const routes: RouteRecordRaw[] = [
         component: () => import("@/newhotness/Workspace.vue"),
       },
       {
+        name: "new-hotness-policy-home",
+        path: "p",
+        props: true,
+        component: () => import("@/newhotness/Workspace.vue"),
+      },
+      {
         name: "new-hotness-policy",
-        path: ":policyId/p",
+        path: ":policyId/:policyName/p",
         props: true,
         component: () => import("@/newhotness/Workspace.vue"),
       },
