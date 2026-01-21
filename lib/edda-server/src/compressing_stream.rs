@@ -320,13 +320,26 @@ where
         let mut this = self.project();
 
         loop {
-            let span = this.span.get_or_insert_with(|| {
+            // Get the current span so we can set properties on it. This can be in one of two
+            // states:
+            //
+            // - compressing_stream.idle spans represent time spent waiting for messages. It
+            //   starts when callers start listening for batches (i.e. when they pull from the
+            //   stream), and end when a message is received.
+            // - compressing_stream.batch spans represent time spent retrieving and bundling a
+            //   batch of messages. This span starts when the the caller is listening and at
+            //   least one message has come in. It ends when all available messages have
+            //   been pulled off the NATS queue and the batch yielded to the caller.
+            //
+            // If there is no current span when the user polls, that means the user has begun
+            // listening, so we create a compressing_stream.idle span.
+            let mut span = this.span.get_or_insert_with(|| {
                 let follows_from = Span::current();
 
                 let s = span!(
                     parent: None,
-                    Level::INFO,
-                    "compressing_stream.next",
+                    Level::DEBUG,
+                    "compressing_stream.idle",
                     messages.deleted.count = Empty,
                     messaging.destination.name = Empty,
                     read_window.count = Empty,
@@ -341,7 +354,7 @@ where
 
                 s
             });
-            let _guard = span.enter();
+            let mut guard = span.enter();
 
             match this.state {
                 // 1. Reading the first message from the subscription
@@ -393,7 +406,7 @@ where
                                     *this.state = State::ReadFirstMessage;
                                     span.record("task.state", this.state.as_ref());
                                     let err = span.record_err(err);
-                                    drop(_guard);
+                                    drop(guard);
                                     *this.span = None;
                                     return Poll::Ready(Some(Err(Error::FirstMessageInfoParse(
                                         err,
@@ -401,6 +414,54 @@ where
                                 }
                             };
 
+                            // We've received a message! End the compressing_stream.idle span
+                            // and start a new compressing_stream.batch span to represent the
+                            // batch processing.
+
+                            // End the idle span
+                            span.record_ok();
+                            drop(guard);
+                            *this.span = None;
+
+                            // Emit metric for idle wait duration
+                            if let Some(span_start) = this.span_started_at.take() {
+                                let idle_duration = span_start.elapsed();
+                                histogram!(
+                                    compressing_stream_idle_duration_ms =
+                                        idle_duration.as_millis() as f64
+                                );
+                            }
+
+                            // Create the new batch span
+                            let follows_from = Span::current();
+                            let batch_span = span!(
+                                parent: None,
+                                Level::INFO,
+                                "compressing_stream.batch",
+                                messages.deleted.count = Empty,
+                                messaging.destination.name = Empty,
+                                read_window.count = Empty,
+                                requests.count = Empty,
+                                compressed.kind = Empty,
+                                task.state = Empty,
+                            );
+                            batch_span.follows_from(follows_from);
+
+                            // Store the new batch span and start time
+                            *this.span = Some(batch_span);
+                            *this.span_started_at = Some(Instant::now());
+
+                            // CRITICAL: Update the local span variable to point to the batch span
+                            // so all subsequent span.record() calls use the batch span
+                            span = this.span.as_mut().unwrap();
+                            // NOTE: we don't use guard again in this codepath, but it's important
+                            // to keep span and guard in sync to avoid confusion.
+                            #[allow(unused_assignments)]
+                            {
+                                guard = span.enter();
+                            }
+
+                            // Record the messaging destination on the BATCH span (not the idle span)
                             span.record("messaging.destination.name", message.subject.as_str());
 
                             let subject = Some(message.subject.clone());
@@ -446,7 +507,7 @@ where
                             *this.state = State::ReadFirstMessage;
                             span.record("task.state", this.state.as_ref());
                             let err = span.record_err(err);
-                            drop(_guard);
+                            drop(guard);
                             *this.span = None;
                             return Poll::Ready(Some(Err(Error::ReadFirstMessage(Box::new(err)))));
                         }
@@ -579,8 +640,8 @@ where
                             let mut span_contexts = Vec::with_capacity(*read_window);
                             if let Some(ref headers) = headers {
                                 let otel_ctx = propagation::extract_opentelemetry_context(headers);
-                                let span_ctx = otel_ctx.span().span_context().clone();
-                                span_contexts.push(span_ctx);
+                                span_contexts.push(otel_ctx.span().span_context().clone());
+                                span.set_parent(otel_ctx);
                             }
 
                             // We've read all message in the read window
@@ -616,7 +677,7 @@ where
 
                                             // Set next state and continue loop
                                             *this.state = State::ReadFirstMessage;
-                                            drop(_guard);
+                                            drop(guard);
                                             *this.span = None;
                                             continue;
                                         }
@@ -1060,7 +1121,7 @@ where
                                     *this.state = State::ReadFirstMessage;
                                     span.record("task.state", this.state.as_ref());
                                     let err = span.record_err(err);
-                                    drop(_guard);
+                                    drop(guard);
                                     *this.span = None;
                                     return Poll::Ready(Some(Err(Error::CompressedRequest(err))));
                                 }
@@ -1141,7 +1202,7 @@ where
 
                                             // Set next state and continue loop
                                             *this.state = State::ReadFirstMessage;
-                                            drop(_guard);
+                                            drop(guard);
                                             *this.span = None;
                                             continue;
                                         }
@@ -1217,7 +1278,7 @@ where
                                             *this.state = State::ReadFirstMessage;
                                             span.record("task.state", this.state.as_ref());
                                             let err = span.record_err(err);
-                                            drop(_guard);
+                                            drop(guard);
                                             *this.span = None;
                                             return Poll::Ready(Some(Err(
                                                 Error::DeleteStreamMessage(err),
@@ -1238,12 +1299,12 @@ where
                 } => {
                     update_heartbeat(this.last_compressing_heartbeat_tx);
 
-                    // Metrics: Track total span duration from start to yield
+                    // Metrics: Track batch span duration from start to yield
                     if let Some(span_start) = this.span_started_at.take() {
-                        let total_duration = span_start.elapsed();
+                        let batch_duration = span_start.elapsed();
                         histogram!(
-                            compressing_stream_total_span_duration_ms =
-                                total_duration.as_millis() as f64
+                            compressing_stream_batch_duration_ms =
+                                batch_duration.as_millis() as f64
                         );
                     }
                     monotonic!(compressing_stream_items_yielded = 1);
@@ -1273,7 +1334,7 @@ where
                             *this.state = State::ReadFirstMessage;
                             span.record("task.state", this.state.as_ref());
                             let err = span.record_err(err);
-                            drop(_guard);
+                            drop(guard);
                             *this.span = None;
                             return Poll::Ready(Some(Err(Error::SerializeLocalMessage(err))));
                         }
@@ -1294,7 +1355,7 @@ where
                     *this.state = State::ReadFirstMessage;
                     span.record("task.state", this.state.as_ref());
                     span.record_ok();
-                    drop(_guard);
+                    drop(guard);
                     *this.span = None;
                     return Poll::Ready(Some(Ok(local_message)));
                 }
@@ -1329,7 +1390,7 @@ where
 
                     // Set next state and continue loop
                     *this.state = State::ReadFirstMessage;
-                    drop(_guard);
+                    drop(guard);
                     *this.span = None;
                     continue;
                 }
@@ -1711,7 +1772,7 @@ where
 
                                     // Set next state and continue loop
                                     *this.state = State::ReadFirstMessage;
-                                    drop(_guard);
+                                    drop(guard);
                                     *this.span = None;
                                     continue;
                                 }
@@ -1764,7 +1825,7 @@ where
                                     *this.state = State::ReadFirstMessage;
                                     span.record("task.state", this.state.as_ref());
                                     let err = span.record_err(err);
-                                    drop(_guard);
+                                    drop(guard);
                                     *this.span = None;
                                     return Poll::Ready(Some(Err(
                                         Error::DeleteStreamMessageAfterCompressError(err),
