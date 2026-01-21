@@ -1,21 +1,6 @@
 ---
-# configures the system to use the loki docker driver
-# see https://grafana.com/docs/loki/latest/send-data/docker-driver/
-x-loki-logged-service: &loki-logged-service
-  logging:
-    driver: loki
-    options:
-      loki-url: "http://loki:3100/loki/api/v1/push"
-      loki-batch-size: "400"
-      loki-retries: "1"
-      max-file: "2"
-      max-size: "10m"
-
-# Note: ensure services are sorted alphabetically
-
 services:
   db-test:
-    #<<: *loki-logged-service
     image: systeminit/postgres:stable
     environment:
       - "POSTGRES_PASSWORD=bugbear"
@@ -39,7 +24,6 @@ services:
       retries: 5
 
   grafana:
-    #<<: *loki-logged-service
     image: grafana/grafana-enterprise
     environment:
       - "GF_AUTH_ANONYMOUS_ENABLED=true"
@@ -52,20 +36,17 @@ services:
       - ./config/grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards
 
   jaeger:
-    #<<: *loki-logged-service
     image: systeminit/jaeger:stable
     ports:
       # jaeger ui
       - "16686:16686"
 
   localstack:
-    #<<: *loki-logged-service
     image: localstack/localstack
     ports:
       - "4566:4566"
 
   loki:
-    #<<: *loki-logged-service
     image: grafana/loki
     ports:
       # http listen port (external for host-run servers)
@@ -74,7 +55,6 @@ services:
       - ./config/loki/config.yml:/etc/loki/local-config.yaml
 
   nats:
-    #<<: *loki-logged-service
     image: systeminit/nats:stable
     command:
       - "--config"
@@ -97,7 +77,6 @@ services:
       - /:/host:ro
 
   otelcol:
-    #<<: *loki-logged-service
     image: systeminit/otelcol:stable
     ports:
       # receiver: grpc (external for host-run servers)
@@ -108,7 +87,6 @@ services:
       - jaeger
 
   postgres:
-    #<<: *loki-logged-service
     image: systeminit/postgres:stable
     environment:
       - "POSTGRES_PASSWORD=bugbear"
@@ -127,7 +105,6 @@ services:
       retries: 5
 
   postgres-test:
-    #<<: *loki-logged-service
     image: systeminit/pgbouncer:stable
     environment:
       - "DB_USER=si_test"
@@ -146,7 +123,6 @@ services:
       - db-test
 
   promtail:
-    #<<: *loki-logged-service
     image: grafana/promtail:latest
     command:
       - "-config.file=/etc/promtail/config.yml"
@@ -155,7 +131,6 @@ services:
       - ./config/promtail/config.yml:/etc/promtail/config.yml
 
   prometheus:
-    #<<: *loki-logged-service
     image: prom/prometheus
     ports:
       - "9090:9090"
@@ -166,7 +141,6 @@ services:
       - otelcol
 
   spicedb:
-    #<<: *loki-logged-service
     build: ../component/spicedb
     environment:
       - "SPICEDB_LOG_FORMAT=console"
@@ -177,7 +151,6 @@ services:
       - "50051:50051"
 
   versitygw:
-    #<<: *loki-logged-service
     image: systeminit/versitygw:stable
     entrypoint: ["/bin/sh"]
     command:
