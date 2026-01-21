@@ -329,7 +329,7 @@ export const useAuthStore = () => {
               },
             });
           }
-        } catch (error) {
+        } catch (_error) {
           // Silently fail - logout will still clear local state
         }
 

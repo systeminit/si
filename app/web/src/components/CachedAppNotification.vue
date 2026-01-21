@@ -54,7 +54,7 @@ async function check() {
     if (runningHash && latestHash !== runningHash) {
       openModal();
     }
-  } catch (err) {
+  } catch (_err) {
     // local dev errors here because the manifest file doesn't exist
     stopInterval();
   }

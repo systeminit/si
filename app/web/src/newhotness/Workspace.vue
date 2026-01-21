@@ -146,7 +146,7 @@
 <script lang="ts" setup>
 import { useRoute, useRouter } from "vue-router";
 import clsx from "clsx";
-import { computed, onMounted, onBeforeUnmount, onBeforeMount, ref, provide, watch, Ref, inject } from "vue";
+import { computed, onMounted, onBeforeMount, ref, provide, watch, Ref, inject } from "vue";
 import * as _ from "lodash-es";
 import { useQuery, useQueryClient } from "@tanstack/vue-query";
 import { Span, trace } from "@opentelemetry/api";
@@ -173,7 +173,7 @@ import {
   startMouseEmitters,
   startKeyEmitter,
   startWindowResizeEmitter,
-  windowWidthReactive
+  windowWidthReactive,
 } from "./logic_composables/emitters";
 import { getUserPkFromToken, tokensByWorkspacePk } from "./logic_composables/tokens";
 import ComponentPage from "./ComponentDetails.vue";

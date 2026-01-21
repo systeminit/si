@@ -130,7 +130,7 @@ export const useWatchedForm = <Data extends Record<string, string>>(label: strin
           try {
             await onSubmit(props);
             hasSubmitted = true;
-          } catch (e) {
+          } catch (_e) {
             // TODO report errors and display on caller forms
             // Cancel the spinner and bifrosting on failure
             markComplete();

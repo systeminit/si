@@ -104,7 +104,7 @@ const functionCode = computed(() => actionDetailQuery.data.value?.code);
 const argsJson = computed(() => {
   try {
     return JSON.stringify(actionDetailQuery.data.value?.args, null, 2);
-  } catch (e) {
+  } catch (_e) {
     return "// Error formatting arguments";
   }
 });
