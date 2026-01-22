@@ -12,7 +12,7 @@ use clap::{
 };
 use si_service::prelude::*;
 
-const NAME: &str = "bedrock";
+pub const NAME: &str = "bedrock";
 
 include!(concat!(env!("OUT_DIR"), "/git_metadata.rs"));
 
