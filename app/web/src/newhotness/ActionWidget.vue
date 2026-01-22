@@ -9,13 +9,19 @@
     "
     @click="clickHandler"
   >
-    <Toggle :selected="!!props.actionId" class="flex-none" />
     <StatusIndicatorIcon type="action" :status="actionPrototypeView.kind" tone="inherit" class="flex-none" />
     <div class="font-bold leading-normal text-sm">
       {{ actionPrototypeView.displayName || actionPrototypeView.name }}
     </div>
 
-    <Icon v-if="actionBifrosting" name="loader" class="ml-auto" size="sm" />
+    <Toggle
+      :selected="!!props.actionId"
+      class="flex-none ml-auto"
+      onLabel="Queued"
+      offLabel="UnQueued"
+      labelWidth="w-[70px]"
+    />
+    <Icon v-if="actionBifrosting" name="loader" size="sm" />
   </div>
 </template>
 
