@@ -16,15 +16,19 @@ use si_service::{
     },
 };
 
+use crate::args::{
+    NAME,
+    VERSION,
+};
+
 mod args;
 
-const BIN_NAME: &str = env!("CARGO_BIN_NAME");
 const LIB_NAME: &str = concat!(env!("CARGO_BIN_NAME"), "_server");
 
 const GRACEFUL_SHUTDOWN_TIMEOUT: Duration = Duration::from_secs(30);
 
 fn main() -> Result<()> {
-    rt::block_on(BIN_NAME, async_main())
+    rt::block_on(NAME, async_main())
 }
 
 async fn async_main() -> Result<()> {
@@ -45,17 +49,18 @@ async fn async_main() -> Result<()> {
                 Default::default()
             })
             .log_file_directory(args.log_file_directory.clone())
-            .service_name(BIN_NAME)
+            .service_name(NAME)
+            .service_version(VERSION)
             .service_namespace("si")
             .log_env_var_prefix("SI")
-            .app_modules(vec![BIN_NAME, LIB_NAME])
+            .app_modules(vec![NAME, LIB_NAME])
             .interesting_modules(vec![])
             .build()?;
 
         telemetry_application::init(config, &telemetry_tracker, telemetry_token.clone())?
     };
 
-    startup::startup(BIN_NAME).await?;
+    startup::startup(NAME).await?;
 
     if args.verbose > 0 {
         telemetry

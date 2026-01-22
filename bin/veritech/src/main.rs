@@ -1,15 +1,17 @@
 use std::time::Duration;
 
-use args::NAME;
 use innit_client::InnitClient;
 use si_service::prelude::*;
 use veritech_server::Server;
 
-use crate::args::load_config_with_provider;
+use crate::args::{
+    NAME,
+    VERSION,
+    load_config_with_provider,
+};
 
 mod args;
 
-const BIN_NAME: &str = env!("CARGO_BIN_NAME");
 const LIB_NAME: &str = concat!(env!("CARGO_BIN_NAME"), "_server");
 
 const DEFAULT_GRACEFUL_SHUTDOWN_TIMEOUT: Duration = Duration::from_secs(60 * 20);
@@ -20,9 +22,9 @@ fn main() -> Result<()> {
 
     match args.tokio_cpu_cores() {
         Some(tokio_cpu_cores) => {
-            rt::block_on_with_core_affinity(BIN_NAME, async_main(args), tokio_cpu_cores)
+            rt::block_on_with_core_affinity(NAME, async_main(args), tokio_cpu_cores)
         }
-        None => rt::block_on(BIN_NAME, async_main(args)),
+        None => rt::block_on(NAME, async_main(args)),
     }
 }
 
@@ -45,17 +47,18 @@ async fn async_main(args: args::Args) -> Result<()> {
             })
             .log_file_directory(args.log_file_directory.clone())
             .tokio_console(args.tokio_console)
-            .service_name(BIN_NAME)
+            .service_name(NAME)
+            .service_version(VERSION)
             .service_namespace("si")
             .log_env_var_prefix("SI")
-            .app_modules(vec![BIN_NAME, LIB_NAME])
+            .app_modules(vec![NAME, LIB_NAME])
             .interesting_modules(vec!["naxum", "si_data_nats", "si_service"])
             .build()?;
 
         telemetry_application::init(config, &telemetry_tracker, telemetry_token.clone())?
     };
 
-    startup::startup(BIN_NAME).await?;
+    startup::startup(NAME).await?;
 
     if args.verbose > 0 {
         telemetry
