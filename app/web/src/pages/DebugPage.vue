@@ -231,6 +231,8 @@ const getButtonTooltip = (variant: string) => {
     return "The nostyle variant is used to clear ALL styles";
   } else if (variant === "flat") {
     return "Similar to the neutral style, but meant to have the same bg color as the things it is sitting on top of (e.g. appear to not have a separate bg color)";
+  } else if (variant === "toggle") {
+    return "A special tone used only for the buttons at the top of the Explore page in the area below the search bar";
   } else {
     return undefined;
   }

@@ -542,6 +542,8 @@ export type SelectionsInQueryString = Partial<{
   retainSessionState: string; // If set, the component should load up with the last state it had on this tab. Used by Explore.vue
   hideSubscriptions: string; // Flag to hide unconnected components when navigating to map
   showDiff: string; // Flag to show only components with diff on the map
+  showCredentials: string; // Flag to show or hide credential components from the map
+  showNoConnections: string; // Flag to show or hide components with no subscriptions from the map
 }>;
 
 const tokenFailStatus = ref();

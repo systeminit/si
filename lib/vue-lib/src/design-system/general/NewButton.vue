@@ -17,7 +17,9 @@
           'flex flex-row items-center justify-center rounded-sm',
           size === '2xs' || size === 'xs' ? 'gap-2xs' : 'gap-xs',
           'transition-all whitespace-nowrap leading-none font-medium max-h-fit',
-          hasLabel ? 'px-xs py-2xs' : 'p-3xs m-3xs',
+          tone === 'toggle' ? 'px-2xs min-h-[28px]' : [
+            hasLabel ? 'px-xs py-2xs' : 'p-3xs m-3xs',
+          ],
           tone !== 'empty' && 'border',
           computedTextSize,
           truncateText && 'min-w-0',
@@ -42,6 +44,16 @@
                     'text-neutral-900 bg-100 border-neutral-400 hover:bg-neutral-200',
                     'text-white bg-neutral-800 border-neutral-600 hover:bg-neutral-700',
                   ),
+                  toggle: clsx(
+                    'font-mono text-left truncate relative',
+                    themeClasses(
+                      'border-neutral-400 hover:border-action-500',
+                      'border-neutral-600 hover:border-action-300',
+                    ),
+                    active
+                      ? themeClasses('bg-action-200', 'bg-action-900')
+                      : themeClasses('bg-neutral-100', 'bg-neutral-900'),
+                  ),
                   action: [
                     'text-white',
                     themeClasses(
@@ -64,6 +76,7 @@
             {
               neutral: themeClasses('bg-neutral-100', 'bg-neutral-600'),
               flat: themeClasses('bg-neutral-200', 'bg-neutral-700'),
+              toggle: '',
               action: themeClasses('bg-[#2583EC]', 'bg-[#1D5BA0]'),
               warning: themeClasses('bg-white', 'bg-[#67452D]'),
               destructive: themeClasses('bg-white', 'bg-[#562E2E]'),
@@ -104,7 +117,7 @@
       <TruncateWithTooltip
         v-if="truncateText && hasLabel"
         ref="truncateRef"
-        :class="size === '2xs' || size === 'xs' ? 'py-3xs' : 'py-2xs'"
+        :class="labelClasses"
       >
         <slot v-if="confirmClick && confirmFirstClickAt" name="confirm-click">
           |
@@ -118,7 +131,7 @@
       </TruncateWithTooltip>
       <span
         v-else-if="hasLabel"
-        :class="size === '2xs' || size === 'xs' ? 'py-3xs' : 'py-2xs'"
+        :class="labelClasses"
       >
         <slot v-if="confirmClick && confirmFirstClickAt" name="confirm-click">
           |
@@ -148,6 +161,7 @@
               {
                 neutral: '',
                 flat: '',
+                toggle: '',
                 action: '',
                 warning: '',
                 destructive: '',
@@ -349,6 +363,11 @@ const focus = () => {
 const { width: buttonWidth } = useElementSize(mainElRef);
 
 const scaleEffectClasses = computed(() => {
+  // The toggle button tone does not scale
+  if (props.tone === "toggle") {
+    return "";
+  }
+
   // This prevents the button from scaling too much if it is wide
   if (buttonWidth.value < 200) {
     return tw`hover:scale-105 active:scale-100`;
@@ -390,6 +409,14 @@ const computedTextSize = computed(() => {
   }
 });
 
+const labelClasses = computed(() => {
+  if (props.tone === "toggle") {
+    return tw`py-2xs text-[13px] font-normal`;
+  }
+
+  return props.size === '2xs' || props.size === 'xs' ? tw`py-3xs` : tw`py-2xs`;
+});
+
 const tooltipObject = computed(() =>
   props.tooltip
     ? {
@@ -415,6 +442,7 @@ export type ButtonSizes = "2xs" | "xs" | "sm" | "md" | "lg" | "xl";
 export const BUTTON_TONES = [
   "neutral",
   "flat", // similar to neutral, but has the same bg as the content its sitting on top of
+  "toggle", // alternative neutral style used for buttons in the same area as ExploreModeTile
   "action",
   "warning",
   "destructive",

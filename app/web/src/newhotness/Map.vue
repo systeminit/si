@@ -57,7 +57,8 @@ export type GraphData = {
     id="map"
     :class="
       clsx(
-        'grid h-full',
+        'grid h-full border-t',
+        themeClasses('border-neutral-200 bg-white', 'border-neutral-800 bg-neutral-900'),
         showSkeleton && 'hidden', // Since the svgs need a target to be drawn, we need to have this in the DOM
       )
     "
@@ -247,11 +248,14 @@ import { pickBrandIconByString } from "./util";
 import ComponentContextMenu from "./ComponentContextMenu.vue";
 import { truncateString } from "./logic_composables/string_funcs";
 import MiniMap from "./MiniMap.vue";
+import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 
 const MAX_STRING_LENGTH = 18;
 
 const router = useRouter();
 const { theme } = useTheme();
+
+const featureFlagsStore = useFeatureFlagsStore();
 
 const props = defineProps<{
   active: boolean;
@@ -955,6 +959,8 @@ const onEscape = () => {
     delete query.map;
     delete query.c;
     delete query.hideSubscriptions; // Also clear hideSubscriptions when closing map
+    delete query.showCredentials; // Also clear showCredentials when closing map
+    delete query.showNoConnections; // Also clear showNoConnections when closing map
     delete query.showDiff;
     query.grid = "1";
     router.push({ query });
@@ -1052,6 +1058,13 @@ const connections = useQuery<IncomingConnections[]>({
   },
 });
 
+const isCredentialSchema = (schemaName: string | undefined) => {
+  if (schemaName) {
+    return schemaName.toLowerCase().includes("credential");
+  }
+  return false;
+};
+
 const mapData = computed(() => {
   const nodes = new Set<string>();
   const edges = new Set<string>();
@@ -1064,6 +1077,8 @@ const mapData = computed(() => {
   const shouldHideUnconnected = router.currentRoute.value.query.hideSubscriptions === "1";
 
   const showOnlyDiff = router.currentRoute.value.query.showDiff === "1";
+  const showCredentials = router.currentRoute.value.query.showCredentials === "1" || !featureFlagsStore.MAP_VIEW_UPGRADES;
+  const showNoConnections = router.currentRoute.value.query.showNoConnections === "1" || !featureFlagsStore.MAP_VIEW_UPGRADES;
 
   const hasSelectedComponents = selectedComponents.value.size > 0;
 
@@ -1074,7 +1089,14 @@ const mapData = computed(() => {
   connections.data.value.forEach((c) => {
     const component = componentsById.value[c.id];
     if (!component) return;
+    // If showOnlyDiff is enabled, only show components with diffs
     if (showOnlyDiff && component.diffStatus === "None") return;
+
+    // If showCredentials is disabled, hide components which are credentials
+    if (!showCredentials && isCredentialSchema(component.schemaName)) {
+      return;
+    }
+
     allComponents.set(c.id, component);
 
     c.connections.forEach((e) => {
@@ -1084,6 +1106,41 @@ const mapData = computed(() => {
       allConnections.add(edge);
     });
   });
+
+  // If showNoConnections is disabled, filter out components which have no connections
+  if (!showNoConnections) {
+    allComponents.forEach((component) => {
+      let keepComponent = false;
+      for (const connection of allConnections) {
+        if (connection.includes(component.id)) {
+          if (showCredentials) {
+            // if showCredentials is true then this is a valid connection
+            keepComponent = true;
+            break;
+          } else {
+            // otherwise, filter out connections to a credential
+            const ids = connection.split("-");
+            const id1 = ids[0];
+            const id2 = ids[1];
+            if (
+              (id1 && isCredentialSchema(componentsById.value[id1]?.schemaName)) ||
+              (id2 && isCredentialSchema(componentsById.value[id2]?.schemaName)) 
+            ) {
+              // one of the components connected via this connection is a credential, so ignore it
+              continue;
+            } else {
+              // this connection is a valid one
+              keepComponent = true;
+              break;
+            }
+          }
+        }
+      }
+      if (!keepComponent) {
+        allComponents.delete(component.id)
+      }
+    });
+  }
 
   // If we're in hideSubscriptions mode and have selected components, filter the data
   if (shouldHideUnconnected && hasSelectedComponents) {
@@ -1098,6 +1155,9 @@ const mapData = computed(() => {
     // Add directly connected components
     selectedComponents.value.forEach((selectedComp) => {
       if (showOnlyDiff && selectedComp.diffStatus === "None") return;
+      if (!showCredentials && isCredentialSchema(selectedComp.schemaName)) {
+        return;
+      }
 
       const selectedId = selectedComp.id;
 
@@ -1132,7 +1192,10 @@ const mapData = computed(() => {
   } else {
     // Normal mode: include all components
     allComponents.forEach((component, componentId) => {
-      if (!showOnlyDiff || (showOnlyDiff && component.diffStatus !== "None")) {
+      if (
+        (showCredentials || !isCredentialSchema(component.schemaName)) &&
+        (!showOnlyDiff || component.diffStatus !== "None")
+      ) {
         nodes.add(componentId);
         components[componentId] = component;
       }

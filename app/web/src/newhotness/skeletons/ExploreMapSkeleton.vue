@@ -1,6 +1,11 @@
 <template>
   <DelayedComponent>
-    <section :class="clsx('h-full w-full', themeClasses('bg-white', 'bg-neutral-950'))">
+    <section :class="
+      clsx(
+        'h-full w-full border-t',
+        themeClasses('border-neutral-200 bg-white', 'border-neutral-800 bg-neutral-900'),
+      )
+    ">
       <div
         :class="
           clsx(

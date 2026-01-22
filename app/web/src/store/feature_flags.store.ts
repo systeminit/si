@@ -19,6 +19,7 @@ const USER_FLAG_MAPPING = {
   SHOW_WS_DISCONNECT: "show-ws-disconnect",
   SHOW_POLICIES: "show-policies",
   SHOW_AUTHORING_NAV: "authoring-in-nav",
+  MAP_VIEW_UPGRADES: "map-view-upgrades",
 } as const;
 const WORKSPACE_FLAG_MAPPING: Record<string, string> = {
   // STORE_FLAG_NAME: "posthogFlagName",
