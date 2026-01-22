@@ -17,9 +17,9 @@
           'flex flex-row items-center justify-center rounded-sm',
           size === '2xs' || size === 'xs' ? 'gap-2xs' : 'gap-xs',
           'transition-all whitespace-nowrap leading-none font-medium max-h-fit',
-          tone === 'toggle' ? 'px-2xs min-h-[28px]' : [
-            hasLabel ? 'px-xs py-2xs' : 'p-3xs m-3xs',
-          ],
+          tone === 'toggle'
+            ? 'px-2xs min-h-[28px]'
+            : [hasLabel ? 'px-xs py-2xs' : 'p-3xs m-3xs'],
           tone !== 'empty' && 'border',
           computedTextSize,
           truncateText && 'min-w-0',
@@ -44,6 +44,8 @@
                     'text-neutral-900 bg-100 border-neutral-400 hover:bg-neutral-200',
                     'text-white bg-neutral-800 border-neutral-600 hover:bg-neutral-700',
                   ),
+                  navFlat:
+                    'text-white bg-neutral-800 border-neutral-600 hover:bg-neutral-700',
                   toggle: clsx(
                     'font-mono text-left truncate relative',
                     themeClasses(
@@ -76,6 +78,7 @@
             {
               neutral: themeClasses('bg-neutral-100', 'bg-neutral-600'),
               flat: themeClasses('bg-neutral-200', 'bg-neutral-700'),
+              navFlat: 'bg-neutral-700',
               toggle: '',
               action: themeClasses('bg-[#2583EC]', 'bg-[#1D5BA0]'),
               warning: themeClasses('bg-white', 'bg-[#67452D]'),
@@ -129,10 +132,7 @@
         </slot>
         <slot v-else>{{ label }}</slot>
       </TruncateWithTooltip>
-      <span
-        v-else-if="hasLabel"
-        :class="labelClasses"
-      >
+      <span v-else-if="hasLabel" :class="labelClasses">
         <slot v-if="confirmClick && confirmFirstClickAt" name="confirm-click">
           |
           {{
@@ -161,6 +161,7 @@
               {
                 neutral: '',
                 flat: '',
+                navFlat: '',
                 toggle: '',
                 action: '',
                 warning: '',
@@ -414,7 +415,7 @@ const labelClasses = computed(() => {
     return tw`py-2xs text-[13px] font-normal`;
   }
 
-  return props.size === '2xs' || props.size === 'xs' ? tw`py-3xs` : tw`py-2xs`;
+  return props.size === "2xs" || props.size === "xs" ? tw`py-3xs` : tw`py-2xs`;
 });
 
 const tooltipObject = computed(() =>
@@ -442,6 +443,7 @@ export type ButtonSizes = "2xs" | "xs" | "sm" | "md" | "lg" | "xl";
 export const BUTTON_TONES = [
   "neutral",
   "flat", // similar to neutral, but has the same bg as the content its sitting on top of
+  "navFlat", // flat, but for the nav where we dont have light mode styles
   "toggle", // alternative neutral style used for buttons in the same area as ExploreModeTile
   "action",
   "warning",
