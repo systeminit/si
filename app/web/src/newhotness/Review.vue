@@ -331,6 +331,7 @@ import { KeyDetails, keyEmitter } from "./logic_composables/emitters";
 import { useComponentSearch } from "./logic_composables/search";
 import { useComponentActions } from "./logic_composables/component_actions";
 import { useComponentDeletion } from "./composables/useComponentDeletion";
+import { trackEvent } from "@/utils/tracking";
 
 const ctx = useContext();
 
@@ -780,6 +781,7 @@ const actionCounts = computed(() => {
 });
 
 const exitReview = () => {
+  trackEvent("change_set_review_end", { changeSetId: ctx.changeSetId.value });
   router.push({
     name: "new-hotness",
   });
@@ -986,6 +988,8 @@ onMounted(() => {
 
   // Initialize component selection from URL
   initializeFromUrl();
+
+  trackEvent("change_set_review_begin", { changeSetId: ctx.changeSetId.value });
 });
 onBeforeUnmount(() => {
   keyEmitter.off("Escape", onEscape);
@@ -1011,6 +1015,8 @@ const selectedComponentErased = computed(
 
 const goToComponentDetails = () => {
   if (!selectedComponentId.value || selectedComponentErased.value) return;
+
+  trackEvent("change_set_review_end", { changeSetId: ctx.changeSetId.value, componentId: selectedComponentId.value });
 
   router.push({
     name: "new-hotness-component",
@@ -1046,6 +1052,10 @@ const fixActionsPanelState = () => {
 };
 
 watch(selectedComponentId, () => {
+  trackEvent("change_set_review_component", {
+    changeSetId: ctx.changeSetId.value,
+    componentId: selectedComponentId.value,
+  });
   fixActionsPanelState();
 });
 
