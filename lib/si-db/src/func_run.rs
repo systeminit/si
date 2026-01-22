@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use si_events::{
     ActionId,
     AttributeValueId,
@@ -84,13 +86,13 @@ impl FuncRunDb {
         let postcard_bytes =
             postcard::to_stdvec(&func_run).map_err(|e| SiDbError::Postcard(e.to_string()))?;
 
+        // Write to si-db
         ctx.txns()
             .await?
             .pg()
             .execute(
                 "INSERT INTO func_runs (
                     key,
-                    sort_key,
                     created_at,
                     updated_at,
                     state,
@@ -118,8 +120,7 @@ impl FuncRunDb {
                     $11,
                     $12,
                     $13,
-                    $14,
-                    $15
+                    $14
                 ) ON CONFLICT (key) DO UPDATE SET
                     updated_at = EXCLUDED.updated_at,
                     state = EXCLUDED.state,
@@ -127,7 +128,6 @@ impl FuncRunDb {
                     value = EXCLUDED.value",
                 &[
                     &func_run.id().to_string(),
-                    &func_run.tenancy().workspace_pk.to_string(),
                     &func_run.created_at(),
                     &func_run.updated_at(),
                     &func_run.state().to_string(),
@@ -147,9 +147,21 @@ impl FuncRunDb {
             )
             .await?;
 
+        // Also write to layer-db for backward compatibility during migration
+        ctx.func_run_layer_db()
+            .write(
+                Arc::new(func_run.clone()),
+                None, // web_events
+                *func_run.tenancy(),
+                *func_run.actor(),
+            )
+            .await
+            .map_err(|e| SiDbError::LayerDb(e.to_string()))?;
+
         Ok(())
     }
 
+    // NOTE(victor): This is only used by migration so it does not write to layer-db
     /// Write multiple func runs to the database in a single INSERT query.
     /// This is more efficient than calling upsert multiple times.
     pub async fn upsert_batch(ctx: &impl SiDbContext, func_runs: Vec<FuncRun>) -> SiDbResult<()> {
@@ -179,14 +191,15 @@ impl FuncRunDb {
         let mut values_clauses = Vec::new();
         let mut row_data_vec = Vec::new();
         let mut param_index = 1;
+        const COL_COUNT: usize = 14;
 
         for func_run in &func_runs {
             let json: serde_json::Value = serde_json::to_value(func_run)?;
             let postcard_bytes =
                 postcard::to_stdvec(func_run).map_err(|e| SiDbError::Postcard(e.to_string()))?;
 
-            // Create placeholders for this row ($1, $2, ... $15)
-            let placeholders: Vec<String> = (param_index..param_index + 15)
+            // Create placeholders for this row ($1, $2, ... $COL_COUNT)
+            let placeholders: Vec<String> = (param_index..param_index + COL_COUNT)
                 .map(|i| format!("${i}"))
                 .collect();
             values_clauses.push(format!("({})", placeholders.join(", ")));
@@ -210,13 +223,12 @@ impl FuncRunDb {
                 postcard_bytes,
             });
 
-            param_index += 15;
+            param_index += COL_COUNT;
         }
 
         let query = format!(
             "INSERT INTO func_runs (
                 key,
-                sort_key,
                 created_at,
                 updated_at,
                 state,
@@ -240,7 +252,8 @@ impl FuncRunDb {
         );
 
         // Build the parameter array dynamically
-        // We need to store the slices separately to keep them alive
+        // This looks like extra work, but since the pg library expects refs of everything,
+        // we had to create the row_data_vec to own the values while we pass them down
         let postcard_slices: Vec<&[u8]> = row_data_vec
             .iter()
             .map(|rd| rd.postcard_bytes.as_slice())
@@ -249,7 +262,6 @@ impl FuncRunDb {
         let mut params: Vec<&(dyn postgres_types::ToSql + Sync)> = Vec::new();
         for (idx, row_data) in row_data_vec.iter().enumerate() {
             params.push(&row_data.id);
-            params.push(&row_data.workspace_pk);
             params.push(&row_data.created_at);
             params.push(&row_data.updated_at);
             params.push(&row_data.state);
@@ -270,6 +282,7 @@ impl FuncRunDb {
         Ok(())
     }
 
+    // NOTE(victor): This is only used by migration so it does not fallback to layer-db
     /// Returns the IDs from the input batch that do NOT exist in the database.
     /// This is useful for determining which func runs need to be migrated.
     pub async fn find_missing_ids(
@@ -323,7 +336,11 @@ impl FuncRunDb {
                 .map_err(|e| SiDbError::Postcard(e.to_string()))?;
             Ok(Some(func_run))
         } else {
-            Ok(None)
+            // Fall back to layer-db if not found in si-db
+            ctx.func_run_layer_db()
+                .get_last_run_for_action_id_opt(workspace_pk, action_id)
+                .await
+                .map_err(|e| SiDbError::LayerDb(e.to_string()))
         }
     }
 
@@ -360,6 +377,18 @@ impl FuncRunDb {
             func_runs.push(func_run);
         }
 
+        // If si-db returned empty, fall back to layer-db
+        if func_runs.is_empty() {
+            if let Some(layer_func_runs) = ctx
+                .func_run_layer_db()
+                .list_management_history(workspace_pk, change_set_id)
+                .await
+                .map_err(|e| SiDbError::LayerDb(e.to_string()))?
+            {
+                return Ok(layer_func_runs);
+            }
+        }
+
         Ok(func_runs)
     }
 
@@ -386,7 +415,16 @@ impl FuncRunDb {
                 .map_err(|e| SiDbError::Postcard(e.to_string()))?;
             Ok(Some(func_run))
         } else {
-            Ok(None)
+            // Fall back to layer-db if not found in si-db
+            ctx.func_run_layer_db()
+                .get_last_management_run_for_func_and_component_id(
+                    workspace_pk,
+                    change_set_id,
+                    component_id,
+                    func_id,
+                )
+                .await
+                .map_err(|e| SiDbError::LayerDb(e.to_string()))
         }
     }
 
@@ -411,7 +449,11 @@ impl FuncRunDb {
                 .map_err(|e| SiDbError::Postcard(e.to_string()))?;
             Ok(Some(func_run))
         } else {
-            Ok(None)
+            // Fall back to layer-db if not found in si-db
+            ctx.func_run_layer_db()
+                .get_last_qualification_for_attribute_value_id(workspace_pk, attribute_value_id)
+                .await
+                .map_err(|e| SiDbError::LayerDb(e.to_string()))
         }
     }
 
@@ -432,29 +474,19 @@ impl FuncRunDb {
                 .map_err(|e| SiDbError::Postcard(e.to_string()))?;
             Ok(Some(func_run))
         } else {
-            Ok(None)
+            // Fall back to layer-db if not found in si-db
+            ctx.func_run_layer_db()
+                .try_read(key)
+                .await
+                .map(|arc_func_run| Some((*arc_func_run).clone()))
+                .map_err(|e| SiDbError::LayerDb(e.to_string()))
         }
     }
 
     pub async fn try_read(ctx: &impl SiDbContext, key: FuncRunId) -> SiDbResult<FuncRun> {
-        let maybe_row = ctx
-            .txns()
+        Self::read(ctx, key)
             .await?
-            .pg()
-            .query_opt(
-                &format!("SELECT value FROM {DBNAME} WHERE key = $1"),
-                &[&key.to_string()],
-            )
-            .await?;
-
-        if let Some(row) = maybe_row {
-            let value_bytes: Vec<u8> = row.try_get("value")?;
-            let func_run: FuncRun = postcard::from_bytes(&value_bytes)
-                .map_err(|e| SiDbError::Postcard(e.to_string()))?;
-            Ok(func_run)
-        } else {
-            Err(SiDbError::MissingFuncRun(key))
-        }
+            .ok_or(SiDbError::MissingFuncRun(key))
     }
 
     pub async fn read_many_for_workspace(
@@ -474,6 +506,21 @@ impl FuncRunDb {
             let func_run: FuncRun = postcard::from_bytes(&value_bytes)
                 .map_err(|e| SiDbError::Postcard(e.to_string()))?;
             func_runs.push(func_run);
+        }
+
+        // Fall back to layer-db if si-db returned no results
+        if func_runs.is_empty() {
+            if let Some(layer_func_runs) = ctx
+                .func_run_layer_db()
+                .read_many_for_workspace(workspace_pk)
+                .await
+                .map_err(|e| SiDbError::LayerDb(e.to_string()))?
+            {
+                return Ok(layer_func_runs
+                    .into_iter()
+                    .map(|arc| (*arc).clone())
+                    .collect());
+            }
         }
 
         Ok(func_runs)
@@ -525,6 +572,21 @@ impl FuncRunDb {
             let func_run: FuncRun = postcard::from_bytes(&value_bytes)
                 .map_err(|e| SiDbError::Postcard(e.to_string()))?;
             func_runs.push(func_run);
+        }
+
+        // Fall back to layer-db if si-db returned no results
+        if func_runs.is_empty() {
+            if let Some(layer_func_runs) = ctx
+                .func_run_layer_db()
+                .read_many_for_workspace_paginated(workspace_pk, change_set_id, limit, cursor)
+                .await
+                .map_err(|e| SiDbError::LayerDb(e.to_string()))?
+            {
+                return Ok(layer_func_runs
+                    .into_iter()
+                    .map(|arc| (*arc).clone())
+                    .collect());
+            }
         }
 
         Ok(func_runs)
@@ -583,6 +645,27 @@ impl FuncRunDb {
             let func_run: FuncRun = postcard::from_bytes(&value_bytes)
                 .map_err(|e| SiDbError::Postcard(e.to_string()))?;
             func_runs.push(func_run);
+        }
+
+        // Fall back to layer-db if si-db returned no results
+        if func_runs.is_empty() {
+            if let Some(layer_func_runs) = ctx
+                .func_run_layer_db()
+                .read_many_for_component_paginated(
+                    workspace_pk,
+                    change_set_id,
+                    component_id,
+                    limit,
+                    cursor,
+                )
+                .await
+                .map_err(|e| SiDbError::LayerDb(e.to_string()))?
+            {
+                return Ok(layer_func_runs
+                    .into_iter()
+                    .map(|arc| (*arc).clone())
+                    .collect());
+            }
         }
 
         Ok(func_runs)

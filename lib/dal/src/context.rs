@@ -506,6 +506,15 @@ impl SiDbContext for DalContext {
     fn change_set_id(&self) -> ChangeSetId {
         self.change_set_id()
     }
+
+    // TODO get rid of these after we don't need layer db fallbacks
+    fn func_run_layer_db(&self) -> &si_layer_cache::db::func_run::FuncRunLayerDb {
+        self.services_context.layer_db.func_run()
+    }
+
+    fn func_run_log_layer_db(&self) -> &si_layer_cache::db::func_run_log::FuncRunLogLayerDb {
+        self.services_context.layer_db.func_run_log()
+    }
 }
 
 impl SiDbTransactions for Transactions {

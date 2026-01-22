@@ -11,6 +11,7 @@ rust_library(
         "//lib/si-data-pg:si-data-pg",
         "//lib/si-events-rs:si-events",
         "//lib/si-id:si-id",
+        "//lib/si-layer-cache:si-layer-cache",
         "//lib/telemetry-rs:telemetry",
         "//third-party/rust:async-trait",
         "//third-party/rust:chrono",

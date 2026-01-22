@@ -61,6 +61,8 @@ mod embedded {
 pub enum SiDbError {
     #[error("action id not found: {0}")]
     ActionIdNotFound(si_events::ActionId),
+    #[error("layer db error: {0}")]
+    LayerDb(String),
     #[error("missing func run: {0}")]
     MissingFuncRun(si_events::FuncRunId),
     #[error("nats error")]

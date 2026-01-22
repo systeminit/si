@@ -8078,6 +8078,7 @@ dependencies = [
  "si-data-pg",
  "si-events",
  "si-id",
+ "si-layer-cache",
  "strum",
  "telemetry",
  "thiserror 2.0.12",

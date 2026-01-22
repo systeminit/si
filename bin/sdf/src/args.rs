@@ -176,7 +176,7 @@ pub(crate) struct Args {
     )]
     pub(crate) backfill_checkpoint_interval_secs: u64,
 
-    /// Maximum concurrent uploads during backfill (layer cache and func runs)
+    /// Maximum concurrent uploads per cache type during backfill
     #[arg(long, default_value = "5", env = "SI_BACKFILL_MAX_CONCURRENT_UPLOADS")]
     pub(crate) backfill_max_concurrent_uploads: usize,
 

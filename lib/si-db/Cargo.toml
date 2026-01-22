@@ -23,6 +23,7 @@ si-data-nats = { path = "../../lib/si-data-nats" }
 si-data-pg = { path = "../../lib/si-data-pg" }
 si-events = { path = "../../lib/si-events-rs" }
 si-id = { path = "../../lib/si-id" }
+si-layer-cache = { path = "../../lib/si-layer-cache" }
 strum = { workspace = true }
 telemetry = { path = "../../lib/telemetry-rs" }
 thiserror = { workspace = true }

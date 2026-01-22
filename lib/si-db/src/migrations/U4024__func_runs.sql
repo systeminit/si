@@ -1,7 +1,6 @@
 CREATE TABLE func_runs
 (
     key                              text                      NOT NULL PRIMARY KEY,
-    sort_key                         text                      NOT NULL,
     created_at                       timestamp with time zone  NOT NULL DEFAULT CLOCK_TIMESTAMP(),
     updated_at                       timestamp with time zone  NOT NULL DEFAULT CLOCK_TIMESTAMP(),
     state                            text                      NOT NULL,
@@ -18,5 +17,4 @@ CREATE TABLE func_runs
     serialization_lib                text                      NOT NULL DEFAULT 'postcard'
 );
 
-CREATE INDEX IF NOT EXISTS func_runs_sort_key ON func_runs (sort_key);
 CREATE INDEX IF NOT EXISTS by_attribute_value_id ON func_runs (attribute_value_id, updated_at DESC);
