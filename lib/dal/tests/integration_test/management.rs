@@ -93,7 +93,7 @@ async fn exec_mgmt_func(
     Ok((execution_result, result))
 }
 
-#[test]
+#[test(enable_veritech)]
 async fn set_resource(ctx: &mut DalContext) -> Result<()> {
     // Create a schema that has mirrored resource_value + domain props
     let _test_variant_id = variant::create(
@@ -182,7 +182,7 @@ async fn set_resource(ctx: &mut DalContext) -> Result<()> {
     Ok(())
 }
 
-#[test]
+#[test(enable_veritech)]
 async fn import_and_refresh(ctx: &mut DalContext) -> Result<()> {
     let small_even_lego = create_component_for_default_schema_name_in_default_view(
         ctx,
@@ -291,7 +291,7 @@ async fn import_and_refresh(ctx: &mut DalContext) -> Result<()> {
     Ok(())
 }
 
-#[test]
+#[test(enable_veritech)]
 async fn update_managed_components_in_view(ctx: &DalContext) -> Result<()> {
     let small_odd_lego = create_component_for_default_schema_name_in_default_view(
         ctx,
@@ -362,7 +362,7 @@ async fn update_managed_components_in_view(ctx: &DalContext) -> Result<()> {
     Ok(())
 }
 
-#[test]
+#[test(enable_veritech)]
 async fn update_managed_components(ctx: &DalContext) -> Result<()> {
     let small_odd_lego = create_component_for_default_schema_name_in_default_view(
         ctx,
@@ -413,7 +413,7 @@ async fn update_managed_components(ctx: &DalContext) -> Result<()> {
     Ok(())
 }
 
-#[test]
+#[test(enable_veritech)]
 async fn create_component_of_other_schema(ctx: &DalContext) -> Result<()> {
     let small_odd_lego = create_component_for_default_schema_name_in_default_view(
         ctx,
@@ -488,7 +488,7 @@ async fn create_component_of_other_schema(ctx: &DalContext) -> Result<()> {
     Ok(())
 }
 
-#[test]
+#[test(enable_veritech)]
 async fn create_component_of_same_schema(ctx: &DalContext) -> Result<()> {
     let small_odd_lego = create_component_for_default_schema_name_in_default_view(
         ctx,
@@ -581,7 +581,7 @@ async fn create_component_of_same_schema(ctx: &DalContext) -> Result<()> {
     Ok(())
 }
 
-#[test]
+#[test(enable_veritech)]
 async fn execute_management_func(ctx: &DalContext) -> Result<()> {
     let small_odd_lego = create_component_for_default_schema_name_in_default_view(
         ctx,
@@ -631,7 +631,7 @@ async fn execute_management_func(ctx: &DalContext) -> Result<()> {
     Ok(())
 }
 
-#[test]
+#[test(enable_veritech)]
 async fn create_in_views(ctx: &DalContext) -> Result<()> {
     let mut small_odd_lego = create_component_for_default_schema_name_in_default_view(
         ctx,
@@ -704,7 +704,7 @@ async fn create_in_views(ctx: &DalContext) -> Result<()> {
     Ok(())
 }
 
-#[test]
+#[test(enable_veritech)]
 async fn create_view_and_in_view(ctx: &DalContext) -> Result<()> {
     let mut small_odd_lego = create_component_for_default_schema_name_in_default_view(
         ctx,
@@ -776,7 +776,7 @@ async fn create_view_and_in_view(ctx: &DalContext) -> Result<()> {
     Ok(())
 }
 
-#[test]
+#[test(enable_veritech)]
 async fn delete_and_erase_components(ctx: &mut DalContext) -> Result<()> {
     let manager = create_component_for_default_schema_name_in_default_view(
         ctx,
@@ -911,7 +911,7 @@ async fn delete_and_erase_components(ctx: &mut DalContext) -> Result<()> {
     Ok(())
 }
 
-#[test]
+#[test(enable_veritech)]
 async fn remove_view_and_component_from_view(ctx: &DalContext) -> Result<()> {
     let manager =
         create_component_for_default_schema_name_in_default_view(ctx, "small odd lego", "c-suite")
@@ -1027,7 +1027,7 @@ async fn remove_view_and_component_from_view(ctx: &DalContext) -> Result<()> {
     Ok(())
 }
 
-#[test]
+#[test(enable_veritech)]
 async fn upgrade_manager_variant(ctx: &mut DalContext) -> Result<()> {
     // Set up management schema
     let original_variant = ExpectSchemaVariant(
@@ -1092,7 +1092,7 @@ async fn upgrade_manager_variant(ctx: &mut DalContext) -> Result<()> {
     Ok(())
 }
 
-#[test]
+#[test(enable_veritech)]
 async fn create_and_subscribe_to_source(ctx: &mut DalContext) -> Result<()> {
     create_subscription_tracker_asset(ctx).await?;
 
@@ -1174,7 +1174,7 @@ async fn create_and_subscribe_to_source(ctx: &mut DalContext) -> Result<()> {
 //   if we pull it into a HashMap<name, Component>, Foo and Bar would always appear in the same
 //   order)
 
-#[test]
+#[test(enable_veritech)]
 async fn create_and_subscribe_foo_to_bar(ctx: &mut DalContext) -> Result<()> {
     create_subscription_tracker_asset(ctx).await?;
 
@@ -1241,7 +1241,7 @@ async fn create_and_subscribe_foo_to_bar(ctx: &mut DalContext) -> Result<()> {
     Ok(())
 }
 
-#[test]
+#[test(enable_veritech)]
 async fn create_and_subscribe_bar_to_foo(ctx: &mut DalContext) -> Result<()> {
     create_subscription_tracker_asset(ctx).await?;
 
@@ -1308,7 +1308,7 @@ async fn create_and_subscribe_bar_to_foo(ctx: &mut DalContext) -> Result<()> {
     Ok(())
 }
 
-#[test]
+#[test(enable_veritech)]
 async fn create_and_subscribe_foo_to_bar_reverse(ctx: &mut DalContext) -> Result<()> {
     create_subscription_tracker_asset(ctx).await?;
 
@@ -1376,7 +1376,7 @@ async fn create_and_subscribe_foo_to_bar_reverse(ctx: &mut DalContext) -> Result
     Ok(())
 }
 
-#[test]
+#[test(enable_veritech)]
 async fn management_execution_state_db_test(ctx: &mut DalContext) -> Result<()> {
     let small_odd_lego = create_component_for_default_schema_name_in_default_view(
         ctx,
@@ -1515,7 +1515,7 @@ async fn management_execution_state_db_test(ctx: &mut DalContext) -> Result<()> 
     Ok(())
 }
 
-#[test]
+#[test(enable_veritech)]
 async fn management_func_autosubscribe(ctx: &mut DalContext) -> Result<()> {
     // Create fake::region schema
     let _output = variant::create(
@@ -1900,7 +1900,7 @@ async fn create_subscription_tracker_asset(ctx: &DalContext) -> Result<SchemaVar
     Ok(subscription_tracker)
 }
 
-#[test]
+#[test(enable_veritech)]
 async fn schema_level_management_prototypes(ctx: &mut DalContext) -> Result<()> {
     let test_variant_id = variant::create(
         ctx,

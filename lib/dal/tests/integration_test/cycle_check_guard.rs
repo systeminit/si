@@ -9,7 +9,7 @@ use dal_test::{
     test,
 };
 
-#[test]
+#[test(enable_veritech)]
 async fn cycle_check_guard_test(ctx: &DalContext) -> Result<()> {
     // Cycle check should be disabled by default
     let snap = ctx.workspace_snapshot()?;
@@ -43,7 +43,7 @@ async fn cycle_check_guard_test(ctx: &DalContext) -> Result<()> {
     Ok(())
 }
 
-#[test]
+#[test(enable_veritech)]
 async fn cycle_cannot_be_created_when_cycle_check_is_enabled(ctx: &DalContext) -> Result<()> {
     variant::create(ctx, "test", TEST_ASSET_FUNCTION).await?;
     component::create(ctx, "test", "test").await?;
@@ -61,7 +61,7 @@ async fn cycle_cannot_be_created_when_cycle_check_is_enabled(ctx: &DalContext) -
     Ok(())
 }
 
-#[test]
+#[test(enable_veritech)]
 async fn cycle_can_be_created_when_cycle_check_is_disabled(ctx: &DalContext) -> Result<()> {
     variant::create(ctx, "test", TEST_ASSET_FUNCTION).await?;
     component::create(ctx, "test", "test").await?;
@@ -86,7 +86,7 @@ async fn cycle_can_be_created_when_cycle_check_is_disabled(ctx: &DalContext) -> 
     Ok(())
 }
 
-#[test]
+#[test(enable_veritech)]
 async fn edges_can_be_added_when_there_is_an_existing_cycle(ctx: &DalContext) -> Result<()> {
     variant::create(ctx, "test", TEST_ASSET_FUNCTION).await?;
     component::create(ctx, "test", "test").await?;
@@ -104,7 +104,7 @@ async fn edges_can_be_added_when_there_is_an_existing_cycle(ctx: &DalContext) ->
     Ok(())
 }
 
-#[test]
+#[test(enable_veritech)]
 async fn cycle_cannot_be_created_when_there_is_an_existing_cycle(ctx: &DalContext) -> Result<()> {
     variant::create(ctx, "test", TEST_ASSET_FUNCTION).await?;
     component::create(ctx, "test", "test").await?;

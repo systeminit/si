@@ -4,6 +4,7 @@ mod attribute_prototype;
 mod attribute_value;
 mod attributes;
 mod audit_logging;
+mod authoring;
 mod change_set;
 mod component;
 mod cycle_check_guard;

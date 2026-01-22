@@ -26,7 +26,7 @@ use dal_test::{
 use pretty_assertions_sorted::assert_eq;
 use si_frontend_types::RawGeometry;
 
-#[test]
+#[test(skip_rebaser, skip_pinga)]
 async fn create_view_and_component(ctx: &mut DalContext) {
     let alternative_view = ExpectView::create(ctx).await;
 
@@ -62,7 +62,7 @@ async fn create_view_and_component(ctx: &mut DalContext) {
     )
 }
 
-#[test]
+#[test(skip_rebaser, skip_pinga)]
 async fn deleting_component_deletes_geometries(ctx: &mut DalContext) {
     let component =
         create_component_for_default_schema_name_in_default_view(ctx, "swifty", "shake it off")
@@ -121,7 +121,7 @@ async fn deleting_component_deletes_geometries(ctx: &mut DalContext) {
     assert_eq!(another_diagram.components.len(), 0);
 }
 
-#[test]
+#[test(skip_rebaser, skip_pinga)]
 async fn remove_view_with_no_components(ctx: &mut DalContext) {
     let new_view = ExpectView::create(ctx).await;
 
@@ -163,7 +163,7 @@ async fn remove_view_with_no_components(ctx: &mut DalContext) {
     );
 }
 
-#[test]
+#[test(skip_rebaser, skip_pinga, skip_veritech)]
 async fn remove_view_with_no_exclusive_components(ctx: &mut DalContext) {
     let component = create_component_for_default_schema_name_in_default_view(
         ctx,
@@ -212,7 +212,7 @@ async fn remove_view_with_no_exclusive_components(ctx: &mut DalContext) {
     );
 }
 
-#[test]
+#[test(skip_rebaser, skip_pinga, skip_veritech)]
 async fn remove_view_with_exclusive_components(ctx: &mut DalContext) {
     let new_view = ExpectView::create(ctx).await;
 
@@ -256,7 +256,7 @@ async fn remove_view_with_exclusive_components(ctx: &mut DalContext) {
     assert_eq!(vec![Ulid::from(component.id())], orphans,);
 }
 
-#[test]
+#[test(skip_rebaser, skip_pinga, skip_veritech)]
 async fn remove_view_with_removal_of_exclusive_components(ctx: &mut DalContext) {
     let new_view = ExpectView::create(ctx).await;
 

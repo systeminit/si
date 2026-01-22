@@ -45,7 +45,7 @@ async fn arguments_for_prototype_function_execution(ctx: &mut DalContext) -> Res
     Ok(())
 }
 
-#[test]
+#[test(enable_veritech)]
 async fn attribute_value_path(ctx: &mut DalContext) -> Result<()> {
     // Create a component and commit. For context, the test exclusive schema has the identity
     // function set on "/root/domain/name" with an input from "/root/si/name". We need to ensure
@@ -128,7 +128,7 @@ async fn attribute_value_path(ctx: &mut DalContext) -> Result<()> {
     Ok(())
 }
 
-#[test]
+#[test(enable_veritech)]
 async fn update_object_multiplayer(ctx: &mut DalContext) -> Result<()> {
     // Create a variant that will be in all three change sets
     variant::create(

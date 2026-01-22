@@ -15,7 +15,7 @@ use dal_test::{
     test,
 };
 
-#[test]
+#[test(enable_veritech)]
 async fn asset_func_execution_papercuts(ctx: &mut DalContext) {
     let (schema_name, unstable_schema_variant_id) = {
         let schema_variant = VariantAuthoringClient::create_schema_and_variant(

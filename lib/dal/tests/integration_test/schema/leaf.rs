@@ -26,7 +26,7 @@ use dal_test::{
 use pretty_assertions_sorted::assert_eq;
 use tokio::sync::RwLock;
 
-#[test]
+#[test(enable_veritech)]
 async fn leaf_prototype_rerun(ctx: &mut DalContext) -> Result<()> {
     let schema = Schema::get_by_name(ctx, "swifty").await?;
 
@@ -123,7 +123,7 @@ async fn leaf_prototype_rerun(ctx: &mut DalContext) -> Result<()> {
     Ok(())
 }
 
-#[test]
+#[test(enable_veritech)]
 async fn leaf_prototype_tests(ctx: &mut DalContext) -> Result<()> {
     let schema = Schema::get_by_name(ctx, "swifty").await?;
 

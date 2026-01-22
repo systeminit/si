@@ -46,7 +46,7 @@ mod property_order;
 mod set_type;
 mod upgrade;
 
-#[test]
+#[test(enable_veritech)]
 async fn update_and_insert_and_update(ctx: &mut DalContext) -> Result<()> {
     let component = create_component_for_default_schema_name_in_default_view(
         ctx,
@@ -166,7 +166,7 @@ async fn update_and_insert_and_update(ctx: &mut DalContext) -> Result<()> {
     Ok(())
 }
 
-#[test]
+#[test(enable_veritech)]
 async fn create_and_determine_lineage(ctx: &DalContext) -> Result<()> {
     // List all schemas in the workspace. Pick the first one alphabetically.
     let mut schemas: Vec<Schema> = Schema::list(ctx).await?;
@@ -221,7 +221,7 @@ async fn create_and_determine_lineage(ctx: &DalContext) -> Result<()> {
     Ok(())
 }
 
-#[test]
+#[test(enable_veritech)]
 async fn through_the_wormholes_simple(ctx: &mut DalContext) -> Result<()> {
     let name = "across the universe";
     let component =
@@ -379,7 +379,7 @@ async fn through_the_wormholes_simple(ctx: &mut DalContext) -> Result<()> {
     Ok(())
 }
 
-#[test]
+#[test(enable_veritech)]
 async fn through_the_wormholes_child_value_reactivity(ctx: &mut DalContext) -> Result<()> {
     let name = "across the universe";
     let component =
@@ -521,7 +521,7 @@ async fn through_the_wormholes_child_value_reactivity(ctx: &mut DalContext) -> R
     Ok(())
 }
 
-#[test]
+#[test(enable_veritech)]
 async fn set_the_universe(ctx: &mut DalContext) -> Result<()> {
     let component = create_component_for_default_schema_name_in_default_view(
         ctx,
@@ -580,7 +580,7 @@ async fn set_the_universe(ctx: &mut DalContext) -> Result<()> {
     Ok(())
 }
 
-#[test]
+#[test(enable_veritech)]
 #[ignore = "this test does not pass on the legacy snapshot because id is not included in the node hash"]
 async fn change_component_id(ctx: &mut DalContext) -> Result<()> {
     let component = create_component_for_default_schema_name_in_default_view(
@@ -621,7 +621,7 @@ async fn change_component_id(ctx: &mut DalContext) -> Result<()> {
     Ok(())
 }
 
-#[test]
+#[test(enable_veritech)]
 async fn default_values_appear_in_views(ctx: &mut DalContext) -> Result<()> {
     let _subscription_tracker = variant::create(
         ctx,

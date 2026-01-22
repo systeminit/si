@@ -21,7 +21,7 @@ use dal_test::{
 };
 use veritech_client::ComponentKind;
 
-#[test]
+#[test(enable_veritech)]
 async fn test_execute_debug_func(ctx: &mut DalContext) {
     let code = r#"function debug({ component, debugInput }) {
         console.log('Debugging');
@@ -61,7 +61,7 @@ async fn test_execute_debug_func(ctx: &mut DalContext) {
     assert_eq!("test", value["output"]["b"]);
 }
 
-#[test]
+#[test(enable_veritech)]
 async fn test_debug_func_job(ctx: &mut DalContext) {
     let code = r#"function debug({ component, debugInput }) {
         console.log('Debugging');

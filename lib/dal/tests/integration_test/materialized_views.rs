@@ -47,7 +47,7 @@ use si_frontend_mv_types::{
     reference::ReferenceKind,
 };
 
-#[test]
+#[test(enable_veritech)]
 async fn actions(ctx: &DalContext) -> Result<()> {
     let schema_name = "swifty";
     let component_name = "tes vi";
@@ -125,7 +125,7 @@ async fn actions(ctx: &DalContext) -> Result<()> {
     Ok(())
 }
 
-#[test]
+#[test(enable_veritech)]
 async fn attribute_tree(ctx: &DalContext) -> Result<()> {
     let component =
         create_component_for_default_schema_name_in_default_view(ctx, "swifty", "swifty").await?;
@@ -138,7 +138,7 @@ async fn attribute_tree(ctx: &DalContext) -> Result<()> {
     Ok(())
 }
 
-#[test]
+#[test(enable_veritech)]
 async fn schema_variant(ctx: &DalContext) -> Result<()> {
     let schema_variant_id = SchemaVariant::default_id_for_schema_name(ctx, "swifty").await?;
 
@@ -149,7 +149,7 @@ async fn schema_variant(ctx: &DalContext) -> Result<()> {
     Ok(())
 }
 
-#[test]
+#[test(enable_veritech)]
 async fn cached_schema_variant_not_found(ctx: &DalContext) -> Result<()> {
     // Use a non-existent SchemaVariantId
     let non_existent_id = SchemaVariantId::new();
@@ -166,7 +166,7 @@ async fn cached_schema_variant_not_found(ctx: &DalContext) -> Result<()> {
     Ok(())
 }
 
-#[test]
+#[test(enable_veritech)]
 async fn component_diff(ctx: &mut DalContext) -> Result<()> {
     variant::create(
         ctx,
@@ -515,7 +515,7 @@ async fn expected_component_diff_mv(
     Ok(serde_json::from_str(&json)?)
 }
 
-#[test]
+#[test(enable_veritech)]
 async fn component(ctx: &DalContext) -> Result<()> {
     let components = dal_materialized_views::component_list::assemble(ctx.clone()).await?;
     assert_eq!(

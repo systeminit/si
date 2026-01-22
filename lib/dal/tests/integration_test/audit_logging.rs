@@ -30,7 +30,7 @@ const STREAM_RETRY_INTERVAL_MILLISECONDS: u64 = 100;
 
 const SIZE: usize = 200;
 
-#[test]
+#[test(enable_veritech, enable_forklift)]
 async fn round_trip(ctx: &mut DalContext, audit_database_context: AuditDatabaseContext) {
     let context = audit_database_context;
 

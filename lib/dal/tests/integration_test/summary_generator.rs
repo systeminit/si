@@ -13,7 +13,7 @@ use dal_test::{
 use pretty_assertions_sorted::assert_eq;
 use serde_json::json;
 
-#[test]
+#[test(enable_veritech)]
 async fn generate_component_summaries(ctx: &mut DalContext) -> Result<()> {
     // Create three variants for a subscription daisy chain.
     variant::create(

@@ -26,10 +26,32 @@ const SPAN_EVENTS_ENV_VAR: &str = "SI_TEST_LOG_SPAN_EVENTS";
 const RT_DEFAULT_WORKER_THREADS: usize = 2;
 const RT_DEFAULT_THREAD_STACK_SIZE: usize = 2 * 1024 * 1024 * 3;
 
-#[allow(dead_code)] // We aren't current using args on the macro, but when we do we can drop this
-// line
 struct Args {
     pub(crate) vars: HashSet<Ident>,
+}
+
+const DEFAULT_SERVERS: &[&str] = &["rebaser", "pinga"];
+
+impl Args {
+    /// Check if a specific server should be disabled
+    pub(crate) fn should_skip_server(&self, server_name: &str) -> bool {
+        let skip_ident = format!("skip_{server_name}");
+        self.vars.iter().any(|v| v == &skip_ident)
+    }
+
+    pub(crate) fn should_enable_server(&self, server_name: &str) -> bool {
+        let skip_ident = format!("enable_{server_name}");
+        self.vars.iter().any(|v| v == &skip_ident)
+    }
+
+    /// Check if a specific server should be started
+    pub(crate) fn should_start_server(&self, server_name: &str) -> bool {
+        if DEFAULT_SERVERS.contains(&server_name) {
+            !self.should_skip_server(server_name)
+        } else {
+            self.should_enable_server(server_name)
+        }
+    }
 }
 
 impl Parse for Args {
@@ -55,7 +77,34 @@ fn path_as_string(path: &Path) -> String {
 /// `#[tokio::test]` attribute provided by Tokio, and even the `#[test_log::test]` attribute which
 /// configures optional tracing/logging output.
 ///
-/// # Examples
+/// # Server Control Options
+///
+/// By default, *ONLY* rebaser and pnga are started before each test.
+///  You can control which servers are started using macro arguments:
+///
+/// ## Enable optional Servers
+///
+/// * `enable_forklift` - Enable the forklift (audit log processing and billing etc.) server
+/// * `enable_veritech` - Enable the veritech (function execution) server
+/// * `enable_edda` - Enable the edda (event streaming) server
+///
+/// ## Skip default Servers
+///
+/// Skip specific servers that aren't needed for your test:
+///
+/// ```ignore
+/// use dal::DalContext;
+/// use dal_test::test;
+///
+/// #[test(skip_rebaser, skip_pinga)]
+/// async fn test_without_rebaser(ctx: &mut DalContext) {
+///     // Runs without rebaser and pinga servers
+/// }
+/// ```
+///
+/// Available skip options:
+/// * `skip_pinga` - Skip the pinga (event processing) server
+/// * `skip_rebaser` - Skip the rebaser (change set rebasing) server
 ///
 /// ## Optional Support for Results
 ///

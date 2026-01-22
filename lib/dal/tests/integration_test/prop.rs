@@ -21,7 +21,7 @@ use itertools::Itertools as _;
 use pretty_assertions_sorted::assert_eq;
 use serde_json::json;
 
-#[test]
+#[test(enable_veritech)]
 async fn prop_path(ctx: &DalContext) -> Result<()> {
     let variant = SchemaVariant::default_for_schema_name(ctx, "starfield").await?;
 
@@ -34,7 +34,7 @@ async fn prop_path(ctx: &DalContext) -> Result<()> {
     Ok(())
 }
 
-#[test]
+#[test(enable_veritech)]
 async fn verify_prop_used_as_input_flag(ctx: &DalContext) -> Result<()> {
     let variant_id = SchemaVariant::default_id_for_schema_name(ctx, "pirate").await?;
 
@@ -79,7 +79,7 @@ async fn verify_prop_used_as_input_flag(ctx: &DalContext) -> Result<()> {
     Ok(())
 }
 
-#[test]
+#[test(enable_veritech)]
 async fn ordered_child_props(ctx: &DalContext) -> Result<()> {
     let variant_id = SchemaVariant::default_id_for_schema_name(ctx, "starfield").await?;
 
@@ -117,7 +117,7 @@ async fn ordered_child_props(ctx: &DalContext) -> Result<()> {
     Ok(())
 }
 
-#[test]
+#[test(enable_veritech)]
 async fn prop_documentation(ctx: &mut DalContext) -> Result<()> {
     let name = "Toto Wolff";
     let description = None;
@@ -295,7 +295,7 @@ async fn prop_documentation(ctx: &mut DalContext) -> Result<()> {
     Ok(())
 }
 
-#[test]
+#[test(enable_veritech)]
 async fn prop_suggestions(ctx: &DalContext) -> Result<()> {
     let foo = variant::create(
         ctx,

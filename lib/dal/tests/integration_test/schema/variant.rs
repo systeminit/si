@@ -16,7 +16,6 @@ use dal_test::{
 };
 use pretty_assertions_sorted::assert_eq;
 
-mod authoring;
 mod view;
 
 #[test]

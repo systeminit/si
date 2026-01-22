@@ -54,7 +54,7 @@ use crate::integration_test::component::connectable_test::ConnectableTest;
 // TODO test that validates that components that exist on locked variants aren't auto upgraded, but can be upgraded manually
 
 // Components that exist on the unlocked variant get auto upgraded when it gets regenerated
-#[test]
+#[test(enable_veritech)]
 async fn auto_upgrade_component(ctx: &mut DalContext) -> Result<()> {
     // Let's create a new asset
     let variant_zero = VariantAuthoringClient::create_schema_and_variant(
@@ -286,7 +286,7 @@ async fn auto_upgrade_component(ctx: &mut DalContext) -> Result<()> {
     Ok(())
 }
 
-#[test]
+#[test(enable_veritech)]
 async fn upgrade_component_type(ctx: &mut DalContext) -> Result<()> {
     //
     // Create a new schema and variant set to component_type: ConfigurationFrameDown
@@ -346,7 +346,7 @@ async fn upgrade_component_type(ctx: &mut DalContext) -> Result<()> {
     Ok(())
 }
 
-#[test]
+#[test(enable_veritech)]
 async fn upgrade_component_type_after_explicit_set(ctx: &mut DalContext) -> Result<()> {
     //
     // Create a new schema and variant set to component_type: ConfigurationFrameDown
@@ -403,7 +403,7 @@ async fn upgrade_component_type_after_explicit_set(ctx: &mut DalContext) -> Resu
     Ok(())
 }
 
-#[test]
+#[test(enable_veritech)]
 async fn upgrade_component_attaches_overlay_func(ctx: &mut DalContext) -> Result<()> {
     let swifty = component::create(ctx, "swifty", "swifty").await?;
     let actions = dal_materialized_views::action::action_view_list::assemble(ctx.clone()).await?;
@@ -487,7 +487,7 @@ async fn upgrade_component_attaches_overlay_func(ctx: &mut DalContext) -> Result
     Ok(())
 }
 
-#[test]
+#[test(enable_veritech)]
 async fn create_unlocked_schema_variant_after_component_changes_component_type(
     ctx: &mut DalContext,
 ) -> Result<()> {
@@ -531,7 +531,7 @@ async fn create_unlocked_schema_variant_after_component_changes_component_type(
     Ok(())
 }
 
-#[test]
+#[test(enable_veritech)]
 async fn upgrade_array_of_objects(ctx: &mut DalContext) -> Result<()> {
     let variant_code = r#"
     function main() {
@@ -704,7 +704,7 @@ async fn upgrade_array_of_objects(ctx: &mut DalContext) -> Result<()> {
     Ok(())
 }
 
-#[test]
+#[test(enable_veritech)]
 async fn upgrade_component_with_subscriptions(ctx: &mut DalContext) -> Result<()> {
     let test = ConnectableTest::setup(ctx).await?;
     test.create_connectable(ctx, "in").await?;
@@ -769,7 +769,7 @@ async fn update_schema_variant_description(
     Ok(SchemaVariant::get_by_id(ctx, variant.id).await?.into())
 }
 
-#[test]
+#[test(enable_veritech)]
 async fn upgrade_component_preserves_default_subscription_source(
     ctx: &mut DalContext,
 ) -> Result<()> {
@@ -901,7 +901,7 @@ async fn upgrade_component_preserves_default_subscription_source(
 /// Test that upgrading a component with default values doesn't spuriously enqueue update actions
 /// This test verifies the fix for the issue where update actions were being enqueued even when
 /// no values actually changed during an upgrade.
-#[test]
+#[test(enable_veritech)]
 async fn upgrade_without_value_changes_does_not_enqueue_update_action(
     ctx: &mut DalContext,
 ) -> Result<()> {

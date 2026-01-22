@@ -12,7 +12,7 @@ use dal_test::{
 };
 use pretty_assertions_sorted::assert_eq;
 
-#[test]
+#[test(enable_veritech)]
 async fn get_code_json_lang(ctx: &mut DalContext) {
     let component =
         create_component_for_default_schema_name_in_default_view(ctx, "swifty", "shake it off")
@@ -42,7 +42,7 @@ async fn get_code_json_lang(ctx: &mut DalContext) {
     );
 }
 
-#[test]
+#[test(enable_veritech)]
 async fn get_code_yaml_and_string(ctx: &mut DalContext) {
     let component = create_component_for_default_schema_name_in_default_view(
         ctx,
@@ -85,7 +85,7 @@ async fn get_code_yaml_and_string(ctx: &mut DalContext) {
     );
 }
 
-#[test]
+#[test(enable_veritech)]
 async fn get_code_no_codegen_funcs(ctx: &mut DalContext) {
     let starfield_component = create_component_for_default_schema_name_in_default_view(
         ctx,

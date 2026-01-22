@@ -28,7 +28,7 @@ use dal_test::{
 };
 use pretty_assertions_sorted::assert_eq;
 
-#[test]
+#[test(enable_veritech)]
 async fn create_action_using_secret(ctx: &mut DalContext, nw: &WorkspaceSignup) {
     // Create the components we need and commit.
     let source_component =

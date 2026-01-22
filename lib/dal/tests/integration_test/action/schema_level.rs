@@ -22,7 +22,7 @@ use dal_test::{
 };
 use pretty_assertions_sorted::assert_eq;
 
-#[test]
+#[test(enable_veritech)]
 async fn schema_level_action_prototype(ctx: &mut DalContext) -> Result<()> {
     let schema = Schema::get_by_name(ctx, "swifty").await?;
     let default_schema_variant_id = Schema::default_variant_id(ctx, schema.id()).await?;

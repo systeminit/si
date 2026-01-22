@@ -7,7 +7,7 @@ use dal::{
 };
 use dal_test::test;
 
-#[test]
+#[test(enable_veritech)]
 async fn clone_variant(ctx: &mut DalContext) {
     let new_change_set = ChangeSet::fork_head(ctx, "new change set")
         .await

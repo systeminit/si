@@ -27,7 +27,7 @@ use si_id::ComponentId;
 pub mod default_subscriptions;
 
 // AV subscribes to name AV on same component
-#[test]
+#[test(enable_veritech)]
 async fn subscribe_to_name_on_same_component(ctx: &mut DalContext) -> Result<()> {
     // Make a variant with a Value prop
     variant::create(
@@ -75,7 +75,7 @@ async fn subscribe_to_name_on_same_component(ctx: &mut DalContext) -> Result<()>
 }
 
 // AV subscribes to AV on same component
-#[test]
+#[test(enable_veritech)]
 async fn subscribe_to_string(ctx: &mut DalContext) -> Result<()> {
     create_testy_variant(ctx).await?;
 
@@ -118,7 +118,7 @@ async fn subscribe_to_string(ctx: &mut DalContext) -> Result<()> {
 }
 
 // AV subscribes to array element of another AV
-#[test]
+#[test(enable_veritech)]
 async fn subscribe_to_array_element(ctx: &mut DalContext) -> Result<()> {
     create_testy_variant(ctx).await?;
 
@@ -164,7 +164,7 @@ async fn subscribe_to_array_element(ctx: &mut DalContext) -> Result<()> {
 }
 
 // AV subscribes to map element of another AV
-#[test]
+#[test(enable_veritech)]
 async fn subscribe_to_map_element(ctx: &mut DalContext) -> Result<()> {
     create_testy_variant(ctx).await?;
 
@@ -214,7 +214,7 @@ async fn subscribe_to_map_element(ctx: &mut DalContext) -> Result<()> {
 }
 
 // Two different subscriptions to different values on the same component (tests dirty logic)
-#[test]
+#[test(enable_veritech)]
 async fn subscribe_to_two_values(ctx: &mut DalContext) -> Result<()> {
     create_testy_variant(ctx).await?;
 
@@ -275,7 +275,7 @@ async fn subscribe_to_two_values(ctx: &mut DalContext) -> Result<()> {
     Ok(())
 }
 
-#[test]
+#[test(enable_veritech)]
 async fn delete_component_with_subscriptions_correction(ctx: &mut DalContext) -> Result<()> {
     create_testy_variant(ctx).await?;
 
@@ -332,7 +332,7 @@ async fn delete_component_with_subscriptions_correction(ctx: &mut DalContext) ->
     Ok(())
 }
 
-#[test]
+#[test(enable_veritech)]
 async fn array_subscription(ctx: &mut DalContext) -> Result<()> {
     create_testy_variant(ctx).await?;
 
@@ -367,7 +367,7 @@ async fn array_subscription(ctx: &mut DalContext) -> Result<()> {
     Ok(())
 }
 
-#[test]
+#[test(enable_veritech)]
 async fn array_item_subscriptions(ctx: &mut DalContext) -> Result<()> {
     create_testy_variant(ctx).await?;
 
@@ -411,7 +411,7 @@ async fn array_item_subscriptions(ctx: &mut DalContext) -> Result<()> {
     Ok(())
 }
 
-#[test]
+#[test(enable_veritech)]
 async fn subscription_object_to_map(ctx: &mut DalContext) -> Result<()> {
     create_testy_variant(ctx).await?;
 
@@ -443,7 +443,7 @@ async fn subscription_object_to_map(ctx: &mut DalContext) -> Result<()> {
     Ok(())
 }
 
-#[test]
+#[test(enable_veritech)]
 async fn subscription_map_to_object(ctx: &mut DalContext) -> Result<()> {
     create_testy_variant(ctx).await?;
 
@@ -475,7 +475,7 @@ async fn subscription_map_to_object(ctx: &mut DalContext) -> Result<()> {
     Ok(())
 }
 
-#[test]
+#[test(enable_veritech)]
 async fn subscription_json_to_string(ctx: &mut DalContext) -> Result<()> {
     create_testy_variant(ctx).await?;
 
@@ -502,7 +502,7 @@ async fn subscription_json_to_string(ctx: &mut DalContext) -> Result<()> {
     Ok(())
 }
 
-#[test]
+#[test(enable_veritech)]
 async fn subscription_string_to_json(ctx: &mut DalContext) -> Result<()> {
     create_testy_variant(ctx).await?;
 
@@ -529,7 +529,7 @@ async fn subscription_string_to_json(ctx: &mut DalContext) -> Result<()> {
     Ok(())
 }
 
-#[test]
+#[test(enable_veritech)]
 async fn subscription_type_mismatch_array_to_single(ctx: &mut DalContext) -> Result<()> {
     create_testy_variant(ctx).await?;
 
@@ -554,7 +554,7 @@ async fn subscription_type_mismatch_array_to_single(ctx: &mut DalContext) -> Res
     Ok(())
 }
 
-#[test]
+#[test(enable_veritech)]
 async fn subscription_type_mismatch_single_to_array(ctx: &mut DalContext) -> Result<()> {
     create_testy_variant(ctx).await?;
 
@@ -579,7 +579,7 @@ async fn subscription_type_mismatch_single_to_array(ctx: &mut DalContext) -> Res
     Ok(())
 }
 
-#[test]
+#[test(enable_veritech)]
 async fn delete_subscribed_to_array_item(ctx: &mut DalContext) -> Result<()> {
     create_testy_variant(ctx).await?;
 
@@ -634,7 +634,7 @@ async fn delete_subscribed_to_array_item(ctx: &mut DalContext) -> Result<()> {
     Ok(())
 }
 
-#[test]
+#[test(enable_veritech)]
 async fn subscribe_with_custom_function(ctx: &mut DalContext) -> Result<()> {
     create_testy_variant(ctx).await?;
     let func = FuncAuthoringClient::create_new_transformation_func(
@@ -692,7 +692,7 @@ async fn subscribe_with_custom_function(ctx: &mut DalContext) -> Result<()> {
     Ok(())
 }
 
-#[test]
+#[test(enable_veritech)]
 async fn remove_subscribed_component(ctx: &mut DalContext) -> Result<()> {
     create_testy_variant(ctx).await?;
 
@@ -738,7 +738,7 @@ async fn remove_subscribed_component(ctx: &mut DalContext) -> Result<()> {
     Ok(())
 }
 
-#[test]
+#[test(enable_veritech)]
 async fn subscription_cycles(ctx: &mut DalContext) -> Result<()> {
     create_testy_variant(ctx).await?;
     component::create(ctx, "testy", "subscriber").await?;
@@ -863,7 +863,7 @@ fn extract_edges(graph: &SubscriptionGraph) -> BTreeSet<(ComponentId, ComponentI
     edges
 }
 
-#[test]
+#[test(enable_veritech)]
 async fn subscription_graph_constructors_produce_identical_results(
     ctx: &mut DalContext,
 ) -> Result<()> {

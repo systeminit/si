@@ -14,7 +14,7 @@ use dal_test::{
     test,
 };
 
-#[test]
+#[test(enable_veritech)]
 async fn save_variant(ctx: &mut DalContext) {
     let new_change_set = ChangeSet::fork_head(ctx, "new change set")
         .await
@@ -122,7 +122,7 @@ async fn save_variant(ctx: &mut DalContext) {
     );
 }
 
-#[test]
+#[test(enable_veritech)]
 async fn unlock_and_save_variant(ctx: &mut DalContext) {
     let new_change_set = ChangeSet::fork_head(ctx, "new change set")
         .await

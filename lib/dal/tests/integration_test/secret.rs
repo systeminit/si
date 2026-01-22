@@ -36,7 +36,7 @@ use serde_json::Value;
 mod with_actions;
 mod with_schema_variant_authoring;
 
-#[test]
+#[test(enable_veritech)]
 async fn new(ctx: &DalContext, nw: &WorkspaceSignup) {
     let name = generate_fake_name().expect("could not generate fake name");
 
@@ -75,7 +75,7 @@ async fn new(ctx: &DalContext, nw: &WorkspaceSignup) {
     assert_eq!(secret, found_secret);
 }
 
-#[test]
+#[test(enable_veritech)]
 async fn encrypt_decrypt_round_trip(ctx: &DalContext, nw: &WorkspaceSignup) {
     let pkey = nw.key_pair.public_key();
     let name = generate_fake_name().expect("could not generate fake name");
@@ -125,7 +125,7 @@ async fn encrypt_decrypt_round_trip(ctx: &DalContext, nw: &WorkspaceSignup) {
     assert_eq!(message, actual_message);
 }
 
-#[test]
+#[test(enable_veritech)]
 async fn update_metadata_and_encrypted_contents(ctx: &DalContext, nw: &WorkspaceSignup) {
     let pkey = nw.key_pair.public_key();
     let key_pair_pk = nw.key_pair.pk();
@@ -280,7 +280,7 @@ async fn update_metadata_and_encrypted_contents(ctx: &DalContext, nw: &Workspace
     );
 }
 
-#[test]
+#[test(enable_veritech)]
 async fn copy_paste_component_with_secrets_being_used(
     ctx: &mut DalContext,
     nw: &WorkspaceSignup,
@@ -342,7 +342,7 @@ async fn copy_paste_component_with_secrets_being_used(
 
 // TODO it's unclear how / whether this should work this way with subscriptions
 #[ignore]
-#[test]
+#[test(enable_veritech)]
 async fn consumed_secrets_work_when_dvu_not_up_to_date(
     ctx: &mut DalContext,
     nw: &WorkspaceSignup,
@@ -441,7 +441,7 @@ async fn consumed_secrets_work_when_dvu_not_up_to_date(
     Ok(())
 }
 
-#[test]
+#[test(enable_veritech)]
 async fn update_encrypted_contents_with_dependent_values(
     ctx: &mut DalContext,
     nw: &WorkspaceSignup,
@@ -619,7 +619,7 @@ async fn update_encrypted_contents_with_dependent_values(
     );
 }
 
-#[test]
+#[test(enable_veritech)]
 async fn secret_definition_works_with_dummy_qualification(
     ctx: &mut DalContext,
     nw: &WorkspaceSignup,
@@ -758,7 +758,7 @@ fn prepare_decrypted_secret_for_assertions(decrypted_secret: &DecryptedSecret) -
     decrypted_value["message"].to_owned()
 }
 
-#[test]
+#[test(enable_veritech)]
 async fn secret_definition_daisy_chain_subscriptions(ctx: &mut DalContext, nw: &WorkspaceSignup) {
     // Create secret that secret defining component uses and commit.
     let dummy = ExpectComponent::create(ctx, "dummy-secret").await;

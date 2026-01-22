@@ -40,7 +40,7 @@ pub use si_frontend_types;
 
 use crate::integration_test::func::authoring::save_func::save_func_setup;
 
-#[test]
+#[test(enable_veritech)]
 async fn create_attribute_prototype_with_attribute_prototype_argument(ctx: &mut DalContext) {
     let (func_id, _) = save_func_setup(ctx, "test:falloutEntriesToGalaxies").await;
 
@@ -564,7 +564,7 @@ async fn create_attribute_prototype_with_attribute_prototype_argument(ctx: &mut 
 //     assert!(value.is_none());
 // }
 
-#[test]
+#[test(enable_veritech)]
 async fn invalid_identity_bindings(ctx: &mut DalContext) {
     // Let's create a new asset
     let asset_name = "paulsTestAsset".to_string();
@@ -834,7 +834,7 @@ async fn invalid_identity_bindings(ctx: &mut DalContext) {
     drop(cycle_check_guard);
 }
 
-#[test]
+#[test(enable_veritech)]
 async fn detach_attribute_func(ctx: &mut DalContext) {
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await

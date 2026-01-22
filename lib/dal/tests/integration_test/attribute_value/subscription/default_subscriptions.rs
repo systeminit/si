@@ -30,7 +30,7 @@ use dal_test::{
 };
 use pretty_assertions_sorted::assert_eq;
 
-#[test]
+#[test(enable_veritech)]
 async fn test_set_as_default_subscription_source(ctx: &DalContext) -> Result<()> {
     let (_, _, default_dest_a_variant_id, _) = variants_with_prop_suggestions(ctx).await?;
 
@@ -234,7 +234,7 @@ async fn test_set_as_default_subscription_source(ctx: &DalContext) -> Result<()>
     Ok(())
 }
 
-#[test]
+#[test(enable_veritech)]
 async fn test_is_same_type_as(ctx: &DalContext) -> Result<()> {
     variants_with_prop_suggestions(ctx).await?;
 

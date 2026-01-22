@@ -35,7 +35,7 @@ use dal_test::{
     test,
 };
 
-#[test]
+#[test(enable_veritech)]
 async fn create_qualification_with_schema_variant(ctx: &mut DalContext) {
     let swifty_schema = Schema::get_by_name(ctx, "swifty")
         .await
@@ -107,7 +107,7 @@ async fn create_qualification_with_schema_variant(ctx: &mut DalContext) {
     assert!(head_func.is_none());
 }
 
-#[test]
+#[test(enable_veritech)]
 async fn create_codegen_with_schema_variant(ctx: &mut DalContext) {
     let swifty_schema = Schema::get_by_name(ctx, "swifty")
         .await
@@ -165,7 +165,7 @@ async fn create_codegen_with_schema_variant(ctx: &mut DalContext) {
     assert!(head_func.is_none());
 }
 
-#[test]
+#[test(enable_veritech)]
 async fn create_attribute_override_dynamic_func_for_prop(ctx: &mut DalContext) {
     let schema = Schema::get_by_name(ctx, "swifty")
         .await
@@ -239,7 +239,7 @@ async fn create_attribute_override_dynamic_func_for_prop(ctx: &mut DalContext) {
     assert!(head_func.is_none());
 }
 
-#[test]
+#[test(enable_veritech)]
 async fn create_attribute_override_dynamic_func_for_output_socket(ctx: &mut DalContext) {
     let schema = Schema::get_by_name(ctx, "swifty")
         .await
@@ -310,7 +310,7 @@ async fn create_attribute_override_dynamic_func_for_output_socket(ctx: &mut DalC
     assert!(head_func.is_none());
 }
 
-#[test]
+#[test(enable_veritech)]
 async fn create_action_with_schema_variant(ctx: &mut DalContext) {
     let swifty_schema = Schema::get_by_name(ctx, "small even lego")
         .await
@@ -371,7 +371,7 @@ async fn create_action_with_schema_variant(ctx: &mut DalContext) {
     assert!(head_func.is_none());
 }
 
-#[test]
+#[test(enable_veritech)]
 async fn duplicate_action_kinds_causes_error(ctx: &mut DalContext) {
     let schema_variant_id = create_unlocked_variant_copy_for_schema_name(ctx, "small even lego")
         .await
@@ -398,7 +398,7 @@ async fn duplicate_action_kinds_causes_error(ctx: &mut DalContext) {
     }
 }
 
-#[test]
+#[test(enable_veritech)]
 async fn duplicate_func_name_in_different_schema_variants_is_ok(ctx: &mut DalContext) {
     let schema_variant_id = create_unlocked_variant_copy_for_schema_name(ctx, "katy perry")
         .await
@@ -430,7 +430,7 @@ async fn duplicate_func_name_in_different_schema_variants_is_ok(ctx: &mut DalCon
     .expect("unable to create second func");
 }
 
-#[test]
+#[test(enable_veritech)]
 async fn duplicate_func_name_in_same_schema_causes_error(ctx: &mut DalContext) {
     let schema_variant_id = create_unlocked_variant_copy_for_schema_name(ctx, "katy perry")
         .await
@@ -462,7 +462,7 @@ async fn duplicate_func_name_in_same_schema_causes_error(ctx: &mut DalContext) {
     }
 }
 
-#[test]
+#[test(enable_veritech)]
 async fn create_qualification_and_code_gen_with_existing_component(ctx: &mut DalContext) {
     let asset_name = "britsTestAsset".to_string();
     let description = None;

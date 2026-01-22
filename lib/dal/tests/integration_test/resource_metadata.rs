@@ -22,7 +22,7 @@ use si_events::{
     ResourceStatus,
 };
 
-#[test]
+#[test(enable_veritech)]
 async fn list(ctx: &mut DalContext, nw: &WorkspaceSignup) -> Result<()> {
     component::create(ctx, "dummy-secret", "source").await?;
     component::create(ctx, "fallout", "destination").await?;

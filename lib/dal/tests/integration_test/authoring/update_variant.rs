@@ -38,7 +38,7 @@ use dal_test::{
     test,
 };
 
-#[test]
+#[test(enable_veritech)]
 async fn update_variant(ctx: &mut DalContext) {
     // Let's create a new asset
     let asset_name = "paulsTestAsset".to_string();
@@ -174,7 +174,7 @@ async fn update_variant(ctx: &mut DalContext) {
     assert_eq!(updated_default_schema_variant, second_updated_sv_id);
 }
 
-#[test]
+#[test(enable_veritech)]
 async fn update_variant_with_new_metadata(ctx: &mut DalContext) {
     // Let's create a new asset with some initial metadata
     let asset_name = "paulsTestAsset".to_string();
@@ -512,7 +512,7 @@ async fn update_variant_with_new_metadata(ctx: &mut DalContext) {
     assert_eq!(second_diagram_component.display_name, second_component_name);
 }
 
-#[test]
+#[test(enable_veritech)]
 async fn update_variant_with_new_prototypes_for_new_func(ctx: &mut DalContext) {
     let first_variant = VariantAuthoringClient::create_schema_and_variant(
         ctx,
@@ -682,7 +682,7 @@ async fn update_variant_with_new_prototypes_for_new_func(ctx: &mut DalContext) {
     );
 }
 
-#[test]
+#[test(enable_veritech)]
 async fn update_variant_with_leaf_func(ctx: &mut DalContext) {
     let schema_variant = VariantAuthoringClient::create_schema_and_variant(
         ctx,
