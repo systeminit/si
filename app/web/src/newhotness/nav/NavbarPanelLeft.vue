@@ -1,6 +1,9 @@
 <template>
   <div class="flex flex-row flex-1 basis-1/2 items-center min-w-[340px] h-full overflow-hidden">
-    <SiLogo class="block h-[44px] w-[44px] ml-[12px] mr-[12px] flex-none" />
+    <SiLogo
+      class="block h-[44px] w-[44px] ml-[12px] mr-[12px] flex-none cursor-pointer"
+      @click="() => router.push(compositionLink)"
+    />
 
     <label class="flex flex-col flex-1 min-w-0 max-w-fit">
       <div class="text-[11px] mt-[1px] mb-[5px] capsize font-medium text-neutral-300">WORKSPACE:</div>
@@ -45,7 +48,9 @@ import { computed, inject, ref, watch } from "vue";
 import StatusPanel from "@/newhotness/StatusPanel.vue";
 import ChangeSetPanel from "./ChangeSetPanel.vue";
 import { Context, Workspaces } from "../types";
+import { RouteLocationAsPathGeneric, RouteLocationAsRelativeGeneric, useRouter } from "vue-router";
 
+const router = useRouter();
 const workspaces = inject<Workspaces>("WORKSPACES");
 const ctx = inject<Context>("CONTEXT");
 
@@ -54,6 +59,15 @@ const props = defineProps<{
   changeSetId: string;
   invalidWorkspace?: boolean;
 }>();
+
+const compositionLink = computed(() => {
+  const name = "new-hotness";
+  const params = { workspacePk: props.workspaceId, changeSetId: props.changeSetId };
+  return {
+    name,
+    params,
+  } as RouteLocationAsRelativeGeneric | RouteLocationAsPathGeneric;
+});
 
 const selectedWorkspaceId = ref(props.invalidWorkspace ? undefined : props.workspaceId);
 watch(
