@@ -1,7 +1,8 @@
 async function main({
   thisComponent,
 }: Input): Promise<Output> {
-  const domain = thisComponent.properties.domain;
+  // Changed: access via domain.properties
+  const properties = thisComponent.properties.domain.properties;
   const region = _.get(thisComponent, [
     "properties",
     "domain",
@@ -13,7 +14,7 @@ async function main({
   console.log("=== ROUTE53 IMPORT WITH 'ops' KEY ===");
   console.log(
     "Starting Route53 record import for:",
-    JSON.stringify(domain, null, 2),
+    JSON.stringify(properties, null, 2),
   );
   console.log("Resource ID:", resourceId);
   console.log("Region:", region);
@@ -113,13 +114,16 @@ async function main({
 
   console.log("Found target record:", JSON.stringify(targetRecord, null, 2));
 
-  // Build the domain properties object
+  // Changed: nest domainProps under properties
   const domainProps = {
-    Name: targetRecord.Name,
-    Type: targetRecord.Type,
-    HostedZoneId: hostedZoneId,
-    TTL: targetRecord.TTL?.toString(),
-    ResourceRecords: targetRecord.ResourceRecords?.map((rr) => rr.Value) || [],
+    properties: {
+      Name: targetRecord.Name,
+      Type: targetRecord.Type,
+      HostedZoneId: hostedZoneId,
+      TTL: targetRecord.TTL?.toString(),
+      ResourceRecords:
+        targetRecord.ResourceRecords?.map((rr) => rr.Value) || [],
+    },
   };
 
   console.log("Built domain properties:", JSON.stringify(domainProps, null, 2));

@@ -268,7 +268,7 @@ export const AWS_SCHEMA_OVERRIDES = new Map<string, SchemaOverrideFn>([
         attachExtraManagementFunction(
           "./src/pipelines/aws/funcs/overrides/AWS::Route53::RecordSet/management/discover.ts",
           "Discover on AWS",
-          "2432de7a389b82f644353e9807b27fbb42769784b095a0f14abdad07c35bdb19",
+          "3596627c92df6aa894e9b7643e03bfc80c24f98b0e2fdddb180c5d203919a233",
         );
       spec.funcs.push(discoverFunc);
       variant.managementFuncs.push(discoverFuncSpec);
@@ -277,7 +277,7 @@ export const AWS_SCHEMA_OVERRIDES = new Map<string, SchemaOverrideFn>([
         attachExtraManagementFunction(
           "./src/pipelines/aws/funcs/overrides/AWS::Route53::RecordSet/management/import.ts",
           "Import from AWS",
-          "9d01a77a07f2c30ed6a8af62b59455e9d720ae50b09e747c9f8c0e2b0306a4a4",
+          "4995a7ec45cd41197507676772814cfddfbc07fc8ba398d1bc2edd52763edb23",
         );
       spec.funcs.push(importFunc);
       variant.managementFuncs.push(importFuncSpec);
@@ -289,7 +289,7 @@ export const AWS_SCHEMA_OVERRIDES = new Map<string, SchemaOverrideFn>([
         "./src/pipelines/aws/funcs/overrides/AWS::Route53::RecordSet/actions/create.ts",
         "Create Route53 RecordSet",
         "create",
-        "2ebacb3b5a978529f2d047f43e812187d11a06b692a933decc8d4c31d81e4424",
+        "14f1667fbfa7d7deb97da604684835bca07f77208cbff340987f35790675ddf2",
       );
       spec.funcs.push(createDeploymentFunc);
       variant.actionFuncs.push(createActionFuncSpec);
@@ -301,7 +301,7 @@ export const AWS_SCHEMA_OVERRIDES = new Map<string, SchemaOverrideFn>([
         "./src/pipelines/aws/funcs/overrides/AWS::Route53::RecordSet/actions/refresh.ts",
         "Refresh Route53 RecordSet",
         "refresh",
-        "a2c37fc391c835788c5138b94ac91d3b7b60f7882e6713ad5c69bb52e62b8594",
+        "690eba8ded9aa72319ee5a2c16da6d80808afb8a0b7187a73289c6ebc02f6b48",
       );
       spec.funcs.push(refreshDeploymentFunc);
       variant.actionFuncs.push(refreshActionFuncSpec);

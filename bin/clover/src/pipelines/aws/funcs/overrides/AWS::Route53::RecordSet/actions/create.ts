@@ -7,10 +7,11 @@ async function main(component: Input): Promise<Output> {
     };
   }
 
-  const domain = component.properties?.domain;
-  const hostedZoneId = domain?.HostedZoneId;
-  const name = domain?.Name;
-  const type = domain?.Type;
+  // Changed: access via domain.properties
+  const properties = component.properties?.domain?.properties;
+  const hostedZoneId = properties?.HostedZoneId;
+  const name = properties?.Name;
+  const type = properties?.Type;
 
   if (!hostedZoneId) {
     return {
@@ -40,24 +41,26 @@ async function main(component: Input): Promise<Output> {
         ResourceRecordSet: {
           Name: name,
           Type: type,
-          TTL: domain?.TTL ? parseInt(domain.TTL) : undefined,
-          ResourceRecords: domain?.ResourceRecords?.map((record: string) => ({
-            Value: record,
-          })),
-          AliasTarget: domain?.AliasTarget
+          TTL: properties?.TTL ? parseInt(properties.TTL) : undefined,
+          ResourceRecords: properties?.ResourceRecords?.map(
+            (record: string) => ({
+              Value: record,
+            }),
+          ),
+          AliasTarget: properties?.AliasTarget
             ? {
-              DNSName: domain.AliasTarget.DNSName,
-              EvaluateTargetHealth: domain.AliasTarget.EvaluateTargetHealth,
-              HostedZoneId: domain.AliasTarget.HostedZoneId,
-            }
+                DNSName: properties.AliasTarget.DNSName,
+                EvaluateTargetHealth: properties.AliasTarget.EvaluateTargetHealth,
+                HostedZoneId: properties.AliasTarget.HostedZoneId,
+              }
             : undefined,
-          SetIdentifier: domain?.SetIdentifier,
-          Weight: domain?.Weight,
-          Region: domain?.Region,
-          GeoLocation: domain?.GeoLocation,
-          Failover: domain?.Failover,
-          MultiValueAnswer: domain?.MultiValueAnswer,
-          HealthCheckId: domain?.HealthCheckId,
+          SetIdentifier: properties?.SetIdentifier,
+          Weight: properties?.Weight,
+          Region: properties?.Region,
+          GeoLocation: properties?.GeoLocation,
+          Failover: properties?.Failover,
+          MultiValueAnswer: properties?.MultiValueAnswer,
+          HealthCheckId: properties?.HealthCheckId,
         },
       },
     ],
@@ -76,8 +79,7 @@ async function main(component: Input): Promise<Output> {
     console.error(child.stderr);
     return {
       status: "error",
-      message:
-        `Unable to create; AWS CLI exited with non zero code: ${child.exitCode}`,
+      message: `Unable to create; AWS CLI exited with non zero code: ${child.exitCode}`,
     };
   }
 

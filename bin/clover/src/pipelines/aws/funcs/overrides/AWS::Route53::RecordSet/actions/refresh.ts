@@ -1,8 +1,9 @@
 async function main(component: Input): Promise<Output> {
-  const domain = component.properties?.domain;
-  const hostedZoneId = domain?.HostedZoneId;
-  const name = domain?.Name;
-  const type = domain?.Type;
+  // Changed: access via domain.properties
+  const properties = component.properties?.domain?.properties;
+  const hostedZoneId = properties?.HostedZoneId;
+  const name = properties?.Name;
+  const type = properties?.Type;
 
   if (!hostedZoneId) {
     return {
@@ -54,20 +55,23 @@ async function main(component: Input): Promise<Output> {
 
   const recordSet = recordSets[0];
 
+  // Changed: nest payload under properties
   const payload = {
-    Name: recordSet.Name,
-    Type: recordSet.Type,
-    TTL: recordSet.TTL,
-    ResourceRecords: recordSet.ResourceRecords?.map((rr: any) => rr.Value),
-    AliasTarget: recordSet.AliasTarget,
-    SetIdentifier: recordSet.SetIdentifier,
-    Weight: recordSet.Weight,
-    Region: recordSet.Region,
-    GeoLocation: recordSet.GeoLocation,
-    Failover: recordSet.Failover,
-    MultiValueAnswer: recordSet.MultiValueAnswer,
-    HealthCheckId: recordSet.HealthCheckId,
-    HostedZoneId: hostedZoneId,
+    properties: {
+      Name: recordSet.Name,
+      Type: recordSet.Type,
+      TTL: recordSet.TTL,
+      ResourceRecords: recordSet.ResourceRecords?.map((rr: any) => rr.Value),
+      AliasTarget: recordSet.AliasTarget,
+      SetIdentifier: recordSet.SetIdentifier,
+      Weight: recordSet.Weight,
+      Region: recordSet.Region,
+      GeoLocation: recordSet.GeoLocation,
+      Failover: recordSet.Failover,
+      MultiValueAnswer: recordSet.MultiValueAnswer,
+      HealthCheckId: recordSet.HealthCheckId,
+      HostedZoneId: hostedZoneId,
+    },
   };
 
   return {

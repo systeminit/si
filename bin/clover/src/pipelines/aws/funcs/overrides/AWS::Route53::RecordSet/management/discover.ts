@@ -1,7 +1,8 @@
 async function main({
   thisComponent,
 }: Input): Promise<Output> {
-  const domain = thisComponent.properties.domain;
+  // Changed: access via domain.properties
+  const properties = thisComponent.properties.domain.properties;
   const region = _.get(thisComponent, [
     "properties",
     "domain",
@@ -11,7 +12,7 @@ async function main({
 
   console.log("=== ROUTE53 DISCOVER RECORD SETS ===");
   console.log("Starting Route53 record discovery");
-  console.log("Domain attributes:", JSON.stringify(domain, null, 2));
+  console.log("Domain properties:", JSON.stringify(properties, null, 2));
   console.log("Region:", region);
 
   if (!region) {
@@ -19,8 +20,8 @@ async function main({
   }
 
   // Get hosted zone ID - either directly or by looking up the name
-  let hostedZoneId = domain.HostedZoneId;
-  const hostedZoneName = domain.HostedZoneName;
+  let hostedZoneId = properties?.HostedZoneId;
+  const hostedZoneName = properties?.HostedZoneName;
 
   // If we don't have a hosted zone ID but have a name, look it up
   if (!hostedZoneId && hostedZoneName) {
@@ -94,7 +95,7 @@ async function main({
     const baseName = record.Name.replace(/\.$/, "").replace(/\./g, "-");
     const componentName = `${baseName}-${record.Type}`;
 
-    // Build the domain properties
+    // Changed: nest domainProps under properties
     const domainProps: any = {
       Name: record.Name,
       Type: record.Type,
@@ -156,14 +157,16 @@ async function main({
       domainProps.GeoProximityLocation = record.GeoProximityLocation;
     }
 
-    // Build the component spec
+    // Build the component spec with nested properties
     specs[componentName] = {
       kind: "AWS::Route53::RecordSet",
       properties: {
         si: {
           name: componentName,
         },
-        domain: domainProps,
+        domain: {
+          properties: domainProps,
+        },
         resource: record,
       },
       attributes: {

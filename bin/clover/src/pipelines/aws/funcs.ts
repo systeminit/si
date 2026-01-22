@@ -66,6 +66,25 @@ export const CODE_GENERATION_FUNC_SPECS = {
   },
 } as const satisfies Record<string, FuncSpecInfo>;
 
+// CF-only specific funcs - NOT included in provider-wide specs
+// These are only added to CF-only assets in pruneCfAssets.ts
+export const CF_ONLY_FUNC_SPECS = {
+  awsCfOnlyCodeGen: {
+    id: "f66e1afc8ff0f43f3b8a15c87f0a916243904de894e33322beb7f84dc792305a",
+    backendKind: "jsAttribute",
+    responseType: "codeGeneration",
+    displayName: "Code Gen for CloudFormation-only assets",
+    path: "./src/pipelines/aws/funcs/code-gen/awsCfOnlyCodeGen.ts",
+  },
+  awsCfOnlyLint: {
+    id: "dba872348ce39bfa8c15002037263b2528d81833c6c1f24fef5c9bc4115145b4",
+    backendKind: "jsAttribute",
+    responseType: "qualification",
+    displayName: "CloudFormation Lint Validation",
+    path: "./src/pipelines/aws/funcs/qualifications/awsCfOnlyLint.ts",
+  },
+} as const satisfies Record<string, FuncSpecInfo>;
+
 export const MANAGEMENT_FUNCS = {
   // Management
   "Discover on AWS": {
