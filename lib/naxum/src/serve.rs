@@ -52,7 +52,7 @@ use crate::{
 };
 
 #[derive(Debug, Clone)]
-enum SemaphoreMode {
+pub enum SemaphoreMode {
     /// Permits are released when the request completes (standard behavior).
     Internal(Arc<Semaphore>),
     /// Permits are forgotten after acquisition; owner restores via `add_permits()`.
@@ -72,6 +72,8 @@ where
         stream,
         make_service,
         semaphore: None,
+        task_listener_handle: None,
+        shutdown_token: None,
         _service_marker: PhantomData,
         _stream_error_marker: PhantomData,
         _request_marker: PhantomData,
@@ -97,6 +99,8 @@ where
         semaphore: limit
             .into()
             .map(|l| SemaphoreMode::Internal(Arc::new(Semaphore::new(l)))),
+        task_listener_handle: None,
+        shutdown_token: None,
         _service_marker: PhantomData,
         _stream_error_marker: PhantomData,
         _request_marker: PhantomData,
@@ -122,6 +126,8 @@ where
         stream,
         make_service,
         semaphore: Some(SemaphoreMode::External(semaphore)),
+        task_listener_handle: None,
+        shutdown_token: None,
         _service_marker: PhantomData,
         _stream_error_marker: PhantomData,
         _request_marker: PhantomData,
@@ -130,12 +136,14 @@ where
 
 #[must_use = "futures must be awaited or polled"]
 pub struct Serve<M, S, T, E, R> {
-    stream: T,
-    make_service: M,
-    semaphore: Option<SemaphoreMode>,
-    _service_marker: PhantomData<S>,
-    _stream_error_marker: PhantomData<E>,
-    _request_marker: PhantomData<R>,
+    pub(crate) stream: T,
+    pub(crate) make_service: M,
+    pub(crate) semaphore: Option<SemaphoreMode>,
+    pub(crate) task_listener_handle: Option<tokio::task::JoinHandle<()>>,
+    pub(crate) shutdown_token: Option<tokio_util::sync::CancellationToken>,
+    pub(crate) _service_marker: PhantomData<S>,
+    pub(crate) _stream_error_marker: PhantomData<E>,
+    pub(crate) _request_marker: PhantomData<R>,
 }
 
 impl<M, S, T, E, R> fmt::Debug for Serve<M, S, T, E, R>
@@ -158,6 +166,8 @@ impl<M, S, T, E, R> Serve<M, S, T, E, R> {
             stream: self.stream,
             make_service: self.make_service,
             semaphore: self.semaphore,
+            task_listener_handle: self.task_listener_handle,
+            shutdown_token: self.shutdown_token,
             signal,
             _service_marker: PhantomData,
             _stream_error_marker: PhantomData,
@@ -172,6 +182,8 @@ pub struct WithGracefulShutdown<M, S, T, E, R, F> {
     stream: T,
     make_service: M,
     semaphore: Option<SemaphoreMode>,
+    task_listener_handle: Option<tokio::task::JoinHandle<()>>,
+    shutdown_token: Option<tokio_util::sync::CancellationToken>,
     signal: F,
     _service_marker: PhantomData<S>,
     _stream_error_marker: PhantomData<E>,
@@ -211,6 +223,8 @@ where
             stream,
             mut make_service,
             semaphore,
+            task_listener_handle,
+            shutdown_token,
             signal,
             ..
         } = self;
@@ -305,6 +319,14 @@ where
                     _ = progress_interval.tick() => {
                         debug!("waiting for {} task(s) to finish", tracker.len());
                     }
+                }
+            }
+
+            // If using fair scheduling, cancel the shutdown token and wait for task listener
+            if let Some(token) = shutdown_token {
+                token.cancel();
+                if let Some(handle) = task_listener_handle {
+                    let _ = handle.await;
                 }
             }
 

@@ -18,6 +18,7 @@ serde = { workspace = true }                                # NOTE: if extracted
 serde_json = { workspace = true }                           # NOTE: if extracted, this is used for a json feature
 serde_path_to_error = { workspace = true }                  # NOTE: if extracted, this is used for a json feature
 telemetry-utils = { path = "../../lib/telemetry-utils-rs" }
+thiserror = { workspace = true }
 time = { workspace = true }
 tokio = { workspace = true }
 tokio-util = { workspace = true }
@@ -25,5 +26,7 @@ tower = { workspace = true }
 tracing = { workspace = true }                              # NOTE: left with vanilla tracing for potential future extraction
 
 [dev-dependencies]
-thiserror = { workspace = true }
+si-data-nats = { path = "../si-data-nats" }
+test-log = { workspace = true }
 tracing-subscriber = { workspace = true }
+uuid = { workspace = true }

@@ -5329,7 +5329,9 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_path_to_error",
+ "si-data-nats",
  "telemetry-utils",
+ "test-log",
  "thiserror 2.0.12",
  "time",
  "tokio",
@@ -5337,6 +5339,7 @@ dependencies = [
  "tower 0.4.13",
  "tracing",
  "tracing-subscriber",
+ "uuid",
 ]
 
 [[package]]

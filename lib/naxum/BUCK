@@ -1,4 +1,4 @@
-load("@prelude-si//:macros.bzl", "rust_library")
+load("@prelude-si//:macros.bzl", "rust_library", "rust_test")
 
 rust_library(
     name = "naxum",
@@ -12,6 +12,7 @@ rust_library(
         "//third-party/rust:serde",
         "//third-party/rust:serde_json",
         "//third-party/rust:serde_path_to_error",
+        "//third-party/rust:thiserror",
         "//third-party/rust:time",
         "//third-party/rust:tokio",
         "//third-party/rust:tokio-util",
@@ -19,4 +20,28 @@ rust_library(
         "//third-party/rust:tracing",
     ],
     srcs = glob(["src/**/*.rs"]),
+    extra_test_targets = [":test-integration"],
+)
+
+rust_test(
+    name = "test-integration",
+    deps = [
+        "//lib/si-data-nats:si-data-nats",
+        "//third-party/rust:futures",
+        "//third-party/rust:test-log",
+        "//third-party/rust:tokio",
+        "//third-party/rust:tokio-util",
+        "//third-party/rust:tracing-subscriber",
+        "//third-party/rust:uuid",
+        ":naxum",
+    ],
+    srcs = glob([
+        "tests/**/*.rs",
+    ]),
+    crate_root = "tests/integration/mod.rs",
+    env = {
+        "CARGO_PKG_NAME": "integration",
+        "RUSTC_BOOTSTRAP": "1",
+        "CI": "buildkite",
+    },
 )
