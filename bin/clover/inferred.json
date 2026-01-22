@@ -8286,6 +8286,9 @@
   "Table name": {
     "enum": null
   },
+  "Tag value": {
+    "enum": null
+  },
   "Target Interval Seconds defines the interval at which thumbnails are recorded. This field is required if RecordingMode is INTERVAL.": {
     "enum": null
   },
