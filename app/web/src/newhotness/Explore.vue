@@ -146,7 +146,14 @@
             </Transition>
           </div>
         </div>
-        <div class="flex-none flex flex-row flex-wrap items-center gap-xs">
+        <div :class="
+          clsx(
+            'flex-none flex flex-row flex-wrap items-center gap-xs',
+            !showGrid && (mapRef?.selectedComponents.size ?? 0) > 0
+            ? 'pr-[440px]' // right padding to accommodate the ExploreGridTile in the Map view
+            : 'max-w-[100vw]', // prevents the buttons from going offscreen on smaller window sizes
+          )"
+        >
           <TabGroupToggle ref="groupRef" :aOrB="urlGridOrMap === 'grid'" @toggle="storeViewMode">
             <template #a="{ selected, toggle }">
               <ExploreModeTile icon="grid" label="Grid" :selected="selected" @toggle="toggle" />
@@ -156,48 +163,46 @@
             </template>
           </TabGroupToggle>
           <template v-if="!showGrid">
-            <button
-              v-if="!ctx.onHead.value"
-              :class="
-                clsx(
-                  'flex flex-row gap-xs items-center border rounded-sm',
-                  'p-2xs mb-[-1px] h-7',
-                  'font-mono text-[13px] text-left truncate relative',
-                  themeClasses(
-                    'border-neutral-400 hover:border-action-500',
-                    'border-neutral-600 hover:border-action-300',
-                  ),
-                  queryOnlyDiff
-                    ? themeClasses('bg-action-200', 'bg-action-900')
-                    : themeClasses('bg-neutral-100', 'bg-neutral-900'),
-                )
-              "
+            <NewButton 
+              tone="toggle"
+              size="xs"
+              label="See only diffs"
+              truncateText
+              icon="tilde-circle"
+              :iconClasses="themeClasses('text-warning-500', 'text-warning-300')"
+              :active="queryOnlyDiff"
               @click="toggleOnlyDiff"
-            >
-              <Icon name="tilde-circle" :class="themeClasses('text-warning-500', 'text-warning-300')" size="xs" />
-              <span>See only diffs</span>
-            </button>
-            <button
-              v-if="mapRef?.selectedComponents.size || 0 > 0"
-              :class="
-                clsx(
-                  'flex flex-row gap-xs items-center border rounded-sm',
-                  'p-2xs mb-[-1px] h-7',
-                  'font-mono text-[13px] text-left truncate relative',
-                  themeClasses(
-                    'border-neutral-400 hover:border-action-500',
-                    'border-neutral-600 hover:border-action-300',
-                  ),
-                  queryHideSubscriptions
-                    ? themeClasses('bg-action-200', 'bg-action-900')
-                    : themeClasses('bg-neutral-100', 'bg-neutral-900'),
-                )
-              "
+            />
+            <NewButton
+              v-if="(mapRef?.selectedComponents.size ?? 0) > 0"
+              tone="toggle"
+              size="xs"
+              label="Hide unconnected components"
+              truncateText
+              icon="hide"
+              :active="queryHideSubscriptions"
               @click="toggleHide"
-            >
-              <Icon name="hide" size="xs" />
-              <span>Hide unconnected components</span>
-            </button>
+            />
+            <template v-if="featureFlagsStore.MAP_VIEW_UPGRADES">
+              <NewButton
+                tone="toggle"
+                size="xs"
+                label="Show credential components"
+                truncateText
+                icon="eye"
+                :active="queryShowCredentials"
+                @click="toggleShowCredentials"
+              />
+              <NewButton
+                tone="toggle"
+                size="xs"
+                label="Show components with no connections"
+                truncateText
+                icon="eye"
+                :active="queryShowNoConnections"
+                @click="toggleShowNoConnections"
+              />
+            </template>
           </template>
           <div v-if="showGrid" class="ml-auto flex flex-row flex-wrap gap-xs">
             <DefaultSubscriptionsButton
@@ -567,6 +572,9 @@ import { ExploreGridRowData } from "./explore_grid/ExploreGridRow.vue";
 import { useDefaultSubscription } from "./logic_composables/default_subscriptions";
 import { useContext } from "./logic_composables/context";
 import { generateMockActions } from "./logic_composables/mock_data";
+import { useFeatureFlagsStore } from "@/store/feature_flags.store";
+
+const featureFlagsStore = useFeatureFlagsStore();
 
 const router = useRouter();
 const route = useRoute();
@@ -630,7 +638,6 @@ const queryOnlyDiff = computed(() => {
   };
   return query.showDiff === "1";
 });
-
 const toggleOnlyDiff = () => {
   const query: SelectionsInQueryString = {
     ...router.currentRoute.value?.query,
@@ -648,7 +655,6 @@ const queryHideSubscriptions = computed(() => {
   };
   return query.hideSubscriptions === "1";
 });
-
 const toggleHide = () => {
   const query: SelectionsInQueryString = {
     ...router.currentRoute.value?.query,
@@ -657,6 +663,40 @@ const toggleHide = () => {
     delete query.hideSubscriptions;
   } else {
     query.hideSubscriptions = "1";
+  }
+  router.replace({ query });
+};
+const queryShowCredentials = computed(() => {
+  const query: SelectionsInQueryString = {
+    ...router.currentRoute.value?.query,
+  };
+  return query.showCredentials === "1";
+});
+const toggleShowCredentials = () => {
+  const query: SelectionsInQueryString = {
+    ...router.currentRoute.value?.query,
+  };
+  if (queryShowCredentials.value) {
+    delete query.showCredentials;
+  } else {
+    query.showCredentials = "1";
+  }
+  router.replace({ query });
+};
+const queryShowNoConnections = computed(() => {
+  const query: SelectionsInQueryString = {
+    ...router.currentRoute.value?.query,
+  };
+  return query.showNoConnections === "1";
+});
+const toggleShowNoConnections = () => {
+  const query: SelectionsInQueryString = {
+    ...router.currentRoute.value?.query,
+  };
+  if (queryShowNoConnections.value) {
+    delete query.showNoConnections;
+  } else {
+    query.showNoConnections = "1";
   }
   router.replace({ query });
 };
