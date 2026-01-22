@@ -114,6 +114,10 @@ where
         let span = current_span_for_instrument_at!("debug");
 
         let key: Arc<str> = key.to_string().into();
+        if let Some(batch) = self.cache.get(key.to_string().into()).await? {
+            return Ok(Some(batch));
+        }
+
         const MAX_TRIES: i32 = 2000;
         let mut interval = tokio::time::interval(tokio::time::Duration::from_millis(1));
         let mut tried = 0;

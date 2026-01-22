@@ -22,7 +22,7 @@ use pretty_assertions_sorted::assert_eq;
 
 const DUMMY_OUTPUT_STREAM_VIEW_LINE: &str = "[THIS IS FAKE DATA]";
 
-#[test]
+#[test(enable_veritech)]
 async fn list_qualifications(ctx: &mut DalContext) {
     let component = create_component_for_default_schema_name_in_default_view(
         ctx,

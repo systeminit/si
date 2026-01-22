@@ -14,7 +14,7 @@ use dal_test::{
 use pretty_assertions_sorted::assert_eq;
 use serde_json::Value;
 
-#[test]
+#[test(enable_veritech)]
 async fn get_diff_new_component(ctx: &mut DalContext) {
     let starfield_component = create_component_for_default_schema_name_in_default_view(
         ctx,
@@ -45,7 +45,7 @@ async fn get_diff_new_component(ctx: &mut DalContext) {
     assert_eq!(expected, inner_diff.code);
 }
 
-#[test]
+#[test(enable_veritech)]
 async fn get_diff_component_no_changes_from_head(ctx: &mut DalContext) {
     let starfield_component = create_component_for_default_schema_name_in_default_view(
         ctx,
@@ -99,7 +99,7 @@ async fn get_diff_component_no_changes_from_head(ctx: &mut DalContext) {
     );
 }
 
-#[test]
+#[test(enable_veritech)]
 async fn get_diff_component_change_comp_type(ctx: &mut DalContext) {
     let starfield_component = create_component_for_default_schema_name_in_default_view(
         ctx,

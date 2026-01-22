@@ -9,7 +9,7 @@ use dal_test::{
     test,
 };
 
-#[test]
+#[test(enable_veritech)]
 async fn create_variant_merge_unlock_and_edit(ctx: &mut DalContext) {
     let asset_name = "chainsawVariant".to_string();
     let description = None;

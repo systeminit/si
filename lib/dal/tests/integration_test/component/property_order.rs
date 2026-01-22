@@ -138,7 +138,7 @@ async fn create_test_object_prop_order_schema(
 const EXPECT_ABCDEF: [&str; 6] = ["a", "b", "c", "d", "e", "f"];
 const EXPECT_FEDCBA: [&str; 6] = ["f", "e", "d", "c", "b", "a"];
 
-#[test]
+#[test(enable_veritech)]
 async fn property_order_remains_after_update(ctx: &mut DalContext) -> dal_test::Result<()> {
     // Validate that props are in schema defined order
     let abcdef_schema = create_abcdef_schema(ctx).await?;
@@ -176,7 +176,7 @@ async fn property_order_remains_after_update(ctx: &mut DalContext) -> dal_test::
     Ok(())
 }
 
-#[test]
+#[test(enable_veritech)]
 async fn child_property_order_remains_after_update(ctx: &mut DalContext) -> dal_test::Result<()> {
     // Validate that props are in schema defined order
     let variant = create_test_object_prop_order_schema(ctx).await?;
@@ -212,7 +212,7 @@ async fn child_property_order_remains_after_update(ctx: &mut DalContext) -> dal_
     Ok(())
 }
 
-#[test]
+#[test(enable_veritech)]
 async fn child_property_order_remains_after_upgrade(ctx: &mut DalContext) -> dal_test::Result<()> {
     // Validate that props are in schema defined order
     let variant = create_test_object_prop_order_schema(ctx).await?;
@@ -268,7 +268,7 @@ async fn child_property_order_remains_after_upgrade(ctx: &mut DalContext) -> dal
     Ok(())
 }
 
-#[test]
+#[test(enable_veritech)]
 async fn child_property_value_remains_after_update_and_paste(
     ctx: &mut DalContext,
 ) -> dal_test::Result<()> {

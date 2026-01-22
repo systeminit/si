@@ -37,19 +37,30 @@ use crate::{
 };
 
 pub(crate) fn expand(item: ItemFn, args: Args) -> TokenStream {
-    let fn_setup = fn_setup(item.sig.inputs.iter());
+    let fn_setup = fn_setup(item.sig.inputs.iter(), &args);
 
     expand_test(item, args, fn_setup)
 }
 
-fn fn_setup<'a>(params: impl Iterator<Item = &'a FnArg>) -> DalTestFnSetup {
+fn fn_setup<'a>(params: impl Iterator<Item = &'a FnArg>, args: &Args) -> DalTestFnSetup {
     let mut expander = DalTestFnSetupExpander::new();
 
-    expander.setup_start_forklift_server();
-    expander.setup_start_veritech_server();
-    expander.setup_start_pinga_server();
-    expander.setup_start_edda_server();
-    expander.setup_start_rebaser_server();
+    // Conditionally start servers based on macro arguments
+    if args.should_start_server("forklift") {
+        expander.setup_start_forklift_server();
+    }
+    if args.should_start_server("veritech") {
+        expander.setup_start_veritech_server();
+    }
+    if args.should_start_server("pinga") {
+        expander.setup_start_pinga_server();
+    }
+    if args.should_start_server("edda") {
+        expander.setup_start_edda_server();
+    }
+    if args.should_start_server("rebaser") {
+        expander.setup_start_rebaser_server();
+    }
 
     for param in params {
         match param {

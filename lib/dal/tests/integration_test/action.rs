@@ -134,7 +134,7 @@ async fn set_state(ctx: &mut DalContext) -> Result<()> {
     Ok(())
 }
 
-#[test]
+#[test(enable_veritech)]
 async fn run(ctx: &mut DalContext) -> Result<()> {
     let component =
         create_component_for_default_schema_name_in_default_view(ctx, "swifty", "shake it off")
@@ -190,7 +190,7 @@ async fn auto_queue_creation(ctx: &mut DalContext) -> Result<()> {
     Ok(())
 }
 
-#[test]
+#[test(enable_veritech)]
 async fn auto_queue_update(ctx: &mut DalContext) -> Result<()> {
     // ======================================================
     // Creating a component  should enqueue a create action
@@ -327,7 +327,7 @@ async fn auto_queue_update(ctx: &mut DalContext) -> Result<()> {
     Ok(())
 }
 
-#[test]
+#[test(enable_veritech)]
 async fn refresh_actions_run_where_they_should(ctx: &mut DalContext) -> Result<()> {
     // small even schema can be used to test this!
     // First, we'll create a new component and apply (and wait for the create action to run)
@@ -436,7 +436,7 @@ async fn refresh_actions_run_where_they_should(ctx: &mut DalContext) -> Result<(
     Ok(())
 }
 
-#[test]
+#[test(enable_veritech)]
 async fn resource_value_propagation_subscriptions_works(ctx: &mut DalContext) -> Result<()> {
     // create 2 variants A & B where A has a resource_value prop that B is subscribed to
     let component_a_code_definition = r#"

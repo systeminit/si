@@ -22,7 +22,7 @@ use crate::integration_test::component::connectable_test::{
     GEOMETRY2,
 };
 
-#[test]
+#[test(enable_veritech)]
 async fn paste_component_with_value(ctx: &mut DalContext) -> Result<()> {
     let component = ExpectComponent::create_named(ctx, "pirate", "Long John Silver").await;
     let parrots = component
@@ -66,7 +66,7 @@ async fn paste_component_with_value(ctx: &mut DalContext) -> Result<()> {
     Ok(())
 }
 
-#[test]
+#[test(enable_veritech)]
 async fn paste_components_with_subscriptions(ctx: &mut DalContext) -> Result<()> {
     let test = ConnectableTest::setup(ctx).await?;
 
@@ -271,7 +271,7 @@ async fn paste_components_with_subscriptions(ctx: &mut DalContext) -> Result<()>
     Ok(())
 }
 
-#[test]
+#[test(enable_veritech)]
 async fn paste_components_with_subscriptions_opposite_order(ctx: &mut DalContext) -> Result<()> {
     let test = ConnectableTest::setup(ctx).await?;
 
@@ -476,7 +476,7 @@ async fn paste_components_with_subscriptions_opposite_order(ctx: &mut DalContext
     Ok(())
 }
 
-#[test]
+#[test(enable_veritech)]
 async fn paste_manager_and_managed(ctx: &mut DalContext) -> Result<()> {
     let test = ConnectableTest::setup(ctx).await?;
 
@@ -518,7 +518,7 @@ async fn paste_manager_and_managed(ctx: &mut DalContext) -> Result<()> {
     Ok(())
 }
 
-#[test]
+#[test(enable_veritech)]
 async fn paste_manager_and_managed_opposite_order(ctx: &mut DalContext) -> Result<()> {
     let test = ConnectableTest::setup(ctx).await?;
 
@@ -560,7 +560,7 @@ async fn paste_manager_and_managed_opposite_order(ctx: &mut DalContext) -> Resul
     Ok(())
 }
 
-#[test]
+#[test(enable_veritech)]
 async fn paste_manager(ctx: &mut DalContext) -> Result<()> {
     let test = ConnectableTest::setup(ctx).await?;
 
@@ -595,7 +595,7 @@ async fn paste_manager(ctx: &mut DalContext) -> Result<()> {
     Ok(())
 }
 
-#[test]
+#[test(enable_veritech)]
 async fn paste_managed(ctx: &mut DalContext) -> Result<()> {
     let test = ConnectableTest::setup(ctx).await?;
 

@@ -39,7 +39,7 @@ use dal_test::{
     test,
 };
 
-#[test]
+#[test(enable_veritech)]
 async fn regenerate_variant(ctx: &mut DalContext) -> Result<()> {
     ChangeSetTestHelpers::fork_from_head_change_set(ctx).await?;
     // find the variant we know is default and attached to this func already
@@ -97,7 +97,7 @@ async fn regenerate_variant(ctx: &mut DalContext) -> Result<()> {
     Ok(())
 }
 
-#[test]
+#[test(enable_veritech)]
 async fn update_socket_data_on_regenerate(ctx: &mut DalContext) -> Result<()> {
     let name = "Bandit";
     let description = None;
@@ -274,7 +274,7 @@ async fn update_socket_data_on_regenerate(ctx: &mut DalContext) -> Result<()> {
     Ok(())
 }
 
-#[test]
+#[test(enable_veritech)]
 async fn retain_bindings(ctx: &mut DalContext) -> Result<()> {
     let name = "Toto Wolff";
     let description = None;
@@ -552,7 +552,7 @@ async fn retain_bindings(ctx: &mut DalContext) -> Result<()> {
     Ok(())
 }
 
-#[test]
+#[test(enable_veritech)]
 async fn dynamic_functions_on_new_attribute_values_are_rerun(ctx: &mut DalContext) -> Result<()> {
     let destination_schema_variant_name = "SchemaVariant Name";
     let category = "Schema Variant Category";

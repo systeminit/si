@@ -41,7 +41,7 @@ use si_events::{
 
 // Test that updating attributes sets them (and their parents) correctly, but leaves default
 // values and other values alone.
-#[test]
+#[test(enable_veritech)]
 async fn update_attributes(ctx: &DalContext) -> Result<()> {
     variant::create(
         ctx,
@@ -131,7 +131,7 @@ async fn update_attributes(ctx: &DalContext) -> Result<()> {
 
 // Test that updating an attribute value via the new subscription interface correctly enqueues
 // update actions
-#[test]
+#[test(enable_veritech)]
 async fn update_attributes_enqueues_update_fn(ctx: &mut DalContext) -> Result<()> {
     // ======================================================
     // Creating a component  should enqueue a create action
@@ -229,7 +229,7 @@ async fn update_attributes_enqueues_update_fn(ctx: &mut DalContext) -> Result<()
 
 // Test that attribute updates are processed in the order they are specified sets them (and their parents) correctly, but leaves default
 // values and other values alone.
-#[test]
+#[test(enable_veritech)]
 async fn update_attributes_runs_in_order_and_allows_duplicates(ctx: &mut DalContext) -> Result<()> {
     variant::create(
         ctx,
@@ -282,7 +282,7 @@ async fn update_attributes_runs_in_order_and_allows_duplicates(ctx: &mut DalCont
     Ok(())
 }
 
-#[test]
+#[test(enable_veritech)]
 async fn update_attributes_serializes_json(ctx: &mut DalContext) -> Result<()> {
     variant::create(
         ctx,
@@ -357,7 +357,7 @@ async fn update_attributes_serializes_json(ctx: &mut DalContext) -> Result<()> {
 
 // Test that attribute updates are processed in the order they are specified sets them (and their parents) correctly, but leaves default
 // values and other values alone.
-#[test]
+#[test(enable_veritech)]
 async fn component_sources_in_order(ctx: &mut DalContext) -> Result<()> {
     variant::create(
         ctx,
@@ -495,7 +495,7 @@ async fn component_sources_in_order(ctx: &mut DalContext) -> Result<()> {
 
 // Test that updating attributes sets them (and their parents) correctly, but leaves default
 // values and other values alone.
-#[test]
+#[test(enable_veritech)]
 async fn update_attribute_child_of_subscription(ctx: &mut DalContext) -> Result<()> {
     variant::create(
         ctx,
@@ -649,7 +649,7 @@ async fn update_attribute_child_of_subscription(ctx: &mut DalContext) -> Result<
 /// This tests the fix for a bug where use_default_prototype was calling update(None)
 /// which created a si:Unset component prototype BEFORE removing the manual override,
 /// causing the component prototype to remain instead of reverting to the schema variant prototype.
-#[test]
+#[test(enable_veritech)]
 async fn unset_manual_override_reverts_to_default(ctx: &mut DalContext) -> Result<()> {
     // Create a schema with a default value
     variant::create(
@@ -732,7 +732,7 @@ async fn unset_manual_override_reverts_to_default(ctx: &mut DalContext) -> Resul
 
 /// Test that unsetting a value that was never manually overridden creates a si:Unset component prototype.
 /// This tests the else branch of use_default_prototype where no component prototype exists.
-#[test]
+#[test(enable_veritech)]
 async fn unset_value_without_existing_override_creates_unset_prototype(
     ctx: &mut DalContext,
 ) -> Result<()> {

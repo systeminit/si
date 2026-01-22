@@ -17,7 +17,7 @@ use crate::integration_test::component::connectable_test::{
     SubscribableTest,
 };
 
-#[test]
+#[test(enable_veritech)]
 async fn duplicate_component_with_value(ctx: &mut DalContext) -> Result<()> {
     let component = ExpectComponent::create_named(ctx, "pirate", "Long John Silver").await;
     let parrots = component
@@ -53,7 +53,7 @@ async fn duplicate_component_with_value(ctx: &mut DalContext) -> Result<()> {
     Ok(())
 }
 
-#[test]
+#[test(enable_veritech)]
 async fn duplicate_components_with_subscriptions(ctx: &mut DalContext) -> Result<()> {
     let test = SubscribableTest::setup(ctx).await?;
 
@@ -175,7 +175,7 @@ async fn duplicate_components_with_subscriptions(ctx: &mut DalContext) -> Result
     Ok(())
 }
 
-#[test]
+#[test(enable_veritech)]
 async fn duplicate_manager_and_managed(ctx: &mut DalContext) -> Result<()> {
     let test = SubscribableTest::setup(ctx).await?;
 
@@ -217,7 +217,7 @@ async fn duplicate_manager_and_managed(ctx: &mut DalContext) -> Result<()> {
     Ok(())
 }
 
-#[test]
+#[test(enable_veritech)]
 async fn duplicate_manager_only(ctx: &mut DalContext) -> Result<()> {
     let test = SubscribableTest::setup(ctx).await?;
 
@@ -258,7 +258,7 @@ async fn duplicate_manager_only(ctx: &mut DalContext) -> Result<()> {
     Ok(())
 }
 
-#[test]
+#[test(enable_veritech)]
 async fn duplicate_managed_only(ctx: &mut DalContext) -> Result<()> {
     let test = SubscribableTest::setup(ctx).await?;
 
@@ -298,7 +298,7 @@ async fn duplicate_managed_only(ctx: &mut DalContext) -> Result<()> {
     Ok(())
 }
 
-#[test]
+#[test(enable_veritech)]
 async fn duplicate_preserves_external_and_recreates_internal_subscriptions(
     ctx: &mut DalContext,
 ) -> Result<()> {

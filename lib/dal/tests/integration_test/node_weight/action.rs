@@ -28,7 +28,7 @@ use dal_test::{
 use pretty_assertions_sorted::assert_eq;
 use si_events::ActionState;
 
-#[test]
+#[test(enable_veritech)]
 async fn prevent_orphaned_update_actions(ctx: &mut DalContext) -> Result<()> {
     // Create a component with both create and update actions and apply to HEAD.
     let component_id = component::create(ctx, "swifty", "taylor swift").await?;
@@ -87,7 +87,7 @@ async fn prevent_orphaned_update_actions(ctx: &mut DalContext) -> Result<()> {
     Ok(())
 }
 
-#[test]
+#[test(enable_veritech)]
 async fn prevent_duplicate_exclusive_actions(ctx: &mut DalContext) -> Result<()> {
     let test_variant_id = dal_test::helpers::schema::variant::create(
         ctx,

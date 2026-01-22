@@ -44,7 +44,7 @@ use si_pkg::{
     SiPkg,
 };
 
-#[test]
+#[test(enable_veritech)]
 async fn import_pkg_from_pkg_set_latest_default(ctx: &mut DalContext) -> Result<()> {
     // Let's create a new asset
     let asset_name = "imanasset".to_string();
@@ -133,7 +133,7 @@ async fn import_pkg_from_pkg_set_latest_default(ctx: &mut DalContext) -> Result<
     Ok(())
 }
 
-#[test]
+#[test(enable_veritech)]
 async fn prop_order_preserved(ctx: &mut DalContext) -> Result<()> {
     let expected_props = vec![
         "foo",
@@ -314,7 +314,7 @@ fn spec_prop_child_names(parent_prop: &PropSpec, prefix: Option<&str>) -> Vec<St
 
 /// Test that `import_funcs_for_module_update` correctly handles intrinsic functions.
 /// Intrinsic functions should be looked up by name rather than recreated.
-#[test]
+#[test(enable_veritech)]
 async fn import_funcs_for_module_update_handles_intrinsics(ctx: &mut DalContext) -> Result<()> {
     // Create a schema with variant
     let asset_name = "upgrade_test_asset".to_string();
@@ -376,7 +376,7 @@ async fn import_funcs_for_module_update_handles_intrinsics(ctx: &mut DalContext)
 }
 
 /// Test that `import_func` with UpdateExisting mode updates an existing func's code.
-#[test]
+#[test(enable_veritech)]
 async fn import_func_with_update_existing_updates_code(ctx: &mut DalContext) -> Result<()> {
     // Create a schema with variant (this creates a SchemaVariantDefinition func)
     let asset_name = "update_existing_test".to_string();

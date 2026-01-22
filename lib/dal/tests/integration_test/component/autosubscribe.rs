@@ -18,7 +18,7 @@ use dal_test::{
 use pretty_assertions_sorted::assert_eq;
 use serde_json::json;
 
-#[test]
+#[test(enable_veritech)]
 async fn autosubscribe_basic_suggest_sources(ctx: &mut DalContext) -> Result<()> {
     // Test basic functionality where one component has a prop with "suggestSources"
     // pointing to another component's prop, and values match
@@ -109,7 +109,7 @@ async fn autosubscribe_basic_suggest_sources(ctx: &mut DalContext) -> Result<()>
     Ok(())
 }
 
-#[test]
+#[test(enable_veritech)]
 async fn autosubscribe_basic_suggest_as_source_for(ctx: &mut DalContext) -> Result<()> {
     // Test basic functionality where one component has a prop with "suggestAsSourceFor"
     // pointing to another component's prop, and values match
@@ -171,7 +171,7 @@ async fn autosubscribe_basic_suggest_as_source_for(ctx: &mut DalContext) -> Resu
     Ok(())
 }
 
-#[test]
+#[test(enable_veritech)]
 async fn autosubscribe_no_matching_values(ctx: &mut DalContext) -> Result<()> {
     // Test that subscriptions are NOT created when prop suggestions exist
     // but values don't match
@@ -233,7 +233,7 @@ async fn autosubscribe_no_matching_values(ctx: &mut DalContext) -> Result<()> {
     Ok(())
 }
 
-#[test]
+#[test(enable_veritech)]
 async fn autosubscribe_multiple_matches_conflict(ctx: &mut DalContext) -> Result<()> {
     // Test conflict resolution when multiple components could be sources
     // for the same destination prop (should return conflicts, not create subscriptions)
@@ -309,7 +309,7 @@ async fn autosubscribe_multiple_matches_conflict(ctx: &mut DalContext) -> Result
     Ok(())
 }
 
-#[test]
+#[test(enable_veritech)]
 async fn autosubscribe_single_match_from_multiple_candidates(ctx: &mut DalContext) -> Result<()> {
     // Test that when multiple candidates exist but only one has matching values,
     // a subscription is created with that one
@@ -395,7 +395,7 @@ async fn autosubscribe_single_match_from_multiple_candidates(ctx: &mut DalContex
     Ok(())
 }
 
-#[test]
+#[test(enable_veritech)]
 async fn autosubscribe_mixed_explicit_and_implicit_suggestions(ctx: &mut DalContext) -> Result<()> {
     // Test component with some props having explicit suggestSources and others
     // relying on implicit suggestAsSourceFor from other components
@@ -516,7 +516,7 @@ async fn autosubscribe_mixed_explicit_and_implicit_suggestions(ctx: &mut DalCont
     Ok(())
 }
 
-#[test]
+#[test(enable_veritech)]
 async fn autosubscribe_no_suggestions_no_subscriptions(ctx: &mut DalContext) -> Result<()> {
     // Test that components without any prop suggestions don't create subscriptions
 
@@ -557,7 +557,7 @@ async fn autosubscribe_no_suggestions_no_subscriptions(ctx: &mut DalContext) -> 
     Ok(())
 }
 
-#[test]
+#[test(enable_veritech)]
 async fn autosubscribe_schema_mismatch(ctx: &mut DalContext) -> Result<()> {
     // Test that suggestions pointing to non-existent schemas/wrong schemas
     // don't create subscriptions
@@ -609,7 +609,7 @@ async fn autosubscribe_schema_mismatch(ctx: &mut DalContext) -> Result<()> {
     Ok(())
 }
 
-#[test]
+#[test(enable_veritech)]
 async fn autosubscribe_prop_path_mismatch(ctx: &mut DalContext) -> Result<()> {
     // Test that suggestions pointing to non-existent prop paths don't create subscriptions
 
@@ -660,7 +660,7 @@ async fn autosubscribe_prop_path_mismatch(ctx: &mut DalContext) -> Result<()> {
     Ok(())
 }
 
-#[test]
+#[test(enable_veritech)]
 async fn autosubscribe_array_values(ctx: &mut DalContext) -> Result<()> {
     // Test autosubscribe behavior with array values
 
@@ -765,7 +765,7 @@ async fn autosubscribe_array_values(ctx: &mut DalContext) -> Result<()> {
     Ok(())
 }
 
-#[test]
+#[test(enable_veritech)]
 async fn autosubscribe_object_values(ctx: &mut DalContext) -> Result<()> {
     // Test autosubscribe behavior with complex object values
 
@@ -898,7 +898,7 @@ async fn autosubscribe_object_values(ctx: &mut DalContext) -> Result<()> {
     Ok(())
 }
 
-#[test]
+#[test(enable_veritech)]
 async fn autosubscribe_multiple_props_same_component(ctx: &mut DalContext) -> Result<()> {
     // Test component with multiple props that could have subscriptions
 
@@ -999,7 +999,7 @@ async fn autosubscribe_multiple_props_same_component(ctx: &mut DalContext) -> Re
     Ok(())
 }
 
-#[test]
+#[test(enable_veritech)]
 async fn autosubscribe_between_two_components(ctx: &mut DalContext) -> Result<()> {
     // Test handling of circular suggestion relationships
 
@@ -1077,7 +1077,7 @@ async fn autosubscribe_between_two_components(ctx: &mut DalContext) -> Result<()
     Ok(())
 }
 
-#[test]
+#[test(enable_veritech)]
 async fn autosubscribe_existing_subscription_skip(ctx: &mut DalContext) -> Result<()> {
     // Test that existing subscriptions are not overwritten or duplicated
 
@@ -1147,7 +1147,7 @@ async fn autosubscribe_existing_subscription_skip(ctx: &mut DalContext) -> Resul
     Ok(())
 }
 
-#[test]
+#[test(enable_veritech)]
 async fn autosubscribe_cycle_detection_prevents_cycles(ctx: &mut DalContext) -> Result<()> {
     // Test that cycle detection prevents circular subscription chains between components
     // with self-referencing suggestions. At most 1 subscription should be created to

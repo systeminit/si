@@ -110,6 +110,10 @@ impl ChangeBatchDb {
     ) -> LayerDbResult<Option<Arc<ChangeBatch>>> {
         let span = current_span_for_instrument_at!("debug");
 
+        if let Some(batch) = self.cache.get(key.to_string().into()).await? {
+            return Ok(Some(batch));
+        }
+
         let key: Arc<str> = key.to_string().into();
         const MAX_TRIES: i32 = 2000;
         let mut interval = tokio::time::interval(tokio::time::Duration::from_millis(1));

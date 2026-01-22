@@ -9,7 +9,7 @@ use dal_test::{
     test,
 };
 
-#[test]
+#[test(enable_veritech)]
 async fn delete_unlocked_variant(ctx: &mut DalContext) {
     let asset_name = "chainsawVariant".to_string();
     let description = None;

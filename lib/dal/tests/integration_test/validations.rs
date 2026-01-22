@@ -32,7 +32,7 @@ use dal_test::{
 use pretty_assertions_sorted::assert_eq;
 use serde_json::json;
 
-#[test]
+#[test(enable_veritech)]
 async fn validation_format_errors(ctx: &mut DalContext) -> Result<()> {
     let component =
         create_component_for_default_schema_name_in_default_view(ctx, "BadValidations", "bad")
@@ -143,7 +143,7 @@ async fn prop_editor_validation(ctx: &mut DalContext) -> Result<()> {
     Ok(())
 }
 
-#[test]
+#[test(enable_veritech)]
 async fn validation_pre_post_mgmt_func(ctx: &mut DalContext) -> Result<()> {
     let component =
         create_component_for_default_schema_name_in_default_view(ctx, "ValidatedOutput", "Output")
@@ -451,7 +451,7 @@ async fn validation_qualification(ctx: &mut DalContext) -> Result<()> {
     Ok(())
 }
 
-#[test]
+#[test(enable_veritech)]
 async fn required_unset_value(ctx: &mut DalContext) -> Result<()> {
     ExpectSchemaVariant::create_named(
         ctx,
@@ -514,7 +514,7 @@ async fn required_unset_value(ctx: &mut DalContext) -> Result<()> {
     Ok(())
 }
 
-#[test]
+#[test(enable_veritech)]
 async fn required_default_value(ctx: &mut DalContext) -> Result<()> {
     ExpectSchemaVariant::create_named(
         ctx,
@@ -574,7 +574,7 @@ async fn required_default_value(ctx: &mut DalContext) -> Result<()> {
     Ok(())
 }
 
-#[test]
+#[test(enable_veritech)]
 async fn subscription_with_unresolved_value_skips_validation_on_update(
     ctx: &mut DalContext,
 ) -> Result<()> {
@@ -698,7 +698,7 @@ async fn subscription_with_unresolved_value_skips_validation_on_update(
     Ok(())
 }
 
-#[test]
+#[test(enable_veritech)]
 async fn subscription_with_unresolved_value_skips_validation_on_component_creation(
     ctx: &mut DalContext,
 ) -> Result<()> {

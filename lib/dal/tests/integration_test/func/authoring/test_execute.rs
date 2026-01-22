@@ -21,7 +21,7 @@ use si_events::{
     FuncRunState,
 };
 
-#[test]
+#[test(enable_veritech)]
 async fn test_execute_action_func(ctx: &mut DalContext) {
     let component_name = "Forty Six & 2";
     let func_name = "test:createActionStarfield";
@@ -61,7 +61,7 @@ async fn test_execute_action_func(ctx: &mut DalContext) {
     );
 }
 
-#[test]
+#[test(enable_veritech)]
 async fn test_execute_attribute_func(ctx: &mut DalContext) {
     let component_name = "Jimmy";
     let func_name = "test:falloutEntriesToGalaxies";
@@ -101,7 +101,7 @@ async fn test_execute_attribute_func(ctx: &mut DalContext) {
     );
 }
 
-#[test]
+#[test(enable_veritech)]
 async fn test_execute_code_generation_func(ctx: &mut DalContext) {
     let component_name = "Pushit";
     let func_name = "test:generateStringCode";
@@ -141,7 +141,7 @@ async fn test_execute_code_generation_func(ctx: &mut DalContext) {
     );
 }
 
-#[test]
+#[test(enable_veritech)]
 async fn test_execute_qualification_func(ctx: &mut DalContext) {
     let component_name = "Third Eye";
     let func_name = "test:qualificationDummySecretStringIsTodd";
@@ -181,7 +181,7 @@ async fn test_execute_qualification_func(ctx: &mut DalContext) {
     );
 }
 
-#[test]
+#[test(enable_veritech)]
 async fn test_execute_with_modified_code(ctx: &mut DalContext) {
     let component_name = "Jimmy";
     let func_name = "test:falloutEntriesToGalaxies";

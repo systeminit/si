@@ -38,7 +38,7 @@ use dal_test::{
 use pretty_assertions_sorted::assert_eq;
 use veritech_client::ResourceStatus;
 
-#[test]
+#[test(enable_veritech)]
 async fn delete(ctx: &mut DalContext) {
     let component =
         create_component_for_default_schema_name_in_default_view(ctx, "swifty", "shake it off")
@@ -58,7 +58,7 @@ async fn delete(ctx: &mut DalContext) {
     );
 }
 
-#[test]
+#[test(enable_veritech)]
 async fn delete_enqueues_destroy_action(ctx: &mut DalContext) {
     let component =
         create_component_for_default_schema_name_in_default_view(ctx, "dummy-secret", "component")
@@ -110,7 +110,7 @@ async fn delete_enqueues_destroy_action(ctx: &mut DalContext) {
     assert_eq!(1, action_ids.len());
 }
 
-#[test]
+#[test(enable_veritech)]
 async fn delete_on_already_to_delete_does_not_enqueue_destroy_action(ctx: &mut DalContext) {
     let component =
         create_component_for_default_schema_name_in_default_view(ctx, "dummy-secret", "component")
@@ -188,7 +188,7 @@ async fn delete_on_already_to_delete_does_not_enqueue_destroy_action(ctx: &mut D
 
 // dependent_values_update::marked_for_deletion_to_normal_is_blocked tests delete downstream values
 
-#[test]
+#[test(enable_veritech)]
 async fn delete_multiple_components(ctx: &mut DalContext) -> Result<()> {
     ChangeSetTestHelpers::fork_from_head_change_set(ctx).await?;
 
@@ -317,7 +317,7 @@ async fn delete_multiple_components(ctx: &mut DalContext) -> Result<()> {
     Ok(())
 }
 
-#[test]
+#[test(enable_veritech)]
 async fn delete_multiple_components_with_subscriptions(ctx: &mut DalContext) -> Result<()> {
     // Create a component B that feeds 2 other components A via subscription
     // Run Create actions for 2 components A
