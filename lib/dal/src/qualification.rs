@@ -3,6 +3,10 @@ use serde::{
     Serialize,
 };
 use si_data_pg::PgError;
+use si_db::{
+    FuncRunDb,
+    FuncRunLogDb,
+};
 use si_frontend_types::ComponentQualificationStats;
 use si_id::AttributeValueId;
 use si_layer_cache::LayerDbError;
@@ -173,6 +177,8 @@ pub enum QualificationError {
     Prop(#[from] PropError),
     #[error("error serializing/deserializing json: {0}")]
     SerdeJson(#[from] serde_json::Error),
+    #[error("si db error: {0}")]
+    SiDb(#[from] si_db::SiDbError),
     #[error("validation resolver error: {0}")]
     ValidationResolver(#[from] ValidationError),
 }
@@ -223,14 +229,12 @@ impl QualificationView {
         ctx: &DalContext,
         attribute_value_id: AttributeValueId,
     ) -> Result<Option<Self>, QualificationError> {
-        let maybe_qual_run = ctx
-            .layer_db()
-            .func_run()
-            .get_last_qualification_for_attribute_value_id(
-                ctx.events_tenancy().workspace_pk,
-                attribute_value_id,
-            )
-            .await?;
+        let maybe_qual_run = FuncRunDb::get_last_qualification_for_attribute_value_id(
+            ctx,
+            ctx.events_tenancy().workspace_pk,
+            attribute_value_id,
+        )
+        .await?;
         match maybe_qual_run {
             Some(qual_run) => {
                 let qualification_entry: QualificationEntry =
@@ -256,28 +260,24 @@ impl QualificationView {
                     sub_checks: vec![sub_check],
                 });
 
-                let (output, finalized) = match ctx
-                    .layer_db()
-                    .func_run_log()
-                    .get_for_func_run_id(qual_run.id())
-                    .await?
-                {
-                    Some(func_run_logs) => {
-                        let output = func_run_logs
-                            .logs()
-                            .iter()
-                            .map(|l| QualificationOutputStreamView {
-                                stream: l.stream.clone(),
-                                line: l.message.clone(),
-                                level: l.level.clone(),
-                            })
-                            .collect();
-                        let finalized = func_run_logs.is_finalized();
+                let (output, finalized) =
+                    match FuncRunLogDb::get_for_func_run_id(ctx, qual_run.id()).await? {
+                        Some(func_run_logs) => {
+                            let output = func_run_logs
+                                .logs()
+                                .iter()
+                                .map(|l| QualificationOutputStreamView {
+                                    stream: l.stream.clone(),
+                                    line: l.message.clone(),
+                                    level: l.level.clone(),
+                                })
+                                .collect();
+                            let finalized = func_run_logs.is_finalized();
 
-                        (output, finalized)
-                    }
-                    None => (Vec::new(), false),
-                };
+                            (output, finalized)
+                        }
+                        None => (Vec::new(), false),
+                    };
 
                 Ok(Some(QualificationView {
                     title: qual_run

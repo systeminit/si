@@ -9,6 +9,10 @@ use serde::{
     Serialize,
 };
 use serde_json;
+use si_db::{
+    FuncRunDb,
+    FuncRunLogDb,
+};
 use si_events::{
     ActionId,
     ActionResultState,
@@ -187,7 +191,7 @@ pub enum FuncRunnerError {
     #[error("serde json error: {0}")]
     SerdeJson(#[from] serde_json::Error),
     #[error("si db error: {0}")]
-    SiDb(#[from] si_db::Error),
+    SiDb(#[from] si_db::SiDbError),
     #[error(
         "too many attribute prototype arguments for protoype corresponding to component ({0}) and prop ({1}): {2:?}"
     )]
@@ -391,17 +395,9 @@ impl FuncRunner {
                 );
             }
 
-            let func_run = Arc::new(func_run_inner);
+            FuncRunDb::upsert(ctx, func_run_inner.clone()).await?;
 
-            ctx.layer_db()
-                .func_run()
-                .write(
-                    func_run.clone(),
-                    None,
-                    ctx.events_tenancy(),
-                    ctx.events_actor(),
-                )
-                .await?;
+            let func_run = Arc::new(func_run_inner);
 
             Ok(FuncRunner {
                 func_run,
@@ -533,17 +529,9 @@ impl FuncRunner {
                 );
             }
 
-            let func_run = Arc::new(func_run_inner);
+            FuncRunDb::upsert(ctx, func_run_inner.clone()).await?;
 
-            ctx.layer_db()
-                .func_run()
-                .write(
-                    func_run.clone(),
-                    None,
-                    ctx.events_tenancy(),
-                    ctx.events_actor(),
-                )
-                .await?;
+            let func_run = Arc::new(func_run_inner);
 
             Ok(FuncRunner {
                 func_run,
@@ -703,17 +691,9 @@ impl FuncRunner {
                 );
             }
 
-            let func_run = Arc::new(func_run_inner);
+            FuncRunDb::upsert(ctx, func_run_inner.clone()).await?;
 
-            ctx.layer_db()
-                .func_run()
-                .write(
-                    func_run.clone(),
-                    None,
-                    ctx.events_tenancy(),
-                    ctx.events_actor(),
-                )
-                .await?;
+            let func_run = Arc::new(func_run_inner);
 
             Ok(FuncRunner {
                 func_run,
@@ -867,19 +847,11 @@ impl FuncRunner {
                 parent_span.record("si.component.id", component_id.array_to_str(&mut id_buf));
             }
 
-            let func_run = Arc::new(func_run_inner);
-
             if !func.is_intrinsic() {
-                ctx.layer_db()
-                    .func_run()
-                    .write(
-                        func_run.clone(),
-                        None,
-                        ctx.events_tenancy(),
-                        ctx.events_actor(),
-                    )
-                    .await?;
+                FuncRunDb::upsert(ctx, func_run_inner.clone()).await?;
             }
+
+            let func_run = Arc::new(func_run_inner);
 
             Ok(FuncRunner {
                 func_run,
@@ -1042,17 +1014,9 @@ impl FuncRunner {
                 );
             }
 
-            let func_run = Arc::new(func_run_inner);
+            FuncRunDb::upsert(ctx, func_run_inner.clone()).await?;
 
-            ctx.layer_db()
-                .func_run()
-                .write(
-                    func_run.clone(),
-                    None,
-                    ctx.events_tenancy(),
-                    ctx.events_actor(),
-                )
-                .await?;
+            let func_run = Arc::new(func_run_inner);
 
             Ok(FuncRunner {
                 func_run,
@@ -1219,17 +1183,9 @@ impl FuncRunner {
                 );
             }
 
-            let func_run = Arc::new(func_run_inner);
+            FuncRunDb::upsert(ctx, func_run_inner.clone()).await?;
 
-            ctx.layer_db()
-                .func_run()
-                .write(
-                    func_run.clone(),
-                    None,
-                    ctx.events_tenancy(),
-                    ctx.events_actor(),
-                )
-                .await?;
+            let func_run = Arc::new(func_run_inner);
 
             Ok(FuncRunner {
                 func_run,
@@ -1425,17 +1381,9 @@ impl FuncRunner {
                 );
             }
 
-            let func_run = Arc::new(func_run_inner);
+            FuncRunDb::upsert(ctx, func_run_inner.clone()).await?;
 
-            ctx.layer_db()
-                .func_run()
-                .write(
-                    func_run.clone(),
-                    None,
-                    ctx.events_tenancy(),
-                    ctx.events_actor(),
-                )
-                .await?;
+            let func_run = Arc::new(func_run_inner);
 
             Ok(FuncRunner {
                 func_run,
@@ -1512,18 +1460,12 @@ impl FuncRunner {
         id: FuncRunId,
         update_fn: impl FnOnce(&mut FuncRun),
     ) -> FuncRunnerResult<()> {
-        let mut func_run = Arc::unwrap_or_clone(ctx.layer_db().func_run().try_read(id).await?);
+        let mut func_run = FuncRunDb::try_read(ctx, id).await?;
         update_fn(&mut func_run);
-        Ok(ctx
-            .layer_db()
-            .func_run()
-            .write(
-                Arc::new(func_run),
-                None,
-                ctx.events_tenancy(),
-                ctx.events_actor(),
-            )
-            .await?)
+
+        FuncRunDb::upsert(ctx, func_run).await?;
+
+        Ok(())
     }
 
     // Update the latest func run for the given action in LayerDB, setting tenancy/actor to ctx.events_tenancy()/events_actor()).
@@ -1532,22 +1474,18 @@ impl FuncRunner {
         action_id: ActionId,
         update_fn: impl FnOnce(&mut FuncRun),
     ) -> FuncRunnerResult<()> {
-        let mut func_run = ctx
-            .layer_db()
-            .func_run()
-            .get_last_run_for_action_id(ctx.events_tenancy().workspace_pk, action_id)
-            .await?;
+        let mut func_run = FuncRunDb::get_last_run_for_action_id(
+            ctx,
+            ctx.events_tenancy().workspace_pk,
+            action_id,
+        )
+        .await?;
+
         update_fn(&mut func_run);
-        Ok(ctx
-            .layer_db()
-            .func_run()
-            .write(
-                Arc::new(func_run),
-                None,
-                ctx.events_tenancy(),
-                ctx.events_actor(),
-            )
-            .await?)
+
+        FuncRunDb::upsert(ctx, func_run.clone()).await?;
+
+        Ok(())
     }
 
     pub fn id(&self) -> FuncRunId {
@@ -1869,16 +1807,7 @@ impl FuncRunnerLogsTask {
                 timestamp: item.timestamp,
             });
 
-            self.ctx
-                .layer_db()
-                .func_run_log()
-                .write(
-                    Arc::new(func_run_log.clone()),
-                    None,
-                    self.ctx.events_tenancy(),
-                    self.ctx.events_actor(),
-                )
-                .await?;
+            FuncRunLogDb::upsert(&self.ctx, func_run_log.clone()).await?;
 
             WsEvent::func_run_log_updated(
                 &self.ctx,
@@ -1899,16 +1828,7 @@ impl FuncRunnerLogsTask {
         // logs from a function execution, even if this task takes far longer than
         // the execution time of the function).
         func_run_log.set_finalized();
-        self.ctx
-            .layer_db()
-            .func_run_log()
-            .write(
-                Arc::new(func_run_log.clone()),
-                None,
-                self.ctx.events_tenancy(),
-                self.ctx.events_actor(),
-            )
-            .await?;
+        FuncRunLogDb::upsert(&self.ctx, func_run_log.clone()).await?;
 
         WsEvent::func_run_log_updated(
             &self.ctx,

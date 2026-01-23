@@ -16,6 +16,7 @@ use serde::{
     Deserialize,
     Serialize,
 };
+use si_db::FuncRunDb;
 use si_events::{
     audit_log::AuditLogKind,
     ulid::Ulid,
@@ -817,12 +818,12 @@ impl Action {
         ctx: &DalContext,
         id: ActionId,
     ) -> ActionResult<Option<FuncRunId>> {
-        Ok(ctx
-            .layer_db()
-            .func_run()
-            .get_last_run_for_action_id_opt(ctx.events_tenancy().workspace_pk, id)
-            .await?
-            .map(|f| f.id()))
+        Ok(
+            FuncRunDb::get_last_run_for_action_id_opt(ctx, ctx.events_tenancy().workspace_pk, id)
+                .await
+                .expect("unable to get func run id")
+                .map(|f| f.id()),
+        )
     }
 
     /// This function behaves differently if on head vs. in an open change set.

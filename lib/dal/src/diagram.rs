@@ -178,7 +178,7 @@ pub enum DiagramError {
     #[error("serde error: {0}")]
     Serde(#[from] serde_json::Error),
     #[error("si db error: {0}")]
-    SiDb(#[from] si_db::Error),
+    SiDb(#[from] si_db::SiDbError),
     #[error("socket not found")]
     SocketNotFound,
     #[error("Transactions error: {0}")]

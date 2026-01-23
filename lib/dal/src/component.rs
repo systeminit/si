@@ -319,7 +319,7 @@ pub enum ComponentError {
     #[error("serde_json error: {0}")]
     Serde(#[from] serde_json::Error),
     #[error("si db error: {0}")]
-    SiDb(#[from] si_db::Error),
+    SiDb(#[from] si_db::SiDbError),
     #[error("split graph error: {0}")]
     SplitGraph(#[from] SplitGraphError),
     #[error("transactions error: {0}")]

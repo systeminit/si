@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use axum::{
     Json,
     extract::Path,
@@ -16,6 +14,10 @@ use dal::{
 use serde::{
     Deserialize,
     Serialize,
+};
+use si_db::{
+    FuncRunDb,
+    FuncRunLogDb,
 };
 use si_events::{
     ActionId,
@@ -242,12 +244,8 @@ pub async fn get_func_run_view(ctx: &DalContext, func_run: &FuncRun) -> FuncAPIR
         }
     };
 
-    let logs = ctx
-        .layer_db()
-        .func_run_log()
-        .get_for_func_run_id(func_run.id())
+    let logs = FuncRunLogDb::get_for_func_run_id(ctx, func_run.id())
         .await?
-        .map(Arc::<FuncRunLog>::unwrap_or_clone)
         .map(|v| v.into());
 
     Ok(FuncRunView::new(
@@ -273,7 +271,7 @@ pub async fn get_func_run(
         .build(access_builder.build(change_set_id.into()))
         .await?;
 
-    let maybe_func_run = ctx.layer_db().func_run().read(func_run_id).await?;
+    let maybe_func_run = FuncRunDb::read(&ctx, func_run_id).await?;
 
     match maybe_func_run {
         Some(func_run) => {

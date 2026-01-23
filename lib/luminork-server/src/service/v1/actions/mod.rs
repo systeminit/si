@@ -9,6 +9,7 @@ use axum::{
     },
 };
 use serde::Deserialize;
+use si_db::SiDbError;
 use si_id::ActionId;
 use si_layer_cache::LayerDbError;
 use thiserror::Error;
@@ -36,6 +37,8 @@ pub enum ActionsError {
     InvalidOnHoldTransition(ActionId),
     #[error("layer db error: {0}")]
     LayerDb(#[from] LayerDbError),
+    #[error("SI db error: {0}")]
+    SiDb(#[from] SiDbError),
     #[error("transactions error: {0}")]
     Transactions(#[from] dal::TransactionsError),
     #[error("validation error: {0}")]

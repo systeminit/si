@@ -4,6 +4,7 @@ use si_events::{
     Actor,
     FuncRunId,
     FuncRunLog,
+    FuncRunLogId,
     Tenancy,
     WebEvent,
 };
@@ -24,21 +25,31 @@ pub const CACHE_NAME: &str = DBNAME;
 pub const PARTITION_KEY: &str = "workspace_id";
 
 #[derive(Debug, Clone)]
-pub struct FuncRunLogDb {
+pub struct FuncRunLogLayerDb {
     pub cache: Arc<LayerCache<Arc<FuncRunLog>>>,
     persister_client: PersisterClient,
     get_for_func_run_id_query: String,
+    read_id_batch_query: String,
+    read_id_batch_no_cutoff_query: String,
 }
 
-impl FuncRunLogDb {
+impl FuncRunLogLayerDb {
+    // NOTE(victor): Won't migrate to si_db::FuncRunLogsDb - layer cache internal func
     pub fn new(cache: Arc<LayerCache<Arc<FuncRunLog>>>, persister_client: PersisterClient) -> Self {
         Self {
             cache,
             persister_client,
             get_for_func_run_id_query: format!("SELECT value FROM {DBNAME} WHERE func_run_id = $1"),
+            read_id_batch_query: format!(
+                "SELECT key FROM {DBNAME} WHERE key < $1 ORDER BY created_at DESC LIMIT $2"
+            ),
+            read_id_batch_no_cutoff_query: format!(
+                "SELECT key FROM {DBNAME} ORDER BY created_at DESC LIMIT $1"
+            ),
         }
     }
 
+    // NOTE(victor): Migrated to si_db::FuncRunLogsDb as upsert
     pub async fn write(
         &self,
         value: Arc<FuncRunLog>,
@@ -72,6 +83,7 @@ impl FuncRunLogDb {
         Ok(())
     }
 
+    // NOTE(victor): Migrated to si_db::FuncRunLogsDb
     pub async fn get_for_func_run_id(
         &self,
         func_run_id: FuncRunId,
@@ -88,7 +100,8 @@ impl FuncRunLogDb {
         }
     }
 
-    pub async fn insert_to_pg(&self, func_run_log: Arc<FuncRunLog>) -> LayerDbResult<()> {
+    // NOTE(victor): Won't migrate to si_db::FuncRunLogsDb - internal layer cache func
+    async fn insert_to_pg(&self, func_run_log: Arc<FuncRunLog>) -> LayerDbResult<()> {
         self.cache
             .pg()
             .insert_raw(
@@ -128,5 +141,56 @@ impl FuncRunLogDb {
             )
             .await?;
         Ok(())
+    }
+
+    // NOTE(victor): Created for the data migration only, won't be ported to si_db::FuncRunLogDb
+    pub async fn read_batch_of_ids(
+        &self,
+        batch_size: i64,
+        cutoff_id: Option<FuncRunLogId>,
+    ) -> LayerDbResult<Vec<FuncRunLogId>> {
+        let maybe_rows = if let Some(cutoff_id) = cutoff_id {
+            let id_str = cutoff_id.to_string();
+            self.cache
+                .pg()
+                .query(&self.read_id_batch_query, &[&id_str, &batch_size])
+                .await?
+        } else {
+            self.cache
+                .pg()
+                .query(&self.read_id_batch_no_cutoff_query, &[&batch_size])
+                .await?
+        };
+
+        let Some(rows) = maybe_rows else {
+            return Ok(vec![]);
+        };
+
+        let mut func_run_log_ids = Vec::new();
+        for row in rows {
+            let id_string: String = row.get("key");
+            let ulid = ulid::Ulid::from_string(&id_string)?;
+            func_run_log_ids.push(FuncRunLogId::from(ulid));
+        }
+
+        Ok(func_run_log_ids)
+    }
+
+    // NOTE(victor): Created for the data migration only
+    pub async fn try_read(&self, key: FuncRunLogId) -> LayerDbResult<Arc<FuncRunLog>> {
+        let maybe_row = self
+            .cache
+            .pg()
+            .query_opt(
+                &format!("SELECT value FROM {DBNAME} WHERE key = $1"),
+                &[&key.to_string()],
+            )
+            .await?;
+
+        let Some(row) = maybe_row else {
+            return Err(crate::LayerDbError::FuncRunLogNotFound(key));
+        };
+
+        serialize::from_bytes(row.get("value"))
     }
 }

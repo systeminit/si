@@ -11,6 +11,7 @@ publish.workspace = true
 [dependencies]
 async-trait = { workspace = true }
 chrono = { workspace = true }
+postcard = { workspace = true }
 postgres-types = { workspace = true }
 refinery = { workspace = true }
 remain = { workspace = true }
@@ -22,8 +23,10 @@ si-data-nats = { path = "../../lib/si-data-nats" }
 si-data-pg = { path = "../../lib/si-data-pg" }
 si-events = { path = "../../lib/si-events-rs" }
 si-id = { path = "../../lib/si-id" }
+si-layer-cache = { path = "../../lib/si-layer-cache" }
 strum = { workspace = true }
 telemetry = { path = "../../lib/telemetry-rs" }
+telemetry-utils = { path = "../../lib/telemetry-utils-rs" }
 thiserror = { workspace = true }
 tokio = { workspace = true }
 ulid = { workspace = true }

@@ -19,11 +19,13 @@ use si_data_pg::{
 use si_events::{
     ActionId,
     FuncRunId,
+    FuncRunLogId,
     content_hash::ContentHashParseError,
 };
 use si_std::CanonicalFileError;
 use thiserror::Error;
 use tokio_stream::Elapsed;
+use ulid::DecodeError;
 
 use crate::{
     activities::{
@@ -242,10 +244,14 @@ pub enum LayerDbError {
     ContentConversion(String),
     #[error("could not convert to key from string")]
     CouldNotConvertToKeyFromString(String),
+    #[error("decoding error: {0}")]
+    Decode(#[from] DecodeError),
     #[error("decompression error: {0}")]
     Decompress(String),
     #[error("Foyer error: {0}")]
     Foyer(#[source] Box<dyn error::Error + Sync + Send + 'static>),
+    #[error("missing func_run_log when one was expected: {0}")]
+    FuncRunLogNotFound(FuncRunLogId),
     #[error("failed to parse content hash from str: {0}")]
     HashParse(#[from] ContentHashParseError),
     #[error("incomplete key: {0}")]

@@ -120,7 +120,7 @@ pub enum ModuleError {
     #[error("json serialization error: {0}")]
     SerdeJson(#[from] serde_json::Error),
     #[error("si db error: {0}")]
-    SiDb(#[from] si_db::Error),
+    SiDb(#[from] si_db::SiDbError),
     #[error("si pkg error: {0}")]
     SiPkg(#[from] SiPkgError),
     #[error("transactions error: {0}")]

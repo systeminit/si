@@ -27,7 +27,7 @@ pub enum SecretViewError {
     #[error("secret error: {0}")]
     Secret(#[from] SecretError),
     #[error("si db error: {0}")]
-    SiDb(#[from] si_db::Error),
+    SiDb(#[from] si_db::SiDbError),
 }
 
 #[allow(missing_docs)]

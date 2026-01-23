@@ -27,7 +27,7 @@ pub enum UserError {
     #[error("component error: {0}")]
     Component(#[from] dal::ComponentError),
     #[error("db error: {0}")]
-    Db(#[from] si_db::Error),
+    Db(#[from] si_db::SiDbError),
     #[error("edda client error: {0}")]
     EddaClient(#[from] EddaClientError),
     #[error("func error: {0}")]

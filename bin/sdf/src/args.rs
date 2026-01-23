@@ -164,7 +164,7 @@ pub(crate) struct Args {
     #[arg(long, env = "SI_BACKFILL_CACHE_TYPES")]
     pub(crate) backfill_cache_types: Option<String>,
 
-    /// Key batch size for PostgreSQL queries during backfill
+    /// Batch size for PostgreSQL queries during backfill (layer cache and func runs)
     #[arg(long, default_value = "1000", env = "SI_BACKFILL_KEY_BATCH_SIZE")]
     pub(crate) backfill_key_batch_size: usize,
 
@@ -179,6 +179,14 @@ pub(crate) struct Args {
     /// Maximum concurrent uploads per cache type during backfill
     #[arg(long, default_value = "5", env = "SI_BACKFILL_MAX_CONCURRENT_UPLOADS")]
     pub(crate) backfill_max_concurrent_uploads: usize,
+
+    /// Cutoff ID for func runs backfill (optional, start from a specific func run ID)
+    #[arg(long, env = "SI_BACKFILL_FUNC_RUNS_CUTOFF_ID")]
+    pub(crate) backfill_func_runs_cutoff_id: Option<String>,
+
+    /// Cutoff ID for func run logs backfill (optional, start from a specific func run log ID)
+    #[arg(long, env = "SI_BACKFILL_FUNC_RUN_LOGS_CUTOFF_ID")]
+    pub(crate) backfill_func_run_logs_cutoff_id: Option<String>,
 
     /// Veritech encryption key file location [default: /run/sdf/veritech_encryption.key]
     #[arg(long)]
@@ -501,6 +509,17 @@ fn build_config_map(args: Args, config_map: &mut ConfigMap) -> &ConfigMap {
         "backfill_max_concurrent_uploads",
         i64::try_from(args.backfill_max_concurrent_uploads).unwrap_or(5),
     );
+
+    if let Some(backfill_func_runs_cutoff_id) = args.backfill_func_runs_cutoff_id {
+        config_map.set("backfill_func_runs_cutoff_id", backfill_func_runs_cutoff_id);
+    }
+
+    if let Some(backfill_func_run_logs_cutoff_id) = args.backfill_func_run_logs_cutoff_id {
+        config_map.set(
+            "backfill_func_run_logs_cutoff_id",
+            backfill_func_run_logs_cutoff_id,
+        );
+    }
 
     config_map.set("nats.connection_name", NAME);
     config_map.set("pg.application_name", NAME);

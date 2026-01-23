@@ -506,6 +506,15 @@ impl SiDbContext for DalContext {
     fn change_set_id(&self) -> ChangeSetId {
         self.change_set_id()
     }
+
+    // TODO get rid of these after we don't need layer db fallbacks
+    fn func_run_layer_db(&self) -> &si_layer_cache::db::func_run::FuncRunLayerDb {
+        self.services_context.layer_db.func_run()
+    }
+
+    fn func_run_log_layer_db(&self) -> &si_layer_cache::db::func_run_log::FuncRunLogLayerDb {
+        self.services_context.layer_db.func_run_log()
+    }
 }
 
 impl SiDbTransactions for Transactions {
@@ -1743,7 +1752,7 @@ pub enum TransactionsError {
     #[error("serde json error: {0}")]
     SerdeJson(#[from] serde_json::Error),
     #[error("si db error: {0}")]
-    SiDb(#[from] Box<si_db::Error>),
+    SiDb(#[from] Box<si_db::SiDbError>),
     #[error("slow rt error: {0}")]
     SlowRuntime(#[from] Box<SlowRuntimeError>),
     #[error("unable to acquire lock: {0}")]
@@ -1800,8 +1809,8 @@ impl From<rebaser_client::ClientError> for TransactionsError {
     }
 }
 
-impl From<si_db::Error> for TransactionsError {
-    fn from(value: si_db::Error) -> Self {
+impl From<si_db::SiDbError> for TransactionsError {
+    fn from(value: si_db::SiDbError) -> Self {
         Box::new(value).into()
     }
 }

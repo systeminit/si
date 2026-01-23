@@ -61,6 +61,7 @@ use si_db::{
     ManagementFuncExecutionError,
     ManagementFuncJobState,
     ManagementState,
+    SiDbError,
 };
 use si_layer_cache::LayerDbError;
 use telemetry::prelude::*;
@@ -116,6 +117,8 @@ pub enum ManagementApiError {
     SchemaVariant(#[from] SchemaVariantError),
     #[error("serde json error: {0}")]
     SerdeJson(#[from] serde_json::Error),
+    #[error("si db error: {0}")]
+    SiDb(#[from] SiDbError),
     #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),
     #[error("translating string to ulid: {0} is not a valid ulid")]

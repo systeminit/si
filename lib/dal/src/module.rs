@@ -102,7 +102,7 @@ pub enum ModuleError {
     #[error("schema variant error: {0}")]
     SchemaVariant(#[from] SchemaVariantError),
     #[error("si db error: {0}")]
-    SiDb(#[from] si_db::Error),
+    SiDb(#[from] si_db::SiDbError),
     #[error("too many latest modules for schema: {0} (at least two hashes found: {1} and {2})")]
     TooManyLatestModulesForSchema(SchemaId, String, String),
     #[error("transactions error: {0}")]

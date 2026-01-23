@@ -16,6 +16,7 @@ use si_events::{
     WebEvent,
     WorkspacePk,
 };
+use si_id::ulid::Ulid;
 use telemetry::prelude::*;
 
 use super::serialize;
@@ -37,12 +38,13 @@ pub const CACHE_NAME: &str = DBNAME;
 pub const PARTITION_KEY: &str = "workspace_id";
 
 #[derive(Debug, Clone)]
-pub struct FuncRunDb {
+pub struct FuncRunLayerDb {
     pub cache: Arc<LayerCache<Arc<FuncRun>>>,
     persister_client: PersisterClient,
+    read_id_batch_query: String,
+    read_id_batch_no_cutoff_query: String,
     ready_many_for_workspace_id_query: String,
     get_last_qualification_for_attribute_value_id: String,
-    list_action_history: String,
     get_last_action_by_action_id: String,
     list_management_history: String,
     get_last_management_by_func_and_component_id: String,
@@ -52,11 +54,21 @@ pub struct FuncRunDb {
     paginated_component_query_no_cursor: String,
 }
 
-impl FuncRunDb {
+// This func run db will be deprecated in favor of the si_db::FuncRunDb, since
+// we're doing away with the pg backend of layerdb and these never fit the model
+// anyway. Don't use!
+impl FuncRunLayerDb {
+    // NOTE(victor): Won't migrate to si_db::FuncRunDb - layer cache internal func
     pub fn new(cache: Arc<LayerCache<Arc<FuncRun>>>, persister_client: PersisterClient) -> Self {
         Self {
             cache,
             persister_client,
+            read_id_batch_query: format!(
+                "SELECT key FROM {DBNAME} WHERE key < $1 ORDER BY created_at DESC LIMIT $2"
+            ),
+            read_id_batch_no_cutoff_query: format!(
+                "SELECT key FROM {DBNAME} ORDER BY created_at DESC LIMIT $1"
+            ),
             ready_many_for_workspace_id_query: format!(
                 "SELECT * FROM {DBNAME} WHERE workspace_id = $1"
             ),
@@ -65,11 +77,6 @@ impl FuncRunDb {
                    WHERE attribute_value_id = $2 AND workspace_id = $1
                    ORDER BY updated_at DESC
                    LIMIT 1",
-            ),
-            list_action_history: format!(
-                "SELECT value FROM {DBNAME}
-                   WHERE function_kind = 'Action' AND workspace_id = $1
-                   ORDER BY updated_at DESC",
             ),
             get_last_action_by_action_id: format!(
                 "
@@ -96,7 +103,7 @@ impl FuncRunDb {
             paginated_workspace_query_with_cursor: format!(
                 r#"
                 SELECT * FROM {DBNAME}
-                WHERE workspace_id = $1 
+                WHERE workspace_id = $1
                   AND change_set_id = $2
                   AND (
                     created_at < (SELECT created_at FROM {DBNAME} WHERE key = $3) OR
@@ -118,7 +125,7 @@ impl FuncRunDb {
             paginated_component_query_with_cursor: format!(
                 r#"
                 SELECT * FROM {DBNAME}
-                WHERE workspace_id = $1 
+                WHERE workspace_id = $1
                   AND change_set_id = $2
                   AND component_id = $3
                   AND (
@@ -142,30 +149,38 @@ impl FuncRunDb {
         }
     }
 
-    pub async fn list_action_history(
+    // NOTE(victor): Migrated to si_db::FuncRunDb as ::new()
+    pub async fn write(
         &self,
-        workspace_id: WorkspacePk,
-    ) -> LayerDbResult<Option<Vec<FuncRun>>> {
-        let maybe_rows = self
-            .cache
-            .pg()
-            .query(&self.list_action_history, &[&workspace_id])
-            .await?;
-        let result = match maybe_rows {
-            Some(rows) => {
-                let mut result_rows = Vec::with_capacity(rows.len());
-                for row in rows.into_iter() {
-                    let postcard_bytes: Vec<u8> = row.get("value");
-                    let func_run: FuncRun = serialize::from_bytes(&postcard_bytes[..])?;
-                    result_rows.push(func_run);
-                }
-                Some(result_rows)
-            }
-            None => None,
-        };
-        Ok(result)
+        value: Arc<FuncRun>,
+        web_events: Option<Vec<WebEvent>>,
+        tenancy: Tenancy,
+        actor: Actor,
+    ) -> LayerDbResult<()> {
+        let (postcard_value, size_hint) = serialize::to_vec(&value)?;
+        let cache_key: Arc<str> = value.id().to_string().into();
+        let sort_key: Arc<str> = value.tenancy().workspace_pk.to_string().into();
+
+        self.cache
+            .insert_or_update(cache_key.clone(), value, size_hint);
+
+        let event = LayeredEvent::new(
+            LayeredEventKind::FuncRunWrite,
+            Arc::new(DBNAME.to_string()),
+            cache_key,
+            Arc::new(postcard_value),
+            Arc::new(sort_key.to_string()),
+            web_events,
+            tenancy,
+            actor,
+        );
+        let reader = self.persister_client.write_event(event)?;
+        let _ = reader.get_status().await;
+
+        Ok(())
     }
 
+    // NOTE(victor): Migrated to si_db::FuncRunDb
     #[instrument(level = "debug", skip_all)]
     pub async fn get_last_run_for_action_id_opt(
         &self,
@@ -190,6 +205,7 @@ impl FuncRunDb {
         Ok(maybe_func)
     }
 
+    // NOTE(victor): Migrated to si_db::FuncRunDb
     pub async fn get_last_run_for_action_id(
         &self,
         workspace_pk: WorkspacePk,
@@ -200,6 +216,7 @@ impl FuncRunDb {
             .ok_or_else(|| LayerDbError::ActionIdNotFound(action_id))
     }
 
+    // NOTE(victor): Migrated to si_db::FuncRunDb
     pub async fn list_management_history(
         &self,
         workspace_pk: WorkspacePk,
@@ -228,6 +245,7 @@ impl FuncRunDb {
         Ok(result)
     }
 
+    // NOTE(victor): Migrated to si_db::FuncRunDb
     pub async fn get_last_management_run_for_func_and_component_id(
         &self,
         workspace_pk: WorkspacePk,
@@ -252,6 +270,8 @@ impl FuncRunDb {
 
         Ok(maybe_func)
     }
+
+    // NOTE(victor): Migrated to si_db::FuncRunDb
     pub async fn get_last_qualification_for_attribute_value_id(
         &self,
         workspace_id: WorkspacePk,
@@ -286,40 +306,12 @@ impl FuncRunDb {
         Ok(None)
     }
 
-    pub async fn write(
-        &self,
-        value: Arc<FuncRun>,
-        web_events: Option<Vec<WebEvent>>,
-        tenancy: Tenancy,
-        actor: Actor,
-    ) -> LayerDbResult<()> {
-        let (postcard_value, size_hint) = serialize::to_vec(&value)?;
-        let cache_key: Arc<str> = value.id().to_string().into();
-        let sort_key: Arc<str> = value.tenancy().workspace_pk.to_string().into();
-
-        self.cache
-            .insert_or_update(cache_key.clone(), value, size_hint);
-
-        let event = LayeredEvent::new(
-            LayeredEventKind::FuncRunWrite,
-            Arc::new(DBNAME.to_string()),
-            cache_key,
-            Arc::new(postcard_value),
-            Arc::new(sort_key.to_string()),
-            web_events,
-            tenancy,
-            actor,
-        );
-        let reader = self.persister_client.write_event(event)?;
-        let _ = reader.get_status().await;
-
-        Ok(())
-    }
-
+    // NOTE(victor): Migrated to si_db::FuncRunDb
     pub async fn read(&self, key: FuncRunId) -> LayerDbResult<Option<Arc<FuncRun>>> {
         self.cache.get(key.to_string().into()).await
     }
 
+    // NOTE(victor): Migrated to si_db::FuncRunDb
     pub async fn try_read(&self, key: FuncRunId) -> LayerDbResult<Arc<FuncRun>> {
         self.cache
             .get(key.to_string().into())
@@ -327,9 +319,7 @@ impl FuncRunDb {
             .ok_or_else(|| LayerDbError::MissingFuncRun(key))
     }
 
-    // NOTE(nick): this is just to test that things are working. We probably want some customization
-    // for where clauses, etc. in the real version. This should be a step closer to how we'll query
-    // for history though.
+    // NOTE(victor): Migrated to si_db::FuncRunDb
     pub async fn read_many_for_workspace(
         &self,
         workspace_id: WorkspacePk,
@@ -352,6 +342,41 @@ impl FuncRunDb {
         }
     }
 
+    // NOTE(victor): Created for the data migration only, won't be ported to si_db::FuncRunDb
+    pub async fn read_batch_of_ids(
+        &self,
+        batch_size: i64,
+        cutoff_id: Option<FuncRunId>,
+    ) -> LayerDbResult<Vec<FuncRunId>> {
+        let maybe_rows = if let Some(cutoff_id) = cutoff_id {
+            let id_str = cutoff_id.to_string();
+            self.cache
+                .pg()
+                .query(&self.read_id_batch_query, &[&id_str, &batch_size])
+                .await?
+        } else {
+            self.cache
+                .pg()
+                .query(&self.read_id_batch_no_cutoff_query, &[&batch_size])
+                .await?
+        };
+
+        let Some(rows) = maybe_rows else {
+            return Ok(vec![]);
+        };
+
+        let mut func_runs = Vec::new();
+        for row in rows {
+            let id_string: String = row.get("key");
+            let ulid = Ulid::from_string(&id_string)?;
+            let func_id = FuncRunId::from(ulid);
+
+            func_runs.push(func_id)
+        }
+        Ok(func_runs)
+    }
+
+    // NOTE(victor): Migrated to si_db::FuncRunDb
     /// Read function runs for a workspace with pagination support.
     ///
     /// This method uses cursor-based pagination where:
@@ -407,6 +432,7 @@ impl FuncRunDb {
         }
     }
 
+    // NOTE(victor): Migrated to si_db::FuncRunDb
     /// Read function runs for a specific component with pagination support.
     ///
     /// This method uses cursor-based pagination where:
@@ -469,6 +495,7 @@ impl FuncRunDb {
         }
     }
 
+    // NOTE(victor): Won't migrate to si_db::FuncRunDb - internal layer cache func
     pub async fn insert_to_pg(
         pg: &PgLayer,
         event_payload: &LayeredEventPayload,

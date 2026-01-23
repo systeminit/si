@@ -44,8 +44,8 @@ use crate::{
     activity_client::ActivityClient,
     db::{
         encrypted_secret::EncryptedSecretDb,
-        func_run::FuncRunDb,
-        func_run_log::FuncRunLogDb,
+        func_run::FuncRunLayerDb,
+        func_run_log::FuncRunLogLayerDb,
     },
     error::LayerDbResult,
     hybrid_cache::CacheConfig,
@@ -101,8 +101,8 @@ pub struct LayerDb<
     cas: CasDb<CasValue>,
     change_batch: ChangeBatchDb,
     encrypted_secret: EncryptedSecretDb<EncryptedSecretValue>,
-    func_run: FuncRunDb,
-    func_run_log: FuncRunLogDb,
+    func_run: FuncRunLayerDb,
+    func_run_log: FuncRunLogLayerDb,
     rebase_batch: RebaseBatchDb<RebaseBatchValue>,
     workspace_snapshot: WorkspaceSnapshotDb<WorkspaceSnapshotValue>,
     split_snapshot_subgraph: SplitSnapshotSubGraphDb<SplitSnapshotSubGraphValue>,
@@ -439,8 +439,8 @@ where
         let change_batch = ChangeBatchDb::new(change_batch_cache, persister_client.clone());
         let encrypted_secret =
             EncryptedSecretDb::new(encrypted_secret_cache, persister_client.clone());
-        let func_run = FuncRunDb::new(func_run_cache, persister_client.clone());
-        let func_run_log = FuncRunLogDb::new(func_run_log_cache, persister_client.clone());
+        let func_run = FuncRunLayerDb::new(func_run_cache, persister_client.clone());
+        let func_run_log = FuncRunLogLayerDb::new(func_run_log_cache, persister_client.clone());
         let workspace_snapshot = WorkspaceSnapshotDb::new(snapshot_cache, persister_client.clone());
         let rebase_batch = RebaseBatchDb::new(rebase_batch_cache, persister_client.clone());
         let split_snapshot_subgraph =
@@ -502,11 +502,11 @@ where
         &self.encrypted_secret
     }
 
-    pub fn func_run(&self) -> &FuncRunDb {
+    pub fn func_run(&self) -> &FuncRunLayerDb {
         &self.func_run
     }
 
-    pub fn func_run_log(&self) -> &FuncRunLogDb {
+    pub fn func_run_log(&self) -> &FuncRunLogLayerDb {
         &self.func_run_log
     }
 

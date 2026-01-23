@@ -49,6 +49,8 @@ pub enum FuncsError {
     SchemaVariant(#[from] SchemaVariantError),
     #[error("funcs can only be unlocked for unlocked schema variants")]
     SchemaVariantMustBeUnlocked,
+    #[error("si db error: {0}")]
+    SiDb(#[from] si_db::SiDbError),
     #[error("transactions error: {0}")]
     Transactions(#[from] dal::TransactionsError),
     #[error("validation error: {0}")]

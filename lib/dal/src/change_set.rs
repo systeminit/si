@@ -134,7 +134,7 @@ pub enum ChangeSetError {
     #[error("serde json error: {0}")]
     SerdeJson(#[from] serde_json::Error),
     #[error("si db error: {0}")]
-    SiDb(#[from] Box<si_db::Error>),
+    SiDb(#[from] Box<si_db::SiDbError>),
     #[error("slow runtime error: {0}")]
     SlowRuntime(#[from] SlowRuntimeError),
     #[error("timeout out waiting for dvu after {0}ms")]
@@ -161,8 +161,8 @@ impl From<LayerDbError> for ChangeSetError {
     }
 }
 
-impl From<si_db::Error> for ChangeSetError {
-    fn from(value: si_db::Error) -> Self {
+impl From<si_db::SiDbError> for ChangeSetError {
+    fn from(value: si_db::SiDbError) -> Self {
         Box::new(value).into()
     }
 }
@@ -215,8 +215,8 @@ impl From<ComponentError> for ChangeSetApplyError {
     }
 }
 
-impl From<si_db::Error> for ChangeSetApplyError {
-    fn from(value: si_db::Error) -> Self {
+impl From<si_db::SiDbError> for ChangeSetApplyError {
+    fn from(value: si_db::SiDbError) -> Self {
         Box::new(value).into()
     }
 }
@@ -251,7 +251,7 @@ pub enum ChangeSetApplyError {
     #[error("change set ({0}) does not have a base change set")]
     NoBaseChangeSet(ChangeSetId),
     #[error("si db error: {0}")]
-    SiDb(#[from] Box<si_db::Error>),
+    SiDb(#[from] Box<si_db::SiDbError>),
     #[error("transactions error: {0}")]
     Transactions(#[from] Box<TransactionsError>),
 }

@@ -120,6 +120,8 @@ pub enum FuncAPIError {
     Serde(#[from] serde_json::Error),
     #[error("cannot set binding on transformation function")]
     SettingBindingOnTransformationFunction,
+    #[error("si db error: {0}")]
+    SiDb(#[from] si_db::SiDbError),
     #[error("transactions error: {0}")]
     Transactions(#[from] dal::TransactionsError),
     #[error("workspace snapshot error: {0}")]

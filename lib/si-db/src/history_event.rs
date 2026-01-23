@@ -10,7 +10,7 @@ use si_events::Timestamp;
 use si_id::UserPk;
 
 use crate::{
-    Result,
+    SiDbResult,
     actor_view::ActorView,
     context::SiDbContext,
     tenancy::Tenancy,
@@ -35,14 +35,14 @@ impl HistoryActor {
         }
     }
 
-    pub async fn email(&self, ctx: &impl SiDbContext) -> Result<String> {
+    pub async fn email(&self, ctx: &impl SiDbContext) -> SiDbResult<String> {
         Ok(match self {
             HistoryActor::SystemInit => "sally@systeminit.com".to_string(),
             HistoryActor::User(user_pk) => User::get_by_pk(ctx, *user_pk).await?.email().clone(),
         })
     }
 
-    pub async fn email_is_systeminit(&self, ctx: &impl SiDbContext) -> Result<bool> {
+    pub async fn email_is_systeminit(&self, ctx: &impl SiDbContext) -> SiDbResult<bool> {
         let email_as_lowercase = self.email(ctx).await?.to_lowercase();
         Ok(Self::is_systeminit_domain(email_as_lowercase))
     }
@@ -101,7 +101,7 @@ impl HistoryEvent {
         label: impl AsRef<str>,
         message: impl AsRef<str>,
         data: &serde_json::Value,
-    ) -> Result<HistoryEvent> {
+    ) -> SiDbResult<HistoryEvent> {
         let label = label.as_ref();
         let message = message.as_ref();
         let actor = serde_json::to_value(ctx.history_actor())?;

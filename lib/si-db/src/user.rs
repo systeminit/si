@@ -9,8 +9,8 @@ use si_id::{
 };
 
 use crate::{
-    Error,
-    Result,
+    SiDbError,
+    SiDbResult,
     context::SiDbContext,
     getter,
     history_event::HistoryEvent,
@@ -50,7 +50,7 @@ impl User {
         name: impl AsRef<str>,
         email: impl AsRef<str>,
         picture_url: Option<impl AsRef<str>>,
-    ) -> Result<Self> {
+    ) -> SiDbResult<Self> {
         let name = name.as_ref();
         let email = email.as_ref();
 
@@ -86,7 +86,7 @@ impl User {
         Ok(object)
     }
 
-    pub async fn get_by_pk_opt(ctx: &impl SiDbContext, pk: UserPk) -> Result<Option<Self>> {
+    pub async fn get_by_pk_opt(ctx: &impl SiDbContext, pk: UserPk) -> SiDbResult<Option<Self>> {
         let row = ctx
             .txns()
             .await?
@@ -100,17 +100,17 @@ impl User {
             Ok(None)
         }
     }
-    pub async fn get_by_pk(ctx: &impl SiDbContext, pk: UserPk) -> Result<Self> {
+    pub async fn get_by_pk(ctx: &impl SiDbContext, pk: UserPk) -> SiDbResult<Self> {
         Self::get_by_pk_opt(ctx, pk)
             .await?
-            .ok_or(Error::UserNotFound(pk))
+            .ok_or(SiDbError::UserNotFound(pk))
     }
 
     pub async fn associate_workspace(
         &self,
         ctx: &impl SiDbContext,
         workspace_pk: WorkspacePk,
-    ) -> Result<()> {
+    ) -> SiDbResult<()> {
         ctx.txns()
             .await?
             .pg()
@@ -122,7 +122,7 @@ impl User {
         Ok(())
     }
 
-    pub async fn is_first_user(&self, ctx: &impl SiDbContext) -> Result<bool> {
+    pub async fn is_first_user(&self, ctx: &impl SiDbContext) -> SiDbResult<bool> {
         let row = ctx
             .txns()
             .await?
@@ -143,7 +143,7 @@ impl User {
         ctx: &impl SiDbContext,
         user_pk: UserPk,
         workspace_pkg: String,
-    ) -> Result<()> {
+    ) -> SiDbResult<()> {
         ctx.txns()
             .await?
             .pg()
@@ -158,7 +158,7 @@ impl User {
     pub async fn list_members_for_workspace(
         ctx: &impl SiDbContext,
         workspace_pk: String,
-    ) -> Result<Vec<Self>> {
+    ) -> SiDbResult<Vec<Self>> {
         let rows = ctx
             .txns()
             .await?
@@ -179,7 +179,7 @@ impl User {
     pub async fn list_member_pks_for_workspace(
         ctx: &impl SiDbContext,
         workspace_pk: String,
-    ) -> Result<Vec<UserPk>> {
+    ) -> SiDbResult<Vec<UserPk>> {
         let rows = ctx
                 .txns()
                 .await?
@@ -201,7 +201,7 @@ impl User {
         ctx: &impl SiDbContext,
         user_pk: UserPk,
         workspace_pk: WorkspacePk,
-    ) -> Result<serde_json::Value> {
+    ) -> SiDbResult<serde_json::Value> {
         let row = ctx
             .txns()
             .await?
@@ -220,7 +220,7 @@ impl User {
         workspace_pk: WorkspacePk,
         key: impl AsRef<str>,
         value: serde_json::Value,
-    ) -> Result<serde_json::Value> {
+    ) -> SiDbResult<serde_json::Value> {
         let formatted_key = Vec::from([key.as_ref()]);
 
         let row = ctx

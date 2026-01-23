@@ -71,7 +71,7 @@ pub enum PolicyReportError {
     #[error("serde json error: {0}")]
     SerdeJson(#[from] serde_json::Error),
     #[error("si db error: {0}")]
-    SiDb(#[from] crate::Error),
+    SiDb(#[from] crate::SiDbError),
     #[error("si db transactions error: {0}")]
     SiDbTransactions(#[from] crate::transactions::SiDbTransactionsError),
 }

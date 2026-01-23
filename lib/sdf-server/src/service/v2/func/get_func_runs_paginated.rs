@@ -10,6 +10,7 @@ use serde::{
     Deserialize,
     Serialize,
 };
+use si_db::FuncRunDb;
 use si_events::{
     CasValue,
     FuncRun,
@@ -139,28 +140,24 @@ pub async fn get_func_runs_paginated(
     // Query the database with pagination parameters
     let func_runs = if let Some(component_id) = params.component_id {
         // Component-specific query
-        ctx.layer_db()
-            .func_run()
-            .read_many_for_component_paginated(
-                workspace_pk,
-                change_set_id,
-                component_id,
-                limit as i64,
-                params.cursor,
-            )
-            .await?
-            .unwrap_or_default()
+        FuncRunDb::read_many_for_component_paginated(
+            &ctx,
+            workspace_pk,
+            change_set_id,
+            component_id,
+            limit as i64,
+            params.cursor,
+        )
+        .await?
     } else {
-        ctx.layer_db()
-            .func_run()
-            .read_many_for_workspace_paginated(
-                workspace_pk,
-                change_set_id,
-                limit as i64,
-                params.cursor,
-            )
-            .await?
-            .unwrap_or_default()
+        FuncRunDb::read_many_for_workspace_paginated(
+            &ctx,
+            workspace_pk,
+            change_set_id,
+            limit as i64,
+            params.cursor,
+        )
+        .await?
     };
 
     // Determine the next cursor (if we have at least `limit` results)

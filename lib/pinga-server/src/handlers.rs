@@ -66,7 +66,7 @@ pub enum HandlerError {
     #[error("job consumer error: {0}")]
     JobConsumer(#[from] JobConsumerError),
     #[error("si db error: {0}")]
-    SiDb(#[from] si_db::Error),
+    SiDb(#[from] si_db::SiDbError),
 }
 
 type Result<T> = result::Result<T, HandlerError>;

@@ -68,7 +68,7 @@ pub enum WorkspaceManagementError {
     #[error("http error: {0}")]
     Request(#[from] reqwest::Error),
     #[error("si-db error: {0}")]
-    SiDb(#[from] Box<si_db::Error>),
+    SiDb(#[from] Box<si_db::SiDbError>),
     #[error("user not found: {0}")]
     UserNotFound(String),
     #[error("validation error: {0}")]
@@ -91,8 +91,8 @@ impl From<permissions::Error> for WorkspaceManagementError {
     }
 }
 
-impl From<si_db::Error> for WorkspaceManagementError {
-    fn from(value: si_db::Error) -> Self {
+impl From<si_db::SiDbError> for WorkspaceManagementError {
+    fn from(value: si_db::SiDbError) -> Self {
         Box::new(value).into()
     }
 }

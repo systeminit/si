@@ -13,6 +13,7 @@ use dal::{
     },
 };
 use sdf_extract::change_set::ChangeSetDalContext;
+use si_db::FuncRunDb;
 
 use super::ManagementApiResult;
 use crate::service::v2::func::get_func_run::{
@@ -31,22 +32,22 @@ pub async fn latest(
 ) -> ManagementApiResult<Json<Option<FuncRunView>>> {
     let func_id = ManagementPrototype::func_id(ctx, prototype_id).await?;
 
-    Ok(
-        match ctx
-            .layer_db()
-            .func_run()
-            .get_last_management_run_for_func_and_component_id(
-                workspace_pk,
-                change_set_id,
-                component_id,
-                func_id.into_inner().into(),
-            )
-            .await?
-        {
-            Some(func_run) => Json(Some(get_func_run_view(ctx, &func_run).await?)),
-            None => Json(None),
-        },
-    )
+    let maybe_view = if let Some(func_run) =
+        FuncRunDb::get_last_management_run_for_func_and_component_id(
+            ctx,
+            workspace_pk,
+            change_set_id,
+            component_id,
+            func_id.into_inner().into(),
+        )
+        .await?
+    {
+        Some(get_func_run_view(ctx, &func_run).await?)
+    } else {
+        None
+    };
+
+    Ok(Json(maybe_view))
 }
 
 pub async fn all_latest_for_component(
@@ -66,16 +67,14 @@ pub async fn all_latest_for_component(
     {
         let func_id = ManagementPrototype::func_id(ctx, mgmt_prototype.id).await?;
 
-        let Some(run) = ctx
-            .layer_db()
-            .func_run()
-            .get_last_management_run_for_func_and_component_id(
-                workspace_pk,
-                change_set_id,
-                component_id,
-                func_id.into_inner().into(),
-            )
-            .await?
+        let Some(run) = FuncRunDb::get_last_management_run_for_func_and_component_id(
+            ctx,
+            workspace_pk,
+            change_set_id,
+            component_id,
+            func_id.into_inner().into(),
+        )
+        .await?
         else {
             continue;
         };
