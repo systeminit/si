@@ -591,7 +591,7 @@ pub async fn import_funcs_for_module_update(
             }
         }
 
-        import_func(
+        let func = import_func(
             ctx,
             &func_spec,
             None,
@@ -600,6 +600,11 @@ pub async fn import_funcs_for_module_update(
             super::UpdateMode::UpdateExisting,
         )
         .await?;
+
+        let args: Vec<_> = func_spec.arguments()?.into_iter().collect();
+        if !args.is_empty() {
+            import_func_arguments(ctx, func.id, &args).await?;
+        }
     }
 
     Ok(thing_map)
@@ -1782,8 +1787,11 @@ async fn create_attr_proto_arg(
 
     Ok(match input {
         SiPkgAttrFuncInputView::Prop { prop_path, .. } => {
+            // Convert slash-separated path like "/root/domain/extra" to PropPath
+            let path_parts: Vec<&str> = prop_path.split('/').filter(|s| !s.is_empty()).collect();
             let prop_id =
-                Prop::find_prop_id_by_path(ctx, schema_variant_id, &prop_path.into()).await?;
+                Prop::find_prop_id_by_path(ctx, schema_variant_id, &PropPath::new(path_parts))
+                    .await?;
             AttributePrototypeArgument::new(ctx, prototype_id, arg.id, prop_id).await?
         }
         SiPkgAttrFuncInputView::InputSocket { socket_name, .. } => {
