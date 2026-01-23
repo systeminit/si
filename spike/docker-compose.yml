@@ -209,9 +209,10 @@ services:
       - spike-network
 
   innit:
-    image: systeminit/innit:stable
+    image: systeminit/innit:nick-local
     container_name: spike-innit
     environment:
+      SI_INNIT_MODE: env
       SI_NATS__URL: nats://nats:4222
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otelcol:4317
       SI_LOG_FILE_DIRECTORY: /var/log/services

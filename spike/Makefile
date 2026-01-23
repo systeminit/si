@@ -1,8 +1,8 @@
 MAKEPATH:=$(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 
-pull: pull-deps pull-innit
+all: up
 
-pull-deps:
+pull:
 	cd $(MAKEPATH) && docker compose pull \
 		grafana \
 		jaeger \
@@ -13,9 +13,6 @@ pull-deps:
 		prometheus \
 		promtail \
 		versitygw
-
-pull-innit:
-	cd $(MAKEPATH) && docker compose pull innit
 
 up:
 	cd $(MAKEPATH) && docker compose up -d
