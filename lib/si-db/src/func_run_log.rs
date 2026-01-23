@@ -5,6 +5,8 @@ use si_events::{
     FuncRunLog,
     FuncRunLogId,
 };
+use telemetry::prelude::*;
+use telemetry_utils::monotonic;
 
 use crate::{
     SiDbContext,
@@ -104,6 +106,10 @@ impl FuncRunLogDb {
             Ok(Some(func_run_log))
         } else {
             // Fall back to layer-db if not found in si-db
+            monotonic!(
+                func_run_logs.layerdb_fallback_total = 1,
+                method = "get_for_func_run_id"
+            );
             ctx.func_run_log_layer_db()
                 .get_for_func_run_id(func_run_id)
                 .await

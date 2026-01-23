@@ -13,6 +13,7 @@ rust_library(
         "//lib/si-id:si-id",
         "//lib/si-layer-cache:si-layer-cache",
         "//lib/telemetry-rs:telemetry",
+        "//lib/telemetry-utils-rs:telemetry-utils",
         "//third-party/rust:async-trait",
         "//third-party/rust:chrono",
         "//third-party/rust:postcard",

@@ -26,6 +26,7 @@ si-id = { path = "../../lib/si-id" }
 si-layer-cache = { path = "../../lib/si-layer-cache" }
 strum = { workspace = true }
 telemetry = { path = "../../lib/telemetry-rs" }
+telemetry-utils = { path = "../../lib/telemetry-utils-rs" }
 thiserror = { workspace = true }
 tokio = { workspace = true }
 ulid = { workspace = true }

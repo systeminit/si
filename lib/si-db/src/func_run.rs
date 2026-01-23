@@ -10,6 +10,8 @@ use si_events::{
     FuncRunId,
     WorkspacePk,
 };
+use telemetry::prelude::*;
+use telemetry_utils::monotonic;
 
 use crate::{
     SiDbContext,
@@ -337,6 +339,10 @@ impl FuncRunDb {
             Ok(Some(func_run))
         } else {
             // Fall back to layer-db if not found in si-db
+            monotonic!(
+                func_runs.layerdb_fallback_total = 1,
+                method = "get_last_run_for_action_id_opt"
+            );
             ctx.func_run_layer_db()
                 .get_last_run_for_action_id_opt(workspace_pk, action_id)
                 .await
@@ -379,6 +385,10 @@ impl FuncRunDb {
 
         // If si-db returned empty, fall back to layer-db
         if func_runs.is_empty() {
+            monotonic!(
+                func_runs.layerdb_fallback_total = 1,
+                method = "list_management_history"
+            );
             if let Some(layer_func_runs) = ctx
                 .func_run_layer_db()
                 .list_management_history(workspace_pk, change_set_id)
@@ -416,6 +426,10 @@ impl FuncRunDb {
             Ok(Some(func_run))
         } else {
             // Fall back to layer-db if not found in si-db
+            monotonic!(
+                func_runs.layerdb_fallback_total = 1,
+                method = "get_last_management_run_for_func_and_component_id"
+            );
             ctx.func_run_layer_db()
                 .get_last_management_run_for_func_and_component_id(
                     workspace_pk,
@@ -450,6 +464,10 @@ impl FuncRunDb {
             Ok(Some(func_run))
         } else {
             // Fall back to layer-db if not found in si-db
+            monotonic!(
+                func_runs.layerdb_fallback_total = 1,
+                method = "get_last_qualification_for_attribute_value_id"
+            );
             ctx.func_run_layer_db()
                 .get_last_qualification_for_attribute_value_id(workspace_pk, attribute_value_id)
                 .await
@@ -475,6 +493,7 @@ impl FuncRunDb {
             Ok(Some(func_run))
         } else {
             // Fall back to layer-db if not found in si-db
+            monotonic!(func_runs.layerdb_fallback_total = 1, method = "read");
             ctx.func_run_layer_db()
                 .try_read(key)
                 .await
@@ -510,6 +529,10 @@ impl FuncRunDb {
 
         // Fall back to layer-db if si-db returned no results
         if func_runs.is_empty() {
+            monotonic!(
+                func_runs.layerdb_fallback_total = 1,
+                method = "read_many_for_workspace"
+            );
             if let Some(layer_func_runs) = ctx
                 .func_run_layer_db()
                 .read_many_for_workspace(workspace_pk)
@@ -576,6 +599,10 @@ impl FuncRunDb {
 
         // Fall back to layer-db if si-db returned no results
         if func_runs.is_empty() {
+            monotonic!(
+                func_runs.layerdb_fallback_total = 1,
+                method = "read_many_for_workspace_paginated"
+            );
             if let Some(layer_func_runs) = ctx
                 .func_run_layer_db()
                 .read_many_for_workspace_paginated(workspace_pk, change_set_id, limit, cursor)
@@ -649,6 +676,10 @@ impl FuncRunDb {
 
         // Fall back to layer-db if si-db returned no results
         if func_runs.is_empty() {
+            monotonic!(
+                func_runs.layerdb_fallback_total = 1,
+                method = "read_many_for_component_paginated"
+            );
             if let Some(layer_func_runs) = ctx
                 .func_run_layer_db()
                 .read_many_for_component_paginated(
