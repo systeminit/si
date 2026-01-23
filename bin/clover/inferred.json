@@ -335,6 +335,23 @@
       "SM2"
     ]
   },
+  "The type of policy to create. You can specify one of the following values: AISERVICES_OPT_OUT_POLICY, BACKUP_POLICY, BEDROCK_POLICY, CHATBOT_POLICY, DECLARATIVE_POLICY_EC2, INSPECTOR_POLICY, NETWORK_SECURITY_DIRECTOR_POLICY, RESOURCE_CONTROL_POLICY, S3_POLICY, SECURITYHUB_POLICY, SERVICE_CONTROL_POLICY, TAG_POLICY, UPGRADE_ROLLOUT_POLICY": {
+    "enum": [
+      "AISERVICES_OPT_OUT_POLICY",
+      "BACKUP_POLICY",
+      "BEDROCK_POLICY",
+      "CHATBOT_POLICY",
+      "DECLARATIVE_POLICY_EC2",
+      "INSPECTOR_POLICY",
+      "NETWORK_SECURITY_DIRECTOR_POLICY",
+      "RESOURCE_CONTROL_POLICY",
+      "S3_POLICY",
+      "SECURITYHUB_POLICY",
+      "SERVICE_CONTROL_POLICY",
+      "TAG_POLICY",
+      "UPGRADE_ROLLOUT_POLICY"
+    ]
+  },
   "The type of policy to create. You can specify one of the following values: AISERVICES_OPT_OUT_POLICY, BACKUP_POLICY, SERVICE_CONTROL_POLICY, TAG_POLICY, CHATBOT_POLICY, RESOURCE_CONTROL_POLICY,DECLARATIVE_POLICY_EC2, SECURITYHUB_POLICY, S3_POLICY, INSPECTOR_POLICY, BEDROCK_POLICY, NETWORK_SECURITY_DIRECTOR_POLICY, UPGRADE_ROLLOUT_POLICY": {
     "enum": [
       "AISERVICES_OPT_OUT_POLICY",
@@ -2268,6 +2285,12 @@
     "enum": [
       "SECURITY_CONTROL",
       "STANDARD_CONTROL"
+    ]
+  },
+  "Specifies the action when a termination lifecycle hook is abandoned due to failure, timeout, or explicit abandonment (calling CompleteLifecycleAction). \n  Set to ``Retain`` to move instances to a ``Retained`` state. Set to ``Terminate`` for default termination behavior. \n  Retained instances don't count toward desired capacity and remain until you call ``TerminateInstanceInAutoScalingGroup``.": {
+    "enum": [
+      "Retain",
+      "Terminate"
     ]
   },
   "Specifies whether messages that use the configuration set are required to use Transport Layer Security (TLS). If the value is Require , messages are only delivered if a TLS connection can be established. If the value is Optional , messages can be delivered in plain text if a TLS connection can't be established.": {
@@ -6460,6 +6483,9 @@
     "enum": null
   },
   "KMS key used to encrypt the Dataset data": {
+    "enum": null
+  },
+  "Key Management Service key used to encrypt the collection.": {
     "enum": null
   },
   "KeyStorageSecurityStadard defines a cryptographic key management compliance standard used for handling CA keys.": {
@@ -14800,6 +14826,9 @@
     "enum": null
   },
   "The name of the collection": {
+    "enum": null
+  },
+  "The name of the collection group to associate with the collection.": {
     "enum": null
   },
   "The name of the collection group.\n\nThe name must meet the following criteria:\nUnique to your account and AWS Region\nStarts with a lowercase letter\nContains only lowercase letters a-z, the numbers 0-9 and the hyphen (-)\nContains between 3 and 32 characters\n": {
