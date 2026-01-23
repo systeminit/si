@@ -3,7 +3,7 @@
   <template v-if="isConnected">
     <div v-if="ffStore.SHOW_POLICIES" class="flex flex-row items-end gap-xs p-xs">
       <NewButton
-        tone="flat"
+        tone="navFlat"
         @click="() => router.push(compositionLink)"
         class="py-3xs"
         :active="onSim"
@@ -11,7 +11,7 @@
       />
       <NewButton
         v-if="ffStore.SHOW_AUTHORING_NAV"
-        tone="flat"
+        tone="navFlat"
         class="py-3xs"
         :active="onAuthor"
         @click="
@@ -25,7 +25,7 @@
       />
       <NewButton
         v-if="onHead"
-        tone="flat"
+        tone="navFlat"
         class="py-3xs"
         :active="onAudit"
         @click="
@@ -39,7 +39,7 @@
       />
       <NewButton
         v-else
-        tone="flat"
+        tone="navFlat"
         class="py-3xs"
         :active="onReview"
         @click="
@@ -52,7 +52,7 @@
         label="Review"
       />
       <NewButton
-        tone="flat"
+        tone="navFlat"
         class="py-3xs"
         :active="onPolicy"
         @click="
