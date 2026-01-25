@@ -8783,6 +8783,9 @@
   "The ARN of the public certificate issued by ACM to validate ownership of your custom domain. Only required when configuring mutual TLS and using an ACM imported or private CA certificate ARN as the RegionalCertificateArn.": {
     "enum": null
   },
+  "The ARN of the query engine role.": {
+    "enum": null
+  },
   "The ARN of the recipe to use for model training. Only specified when performAutoML is false.": {
     "enum": null
   },
@@ -8841,6 +8844,12 @@
     "enum": null
   },
   "The ARN of the schema to associate with the dataset. The schema defines the dataset fields.": {
+    "enum": null
+  },
+  "The ARN of the secret containing the private key.": {
+    "enum": null
+  },
+  "The ARN of the secret containing the public key.": {
     "enum": null
   },
   "The ARN of the secret that contains superuser credentials, if you use the alternating users rotation strategy. CloudFormation grants the execution role for the Lambda rotation function GetSecretValue permission to the secret in this property.": {
@@ -8916,6 +8925,9 @@
     "enum": null
   },
   "The AWS KMS customer master key (CMK) that should be used for the AWS KMS encryption. To specify a CMK, use its key ID, Amazon Resource Name (ARN), alias name, or alias ARN. ": {
+    "enum": null
+  },
+  "The AWS KMS key ID.": {
     "enum": null
   },
   "The AWS KMS key identifier (ARN) used to encrypt AWS EMR Studio workspace and notebook files when backed up to AWS S3.": {
@@ -9105,6 +9117,9 @@
     "enum": null
   },
   "The Amazon ECR repository prefix associated with the pull through cache rule.": {
+    "enum": null
+  },
+  "The Amazon EMR release label.": {
     "enum": null
   },
   "The Amazon Eventbridge bus for the event integration.": {
@@ -9980,6 +9995,9 @@
   "The ECRRepositoryPrefix is a custom alias for upstream registry url.": {
     "enum": null
   },
+  "The EKS namespace.": {
+    "enum": null
+  },
   "The Elastic IP (EIP) address for the cluster.": {
     "enum": null
   },
@@ -10469,6 +10487,9 @@
   "The ID of the cluster the node is on.": {
     "enum": null
   },
+  "The ID of the cluster.": {
+    "enum": null
+  },
   "The ID of the component type.": {
     "enum": null
   },
@@ -10784,6 +10805,9 @@
   "The ID of the user.": {
     "enum": null
   },
+  "The ID of the virtual cluster for which the managed endpoint is created.": {
+    "enum": null
+  },
   "The ID of the virtual interface group": {
     "enum": null
   },
@@ -10997,6 +11021,9 @@
   "The KMS key ARN to encrypt the logs stored in managed log persistence.": {
     "enum": null
   },
+  "The KMS key ID for encryption.": {
+    "enum": null
+  },
   "The KMS key for the database. If the KMS key is not specified, the database will be encrypted with a Timestream managed KMS key located in your account.": {
     "enum": null
   },
@@ -11181,6 +11208,9 @@
     "enum": null
   },
   "The S3 bucket where AWS delivers the report.": {
+    "enum": null
+  },
+  "The S3 encryption option.": {
     "enum": null
   },
   "The S3 key": {
@@ -11708,6 +11738,9 @@
   "The certificate attached to the Distribution.": {
     "enum": null
   },
+  "The certificate provider type.": {
+    "enum": null
+  },
   "The certificate serial number.": {
     "enum": null
   },
@@ -11886,6 +11919,12 @@
     "enum": null
   },
   "The container image to be run by the processing job.": {
+    "enum": null
+  },
+  "The container provider ID.": {
+    "enum": null
+  },
+  "The container provider type.": {
     "enum": null
   },
   "The content SHA256 of the message template.": {
@@ -12213,6 +12252,9 @@
     "enum": null
   },
   "The deployment ID of the pipeline, used to trigger new image pipeline executions.": {
+    "enum": null
+  },
+  "The deployment order for the environment.": {
     "enum": null
   },
   "The deployment strategy ID.": {
@@ -12815,6 +12857,9 @@
   "The email body that is visible to recipients whose email clients do not display HTML content.": {
     "enum": null
   },
+  "The encryption key provider type.": {
+    "enum": null
+  },
   "The encryption keys used to encrypt data.": {
     "enum": null
   },
@@ -12915,6 +12960,9 @@
     "enum": null
   },
   "The execution role ARN assumed by hooks to read Guard rules from S3 and write Guard outputs to S3.": {
+    "enum": null
+  },
+  "The execution role ARN for the managed endpoint.": {
     "enum": null
   },
   "The execution role for the space.": {
@@ -13317,6 +13365,12 @@
     "enum": null
   },
   "The identifier of the domain in which the connection is created.": {
+    "enum": null
+  },
+  "The identifier of the environment blueprint.": {
+    "enum": null
+  },
+  "The identifier of the environment configuration.": {
     "enum": null
   },
   "The identifier of the environment in which the connection is created.": {
@@ -15251,6 +15305,9 @@
   "The name of the logging configuration. The value does not need to be unique.": {
     "enum": null
   },
+  "The name of the managed endpoint.": {
+    "enum": null
+  },
   "The name of the master user for the DB cluster.\n  If you specify the ``SourceDBClusterIdentifier``, ``SnapshotIdentifier``, or ``GlobalClusterIdentifier`` property, don't specify this property. The value is inherited from the source DB cluster, the snapshot, or the primary DB cluster for the global database cluster, respectively.\n  Valid for: Aurora DB clusters and Multi-AZ DB clusters": {
     "enum": null
   },
@@ -15912,6 +15969,9 @@
     "enum": null
   },
   "The namespace to which the command belongs.": {
+    "enum": null
+  },
+  "The namespace.": {
     "enum": null
   },
   "The netmask length of the IPv4 CIDR you want to allocate to this VPC from an Amazon VPC IP Address Manager (IPAM) pool. For more information about IPAM, see [What is IPAM?](https://docs.aws.amazon.com//vpc/latest/ipam/what-is-it-ipam.html) in the *Amazon VPC IPAM User Guide*.": {
@@ -17201,6 +17261,9 @@
   "The session number determines the order in which sessions are evaluated when an interface is used by multiple sessions. The first session with a matching filter is the one that mirrors the packets.": {
     "enum": null
   },
+  "The session tag to authorize Lake Formation access.": {
+    "enum": null
+  },
   "The settings for this multiplex program.": {
     "enum": null
   },
@@ -17640,6 +17703,9 @@
     "enum": null
   },
   "The supported programming language and its version.": {
+    "enum": null
+  },
+  "The system role ARN.": {
     "enum": null
   },
   "The table name.": {
@@ -18138,6 +18204,9 @@
     "enum": null
   },
   "The type of the link.": {
+    "enum": null
+  },
+  "The type of the managed endpoint.": {
     "enum": null
   },
   "The type of the plugin file.": {
