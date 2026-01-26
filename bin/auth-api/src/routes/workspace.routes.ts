@@ -44,6 +44,7 @@ import { tracker } from "../lib/tracker";
 import { posthog } from "../lib/posthog";
 import { findLatestTosForUser } from "../services/tos.service";
 import { automationApiRouter, extractAuthUser, router } from ".";
+import { isLocalAuth } from "../services/auth0-local.service";
 
 // When we send a hubspot email via the posthog event
 // if the workspace name is a domain name like string e.g. bing.com
@@ -560,27 +561,42 @@ router.patch("/workspaces/:workspaceId/setHidden", async (ctx) => {
 router.get("/workspaces/:workspaceId/go", async (ctx) => {
   const { authUser, workspace } = await authorizeWorkspaceRoute(ctx);
 
-  // we require the user to have verified their email before they can log into a workspace
-  if (!authUser.emailVerified) {
-    // we'll first refresh from auth0 to make sure its actually not verified
-    await refreshUserAuth0Profile(authUser);
-    // then throw an error
+  // LOCAL AUTH MODE: Skip email verification and ToS checks
+  if (isLocalAuth()) {
+    // eslint-disable-next-line no-console
+    console.log(JSON.stringify({
+      timestamp: new Date().toISOString(),
+      level: "info",
+      type: "local-auth",
+      action: "skip_verification",
+      userId: authUser.id,
+      workspaceId: workspace.id,
+      message: "🔧 LOCAL AUTH MODE: Skipping email verification and ToS checks",
+    }));
+  } else {
+    // PRODUCTION MODE: Enforce email verification and ToS acceptance
+    // we require the user to have verified their email before they can log into a workspace
     if (!authUser.emailVerified) {
+      // we'll first refresh from auth0 to make sure its actually not verified
+      await refreshUserAuth0Profile(authUser);
+      // then throw an error
+      if (!authUser.emailVerified) {
+        throw new ApiError(
+          "Unauthorized",
+          "EmailNotVerified",
+          "System Initiative Requires Verified Emails to access Workspaces. Check your registered email for Verification email from SI Auth Portal.",
+        );
+      }
+    }
+
+    const latestTos = await findLatestTosForUser(authUser);
+    if (latestTos > authUser.agreedTosVersion) {
       throw new ApiError(
         "Unauthorized",
-        "EmailNotVerified",
-        "System Initiative Requires Verified Emails to access Workspaces. Check your registered email for Verification email from SI Auth Portal.",
+        "MissingTosAcceptance",
+        "Terms of Service have been updated, return to the SI auth portal to accept them.",
       );
     }
-  }
-
-  const latestTos = await findLatestTosForUser(authUser);
-  if (latestTos > authUser.agreedTosVersion) {
-    throw new ApiError(
-      "Unauthorized",
-      "MissingTosAcceptance",
-      "Terms of Service have been updated, return to the SI auth portal to accept them.",
-    );
   }
 
   const { redirect } = validate(

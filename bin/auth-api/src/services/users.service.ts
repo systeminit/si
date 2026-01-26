@@ -3,9 +3,10 @@ import { ulid } from "ulidx";
 import * as Auth0 from "auth0";
 import { InstanceEnvType, Prisma, PrismaClient } from "@prisma/client";
 
-import { createWorkspace, SAAS_WORKSPACE_URL } from "./workspaces.service";
+import { createWorkspace, SAAS_WORKSPACE_URL, LOCAL_WORKSPACE_URL } from "./workspaces.service";
 import { tracker } from "../lib/tracker";
 import { fetchAuth0Profile } from "./auth0.service";
+import { isLocalAuth } from "./auth0-local.service";
 import { ApiError } from "../lib/api-error";
 import { findLatestTosForUser } from "./tos.service";
 import {
@@ -133,22 +134,63 @@ export async function createOrUpdateUserFromAuth0Details(
 
     setUserDataFromAuth0Details(user, auth0UserData, isSignup);
 
+    // LOCAL AUTH MODE: Mark onboarding as complete for ALL local users
+    // (not just signups - in case user already exists from previous run)
+    if (isLocalAuth()) {
+      user.onboardingDetails = {
+        ...(typeof user.onboardingDetails === 'object' ? user.onboardingDetails : {}),
+        reviewedProfile: new Date().toISOString(),
+        firstTimeModal: false, // Skip the onboarding modal
+      } as Prisma.JsonObject;
+
+      // eslint-disable-next-line no-console
+      console.log(JSON.stringify({
+        timestamp: new Date().toISOString(),
+        level: "info",
+        type: "local-auth",
+        action: "skip_onboarding",
+        userId: user.id,
+        isSignup,
+        message: "🔧 LOCAL AUTH MODE: Marking onboarding as complete for local user",
+      }));
+    }
+
     await prisma.user.update({
       where: { id: user.id },
       data: {
         ..._.omit(user, "id", "onboardingDetails"),
         auth0Details: auth0UserData as Prisma.JsonObject,
+        ...(user.onboardingDetails && { onboardingDetails: user.onboardingDetails }),
       },
     });
     tracker.identifyUser(user);
   } else {
     isSignup = true;
+    const userData = setUserDataFromAuth0Details({}, auth0UserData, isSignup);
+
+    // LOCAL AUTH MODE: Mark onboarding as complete
+    if (isLocalAuth()) {
+      userData.onboardingDetails = {
+        reviewedProfile: new Date().toISOString(),
+        firstTimeModal: false, // Skip the onboarding modal
+      } as Prisma.JsonObject;
+
+      // eslint-disable-next-line no-console
+      console.log(JSON.stringify({
+        timestamp: new Date().toISOString(),
+        level: "info",
+        type: "local-auth",
+        action: "skip_onboarding",
+        message: "🔧 LOCAL AUTH MODE: Marking onboarding as complete for local user",
+      }));
+    }
+
     user = await prisma.user.create({
       data: {
         id: ulid(),
         signupAt: new Date(),
         auth0Id,
-        ...setUserDataFromAuth0Details({}, auth0UserData, isSignup),
+        ...userData,
       },
     });
 
@@ -163,14 +205,39 @@ export async function createOrUpdateUserFromAuth0Details(
       lastName: user.lastName,
     });
 
-    await createWorkspace(
-      user,
-      InstanceEnvType.SI,
-      SAAS_WORKSPACE_URL,
-      `${user.nickname}'s  Production Workspace`,
-      true,
-      "",
-    );
+    // LOCAL AUTH MODE: Create local development workspace
+    if (isLocalAuth()) {
+      // eslint-disable-next-line no-console
+      console.log(JSON.stringify({
+        timestamp: new Date().toISOString(),
+        level: "info",
+        type: "local-auth",
+        action: "create_workspace",
+        userId: user.id,
+        workspaceName: "Local Development",
+        workspaceUrl: LOCAL_WORKSPACE_URL,
+        message: "🔧 LOCAL AUTH MODE: Auto-creating local development workspace",
+      }));
+
+      await createWorkspace(
+        user,
+        InstanceEnvType.LOCAL,
+        LOCAL_WORKSPACE_URL,
+        "Local Development",
+        true,
+        "",
+      );
+    } else {
+      // PRODUCTION MODE: Create SaaS production workspace
+      await createWorkspace(
+        user,
+        InstanceEnvType.SI,
+        SAAS_WORKSPACE_URL,
+        `${user.nickname}'s  Production Workspace`,
+        true,
+        "",
+      );
+    }
   }
 
   return user;

@@ -9,6 +9,10 @@ import {
   getAuth0UserCredential,
 } from "../services/auth0.service";
 import {
+  completeLocalAuth0TokenExchange,
+  isLocalAuth,
+} from "../services/auth0-local.service";
+import {
   createAuthToken,
   createSdfAuthToken,
   decodeSdfAuthToken,
@@ -49,6 +53,23 @@ const parseCliRedirectPort = (port: string[] | string): number => {
 };
 
 router.get("/auth/login", async (ctx) => {
+  // LOCAL AUTH MODE: bypass Auth0 entirely for local development
+  if (isLocalAuth()) {
+    // eslint-disable-next-line no-console
+    console.log(JSON.stringify({
+      timestamp: new Date().toISOString(),
+      level: "info",
+      type: "local-auth",
+      action: "login_redirect",
+      message: "🔧 LOCAL AUTH MODE: Redirecting to local login - NO Auth0 calls",
+    }));
+
+    // Redirect directly to local login success (auto-authenticate)
+    ctx.redirect(`${process.env.AUTH_PORTAL_URL}/login-success?local=true`);
+    return;
+  }
+
+  // PRODUCTION MODE: Normal Auth0 OAuth flow
   // passing in cli_redir=PORT_NO will begin the auth flow for the si cli
   const cliRedirParam = ctx.request.query.cli_redir;
   const cliRedirect = cliRedirParam
@@ -176,6 +197,67 @@ router.get("/auth/login-callback", async (ctx) => {
   } else {
     ctx.redirect(`${process.env.AUTH_PORTAL_URL}/login-success`);
   }
+});
+
+/**
+ * LOCAL AUTH MODE ONLY
+ * Simple login endpoint that bypasses Auth0 entirely
+ * Creates/updates local user and returns session token
+ */
+router.post("/auth/local-login", async (ctx) => {
+  if (!isLocalAuth()) {
+    throw new ApiError("Forbidden", "LocalAuthDisabled", "Local auth mode is not enabled");
+  }
+
+  // eslint-disable-next-line no-console
+  console.log(JSON.stringify({
+    timestamp: new Date().toISOString(),
+    level: "info",
+    type: "local-auth",
+    action: "local_login",
+    message: "🔧 LOCAL AUTH MODE: Processing local login - NO Auth0 interaction",
+  }));
+
+  const reqBody = validate(
+    ctx.request.body,
+    z.object({
+      email: z.string().email().optional(),
+    }),
+  );
+
+  // Use local mock Auth0 profile
+  const { profile } = await completeLocalAuth0TokenExchange(reqBody.email);
+  const user = await createOrUpdateUserFromAuth0Details(profile);
+
+  // eslint-disable-next-line no-console
+  console.log(JSON.stringify({
+    timestamp: new Date().toISOString(),
+    level: "info",
+    type: "local-auth",
+    action: "user_authenticated",
+    userId: user.id,
+    email: user.email,
+    message: "🔧 LOCAL AUTH MODE: User authenticated locally",
+  }));
+
+  // Create session token for auth-api communication
+  const siToken = createAuthToken(user.id);
+
+  ctx.cookies.set(SI_COOKIE_NAME, siToken, {
+    httpOnly: true,
+    secure: false, // Local development doesn't use HTTPS
+  });
+
+  ctx.body = {
+    user: {
+      id: user.id,
+      email: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      nickname: user.nickname,
+    },
+    token: siToken,
+  };
 });
 
 router.get("/auth/cli-auth-api-token", async (ctx) => {

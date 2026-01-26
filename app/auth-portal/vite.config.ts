@@ -37,12 +37,13 @@ export default defineConfig({
     process.env.NODE_ENV !== "production" &&
       checkerPlugin({
         vueTsc: true,
-        eslint: {
-          lintCommand: packageJson.scripts.lint,
-          // I _think_ we only want to pop up an error on the screen for proper errors
-          // otherwise we can get a lot of unused var errors when you comment something out temporarily
-          dev: { logLevel: ["error"] },
-        },
+        // NOTE: ESLint checker disabled due to incompatibility between
+        // vite-plugin-checker@0.12.0 and ESLint 9
+        // ESLint can still be run manually via: pnpm lint
+        // eslint: {
+        //   lintCommand: packageJson.scripts.lint,
+        //   dev: { logLevel: ["error"] },
+        // },
       }),
 
     // https://github.com/btd/rollup-plugin-visualizer/issues/176

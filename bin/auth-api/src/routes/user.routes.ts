@@ -28,6 +28,7 @@ import {
   refreshUserAuth0Profile,
   saveUser,
 } from "../services/users.service";
+import { isLocalAuth } from "../services/auth0-local.service";
 import { resendAuth0EmailVerification } from "../services/auth0.service";
 import { tracker } from "../lib/tracker";
 import { createProductionWorkspaceForUser } from "../services/workspaces.service";
@@ -484,6 +485,25 @@ router.post("/users/:userId/dismissFirstTimeModal", async (ctx) => {
 router.get("/users/:userId/firstTimeModal", async (ctx) => {
   const user = await extractOwnUserIdParam(ctx);
 
+  // LOCAL AUTH MODE: Always skip onboarding for local users
+  if (isLocalAuth()) {
+    // eslint-disable-next-line no-console
+    console.log(JSON.stringify({
+      timestamp: new Date().toISOString(),
+      level: "info",
+      type: "local-auth",
+      action: "check_onboarding",
+      userId: user.id,
+      message: "🔧 LOCAL AUTH MODE: Returning firstTimeModal=false to skip onboarding",
+    }));
+
+    ctx.body = {
+      firstTimeModal: false,
+    };
+    return;
+  }
+
+  // PRODUCTION MODE: Return actual value from database
   ctx.body = {
     firstTimeModal: (user?.onboardingDetails)?.firstTimeModal,
   };

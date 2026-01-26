@@ -15,6 +15,7 @@ import { httpRequestLoggingMiddleware } from "./lib/request-logger";
 import { loadAuthMiddleware, requireWebTokenMiddleware } from "./services/auth.service";
 import { detectClientIp } from "./lib/client-ip";
 import { CustomAppContext, CustomAppState } from "./custom-state";
+import { logLocalAuthWarning } from "./services/auth0-local.service";
 
 import './lib/posthog';
 
@@ -47,6 +48,10 @@ if (process.env.NODE_ENV !== 'test') {
     await routesLoaded;
     app.listen(process.env.PORT);
     console.log(chalk.green.bold(`Auth API listening on port ${process.env.PORT}`));
+
+    // Log warning if local auth mode is enabled
+    logLocalAuthWarning();
+
     // await prisma.$disconnect();
   } catch (err) {
     console.log('ERROR!', err);
