@@ -164,7 +164,7 @@ export const useAuthStore = defineStore("auth", {
     // split from LOAD_USER since it will likely change
     // and because this request loading blocks the whole page/app
     async CHECK_AUTH() {
-      return new ApiRequest<{ user: User }>({
+      const req = new ApiRequest<{ user: User }>({
         url: "/whoami",
         onSuccess: (response) => {
           this.user = response.user;
@@ -173,10 +173,46 @@ export const useAuthStore = defineStore("auth", {
             posthog.alias(this.user.id, this.user.email);
           }
         },
-        onFail(e) {
+        onFail: async (e) => {
           /* eslint-disable-next-line no-console */
           console.log("RESTORE AUTH FAILED!", e);
-          // trigger logout?
+
+          // Try local login - backend will reject if LOCAL_AUTH_MODE is not enabled
+          // This auto-detects local mode without requiring frontend config
+          /* eslint-disable-next-line no-console */
+          console.log("Attempting local auth auto-detection...");
+          // eslint-disable-next-line @typescript-eslint/no-floating-promises
+          this.LOCAL_LOGIN();
+        },
+      });
+      return req;
+    },
+
+    /**
+     * LOCAL AUTH MODE ONLY
+     * Authenticates with local development auth (no Auth0)
+     * Backend will reject this if LOCAL_AUTH_MODE is not enabled
+     */
+    async LOCAL_LOGIN(email?: string) {
+      return new ApiRequest<{ user: User; token: string }>({
+        method: "post",
+        url: "/auth/local-login",
+        params: { email },
+        onSuccess: (response) => {
+          this.user = response.user;
+          posthog.identify(this.user.id);
+          if (this.user.email) {
+            posthog.alias(this.user.id, this.user.email);
+          }
+          /* eslint-disable-next-line no-console */
+          console.log("🔧 LOCAL AUTH MODE: Local login successful", {
+            userId: response.user.id,
+            email: response.user.email,
+          });
+        },
+        onFail: (e) => {
+          // Silently fail - this is expected when not in local mode
+          // Backend returns 403 "LocalAuthDisabled" when LOCAL_AUTH_MODE is not enabled
         },
       });
     },

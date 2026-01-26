@@ -6,6 +6,9 @@ config.define_bool("debug-no-rebaser-rustc-build-mode")
 
 cfg = config.parse()
 
+# Auth API URL for services that need to talk to auth-api
+SI_AUTH_API_URL = "http://localhost:9001"
+
 # Define groups of services
 groups = {
     "platform": [
@@ -17,6 +20,7 @@ groups = {
     ],
     "backend": [
         "auth-api",
+        "auth-db-seed",
         "edda",
         "forklift",
         "module-index",
@@ -266,6 +270,11 @@ si_buck2_resource(
         "edda",
         "forklift",
     ],
+    serve_env = {
+        "SI_FORCE_COLOR": "true",
+        "SI_LOG_FILE_DIRECTORY": "../log",
+        "SI_AUTH_API_URL": SI_AUTH_API_URL,
+    },
     readiness_probe = probe(
         period_secs = 5,
         http_get = http_get_action(
@@ -276,7 +285,7 @@ si_buck2_resource(
     links = [
         link("http://127.0.0.1:5156", "api"),
     ],
-    **RUST_RESOURCE_ARGS
+    trigger_mode = TRIGGER_MODE_MANUAL,
 )
 
 # Locally build and run `luminork`
@@ -294,6 +303,11 @@ si_buck2_resource(
         "edda",
         "forklift",
     ],
+    serve_env = {
+        "SI_FORCE_COLOR": "true",
+        "SI_LOG_FILE_DIRECTORY": "../log",
+        "SI_AUTH_API_URL": SI_AUTH_API_URL,
+    },
     readiness_probe = probe(
         period_secs = 5,
         http_get = http_get_action(
@@ -304,7 +318,7 @@ si_buck2_resource(
     links = [
         link("http://127.0.0.1:5380/swagger-ui", "swagger-ui"),
     ],
-    **RUST_RESOURCE_ARGS
+    trigger_mode = TRIGGER_MODE_MANUAL,
 )
 
 # Locally build and run `web` in dev mode
@@ -313,6 +327,10 @@ si_buck2_resource(
     resource_deps = [
         "sdf",
     ],
+    serve_env = {
+        "VITE_AUTH_API_URL": "http://localhost:9001",
+        "VITE_AUTH_PORTAL_URL": "https://localhost:9000"
+    },
     readiness_probe = probe(
         period_secs = 5,
         http_get = http_get_action(
@@ -365,6 +383,11 @@ si_buck2_resource(
         "otelcol",
         "postgres",
     ],
+    serve_env = {
+        "SI_FORCE_COLOR": "true",
+        "SI_LOG_FILE_DIRECTORY": "../log",
+        "SI_AUTH_API_URL": SI_AUTH_API_URL,
+    },
     readiness_probe = probe(
         period_secs = 5,
         http_get = http_get_action(
@@ -372,16 +395,31 @@ si_buck2_resource(
             path = "/",
         ),
     ),
-    **RUST_RESOURCE_ARGS
+    trigger_mode = TRIGGER_MODE_MANUAL,
+)
+
+# Reset and seed the auth database before starting auth-api
+# This runs Prisma migrations and generates the client
+local_resource(
+    "auth-db-seed",
+    cmd = "buck2 run //bin/auth-api:db-reset",
+    labels = resource_labels("auth-db-seed"),
+    resource_deps = [
+        "postgres",
+    ],
+    trigger_mode = TRIGGER_MODE_MANUAL,
 )
 
 # Locally build and run `auth-api`
 si_buck2_resource(
     "//bin/auth-api:dev",
-    auto_init = False,
     resource_deps = [
         "postgres",
+        "auth-db-seed",
     ],
+    serve_env = {
+        "LOCAL_AUTH_MODE": "true",
+    },
     # readiness_probe = probe(
     #     period_secs = 5,
     #     http_get = http_get_action(
@@ -395,7 +433,6 @@ si_buck2_resource(
 # Locally build and run `auth-portal` in dev mode
 si_buck2_resource(
     "//app/auth-portal:dev",
-    auto_init = False,
     resource_deps = [
         "auth-api",
     ],
