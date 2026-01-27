@@ -16733,6 +16733,9 @@
   "The preference for the maintenance window scheduling.": {
     "enum": null
   },
+  "The preference for which private domains have a private hosted zone created for and associated with the specified VPC. Only supported when private DNS is enabled and when the VPC endpoint type is ServiceNetwork or Resource.": {
+    "enum": null
+  },
   "The preferred Lease Time for ipV6 address in seconds.": {
     "enum": null
   },
