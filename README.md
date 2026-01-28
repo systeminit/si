@@ -33,7 +33,7 @@ Let's start by choosing an officially supported platform:
 
 > [!TIP]
 > - On macOS `aarch64` (`arm64`) systems, Rosetta 2 must be installed (install it with `softwareupdate --install-rosetta`)
-> - [NixOS](https://nixos.org/) requires [`docker`](https://nixos.wiki/wiki/Docker) to be installed and [Flakes](https://nixos.wiki/wiki/Flakes) to be enabled (see the [development environment section of the dev docs](DEV_DOCS.md) for more information)
+> - [NixOS](https://nixos.org/) requires [`docker`](https://nixos.wiki/wiki/Docker) to be installed, [Flakes](https://nixos.wiki/wiki/Flakes) to be enabled and `services.envfs.enabled = true;` and `programs.nix-ld.enabled = true;` to be set in your config (see the [development environment section of the dev docs](DEV_DOCS.md) for more information)
 > - Linux with MUSL instead of GNU (e.g. [Alpine Linux](https://www.alpinelinux.org/)) is untested
 > - [WSL2](https://learn.microsoft.com/en-us/windows/wsl/) on Windows should work, but you may need to enable `systemd` within your Linux distribution
 > - macOS `x86_64` (i.e. `amd64`, "Intel") has historically worked, but is currently untested
