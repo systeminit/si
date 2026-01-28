@@ -66,7 +66,7 @@ Those include, but are not limited to the following: Ubuntu, Fedora, Debian, Arc
 
 #### What about NixOS?
 
-If using NixOS, you need [Docker](https://wiki.nixos.org/wiki/Docker) to be installed and [Flakes](https://wiki.nixos.org/wiki/Flakes) to be enabled.
+If using NixOS, you need [Docker](https://wiki.nixos.org/wiki/Docker) to be installed, `services.envfs.enabled = true;` and `programs.nix-ld.enabled = true;` to be set in your config and [Flakes](https://wiki.nixos.org/wiki/Flakes) to be enabled.
 If not using `direnv`, you can use `nix develop` or [Nix command](https://wiki.nixos.org/wiki/Nix_command).
 
 ### Windows
