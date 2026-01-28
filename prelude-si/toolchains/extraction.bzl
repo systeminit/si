@@ -31,7 +31,7 @@ def _toolchain_extract_impl(ctx: AnalysisContext) -> list[Provider]:
     ctx.actions.write(
         extract_script,
         [
-            "#!/bin/bash",
+            "#!/usr/bin/env bash",
             "set -e",
             "OUTPUT_DIR=\"$1\"",
             "ARCHIVE=\"$2\"", 
