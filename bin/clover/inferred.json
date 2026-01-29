@@ -8648,6 +8648,9 @@
   "The ARN of the Lambda function to be called for authorization.": {
     "enum": null
   },
+  "The ARN of the MailManager archive to associate with the configuration set.": {
+    "enum": null
+  },
   "The ARN of the OpenSearch Service vector store.": {
     "enum": null
   },
@@ -8997,6 +9000,9 @@
     "enum": null
   },
   "The AWS Region that the API Gateway proxy endpoint was created in. This parameter is required for SPEKE encryption and is not valid for static key encryption.": {
+    "enum": null
+  },
+  "The AWS Region where the database snapshot was created.": {
     "enum": null
   },
   "The AWS Region where the disk snapshot was created.": {
@@ -9855,6 +9861,9 @@
     "enum": null
   },
   "The Availability Zone that you want to create the flow in. These options are limited to the Availability Zones within the current AWS.": {
+    "enum": null
+  },
+  "The Availability Zone where the database snapshot was created.": {
     "enum": null
   },
   "The Availability Zone where the disk snapshot was created.": {
@@ -14339,6 +14348,9 @@
   "The name for your Cases domain. It must be unique for your AWS account.": {
     "enum": null
   },
+  "The name for your new database snapshot.": {
+    "enum": null
+  },
   "The name given by the user to the data filter cell.": {
     "enum": null
   },
@@ -15006,6 +15018,9 @@
     "enum": null
   },
   "The name of the database in which the crawler's output is stored.": {
+    "enum": null
+  },
+  "The name of the database on which to base your new snapshot.": {
     "enum": null
   },
   "The name of the database resource. Unique to the Data Catalog.": {
@@ -16506,6 +16521,9 @@
     "enum": null
   },
   "The path you provided to perform the load balancer health check. If you didn't specify a health check path, Lightsail uses the root path of your website (e.g., \"/\").": {
+    "enum": null
+  },
+  "The payload template associated with the command.": {
     "enum": null
   },
   "The peer BGP ASN.": {
