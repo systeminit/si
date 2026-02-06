@@ -1,5 +1,9 @@
 # System Initiative
 
+System Initiative has been archived, and is no longer being maintained. It remains here for the historical record.
+
+# Legacy
+
 [![Discord Server](https://img.shields.io/badge/discord-gray?style=for-the-badge&logo=discord&logoColor=white)](https://discord.com/invite/system-init)
 [![Build dashboard](https://img.shields.io/badge/build%20dashboard-gray?style=for-the-badge&logo=buildkite&logoColor=white)](https://buildkite.com/system-initiative)
 [![Main status](https://img.shields.io/buildkite/ecdbcb0ae243a74976f62a95826ec1fce62707e6fe07e4b973?style=for-the-badge&logo=buildkite&label=main)](https://buildkite.com/system-initiative/si-merge-main)
